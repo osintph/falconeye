@@ -1,0 +1,64 @@
+# CPE 2.3 vendor/product prefix strings for technology stacks heavily deployed
+# in PH government and financial sectors.
+# Matching: a CVE's CPE matches if it starts with any entry here.
+# Initial inventory drawn from operator knowledge of PH consulting engagements.
+# Format: cpe:2.3:<type>:<vendor>:<product>  (no trailing :* needed)
+
+cpes:
+  # Cisco — dominant in PH gov/banking network infrastructure
+  - cpe:2.3:o:cisco:ios
+  - cpe:2.3:a:cisco:ios
+  - cpe:2.3:o:cisco:ios_xe
+  - cpe:2.3:o:cisco:adaptive_security_appliance_software
+  - cpe:2.3:a:cisco:adaptive_security_appliance_software
+
+  # Microsoft — Windows Server, Exchange, SharePoint widespread in PH banking/gov
+  - cpe:2.3:o:microsoft:windows_server
+  - cpe:2.3:a:microsoft:exchange_server
+  - cpe:2.3:a:microsoft:sharepoint_server
+  - cpe:2.3:a:microsoft:sql_server
+  - cpe:2.3:a:microsoft:internet_explorer
+  - cpe:2.3:a:microsoft:office
+
+  # Fortinet — common perimeter firewall in PH banks and telcos
+  - cpe:2.3:o:fortinet:fortios
+  - cpe:2.3:a:fortinet:forticlient
+  - cpe:2.3:a:fortinet:fortimanager
+  - cpe:2.3:a:fortinet:fortianalyzer
+
+  # Palo Alto Networks — growing PH enterprise adoption
+  - cpe:2.3:o:paloaltonetworks:pan-os
+
+  # VMware — virtualisation layer in most PH bank data centres
+  - cpe:2.3:o:vmware:esxi
+  - cpe:2.3:a:vmware:vcenter_server
+  - cpe:2.3:a:vmware:vsphere
+
+  # Oracle — common in PH banking core systems and government ERP
+  - cpe:2.3:a:oracle:database
+  - cpe:2.3:a:oracle:weblogic_server
+  - cpe:2.3:a:oracle:java_se
+  - cpe:2.3:a:oracle:e-business_suite
+
+  # IBM — legacy PH banking infrastructure (IBM MQ, WebSphere)
+  - cpe:2.3:a:ibm:websphere_application_server
+  - cpe:2.3:a:ibm:mq
+
+  # SAP — used in several large PH conglomerates and government agencies
+  - cpe:2.3:a:sap:netweaver
+
+  # Red Hat — PH government open-source server deployments
+  - cpe:2.3:o:redhat:enterprise_linux
+
+  # Apache — prevalent in PH hosting and government web portals
+  - cpe:2.3:a:apache:http_server
+  - cpe:2.3:a:apache:tomcat
+
+  # PHP — by far the most common backend language in PH web dev
+  - cpe:2.3:a:php:php
+
+  # WordPress — extremely common in PH government and SME sites
+  - cpe:2.3:a:wordpress:wordpress
+
+  # OpenSSL — underpins HTTPS across all PH infrastructure
+  - cpe:2.3:a:openssl:openssl

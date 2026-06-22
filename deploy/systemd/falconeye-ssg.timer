@@ -1,0 +1,11 @@
+[Unit]
+Description=Run FalconEye SSG every 5 minutes (fallback for OnSuccess chain)
+
+[Timer]
+OnBootSec=6min
+OnUnitActiveSec=5min
+RandomizedDelaySec=10s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

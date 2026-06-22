@@ -1,0 +1,11 @@
+[Unit]
+Description=Run FalconEye APNIC delegated stats ingest every 24 hours
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=24h
+RandomizedDelaySec=120s
+Persistent=true
+
+[Install]
+WantedBy=timers.target

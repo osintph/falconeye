@@ -1,0 +1,94 @@
+# PH-relevant brand strings for the FalconEye sieve.
+# Entries are matched case-insensitively as whole tokens (\b word boundaries).
+# Sources: BSP-published bank list, PSE-listed companies, major PH government agencies.
+# Add entries here; the sieve module reads this file at startup.
+
+banks:
+  # BSP-supervised universal and commercial banks
+  - BDO Unibank
+  - BDO
+  - Bank of the Philippine Islands
+  - BPI
+  - Metropolitan Bank
+  - Metrobank
+  - UnionBank
+  - Union Bank of the Philippines
+  - Security Bank
+  - RCBC
+  - Rizal Commercial Banking
+  - Philippine National Bank
+  - PNB
+  - Land Bank of the Philippines
+  - Landbank
+  - Development Bank of the Philippines
+  - EastWest Bank
+  - Chinabank
+  - China Banking
+  - PSBank
+  - Philippine Savings Bank
+  - Robinsons Bank
+  - Maybank Philippines
+  - Citibank Philippines
+  - HSBC Philippines
+  - Standard Chartered Philippines
+  - CTBC Bank Philippines
+  - PayMaya
+  - GCash
+  - Maya Bank
+  - GoTyme
+
+telcos:
+  - PLDT
+  - Smart Communications
+  - Smart
+  - Globe Telecom
+  - Globe
+  - TM Mobile
+  - Converge ICT
+  - Converge
+  - Sky Cable
+  - SkyCable
+  - DITO Telecommunity
+  - DITO
+
+government:
+  # Key PH government agencies
+  - Bureau of Internal Revenue
+  - BIR
+  - Philippine Statistics Authority
+  - Social Security System
+  - Philippine Health Insurance
+  - PhilHealth
+  - Home Development Mutual Fund
+  - Pag-IBIG
+  - Commission on Elections
+  - COMELEC
+  - Department of Finance
+  - Bureau of Customs
+  - Philippine Ports Authority
+  - Civil Service Commission
+  - Government Service Insurance System
+  - GSIS
+  - Bangko Sentral ng Pilipinas
+  - National Bureau of Investigation
+  - Philippine National Police
+  - Department of Information and Communications Technology
+  - DICT
+
+enterprises:
+  # PSE-listed majors and large PH enterprises
+  - SM Investments
+  - SM Prime
+  - Ayala Corporation
+  - Ayala Land
+  - JG Summit
+  - Alliance Global
+  - DMCI Holdings
+  - ICTSI
+  - Aboitiz
+  - First Gen
+  - Megaworld
+  - Vista Land
+  - Emperador
+  - San Miguel Corporation
+  - Jollibee

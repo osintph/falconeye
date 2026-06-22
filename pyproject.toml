@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "falconeye"
+version = "0.1.0"
+description = "Continuous threat intelligence watchdog for Philippine digital infrastructure"
+readme = "README.md"
+license = "AGPL-3.0-only"
+requires-python = ">=3.12"
+dependencies = [
+    "requests>=2.31",
+    "pyyaml>=6.0",
+    "jinja2>=3.1",
+    "python-dateutil>=2.9",
+    "tldextract>=5.1",
+    "feedgen>=0.9",
+]
+
+[project.urls]
+Homepage = "https://github.com/osintph/falconeye"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
