@@ -5,39 +5,11 @@ set -euo pipefail
 
 VENV=/opt/falconeye/venv
 SRC=/opt/falconeye/src
-DIRS=(src public db logs config)
 
-# --- Root check ---
-if [ "$(id -u)" != "0" ]; then
-  echo "ERROR: Run as root: sudo bash deploy/install-venv.sh"
-  exit 1
-fi
-
-# --- System user check ---
-if ! id falconeye &>/dev/null; then
-  echo "ERROR: System user 'falconeye' does not exist."
-  echo "Create it with:"
-  echo "  sudo useradd --system --create-home --home-dir /opt/falconeye --shell /usr/sbin/nologin falconeye"
-  exit 1
-fi
-
-# --- Directory tree check ---
-TREE_OK=1
-for d in "${DIRS[@]}"; do
-  FULL="/opt/falconeye/${d}"
-  if [ ! -d "${FULL}" ]; then
-    echo "ERROR: Directory missing: ${FULL}"
-    echo "  Fix: sudo -u falconeye mkdir -p ${FULL}"
-    TREE_OK=0
-  elif [ "$(stat -c '%U' "${FULL}")" != "falconeye" ]; then
-    echo "ERROR: ${FULL} is not owned by falconeye."
-    echo "  Fix: sudo chown falconeye:falconeye ${FULL}"
-    TREE_OK=0
-  fi
-done
-if [ "${TREE_OK}" != "1" ]; then
-  exit 1
-fi
+# Preflight: root, user, directory tree, secrets — skip venv check (we're creating it)
+PREFLIGHT_SKIP_VENV_CHECK=1
+# shellcheck source=lib/preflight.sh
+source "$(dirname "$0")/lib/preflight.sh"
 
 # --- Venv (idempotent) ---
 if [ -x "${VENV}/bin/python" ]; then
