@@ -7,6 +7,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import NamedTuple
 from urllib.parse import urlparse
 
 import tldextract
@@ -16,10 +17,16 @@ from falconeye.db import get_connection, init_db
 
 log = logging.getLogger(__name__)
 
-# Resolved at import time so it works whether installed with pip install -e .
-# or run directly with WorkingDirectory=/opt/falconeye/src.
-# Production deployments override via FALCONEYE_CONFIG_DIR.
 _DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
+
+_CONTEXT_WINDOW = 200  # chars on each side of a match to search for context terms
+
+
+class BrandEntry(NamedTuple):
+    name: str
+    aliases: list[str]
+    require_context: bool
+    context_terms: list[str]
 
 
 def _now_utc() -> str:
@@ -41,19 +48,26 @@ def _build_prefix_list(conn) -> list[ipaddress.ip_network]:
     return result
 
 
-def _load_brands(config_dir: Path) -> list[str]:
-    """Flatten all sections of brand_strings.yaml into a single list."""
+def _load_brands(config_dir: Path) -> list[BrandEntry]:
+    """Load brand_strings.yaml into a list of BrandEntry objects."""
     path = config_dir / "brand_strings.yaml"
     if not path.exists():
         log.warning("Sieve: %s not found — brand matching disabled", path)
         return []
     with path.open() as f:
         data = yaml.safe_load(f) or {}
-    brands: list[str] = []
-    for section in data.values():
-        if isinstance(section, list):
-            brands.extend(str(b) for b in section if b)
-    return brands
+    entries: list[BrandEntry] = []
+    for item in data.get("brands") or []:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not name:
+            continue
+        aliases = [str(a) for a in (item.get("aliases") or [name]) if a]
+        require_context = bool(item.get("require_context", False))
+        context_terms = [str(c).lower() for c in (item.get("context_terms") or []) if c]
+        entries.append(BrandEntry(name, aliases, require_context, context_terms))
+    return entries
 
 
 def _load_cpe_inventory(config_dir: Path) -> list[str]:
@@ -115,18 +129,35 @@ def match_tld(host: str) -> bool:
         return False
 
 
-def match_brands(text: str, brands: list[str]) -> list[str]:
+def match_brands(text: str, brands: list[BrandEntry]) -> list[str]:
     """
-    Return all brand strings that appear as whole tokens in text.
-    Case-insensitive; uses \\b word boundaries to avoid short-acronym
-    false positives (e.g. 'BPI' won't match inside 'SBPI').
+    Return the names of brand entries that match in text.
+
+    Each entry lists one or more aliases matched with \\b word boundaries
+    (case-insensitive).  Entries with require_context=True only match when at
+    least one context_term appears within _CONTEXT_WINDOW characters of the
+    alias match position.
     """
     if not text or not brands:
         return []
-    return [
-        brand for brand in brands
-        if re.search(r"\b" + re.escape(brand) + r"\b", text, re.IGNORECASE)
-    ]
+    matched: list[str] = []
+    for entry in brands:
+        for alias in entry.aliases:
+            pattern = re.compile(r"\b" + re.escape(alias) + r"\b", re.IGNORECASE)
+            m = pattern.search(text)
+            if not m:
+                continue
+            if not entry.require_context:
+                matched.append(entry.name)
+                break
+            # Context check: any context_term within _CONTEXT_WINDOW chars of match
+            ws = max(0, m.start() - _CONTEXT_WINDOW)
+            we = min(len(text), m.end() + _CONTEXT_WINDOW)
+            window = text[ws:we].lower()
+            if any(ct in window for ct in entry.context_terms):
+                matched.append(entry.name)
+                break
+    return matched
 
 
 def match_cpes(cve_cpes: list[str], inventory: list[str]) -> list[str]:

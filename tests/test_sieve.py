@@ -8,6 +8,7 @@ import pytest
 
 from falconeye.db import get_connection, init_db
 from falconeye.sieve import (
+    BrandEntry,
     _extract_host,
     _is_ip,
     _sieve_cve,
@@ -29,7 +30,20 @@ _PH_PREFIXES = [
     ipaddress.ip_network("2001:4400::/23"),
 ]
 
-_BRANDS = ["BDO", "BPI", "Globe", "PLDT", "PhilHealth", "BDO Unibank"]
+_BRANDS = [
+    BrandEntry("BDO Unibank", ["BDO Unibank", "BDO"], require_context=False, context_terms=[]),
+    BrandEntry("BPI", ["BPI"], require_context=True,
+               context_terms=[".ph", "philippine", "philippines", "manila", "bangko sentral", "bsp"]),
+    BrandEntry("Globe Telecom", ["Globe Telecom", "globe.com.ph"], require_context=False, context_terms=[]),
+    BrandEntry("Globe", ["Globe"], require_context=True,
+               context_terms=[".ph", "philippine", "philippines", "telco", "gcash", "pldt"]),
+    BrandEntry("PLDT", ["PLDT"], require_context=False, context_terms=[]),
+    BrandEntry("PhilHealth", ["PhilHealth"], require_context=False, context_terms=[]),
+    BrandEntry("Smart Communications", ["Smart Communications", "smart.com.ph"], require_context=False, context_terms=[]),
+    BrandEntry("Smart", ["Smart"], require_context=True,
+               context_terms=[".ph", "philippine", "pldt", "smart.com.ph", "telco", "simcard"]),
+    BrandEntry("DICT Philippines", ["DICT Philippines", "dict.gov.ph"], require_context=False, context_terms=[]),
+]
 
 _CPE_INVENTORY = [
     "cpe:2.3:o:cisco:ios",
@@ -125,11 +139,12 @@ def test_match_tld_ip():
 # ---------------------------------------------------------------------------
 
 def test_match_brands_simple_hit():
-    assert "BDO" in match_brands("BDO phishing page", _BRANDS)
+    assert "BDO Unibank" in match_brands("BDO phishing page", _BRANDS)
 
 
 def test_match_brands_case_insensitive():
-    assert "Globe" in match_brands("globe.com.ph redirect", _BRANDS)
+    # Globe Telecom has require_context=False; "globe.com.ph" is an alias
+    assert "Globe Telecom" in match_brands("globe.com.ph redirect", _BRANDS)
 
 
 def test_match_brands_word_boundary():
@@ -151,6 +166,74 @@ def test_match_brands_empty_text():
 
 def test_match_brands_empty_brands():
     assert match_brands("BDO phishing", []) == []
+
+
+# ---------------------------------------------------------------------------
+# match_brands — disambiguation (require_context)
+# ---------------------------------------------------------------------------
+
+def test_match_brands_smart_no_ph_context_no_match():
+    # "Smart" with require_context=True must not match Cisco Smart Licensing copy
+    text = "Vulnerability in Cisco Smart Licensing Utility allows remote code execution"
+    result = match_brands(text, _BRANDS)
+    assert "Smart" not in result
+
+
+def test_match_brands_smart_with_ph_context_matches():
+    text = "Smart Communications smart.com.ph subscriber portal credential stuffing"
+    result = match_brands(text, _BRANDS)
+    # "Smart Communications" (require_context=False) matches first
+    assert "Smart Communications" in result
+
+
+def test_match_brands_smart_alias_with_ph_context_matches():
+    text = "Phishing targeting Smart subscribers in Philippines via SMS"
+    result = match_brands(text, _BRANDS)
+    assert "Smart" in result
+
+
+def test_match_brands_globe_github_no_match():
+    text = "npm package globe v2.1.3 adds WebGL globe rendering to React apps"
+    result = match_brands(text, _BRANDS)
+    assert "Globe" not in result
+    assert "Globe Telecom" not in result
+
+
+def test_match_brands_globe_telco_context_matches():
+    text = "Globe Telecom PH DITO rival suffers credential leak"
+    result = match_brands(text, _BRANDS)
+    assert "Globe Telecom" in result
+
+
+def test_match_brands_globe_with_ph_context_matches():
+    text = "Globe prepaid SIM philippines .ph phishing campaign"
+    result = match_brands(text, _BRANDS)
+    assert "Globe" in result
+
+
+def test_match_brands_bpi_no_ph_context_no_match():
+    text = "BPI calculation used in cryptographic protocol analysis"
+    result = match_brands(text, _BRANDS)
+    assert "BPI" not in result
+
+
+def test_match_brands_bpi_ph_context_matches():
+    text = "BPI phishing page targeting Bank of the Philippine Islands customers in Philippines"
+    result = match_brands(text, _BRANDS)
+    assert "BPI" in result
+
+
+def test_match_brands_dict_philippines_matches():
+    text = "dict.gov.ph DICT Philippines open data portal credential exposure"
+    result = match_brands(text, _BRANDS)
+    assert "DICT Philippines" in result
+
+
+def test_match_brands_bare_dict_no_match():
+    # "dict" alone should not match — no "dict" alias in _BRANDS, only "DICT Philippines"
+    text = "wordtrans dictionary package (dict) remote buffer overflow"
+    result = match_brands(text, _BRANDS)
+    assert "DICT Philippines" not in result
 
 
 # ---------------------------------------------------------------------------
@@ -213,7 +296,7 @@ def test_sieve_ioc_tld_and_brand():
 
 def test_sieve_cve_brand_in_description():
     matches = _sieve_cve(
-        "Vulnerability in BDO online banking portal",
+        "Vulnerability in BDO Unibank online banking portal",
         None, [], _BRANDS, _CPE_INVENTORY,
     )
     assert any(m[0] == "brand" and "BDO" in m[1] for m in matches)
@@ -223,7 +306,7 @@ def test_sieve_cve_brand_in_kev_vendor():
     import json
     kev = json.dumps({"vendor": "Globe Telecom", "product": "Router", "cwes": [], "notes": ""})
     matches = _sieve_cve(None, kev, [], _BRANDS, _CPE_INVENTORY)
-    assert any(m[0] == "brand" and "Globe" in m[1] for m in matches)
+    assert any(m[0] == "brand" and "Globe Telecom" in m[1] for m in matches)
 
 
 def test_sieve_cve_cpe_match():
@@ -285,10 +368,20 @@ def db_with_data(tmp_path):
     return db
 
 
+_BRAND_YAML_BDO = """\
+brands:
+  - name: "BDO Unibank"
+    aliases: ["BDO Unibank", "BDO", "bdo.com.ph"]
+    require_context: false
+"""
+
+_BRAND_YAML_EMPTY = "brands: []\n"
+
+
 def test_run_sieve_finds_tld_match(db_with_data, tmp_path):
     cfg = tmp_path / "config"
     cfg.mkdir()
-    (cfg / "brand_strings.yaml").write_text("banks:\n  - BDO\n")
+    (cfg / "brand_strings.yaml").write_text(_BRAND_YAML_BDO)
     (cfg / "cpe_inventory.yaml").write_text("cpes:\n  - cpe:2.3:o:cisco:ios\n")
 
     run_sieve(db_with_data, cfg)
@@ -304,7 +397,7 @@ def test_run_sieve_finds_tld_match(db_with_data, tmp_path):
 def test_run_sieve_finds_asn_match(db_with_data, tmp_path):
     cfg = tmp_path / "config"
     cfg.mkdir()
-    (cfg / "brand_strings.yaml").write_text("banks: []\n")
+    (cfg / "brand_strings.yaml").write_text(_BRAND_YAML_EMPTY)
     (cfg / "cpe_inventory.yaml").write_text("cpes: []\n")
 
     run_sieve(db_with_data, cfg)
@@ -321,7 +414,7 @@ def test_run_sieve_finds_asn_match(db_with_data, tmp_path):
 def test_run_sieve_finds_cpe_match(db_with_data, tmp_path):
     cfg = tmp_path / "config"
     cfg.mkdir()
-    (cfg / "brand_strings.yaml").write_text("banks: []\n")
+    (cfg / "brand_strings.yaml").write_text(_BRAND_YAML_EMPTY)
     (cfg / "cpe_inventory.yaml").write_text("cpes:\n  - cpe:2.3:o:cisco:ios\n")
 
     run_sieve(db_with_data, cfg)
@@ -337,7 +430,7 @@ def test_run_sieve_finds_cpe_match(db_with_data, tmp_path):
 def test_run_sieve_idempotent(db_with_data, tmp_path):
     cfg = tmp_path / "config"
     cfg.mkdir()
-    (cfg / "brand_strings.yaml").write_text("banks:\n  - BDO\n")
+    (cfg / "brand_strings.yaml").write_text(_BRAND_YAML_BDO)
     (cfg / "cpe_inventory.yaml").write_text("cpes:\n  - cpe:2.3:o:cisco:ios\n")
 
     total1, _ = run_sieve(db_with_data, cfg)
