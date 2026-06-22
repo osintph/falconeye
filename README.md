@@ -39,14 +39,43 @@ See [SPEC.md](SPEC.md) for full design details.
 
 ## Self-hosting
 
-A `docker-compose.yml` will be published when v0.1 ships. The canonical deployment is bare systemd plus nginx on Ubuntu 24.04 LTS, documented in [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md). Minimum VPS specs: 2 vCPU, 4 GB RAM, 40 GB SSD.
+Canonical deployment: Ubuntu 24.04 LTS, bare systemd + nginx, no Docker required. Minimum VPS: 2 vCPU, 4 GB RAM, 40 GB SSD. Estimated setup time: 10 minutes.
 
-You need free API keys from:
-
+You need two free API keys (no payment method required):
 - [abuse.ch](https://auth.abuse.ch/) for URLhaus
 - [nvd.nist.gov](https://nvd.nist.gov/developers/request-an-api-key) for NVD (technically optional, but rate limits are punishing without one)
 
-Neither requires a payment method.
+```bash
+# 1. Create system user and directory layout
+sudo useradd --system --create-home --home-dir /opt/falconeye --shell /usr/sbin/nologin falconeye
+sudo -u falconeye mkdir -p /opt/falconeye/{src,public,db,logs,config}
+
+# 2. Clone repo
+sudo -u falconeye git clone https://github.com/osintph/falconeye.git /opt/falconeye/src
+
+# 3. Create Python venv and install package
+sudo bash /opt/falconeye/src/deploy/install-venv.sh
+
+# 4. Populate secrets (fill in URLHAUS_AUTH_KEY and NVD_API_KEY)
+sudo -u falconeye cp /opt/falconeye/src/config/secrets.env.example /opt/falconeye/config/secrets.env
+sudo -u falconeye vi /opt/falconeye/config/secrets.env
+
+# 5. Phase 1: install nginx HTTP vhost (verifies the dashboard serves on port 80)
+sudo bash /opt/falconeye/src/deploy/install-nginx.sh
+
+# 6. Phase 2: obtain TLS certificate (requires DNS A record pointing to VPS)
+sudo bash /opt/falconeye/src/deploy/install-tls.sh
+
+# 7. Install and enable systemd timers
+sudo bash /opt/falconeye/src/deploy/install-systemd.sh
+
+# 8. Run first full ingest cycle to populate the corpus
+sudo bash /opt/falconeye/src/scripts/run.sh all
+```
+
+For subsequent manual runs: `sudo bash /opt/falconeye/src/scripts/run.sh <worker>` where worker is `urlhaus`, `kev`, `nvd`, `apnic`, `sieve`, `ssg`, or `all`.
+
+Full operational details are in [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md).
 
 ## Defensive use only
 
@@ -64,6 +93,6 @@ FalconEye stands on the shoulders of free public threat intelligence projects. a
 
 ## Maintainer
 
-Sigmund Brandstaetter, OSINT-PH. Reach me at [sigmund@osintph.net](mailto:sigmund@osintph.net) or via the [OSINT-PH blog](https://blog.osintph.info).
+Sigmund Brandstaetter, OSINT-PH. Reach me at [sigmund@osintph.info](mailto:sigmund@osintph.info) or via the [OSINT-PH blog](https://blog.osintph.info).
 
 Part of the OSINT-PH suite alongside Bantay-Eye and related defensive tools.
