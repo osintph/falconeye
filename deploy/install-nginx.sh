@@ -2,6 +2,9 @@
 # Install FalconEye nginx vhost and obtain TLS cert. Run as root on the target VPS.
 set -euo pipefail
 
+# shellcheck source=lib/preflight.sh
+source "$(dirname "$0")/lib/preflight.sh"
+
 CONF_SRC="$(cd "$(dirname "$0")/nginx" && pwd)/falconeye.conf"
 CONF_DST=/etc/nginx/sites-available/falconeye.conf
 LINK_DST=/etc/nginx/sites-enabled/falconeye.conf

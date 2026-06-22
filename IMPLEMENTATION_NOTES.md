@@ -49,9 +49,7 @@ sudo useradd --system --create-home --home-dir /opt/falconeye --shell /usr/sbin/
 ## 4. Python environment
 
 ```bash
-sudo -u falconeye python3 -m venv /opt/falconeye/venv
-sudo -u falconeye /opt/falconeye/venv/bin/pip install -U pip
-sudo -u falconeye /opt/falconeye/venv/bin/pip install -r /opt/falconeye/src/requirements.txt
+sudo bash /opt/falconeye/src/deploy/install-venv.sh
 ```
 
 Dependencies (target minimum set):
@@ -131,9 +129,10 @@ A single `/opt/falconeye/config/secrets.env` file owned by `falconeye` with `chm
 ```
 URLHAUS_AUTH_KEY=<key from auth.abuse.ch>
 NVD_API_KEY=<key from nvd.nist.gov/developers/request-an-api-key>
+FALCONEYE_DB_PATH=/opt/falconeye/db/falconeye.db
 ```
 
-The `EnvironmentFile=` directive in each systemd unit reads this. The file is `.gitignore`d.
+Copy `config/secrets.env.example` to `/opt/falconeye/config/secrets.env` and fill in the two API keys. The `EnvironmentFile=` directive in each systemd unit reads this. The file is `.gitignore`d.
 
 ## 7. Upstream source URLs
 
@@ -313,5 +312,11 @@ Recommended order. Do not parallelize across sources; finish one ingest worker e
 13. End-to-end test: stop all timers, run a full cycle by hand, verify outputs
 14. Re-enable timers, soak for 48 hours
 15. Tag v0.1.0 release
+
+On the VPS, before running install-systemd.sh or install-nginx.sh:
+- Run `deploy/install-venv.sh` to create the Python venv (step 10a)
+- Copy `config/secrets.env.example` to `/opt/falconeye/config/secrets.env` and fill in API keys
+- Both install scripts run `deploy/lib/preflight.sh` and will fail fast if any pre-condition is missing
+- Use `scripts/run-ingest.sh <worker>` for manual ingest runs instead of the verbose source+export pattern
 
 After each step Claude Code stops and shows the operator the test output before proceeding.

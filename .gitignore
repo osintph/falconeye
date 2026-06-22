@@ -12,6 +12,7 @@ eggs/
 .eggs/
 lib/
 lib64/
+!deploy/lib/
 parts/
 sdist/
 var/

@@ -2,6 +2,9 @@
 # Install FalconEye systemd units. Run as root on the target VPS.
 set -euo pipefail
 
+# shellcheck source=lib/preflight.sh
+source "$(dirname "$0")/lib/preflight.sh"
+
 UNIT_DIR=/etc/systemd/system
 SRC_DIR="$(cd "$(dirname "$0")/systemd" && pwd)"
 
