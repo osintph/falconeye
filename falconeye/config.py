@@ -18,4 +18,10 @@ def get_db_path() -> str:
 
 
 def get_output_dir() -> str:
-    return os.environ.get("FALCONEYE_OUTPUT_DIR", "/opt/falconeye/public")
+    val = os.environ.get("FALCONEYE_OUTPUT_DIR")
+    if not val:
+        raise ConfigError(
+            "FALCONEYE_OUTPUT_DIR is not set. "
+            "Set it in your environment or source /opt/falconeye/config/secrets.env before running."
+        )
+    return val

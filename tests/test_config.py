@@ -31,8 +31,15 @@ def test_get_output_dir_returns_env_var(monkeypatch):
     assert get_output_dir() == "/tmp/out"
 
 
-def test_get_output_dir_defaults_to_absolute(monkeypatch):
+def test_get_output_dir_raises_when_unset(monkeypatch):
     monkeypatch.delenv("FALCONEYE_OUTPUT_DIR", raising=False)
-    result = get_output_dir()
-    assert result.startswith("/")
-    assert "falconeye" in result
+    with pytest.raises(ConfigError) as exc_info:
+        get_output_dir()
+    assert "FALCONEYE_OUTPUT_DIR" in str(exc_info.value)
+    assert "secrets.env" in str(exc_info.value)
+
+
+def test_get_output_dir_raises_config_error_subclass(monkeypatch):
+    monkeypatch.delenv("FALCONEYE_OUTPUT_DIR", raising=False)
+    with pytest.raises(RuntimeError):
+        get_output_dir()
