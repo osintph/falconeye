@@ -270,6 +270,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     _api_key = os.environ.get("NVD_API_KEY")
-    _db = os.environ.get("FALCONEYE_DB_PATH", "db/falconeye.db")
+    from falconeye.config import get_db_path
+    _db = get_db_path()
     ups, errs = ingest(_db, api_key=_api_key, full_sync=args.full_sync, start_date=args.start_date)
     print(f"NVD ingest complete: {ups} upserted, {errs} errors")

@@ -151,6 +151,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    _db = os.environ.get("FALCONEYE_DB_PATH", "db/falconeye.db")
+    from falconeye.config import get_db_path
+    _db = get_db_path()
     asn_count, prefix_count, errs = ingest(_db)
     print(f"APNIC ingest complete: {asn_count} ASNs, {prefix_count} prefixes, {errs} errors")

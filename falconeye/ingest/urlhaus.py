@@ -132,6 +132,7 @@ if __name__ == "__main__":
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     _auth = os.environ.get("URLHAUS_AUTH_KEY")
-    _db = os.environ.get("FALCONEYE_DB_PATH", "db/falconeye.db")
+    from falconeye.config import get_db_path
+    _db = get_db_path()
     ups, errs = ingest(_db, _auth)
     print(f"URLhaus ingest complete: {ups} upserted, {errs} errors")

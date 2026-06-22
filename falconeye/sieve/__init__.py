@@ -290,7 +290,8 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    _db = os.environ.get("FALCONEYE_DB_PATH", "db/falconeye.db")
+    from falconeye.config import get_db_path
+    _db = get_db_path()
     _cfg = os.environ.get("FALCONEYE_CONFIG_DIR", str(_DEFAULT_CONFIG_DIR))
     matches, errs = run_sieve(_db, _cfg)
     print(f"Sieve complete: {matches} matches, {errs} errors")

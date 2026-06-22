@@ -118,6 +118,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
-    _db = os.environ.get("FALCONEYE_DB_PATH", "db/falconeye.db")
+    from falconeye.config import get_db_path
+    _db = get_db_path()
     ups, errs = ingest(_db)
     print(f"CISA KEV ingest complete: {ups} upserted, {errs} errors")
