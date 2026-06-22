@@ -124,15 +124,24 @@ Cadences by source:
 
 ## 6. Secrets handling
 
-A single `/opt/falconeye/config/secrets.env` file owned by `falconeye` with `chmod 600` holds:
+A single `/opt/falconeye/config/secrets.env` file owned by `falconeye` with `chmod 600` holds all four required variables:
 
 ```
 URLHAUS_AUTH_KEY=<key from auth.abuse.ch>
 NVD_API_KEY=<key from nvd.nist.gov/developers/request-an-api-key>
 FALCONEYE_DB_PATH=/opt/falconeye/db/falconeye.db
+FALCONEYE_OUTPUT_DIR=/opt/falconeye/public
 ```
 
-Copy `config/secrets.env.example` to `/opt/falconeye/config/secrets.env` and fill in the two API keys. The `EnvironmentFile=` directive in each systemd unit reads this. The file is `.gitignore`d.
+Bootstrap it from the committed example:
+
+```bash
+sudo -u falconeye cp /opt/falconeye/src/config/secrets.env.example /opt/falconeye/config/secrets.env
+sudo -u falconeye chmod 600 /opt/falconeye/config/secrets.env
+sudo -u falconeye vi /opt/falconeye/config/secrets.env   # fill in the two API keys
+```
+
+The `EnvironmentFile=` directive in each systemd unit reads this file. The file itself is `.gitignore`d — only `secrets.env.example` is committed.
 
 ## 7. Upstream source URLs
 
@@ -164,79 +173,27 @@ Claude Code: verify these are current at implementation time by hitting the land
 - Files: ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest and delegated-apnic-extended-latest
 - Schema: documented at the landing page
 
-## 8. nginx vhost
+## 8. nginx vhost (two-phase deploy)
 
-Single server block at `/etc/nginx/sites-available/falconeye.conf` and symlinked to `sites-enabled/`. The certbot run creates the cert lines automatically.
+The nginx deploy is split into two phases to avoid the chicken-and-egg problem where `nginx -t` fails because TLS certificates do not exist yet.
 
-```nginx
-# /etc/nginx/sites-available/falconeye.conf
+**Phase 1 — HTTP vhost** (`deploy/install-nginx.sh`):
 
-log_format falconeye_telemetry '$time_iso8601 | status=$status | bytes=$body_bytes_sent | rt=$request_time';
-
-server {
-    listen 80;
-    listen [::]:80;
-    server_name falconeye.osintph.info;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    listen [::]:443 ssl http2;
-    server_name falconeye.osintph.info;
-
-    # TLS managed by certbot
-    # ssl_certificate / ssl_certificate_key lines added by certbot --nginx
-
-    root /opt/falconeye/public;
-    index index.html;
-
-    gzip_static on;
-    gzip_types text/html text/css application/json application/rss+xml application/feed+json;
-
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy strict-origin-when-cross-origin always;
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-
-    # Telemetry log without path tracking (privacy posture for v0.2 lookup endpoints)
-    access_log /var/log/nginx/falconeye_access.log falconeye_telemetry;
-    error_log /var/log/nginx/falconeye_error.log warn;
-
-    location / {
-        try_files $uri $uri/ =404;
-        add_header Cache-Control "public, max-age=300, stale-while-revalidate=60";
-    }
-
-    location = /healthz {
-        try_files /healthz.json =404;
-        default_type application/json;
-        add_header Cache-Control "no-store";
-    }
-
-    # API path reserved for v0.2 FalconEye-Match sharded indices
-    location /api/v1/ {
-        try_files $uri =404;
-        add_header Cache-Control "public, max-age=900, stale-while-revalidate=300";
-        add_header Access-Control-Allow-Origin "*";
-    }
-}
-```
-
-After dropping the file in:
+Installs `deploy/nginx/falconeye.conf` (HTTP-only, port 80) and verifies `nginx -t` passes. The dashboard is immediately reachable on port 80. `text/html` is omitted from `gzip_types` because nginx handles it by default; listing it is redundant.
 
 ```bash
-sudo ln -s /etc/nginx/sites-available/falconeye.conf /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
+sudo bash /opt/falconeye/src/deploy/install-nginx.sh
 ```
 
-Then certbot:
+**Phase 2 — TLS certificate** (`deploy/install-tls.sh`):
+
+Runs `certbot --nginx` which adds the HTTPS server block and HSTS header automatically. Requires a DNS A record pointing to the VPS.
 
 ```bash
-sudo certbot --nginx -d falconeye.osintph.info \
-  --email sigmund@osintph.net \
-  --agree-tos --no-eff-email --redirect
+sudo bash /opt/falconeye/src/deploy/install-tls.sh
 ```
+
+Both scripts source `deploy/lib/preflight.sh` and will fail with clear remediation messages if any prerequisite is missing.
 
 ## 9. Healthcheck
 
@@ -276,16 +233,16 @@ The dashboard, RSS, JSON feed, and manifest each carry an attributions block. Pe
 
 ```
 [ ] Repo cloned to /opt/falconeye/src
-[ ] Python venv created at /opt/falconeye/venv
-[ ] requirements.txt installed cleanly
+[ ] deploy/install-venv.sh run successfully (venv at /opt/falconeye/venv)
+[ ] config/secrets.env populated with all four keys:
+    URLHAUS_AUTH_KEY, NVD_API_KEY, FALCONEYE_DB_PATH, FALCONEYE_OUTPUT_DIR
 [ ] config/brand_strings.yaml committed with initial PH banks, telcos, government agencies
 [ ] config/cpe_inventory.yaml committed with initial PH-relevant CPE entries
-[ ] config/secrets.env populated locally (not committed) with URLHAUS_AUTH_KEY and NVD_API_KEY
-[ ] All four ingest workers tested manually against live APIs
+[ ] All four ingest workers tested manually: sudo bash scripts/run.sh urlhaus (etc.)
 [ ] SSG generates index.html, feed.xml, feed.json, manifest.json, healthz.json
 [ ] systemd units installed and enabled (4 service + 4 timer + 1 SSG service + 1 SSG timer)
-[ ] nginx vhost configured and reloaded
-[ ] certbot TLS certificate issued
+[ ] deploy/install-nginx.sh run — nginx serves HTTP on port 80
+[ ] deploy/install-tls.sh run — certbot issues TLS certificate, HTTPS active
 [ ] DNS A record points to VPS, dig resolves
 [ ] curl https://falconeye.osintph.info/ returns 200
 [ ] curl https://falconeye.osintph.info/feed.xml returns valid RSS
@@ -313,10 +270,14 @@ Recommended order. Do not parallelize across sources; finish one ingest worker e
 14. Re-enable timers, soak for 48 hours
 15. Tag v0.1.0 release
 
-On the VPS, before running install-systemd.sh or install-nginx.sh:
-- Run `deploy/install-venv.sh` to create the Python venv (step 10a)
-- Copy `config/secrets.env.example` to `/opt/falconeye/config/secrets.env` and fill in API keys
-- Both install scripts run `deploy/lib/preflight.sh` and will fail fast if any pre-condition is missing
-- Use `scripts/run-ingest.sh <worker>` for manual ingest runs instead of the verbose source+export pattern
+On the VPS, the deploy sequence wrapping steps 10–13:
+- `deploy/install-venv.sh` — creates Python venv (run before install-systemd.sh)
+- `deploy/install-nginx.sh` — Phase 1 HTTP vhost
+- `deploy/install-tls.sh` — Phase 2 TLS certificate via certbot
+- `deploy/install-systemd.sh` — systemd units (sources preflight.sh, fails fast if venv or secrets missing)
+- `scripts/run.sh all` — manual full cycle (urlhaus → kev → nvd → apnic → sieve → ssg)
+- `scripts/run.sh <worker>` — manual single-worker run
+
+All install scripts source `deploy/lib/preflight.sh` and fail with clear remediation messages if prerequisites are missing. `scripts/run.sh` must be run as root; it sources `secrets.env` automatically.
 
 After each step Claude Code stops and shows the operator the test output before proceeding.
