@@ -39,7 +39,7 @@ def _now_utc() -> datetime:
 
 
 def _manifest_version(now: datetime) -> str:
-    return now.strftime("%Y.%j.%H")
+    return now.strftime("%Y.%j.%H%M%S")
 
 
 def _parse_ts(s: str | None) -> datetime:

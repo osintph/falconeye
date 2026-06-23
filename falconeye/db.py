@@ -29,8 +29,15 @@ CREATE TABLE IF NOT EXISTS cves (
     published_date       TEXT,                -- ISO8601 UTC
     last_modified        TEXT,                -- ISO8601 UTC
     description          TEXT,
+    -- cvss_v3_score / cvss_v3_severity: pre-v0.2.2 these were populated with CVSS v3
+    -- data only.  From v0.2.2 forward they may also hold CVSS v2 values when v3 is
+    -- unavailable (most CVEs published before 2015).  The cvss_version column records
+    -- which CVSS version supplied each row's score: 'v3.1', 'v3.0', or 'v2.0'.
+    -- Existing pre-2007 records in production databases receive cvss_version
+    -- retroactively as the backfill loop re-reaches them; this is expected, not an error.
     cvss_v3_score        REAL,
     cvss_v3_severity     TEXT,               -- 'CRITICAL','HIGH','MEDIUM','LOW','NONE'
+    cvss_version         TEXT,               -- 'v3.1', 'v3.0', 'v2.0', or NULL (not yet scored)
     -- KEV-specific fields; NULL for CVEs sourced only from NVD
     kev_date_added       TEXT,
     kev_due_date         TEXT,
@@ -113,6 +120,13 @@ CREATE TABLE IF NOT EXISTS campaign_iocs (
     UNIQUE(campaign_id, ioc_id)
 );
 
+CREATE TABLE IF NOT EXISTS ingest_state (
+    source         TEXT PRIMARY KEY,
+    backfill_done  INTEGER NOT NULL DEFAULT 0,  -- 1 when full backfill is complete
+    oldest_reached TEXT,                         -- ISO8601 UTC; earliest pubEndDate fetched so far
+    last_run       TEXT NOT NULL                 -- ISO8601 UTC of last successful ingest
+);
+
 CREATE INDEX IF NOT EXISTS idx_iocs_value            ON iocs(ioc_value);
 CREATE INDEX IF NOT EXISTS idx_iocs_fetched          ON iocs(fetched_at);
 CREATE INDEX IF NOT EXISTS idx_cves_fetched          ON cves(fetched_at);
@@ -122,6 +136,7 @@ CREATE INDEX IF NOT EXISTS idx_campaigns_status      ON campaigns(status);
 CREATE INDEX IF NOT EXISTS idx_campaigns_generated   ON campaigns(generated_at);
 CREATE INDEX IF NOT EXISTS idx_campaign_iocs_campaign ON campaign_iocs(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_iocs_ioc     ON campaign_iocs(ioc_id);
+CREATE INDEX IF NOT EXISTS idx_cves_published        ON cves(published_date);
 """
 
 
@@ -138,4 +153,11 @@ def init_db(db_path: str | Path) -> None:
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     conn = get_connection(db_path)
     conn.executescript(_DDL)
+    # Column migration for databases created before v0.2.2.
+    # SQLite has no ADD COLUMN IF NOT EXISTS; the try/except is idiomatic.
+    try:
+        conn.execute("ALTER TABLE cves ADD COLUMN cvss_version TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists in this database
     conn.close()

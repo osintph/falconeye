@@ -112,7 +112,7 @@ def test_parse_ts_invalid_returns_now():
 def test_manifest_version_format():
     dt = datetime(2026, 6, 22, 14, 0, 0, tzinfo=timezone.utc)
     mv = _manifest_version(dt)
-    assert mv == "2026.173.14"
+    assert mv == "2026.173.140000"
 
 
 # ---------------------------------------------------------------------------

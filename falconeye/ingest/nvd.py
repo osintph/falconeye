@@ -27,7 +27,7 @@ def _fmt(dt: datetime) -> str:
 
 
 def _manifest_version() -> str:
-    return datetime.now(timezone.utc).strftime("%Y.%j.%H")
+    return datetime.now(timezone.utc).strftime("%Y.%j.%H%M%S")
 
 
 # --- Extraction helpers ---

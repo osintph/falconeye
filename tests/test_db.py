@@ -4,7 +4,7 @@ from falconeye.db import get_connection, init_db
 
 EXPECTED_TABLES = {
     "iocs", "cves", "cve_cpe_matches", "ph_asns", "ph_prefixes", "sieve_matches",
-    "ip_enrichments", "campaigns", "campaign_iocs",
+    "ip_enrichments", "campaigns", "campaign_iocs", "ingest_state",
 }
 
 
@@ -156,3 +156,30 @@ def test_campaign_iocs_unique_pair(db):
     with pytest.raises(sqlite3.IntegrityError):
         conn.execute("INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (1, 42)")
     conn.close()
+
+
+# ---------------------------------------------------------------------------
+# v0.2.2 schema additions
+# ---------------------------------------------------------------------------
+
+def test_ingest_state_table_created(db):
+    conn = get_connection(db)
+    row = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='ingest_state'"
+    ).fetchone()
+    conn.close()
+    assert row is not None
+
+
+def test_cves_cvss_version_column_exists(db):
+    conn = get_connection(db)
+    cols = [r["name"] for r in conn.execute("PRAGMA table_info(cves)")]
+    conn.close()
+    assert "cvss_version" in cols
+
+
+def test_init_db_migration_idempotent(tmp_path):
+    """Calling init_db on a database that already has cvss_version must not raise."""
+    path = tmp_path / "migrate.db"
+    init_db(path)
+    init_db(path)
