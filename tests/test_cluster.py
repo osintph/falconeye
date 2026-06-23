@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from falconeye.cluster import (
+    _load_tag_whitelist,
     _select_primary_tag,
     effective_grouping_domain,
     make_slug,
@@ -336,3 +337,88 @@ def test_asn_tag_cluster_single_tag_per_ioc(asn_tag_cluster_db, config_with_asn)
     ).fetchone()[0]
     conn.close()
     assert count == 1
+
+
+# ---------------------------------------------------------------------------
+# cluster_tag_whitelist tests
+# ---------------------------------------------------------------------------
+
+_WHITELIST = {"mirai", "mozi", "gafgyt", "c2", "dropper"}
+_PRIORITY_WITH_ARCH = [
+    {"level": "family",       "tags": ["mirai", "mozi", "gafgyt"]},
+    {"level": "functional",   "tags": ["c2", "dropper"]},
+    {"level": "architecture", "tags": ["arm", "elf", "mips"]},
+]
+
+
+def test_whitelist_passes_family_tag():
+    assert _select_primary_tag(["Mirai", "arm"], _PRIORITY_WITH_ARCH, _WHITELIST) == "Mirai"
+
+
+def test_whitelist_blocks_architecture_only():
+    assert _select_primary_tag(["arm", "elf"], _PRIORITY_WITH_ARCH, _WHITELIST) is None
+
+
+def test_whitelist_none_allows_architecture():
+    """Without whitelist, architecture tags still produce a primary tag (legacy)."""
+    assert _select_primary_tag(["arm", "elf"], _PRIORITY_WITH_ARCH, None) == "arm"
+
+
+def test_load_tag_whitelist_returns_none_when_file_absent(tmp_path):
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    assert _load_tag_whitelist(cfg) is None
+
+
+def test_load_tag_whitelist_returns_set(tmp_path):
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "cluster_tag_whitelist.yaml").write_text(
+        "allowed_tags:\n  - mirai\n  - C2\n  - dropper\n"
+    )
+    wl = _load_tag_whitelist(cfg)
+    assert wl == {"mirai", "c2", "dropper"}
+
+
+def test_architecture_only_iocs_do_not_form_asn_tag_campaign(tmp_path):
+    """
+    IOCs tagged only with architecture tags (arm, elf) must not produce any
+    asn_tag campaign even if they match an ASN sieve criterion.
+    """
+    db = tmp_path / "arch_only.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO ph_prefixes (prefix, prefix_type, fetched_at) "
+        "VALUES ('10.0.0.0/24', 'ipv4', '2026-06-24T00:00:00Z')"
+    )
+    for i in range(5):
+        iid = _insert_ioc(
+            conn, f"http://10.0.0.{10+i}/dl", ioc_type="url",
+            threat_type="malware_download", tags=["arm", "elf", "mips"], iid=f"arch{i}",
+        )
+        _insert_sieve(conn, iid, "asn", "10.0.0.0/24")
+    conn.commit()
+    conn.close()
+
+    # config has priority with architecture + whitelist blocking architecture
+    cfg = tmp_path / "config"
+    cfg.mkdir()
+    (cfg / "asn_operators.yaml").write_text("operators: {}\n")
+    (cfg / "action_templates.yaml").write_text("templates: []\n")
+    (cfg / "cluster_tag_priority.yaml").write_text(
+        "priority_levels:\n"
+        "  - level: family\n    tags: [mirai]\n"
+        "  - level: architecture\n    tags: [arm, elf, mips]\n"
+    )
+    (cfg / "cluster_tag_whitelist.yaml").write_text(
+        "allowed_tags:\n  - mirai\n  - c2\n"
+    )
+
+    run_clustering(db, cfg)
+    conn = get_connection(db)
+    count = conn.execute(
+        "SELECT COUNT(*) FROM campaigns WHERE campaign_type='asn_tag'"
+    ).fetchone()[0]
+    conn.close()
+    assert count == 0

@@ -33,16 +33,3 @@ priority_levels:
       - ransomware
       - stealer
 
-  - level: architecture
-    tags:
-      - arm
-      - mips
-      - mipsel
-      - x86
-      - x64
-      - elf
-      - 32-bit
-      - 64-bit
-      - android
-      - windows
-      - linux

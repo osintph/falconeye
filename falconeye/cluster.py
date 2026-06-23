@@ -52,14 +52,28 @@ def _load_tag_priority(config_dir: Path) -> list[dict]:
     return data.get("priority_levels") or []
 
 
-def _select_primary_tag(tags: list[str], priority_levels: list[dict]) -> str | None:
+def _load_tag_whitelist(config_dir: Path) -> set[str] | None:
+    path = config_dir / "cluster_tag_whitelist.yaml"
+    if not path.exists():
+        return None  # no whitelist → all selected tags pass
+    with path.open() as f:
+        data = yaml.safe_load(f) or {}
+    allowed = data.get("allowed_tags") or []
+    return {t.strip().lower() for t in allowed if t.strip()}
+
+
+def _select_primary_tag(
+    tags: list[str],
+    priority_levels: list[dict],
+    whitelist: set[str] | None = None,
+) -> str | None:
     """
     Return the single highest-priority tag from an IOC's tag list.
 
     Checks priority_levels in order; within a matching level picks the
-    alphabetically-first tag (case-insensitive comparison, original case returned).
-    Returns None if no tag matches any level — the caller should skip the IOC
-    from ASN+tag clustering.
+    alphabetically-first tag (case-insensitive). If whitelist is provided,
+    the selected tag must also appear in it — otherwise returns None.
+    Returns None if no tag matches any level or the whitelist blocks it.
     """
     if not tags or not priority_levels:
         return None
@@ -68,7 +82,10 @@ def _select_primary_tag(tags: list[str], priority_levels: list[dict]) -> str | N
         level_tags_lower = [t.lower() for t in (level.get("tags") or [])]
         matches = [(lt, normalized[lt]) for lt in level_tags_lower if lt in normalized]
         if matches:
-            return sorted(matches, key=lambda x: x[0])[0][1]
+            selected = sorted(matches, key=lambda x: x[0])[0][1]
+            if whitelist is not None and selected.lower() not in whitelist:
+                return None
+            return selected
     return None
 
 
@@ -172,6 +189,7 @@ def run_clustering(
     cfg = Path(config_dir) if config_dir else _DEFAULT_CONFIG_DIR
     asn_map = _load_asn_operators(cfg)
     tag_priority = _load_tag_priority(cfg)
+    tag_whitelist = _load_tag_whitelist(cfg)
     now = _now_utc()
     cutoff_iso = (datetime.now(timezone.utc) - timedelta(days=_ROLLING_DAYS)).strftime(
         "%Y-%m-%dT%H:%M:%SZ"
@@ -215,7 +233,7 @@ def run_clustering(
             continue
         asn = prefix_to_asn.get(row["matched_value"])
         tags = json.loads(row["tags"] or "[]") if row["tags"] else []
-        primary_tag = _select_primary_tag(tags, tag_priority)
+        primary_tag = _select_primary_tag(tags, tag_priority, tag_whitelist)
         if primary_tag is None:
             if tags:
                 log.warning(
