@@ -11,8 +11,10 @@ from falconeye.ssg import (
     _build_12_week_counts,
     _build_feed_items,
     _manifest_version,
+    _match_action_templates,
     _parse_ts,
     _query_asns_with_ioc_counts,
+    _query_campaigns,
     _query_ph_cves,
     _query_ph_iocs,
     _query_stats,
@@ -358,3 +360,89 @@ def test_sparkline_svg_returns_svg():
 def test_sparkline_svg_single_point():
     svg = _sparkline_svg([5])
     assert "<svg" in svg
+
+
+# ---------------------------------------------------------------------------
+# Campaign rendering
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def db_with_campaign(db):
+    """Add a campaign to the existing db fixture."""
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO campaigns (slug, name, summary, campaign_type, cluster_key, "
+        "status, ioc_count, first_seen, last_seen, generated_at) "
+        "VALUES ('dom-bdo-com-ph', 'phishing staging on bdo.com.ph', 'Test summary.', "
+        "'domain', 'bdo.com.ph', 'active', 1, '2026-06-22T00:00:00Z', "
+        "'2026-06-22T01:00:00Z', '2026-06-22T01:00:00Z')"
+    )
+    campaign_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (?, 1)", (campaign_id,)
+    )
+    conn.commit()
+    conn.close()
+    return db
+
+
+def test_ssg_creates_campaign_index(db_with_campaign, tmp_path):
+    out = tmp_path / "public"
+    run_ssg(db_with_campaign, out)
+    assert (out / "campaign" / "index.html").exists()
+
+
+def test_ssg_creates_per_campaign_page(db_with_campaign, tmp_path):
+    out = tmp_path / "public"
+    run_ssg(db_with_campaign, out)
+    assert (out / "campaign" / "dom-bdo-com-ph" / "index.html").exists()
+
+
+def test_ssg_campaign_index_lists_campaign(db_with_campaign, tmp_path):
+    out = tmp_path / "public"
+    run_ssg(db_with_campaign, out)
+    html = (out / "campaign" / "index.html").read_text()
+    assert "bdo.com.ph" in html
+
+
+def test_ssg_campaign_page_shows_ioc(db_with_campaign, tmp_path):
+    out = tmp_path / "public"
+    run_ssg(db_with_campaign, out)
+    html = (out / "campaign" / "dom-bdo-com-ph" / "index.html").read_text()
+    assert "bdo.com.ph" in html
+
+
+def test_query_campaigns_empty(db):
+    conn = get_connection(db)
+    camps = _query_campaigns(conn)
+    conn.close()
+    assert camps == []
+
+
+def test_match_action_templates_hit():
+    iocs = [{"tags": '["Mirai", "elf"]'}]
+    templates = [{"match_tag": "Mirai", "title": "Block IoT", "guidance": "Do this."}]
+    result = _match_action_templates(iocs, templates)
+    assert len(result) == 1
+    assert result[0]["title"] == "Block IoT"
+
+
+def test_match_action_templates_case_insensitive():
+    iocs = [{"tags": '["mirai"]'}]
+    templates = [{"match_tag": "Mirai", "title": "Block IoT", "guidance": "Do this."}]
+    result = _match_action_templates(iocs, templates)
+    assert len(result) == 1
+
+
+def test_match_action_templates_no_match():
+    iocs = [{"tags": '["Emotet"]'}]
+    templates = [{"match_tag": "Mirai", "title": "Block IoT", "guidance": "Do this."}]
+    result = _match_action_templates(iocs, templates)
+    assert result == []
+
+
+def test_match_action_templates_deduplicates():
+    iocs = [{"tags": '["Mirai"]'}, {"tags": '["Mirai"]'}]
+    templates = [{"match_tag": "Mirai", "title": "Block IoT", "guidance": "Do this."}]
+    result = _match_action_templates(iocs, templates)
+    assert len(result) == 1

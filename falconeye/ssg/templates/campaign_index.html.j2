@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PH Threat Campaigns — FalconEye</title>
+<style>
+  body{font-family:monospace;max-width:960px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
+  h1{font-size:1.4rem;margin-bottom:0.25rem}
+  .meta{font-size:0.8rem;color:#666;margin-bottom:1.5rem}
+  .card{border:1px solid #ddd;border-radius:4px;padding:0.75rem 1rem;margin-bottom:0.75rem}
+  .card-title{font-weight:bold;font-size:0.95rem}
+  .card-title a{color:#0055cc;text-decoration:none}
+  .card-title a:hover{text-decoration:underline}
+  .card-summary{font-size:0.82rem;color:#444;margin:0.25rem 0}
+  .card-meta{font-size:0.75rem;color:#888}
+  .badge{border-radius:3px;padding:1px 6px;font-size:0.72rem;font-weight:bold}
+  .active{background:#d4edda;color:#155724}
+  .dormant{background:#fff3cd;color:#856404}
+  .expired{background:#f8d7da;color:#721c24}
+  .zero{color:#aaa}
+  .nav{font-size:0.8rem;margin-bottom:1rem}
+  .section-header{font-size:0.8rem;color:#666;text-transform:uppercase;letter-spacing:0.05em;margin:1.5rem 0 0.5rem;border-bottom:1px solid #eee;padding-bottom:0.25rem}
+</style>
+</head>
+<body>
+<div class="nav"><a href="/">← FalconEye dashboard</a></div>
+<h1>PH Threat Campaigns</h1>
+<p class="meta">
+  {{ campaigns | length }} campaigns ·
+  {{ campaigns | selectattr('status', 'equalto', 'active') | list | length }} active ·
+  generated {{ generated_at }} UTC
+</p>
+
+{% set active_camps = campaigns | selectattr('status', 'equalto', 'active') | list %}
+{% set dormant_camps = campaigns | selectattr('status', 'equalto', 'dormant') | list %}
+{% set expired_camps = campaigns | selectattr('status', 'equalto', 'expired') | list %}
+
+{% if active_camps %}
+<div class="section-header">Active</div>
+{% for c in active_camps %}
+<div class="card">
+  <div class="card-title">
+    <a href="/campaign/{{ c.slug }}/">{{ c.name }}</a>
+    <span class="badge active">active</span>
+  </div>
+  <div class="card-summary">{{ c.summary or '' }}</div>
+  <div class="card-meta">
+    {{ c.ioc_count }} IOCs ·
+    first {{ (c.first_seen or '')[:10] or '—' }} ·
+    last {{ (c.last_seen or '')[:10] or '—' }} ·
+    <em>{{ c.campaign_type }}</em>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if dormant_camps %}
+<div class="section-header">Dormant (8–30 days)</div>
+{% for c in dormant_camps %}
+<div class="card">
+  <div class="card-title">
+    <a href="/campaign/{{ c.slug }}/">{{ c.name }}</a>
+    <span class="badge dormant">dormant</span>
+  </div>
+  <div class="card-summary">{{ c.summary or '' }}</div>
+  <div class="card-meta">{{ c.ioc_count }} IOCs · last {{ (c.last_seen or '')[:10] or '—' }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if expired_camps %}
+<div class="section-header">Expired (&gt;30 days)</div>
+{% for c in expired_camps %}
+<div class="card">
+  <div class="card-title">
+    <a href="/campaign/{{ c.slug }}/">{{ c.name }}</a>
+    <span class="badge expired">expired</span>
+  </div>
+  <div class="card-meta">{{ c.ioc_count }} IOCs · last {{ (c.last_seen or '')[:10] or '—' }}</div>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if not campaigns %}
+<p class="zero">No campaigns clustered yet — run the clustering worker first.</p>
+{% endif %}
+
+<p class="meta" style="margin-top:1.5rem">
+  <a href="/">Dashboard</a> · <a href="/asn/">ASNs</a> ·
+  <a href="https://github.com/osintph/falconeye">GitHub</a> · AGPL v3
+</p>
+</body>
+</html>

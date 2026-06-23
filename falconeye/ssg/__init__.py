@@ -322,6 +322,19 @@ def _render_healthz(path: Path, stats: dict, now: datetime, mv: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Config loaders
+# ---------------------------------------------------------------------------
+
+def _load_action_templates(config_dir: Path) -> list[dict]:
+    path = config_dir / "action_templates.yaml"
+    if not path.exists():
+        return []
+    with path.open() as f:
+        data = yaml.safe_load(f) or {}
+    return data.get("templates") or []
+
+
+# ---------------------------------------------------------------------------
 # ASN helpers
 # ---------------------------------------------------------------------------
 
@@ -479,6 +492,86 @@ def _render_asn_pages(output: Path, conn, asn_map: dict[int, dict],
 
 
 # ---------------------------------------------------------------------------
+# Campaign helpers
+# ---------------------------------------------------------------------------
+
+def _query_campaigns(conn) -> list[dict]:
+    rows = conn.execute("""
+        SELECT id, slug, name, summary, campaign_type, cluster_key,
+               status, ioc_count, first_seen, last_seen, generated_at
+          FROM campaigns
+         ORDER BY
+           CASE status WHEN 'active' THEN 0 WHEN 'dormant' THEN 1 ELSE 2 END,
+           ioc_count DESC
+    """).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _query_campaign_iocs(conn, campaign_id: int) -> list[dict]:
+    rows = conn.execute("""
+        SELECT i.id, i.ioc_value, i.ioc_type, i.threat_type, i.tags, i.fetched_at
+          FROM campaign_iocs ci
+          JOIN iocs i ON i.id = ci.ioc_id
+         WHERE ci.campaign_id = ?
+         ORDER BY i.fetched_at DESC
+         LIMIT 500
+    """, (campaign_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _match_action_templates(iocs: list[dict], templates: list[dict]) -> list[dict]:
+    """Return action guidance blocks relevant to the tags seen in this campaign's IOCs."""
+    all_tags: set[str] = set()
+    for ioc in iocs:
+        try:
+            all_tags.update(t.lower() for t in json.loads(ioc["tags"] or "[]"))
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+    matched = []
+    seen_titles: set[str] = set()
+    for tmpl in templates:
+        mt = (tmpl.get("match_tag") or "").lower()
+        if mt and mt in all_tags:
+            title = tmpl.get("title", "")
+            if title not in seen_titles:
+                matched.append(tmpl)
+                seen_titles.add(title)
+    return matched
+
+
+def _render_campaign_index(output: Path, campaigns: list[dict], now: datetime) -> None:
+    camp_dir = output / "campaign"
+    camp_dir.mkdir(parents=True, exist_ok=True)
+    tmpl = _jinja_env.get_template("campaign_index.html.j2")
+    html = tmpl.render(campaigns=campaigns, generated_at=now.strftime("%Y-%m-%d %H:%M"))
+    (camp_dir / "index.html").write_text(html, encoding="utf-8")
+    log.info("SSG: wrote campaign/index.html (%d campaigns)", len(campaigns))
+
+
+def _render_campaign_pages(output: Path, conn, campaigns: list[dict],
+                           action_templates: list[dict], now: datetime) -> int:
+    """Render per-campaign pages. Returns count written."""
+    tmpl = _jinja_env.get_template("campaign.html.j2")
+    written = 0
+    for camp in campaigns:
+        iocs = _query_campaign_iocs(conn, camp["id"])
+        guidance = _match_action_templates(iocs, action_templates)
+        page_dir = output / "campaign" / camp["slug"]
+        page_dir.mkdir(parents=True, exist_ok=True)
+        html = tmpl.render(
+            campaign=camp,
+            iocs=iocs,
+            guidance=guidance,
+            generated_at=now.strftime("%Y-%m-%d %H:%M"),
+        )
+        (page_dir / "index.html").write_text(html, encoding="utf-8")
+        written += 1
+    log.info("SSG: wrote %d per-campaign pages", written)
+    return written
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -499,14 +592,17 @@ def run_ssg(
     now = _now_utc()
     mv = _manifest_version(now)
     asn_map = _load_asn_operators(cfg)
+    action_templates = _load_action_templates(cfg)
 
     conn = get_connection(db_path)
-    iocs  = _query_ph_iocs(conn)
-    cves  = _query_ph_cves(conn)
-    stats = _query_stats(conn)
-    asns  = _query_asns_with_ioc_counts(conn)
+    iocs      = _query_ph_iocs(conn)
+    cves      = _query_ph_cves(conn)
+    stats     = _query_stats(conn)
+    asns      = _query_asns_with_ioc_counts(conn)
+    campaigns = _query_campaigns(conn)
 
-    log.info("SSG: %d PH IOCs, %d PH CVEs, %d ASNs", len(iocs), len(cves), len(asns))
+    log.info("SSG: %d PH IOCs, %d PH CVEs, %d ASNs, %d campaigns",
+             len(iocs), len(cves), len(asns), len(campaigns))
 
     errors = 0
     feed_items = _build_feed_items(iocs, cves, now)
@@ -529,6 +625,13 @@ def run_ssg(
         _render_asn_pages(output, conn, asn_map, now)
     except Exception as exc:
         log.error("SSG: failed to write ASN pages: %s", exc)
+        errors += 1
+
+    try:
+        _render_campaign_index(output, campaigns, now)
+        _render_campaign_pages(output, conn, campaigns, action_templates, now)
+    except Exception as exc:
+        log.error("SSG: failed to write campaign pages: %s", exc)
         errors += 1
 
     conn.close()
