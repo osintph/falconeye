@@ -139,21 +139,25 @@ def _query_stats(conn) -> dict:
 # Renderers
 # ---------------------------------------------------------------------------
 
-def _render_html(path: Path, iocs: list[dict], cves: list[dict],
-                 stats: dict, now: datetime) -> None:
+def _render_html(path: Path, iocs: list[dict], cves: list[dict], stats: dict,
+                 campaigns: list[dict], asns: list[dict], now: datetime) -> None:
+    top_campaigns = [c for c in campaigns if c["status"] == "active"][:5]
+    active_asns = [a for a in asns if (a.get("ioc_count") or 0) > 0][:10]
     tmpl = _jinja_env.get_template("index.html.j2")
     html = tmpl.render(
         iocs=iocs,
         cves=cves,
         stats=stats,
+        top_campaigns=top_campaigns,
+        active_asns=active_asns,
         generated_at=now.strftime("%Y-%m-%d %H:%M"),
     )
     path.write_text(html, encoding="utf-8")
     log.info("SSG: wrote %s (%d bytes)", path.name, len(html))
 
 
-def _build_feed_items(iocs: list[dict], cves: list[dict], now: datetime) -> list[dict]:
-    """Return items matched in the last 24 h, newest first, capped at _FEED_LIMIT."""
+def _build_ioc_feed_items(iocs: list[dict], cves: list[dict], now: datetime) -> list[dict]:
+    """Per-IOC/CVE feed items (last 24h). Used for secondary feed-iocs.* files."""
     cutoff = now - timedelta(hours=24)
     items = []
 
@@ -171,6 +175,7 @@ def _build_feed_items(iocs: list[dict], cves: list[dict], now: datetime) -> list
                 f"PH signal: {ioc['why']}\n"
                 f"Source: {ioc['source']}"
             ),
+            "url":      None,
             "pub_date": ts,
         })
 
@@ -188,9 +193,9 @@ def _build_feed_items(iocs: list[dict], cves: list[dict], now: datetime) -> list
                 f"Severity: {sev}\n"
                 f"Score: {cve.get('cvss_v3_score') or 'N/A'}\n"
                 f"KEV added: {cve.get('kev_date_added') or 'N/A'}\n"
-                f"PH signal: {cve['why']}\n"
                 f"Description: {desc}"
             ),
+            "url":      f"https://nvd.nist.gov/vuln/detail/{cve['cve_id']}",
             "pub_date": ts,
         })
 
@@ -198,13 +203,40 @@ def _build_feed_items(iocs: list[dict], cves: list[dict], now: datetime) -> list
     return items[:_FEED_LIMIT]
 
 
-def _render_rss(path: Path, items: list[dict]) -> None:
+# Keep legacy alias so existing test_ssg.py tests that import this name still pass
+_build_feed_items = _build_ioc_feed_items
+
+
+def _build_campaign_feed_items(campaigns: list[dict]) -> list[dict]:
+    """Campaign-centric feed items for active and dormant campaigns."""
+    items = []
+    for camp in campaigns:
+        if camp["status"] == "expired":
+            continue
+        items.append({
+            "uid":     f"campaign-{camp['slug']}",
+            "title":   f"[Campaign] {camp['name']} — {camp['ioc_count']} IOCs",
+            "summary": (
+                f"{camp['summary'] or ''}\n"
+                f"Status: {camp['status']}\n"
+                f"Last seen: {(camp['last_seen'] or '')[:10]}\n"
+                f"Type: {camp['campaign_type']}"
+            ),
+            "url":      f"{_SITE_URL}/campaign/{camp['slug']}/",
+            "pub_date": _parse_ts(camp["last_seen"] or camp["generated_at"]),
+        })
+    items.sort(key=lambda x: x["pub_date"], reverse=True)
+    return items[:_FEED_LIMIT]
+
+
+def _render_rss(path: Path, items: list[dict], feed_url: str, title: str,
+                description: str) -> None:
     fg = FeedGenerator()
-    fg.id(f"{_SITE_URL}/feed.xml")
-    fg.title("FalconEye PH Threat Intelligence")
+    fg.id(feed_url)
+    fg.title(title)
     fg.link(href=_SITE_URL, rel="alternate")
-    fg.link(href=f"{_SITE_URL}/feed.xml", rel="self")
-    fg.description("PH-relevant threat intelligence from FalconEye by OSINT-PH")
+    fg.link(href=feed_url, rel="self")
+    fg.description(description)
     fg.language("en")
 
     for item in items:
@@ -212,25 +244,29 @@ def _render_rss(path: Path, items: list[dict]) -> None:
         fe.id(f"{_SITE_URL}/#{item['uid']}")
         fe.title(item["title"])
         fe.summary(item["summary"])
+        if item.get("url"):
+            fe.link(href=item["url"])
         fe.pubDate(item["pub_date"])
 
     path.write_bytes(fg.rss_str(pretty=True))
     log.info("SSG: wrote %s (%d items)", path.name, len(items))
 
 
-def _render_json_feed(path: Path, items: list[dict], now: datetime) -> None:
+def _render_json_feed(path: Path, items: list[dict], feed_url: str, title: str,
+                      description: str) -> None:
     feed = {
         "version": "https://jsonfeed.org/version/1.1",
-        "title": "FalconEye PH Threat Intelligence",
+        "title": title,
         "home_page_url": f"{_SITE_URL}/",
-        "feed_url": f"{_SITE_URL}/feed.json",
-        "description": "PH-relevant threat intelligence from FalconEye by OSINT-PH",
+        "feed_url": feed_url,
+        "description": description,
         "items": [
             {
-                "id": f"{_SITE_URL}/#{item['uid']}",
-                "title": item["title"],
-                "content_text": item["summary"],
-                "date_published": item["pub_date"].strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "id":              f"{_SITE_URL}/#{item['uid']}",
+                "title":           item["title"],
+                "content_text":    item["summary"],
+                "url":             item.get("url") or f"{_SITE_URL}/",
+                "date_published":  item["pub_date"].strftime("%Y-%m-%dT%H:%M:%SZ"),
             }
             for item in items
         ],
@@ -605,12 +641,21 @@ def run_ssg(
              len(iocs), len(cves), len(asns), len(campaigns))
 
     errors = 0
-    feed_items = _build_feed_items(iocs, cves, now)
+    campaign_items = _build_campaign_feed_items(campaigns)
+    ioc_items      = _build_ioc_feed_items(iocs, cves, now)
+    _CAMP_DESC = "PH campaign-level threat intelligence from FalconEye by OSINT-PH"
+    _IOC_DESC  = "PH raw IOC and CVE stream from FalconEye by OSINT-PH"
 
     for fn, renderer in [
-        ("index.html",    lambda p: _render_html(p, iocs, cves, stats, now)),
-        ("feed.xml",      lambda p: _render_rss(p, feed_items)),
-        ("feed.json",     lambda p: _render_json_feed(p, feed_items, now)),
+        ("index.html",    lambda p: _render_html(p, iocs, cves, stats, campaigns, asns, now)),
+        ("feed.xml",      lambda p: _render_rss(p, campaign_items,
+                              f"{_SITE_URL}/feed.xml", "FalconEye PH Campaigns", _CAMP_DESC)),
+        ("feed.json",     lambda p: _render_json_feed(p, campaign_items,
+                              f"{_SITE_URL}/feed.json", "FalconEye PH Campaigns", _CAMP_DESC)),
+        ("feed-iocs.xml", lambda p: _render_rss(p, ioc_items,
+                              f"{_SITE_URL}/feed-iocs.xml", "FalconEye PH IOC Stream", _IOC_DESC)),
+        ("feed-iocs.json",lambda p: _render_json_feed(p, ioc_items,
+                              f"{_SITE_URL}/feed-iocs.json", "FalconEye PH IOC Stream", _IOC_DESC)),
         ("manifest.json", lambda p: _render_manifest(p, stats, now, mv)),
         ("healthz.json",  lambda p: _render_healthz(p, stats, now, mv)),
     ]:

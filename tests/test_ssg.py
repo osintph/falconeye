@@ -261,9 +261,11 @@ def test_ssg_index_html_contains_cve(ssg_output):
     assert "CVE-2024-1001" in html
 
 
-def test_ssg_index_html_contains_ioc(ssg_output):
+def test_ssg_index_html_contains_ioc_stats(ssg_output):
+    # New dashboard shows PH IOC count in stats cards, not a flat table
     html = (ssg_output / "index.html").read_text()
-    assert "bdo.com.ph" in html
+    assert "PH IOCs" in html
+    assert "feed-iocs.xml" in html  # secondary per-IOC feed linked in header
 
 
 def test_ssg_manifest_json_valid(ssg_output):
@@ -303,6 +305,12 @@ def test_ssg_idempotent(db, tmp_path):
 # ---------------------------------------------------------------------------
 # ASN rendering
 # ---------------------------------------------------------------------------
+
+def test_ssg_creates_secondary_ioc_feeds(ssg_output):
+    # Adjustment 1: secondary per-IOC feeds alongside campaign primary feeds
+    assert (ssg_output / "feed-iocs.xml").exists()
+    assert (ssg_output / "feed-iocs.json").exists()
+
 
 def test_ssg_creates_asn_index(ssg_output):
     assert (ssg_output / "asn" / "index.html").exists()
