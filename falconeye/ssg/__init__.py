@@ -434,70 +434,104 @@ def _query_asns_with_ioc_counts(
     conn, asn_map: dict[int, dict] | None = None
 ) -> list[dict]:
     """
-    Return ASNs with IOC counts via CIDR containment against asn_map ip_ranges.
+    Return ASNs with IOC counts, sorted by ioc_count descending.
 
-    ph_prefixes.asn is always NULL in the APNIC basic delegated file (separate ASN
-    and prefix allocation records with no cross-reference), so the direct SQL join
-    ph_asns → ph_prefixes → sieve_matches always yields ioc_count=0.
+    Two attribution paths are tried and merged:
 
-    Instead: query sieve_matches for 'asn' criterion matches (matched_value holds the
-    matched CIDR prefix string), then attribute each prefix to an ASN in Python using
-    subnet_of() against asn_map ip_ranges. Only matches from the last 14 days are counted.
+    Path 1 (SQL): Join sieve_matches → ph_prefixes.asn (populated by
+    prefix_enrich after it runs once).  Fast, accurate, no asn_map needed.
+
+    Path 2 (Python CIDR): For prefixes where ph_prefixes.asn is still NULL,
+    fall back to subnet containment against asn_map ip_ranges.  This path
+    keeps results correct while prefix_enrich has not yet run, and covers
+    any prefixes that are not announced in BGP (and therefore won't get an
+    ASN from RIPEstat).
+
+    ASN names: prefer asn_map, then ph_asns.name, then 'AS{n}'.
+    Only IOC matches from the last 14 days are counted.
     """
-    if not asn_map:
-        return []
-
     cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).strftime("%Y-%m-%dT%H:%M:%SZ")
-    rows = conn.execute("""
-        SELECT matched_value AS prefix,
-               COUNT(DISTINCT record_id) AS ioc_count,
-               MAX(matched_at)           AS last_seen
-          FROM sieve_matches
-         WHERE match_criterion = 'asn' AND record_type = 'ioc'
-           AND matched_at >= ?
-         GROUP BY matched_value
+    asn_counts: dict[int, dict] = {}
+
+    def _name_for(asn_int: int) -> str:
+        if asn_map and asn_int in asn_map:
+            return asn_map[asn_int].get("name") or f"AS{asn_int}"
+        arow = conn.execute("SELECT name FROM ph_asns WHERE asn=?", (asn_int,)).fetchone()
+        return (arow["name"] if arow and arow["name"] else None) or f"AS{asn_int}"
+
+    # ── Path 1: SQL via ph_prefixes.asn ──────────────────────────────────────
+    sql_rows = conn.execute("""
+        SELECT p.asn,
+               COUNT(DISTINCT s.record_id) AS ioc_count,
+               MAX(s.matched_at)           AS last_seen
+          FROM sieve_matches s
+          JOIN ph_prefixes p
+               ON p.prefix = s.matched_value AND p.asn IS NOT NULL
+         WHERE s.match_criterion = 'asn'
+           AND s.record_type    = 'ioc'
+           AND s.matched_at     >= ?
+         GROUP BY p.asn
     """, (cutoff,)).fetchall()
 
-    if not rows:
-        return []
+    for row in sql_rows:
+        asn_int = row["asn"]
+        asn_counts[asn_int] = {
+            "asn":       asn_int,
+            "name":      _name_for(asn_int),
+            "ioc_count": row["ioc_count"],
+            "last_seen": row["last_seen"],
+        }
 
-    # Parse ip_ranges from asn_map once
-    asn_networks: list[tuple[int, list]] = []
-    for asn_int, op in asn_map.items():
-        nets = []
-        for cidr in (op.get("ip_ranges") or []):
-            try:
-                nets.append(ipaddress.ip_network(cidr, strict=False))
-            except ValueError:
-                log.warning("asn_operators.yaml: invalid CIDR %r for AS%d", cidr, asn_int)
-        if nets:
-            asn_networks.append((asn_int, nets))
+    # ── Path 2: Python CIDR containment for unenriched prefixes ──────────────
+    if asn_map:
+        unenriched = conn.execute("""
+            SELECT s.matched_value          AS prefix,
+                   COUNT(DISTINCT s.record_id) AS ioc_count,
+                   MAX(s.matched_at)           AS last_seen
+              FROM sieve_matches s
+              LEFT JOIN ph_prefixes p
+                        ON p.prefix = s.matched_value AND p.asn IS NOT NULL
+             WHERE s.match_criterion = 'asn'
+               AND s.record_type    = 'ioc'
+               AND s.matched_at     >= ?
+               AND p.asn IS NULL
+             GROUP BY s.matched_value
+        """, (cutoff,)).fetchall()
 
-    # Attribute each matched prefix to an ASN via CIDR containment
-    asn_counts: dict[int, dict] = {}
-    for row in rows:
-        try:
-            prefix_net = ipaddress.ip_network(row["prefix"], strict=False)
-        except ValueError:
-            continue
-        for asn_int, nets in asn_networks:
-            for net in nets:
+        asn_networks: list[tuple[int, list]] = []
+        for asn_int, op in asn_map.items():
+            nets = []
+            for cidr in (op.get("ip_ranges") or []):
                 try:
-                    matched = prefix_net.subnet_of(net)
-                except TypeError:
-                    matched = False  # mixed IPv4/IPv6 versions
-                if matched:
-                    entry = asn_counts.setdefault(asn_int, {
-                        "asn": asn_int,
-                        "name": asn_map[asn_int].get("name") or f"AS{asn_int}",
-                        "ioc_count": 0,
-                        "last_seen": None,
-                    })
-                    entry["ioc_count"] += row["ioc_count"]
-                    ls = row["last_seen"]
-                    if ls and (entry["last_seen"] is None or ls > entry["last_seen"]):
-                        entry["last_seen"] = ls
-                    break
+                    nets.append(ipaddress.ip_network(cidr, strict=False))
+                except ValueError:
+                    log.warning("asn_operators.yaml: invalid CIDR %r for AS%d", cidr, asn_int)
+            if nets:
+                asn_networks.append((asn_int, nets))
+
+        for row in unenriched:
+            try:
+                prefix_net = ipaddress.ip_network(row["prefix"], strict=False)
+            except ValueError:
+                continue
+            for asn_int, nets in asn_networks:
+                for net in nets:
+                    try:
+                        matched = prefix_net.subnet_of(net)
+                    except TypeError:
+                        matched = False
+                    if matched:
+                        entry = asn_counts.setdefault(asn_int, {
+                            "asn":       asn_int,
+                            "name":      _name_for(asn_int),
+                            "ioc_count": 0,
+                            "last_seen": None,
+                        })
+                        entry["ioc_count"] += row["ioc_count"]
+                        ls = row["last_seen"]
+                        if ls and (entry["last_seen"] is None or ls > entry["last_seen"]):
+                            entry["last_seen"] = ls
+                        break
 
     return sorted(asn_counts.values(), key=lambda a: (-a["ioc_count"], a["asn"]))
 

@@ -330,7 +330,7 @@ def test_ssg_asn_index_lists_asn(ssg_output):
 
 
 def test_query_asns_with_ioc_counts_no_asn_map(db):
-    """Without asn_map, CIDR attribution is impossible — returns empty list."""
+    """Without asn_map and without ph_prefixes.asn populated, returns empty list."""
     conn = get_connection(db)
     asns = _query_asns_with_ioc_counts(conn)
     conn.close()
@@ -434,6 +434,123 @@ def test_query_asns_with_ioc_counts_unmatched_excluded(tmp_path):
     asns = _query_asns_with_ioc_counts(conn, asn_map)
     conn.close()
     assert asns == []
+
+
+def test_query_asns_via_ph_prefixes_asn_sql_path(tmp_path):
+    """
+    Issue 2 regression: 5 PH prefixes mapped to 3 ASNs via ph_prefixes.asn
+    (as populated by prefix_enrich). _query_asns_with_ioc_counts must return
+    all 3 ASNs sorted by IOC count descending, without asn_map required.
+
+    Data: 3 IOCs match AS1001 (2 prefixes with 2+1 IOCs),
+          2 IOCs match AS1002 (1 prefix, 2 IOCs),
+          1 IOC  match AS1003 (1 prefix, 1 IOC).
+    """
+    db = tmp_path / "issue2.db"
+    init_db(db)
+    conn = get_connection(db)
+
+    def _insert_prefix(prefix, asn):
+        conn.execute(
+            "INSERT OR IGNORE INTO ph_prefixes (prefix, prefix_type, asn, fetched_at) "
+            "VALUES (?, 'ipv4', ?, '2026-06-22T00:00:00Z')",
+            (prefix, asn),
+        )
+
+    def _insert_ioc_match(ip, prefix):
+        conn.execute(
+            "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at) "
+            "VALUES ('ip', ?, 'urlhaus', ?, '2026-06-22T00:00:00Z')",
+            (ip, ip),
+        )
+        iid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute(
+            "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+            "matched_value, matched_at) VALUES ('ioc', ?, 'asn', ?, '2026-06-22T00:00:00Z')",
+            (iid, prefix),
+        )
+
+    _insert_prefix("10.1.0.0/24", 1001)
+    _insert_prefix("10.1.1.0/24", 1001)
+    _insert_prefix("10.2.0.0/24", 1002)
+    _insert_prefix("10.3.0.0/24", 1003)
+
+    # AS1001: 3 IOCs across two prefixes
+    _insert_ioc_match("10.1.0.1", "10.1.0.0/24")
+    _insert_ioc_match("10.1.0.2", "10.1.0.0/24")
+    _insert_ioc_match("10.1.1.1", "10.1.1.0/24")
+    # AS1002: 2 IOCs on one prefix
+    _insert_ioc_match("10.2.0.1", "10.2.0.0/24")
+    _insert_ioc_match("10.2.0.2", "10.2.0.0/24")
+    # AS1003: 1 IOC
+    _insert_ioc_match("10.3.0.1", "10.3.0.0/24")
+
+    conn.execute("INSERT INTO ph_asns (asn, name, source, fetched_at) VALUES (1001,'ISP-A','ripestat','2026-06-22T00:00:00Z')")
+    conn.execute("INSERT INTO ph_asns (asn, name, source, fetched_at) VALUES (1002,'ISP-B','ripestat','2026-06-22T00:00:00Z')")
+    conn.execute("INSERT INTO ph_asns (asn, name, source, fetched_at) VALUES (1003,'ISP-C','ripestat','2026-06-22T00:00:00Z')")
+    conn.commit()
+
+    result = _query_asns_with_ioc_counts(conn)
+    conn.close()
+
+    assert len(result) == 3
+    assert result[0]["asn"] == 1001
+    assert result[0]["ioc_count"] == 3
+    assert result[1]["asn"] == 1002
+    assert result[1]["ioc_count"] == 2
+    assert result[2]["asn"] == 1003
+    assert result[2]["ioc_count"] == 1
+    assert result[0]["name"] == "ISP-A"
+
+
+def test_ssg_renders_all_asns_from_prefixes(tmp_path):
+    """
+    Issue 2 integration: run_ssg renders all 3 ASNs in the front-page HTML,
+    sorted by IOC count descending, when ph_prefixes.asn is populated.
+    """
+    db = tmp_path / "issue2_ssg.db"
+    init_db(db)
+    conn = get_connection(db)
+
+    prefixes = [
+        ("10.1.0.0/24", 1001, 3),
+        ("10.2.0.0/24", 1002, 2),
+        ("10.3.0.0/24", 1003, 1),
+    ]
+    for prefix, asn, count in prefixes:
+        conn.execute(
+            "INSERT INTO ph_prefixes (prefix, prefix_type, asn, fetched_at) "
+            "VALUES (?, 'ipv4', ?, '2026-06-22T00:00:00Z')",
+            (prefix, asn),
+        )
+        conn.execute(
+            "INSERT INTO ph_asns (asn, name, source, fetched_at) VALUES (?, ?, 'ripestat', '2026-06-22T00:00:00Z')",
+            (asn, f"ISP-{asn}"),
+        )
+        for i in range(count):
+            conn.execute(
+                "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at) "
+                "VALUES ('ip', ?, 'urlhaus', ?, '2026-06-22T00:00:00Z')",
+                (f"10.{asn % 100}.0.{i+1}", f"u{asn}{i}"),
+            )
+            ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+            conn.execute(
+                "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+                "matched_value, matched_at) VALUES ('ioc', ?, 'asn', ?, '2026-06-22T00:00:00Z')",
+                (ioc_id, prefix),
+            )
+    conn.commit()
+    conn.close()
+
+    out = tmp_path / "pub"
+    run_ssg(db, out)
+    html = (out / "index.html").read_text()
+
+    assert "AS1001" in html
+    assert "AS1002" in html
+    assert "AS1003" in html
+    # Sorted: AS1001 (3 IOCs) must appear before AS1003 (1 IOC)
+    assert html.index("AS1001") < html.index("AS1003")
 
 
 def test_build_12_week_counts_fills_zeros():
