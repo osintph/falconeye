@@ -4,42 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>FalconEye — PH Operational Threat Intelligence</title>
-<style>
-  *, *::before, *::after { box-sizing: border-box; }
-  body { font-family: system-ui, -apple-system, sans-serif; max-width: 1200px;
-         margin: 0 auto; padding: 1rem 1.5rem; color: #1a1a1a; background: #fff; }
-  a { color: #1a56a5; }
-  h1 { margin: 0 0 0.2rem; font-size: 1.6rem; color: #b91c1c; }
-  h2 { font-size: 1rem; margin: 1.5rem 0 0.5rem; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; }
-  .meta { font-size: 0.78rem; color: #6b7280; margin-bottom: 1rem; }
-  .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin: 0.75rem 0 1.25rem; }
-  .stat { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;
-          padding: 0.45rem 0.9rem; min-width: 100px; }
-  .stat-n { font-size: 1.3rem; font-weight: 700; color: #111; }
-  .stat-l { font-size: 0.68rem; color: #6b7280; }
-  .campaign-grid { display: grid; gap: 0.6rem; margin-bottom: 0.5rem; }
-  .campaign-card { border: 1px solid #dbeafe; border-radius: 5px; padding: 0.65rem 0.9rem;
-                   background: #f0f7ff; }
-  .campaign-card-title { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.15rem; }
-  .campaign-card-summary { font-size: 0.8rem; color: #374151; margin-bottom: 0.2rem; }
-  .campaign-card-meta { font-size: 0.72rem; color: #6b7280; }
-  .badge-active { background: #d4edda; color: #155724; border-radius: 3px;
-                  padding: 1px 5px; font-size: 0.7rem; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
-  th { text-align: left; border-bottom: 2px solid #374151; padding: 4px 8px;
-       background: #f9fafb; white-space: nowrap; }
-  td { padding: 3px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-  tr:hover td { background: #fafafa; }
-  .CRITICAL { color: #b91c1c; font-weight: 700; }
-  .HIGH { color: #c2410c; }
-  .MEDIUM { color: #b45309; }
-  .LOW { color: #15803d; }
-  .mono { font-family: ui-monospace, monospace; font-size: 0.75rem; }
-  .zero { color: #aaa; }
-  .see-all { font-size: 0.78rem; }
-  footer { margin-top: 2rem; padding-top: 0.75rem; border-top: 1px solid #e5e7eb;
-           font-size: 0.7rem; color: #6b7280; line-height: 1.6; }
-</style>
+<link rel="stylesheet" href="/falconeye.css?v={{ manifest_version }}">
 </head>
 <body>
 

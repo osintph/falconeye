@@ -634,6 +634,25 @@ def test_ssg_creates_sitemap_xml(ssg_output):
 
 
 # ---------------------------------------------------------------------------
+# CSS external stylesheet (v0.2.2)
+# ---------------------------------------------------------------------------
+
+def test_ssg_copies_css_to_output(ssg_output):
+    assert (ssg_output / "falconeye.css").exists()
+
+
+def test_ssg_index_html_links_external_css(ssg_output):
+    html = (ssg_output / "index.html").read_text()
+    assert 'href="/falconeye.css' in html
+    assert "<style>" not in html
+
+
+def test_ssg_css_has_dark_mode(ssg_output):
+    css = (ssg_output / "falconeye.css").read_text()
+    assert "prefers-color-scheme: dark" in css
+
+
+# ---------------------------------------------------------------------------
 # CVE 730-day date filter (v0.2.2)
 # ---------------------------------------------------------------------------
 

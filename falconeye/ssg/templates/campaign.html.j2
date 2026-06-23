@@ -4,27 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{{ campaign.name }} — FalconEye</title>
-<style>
-  body{font-family:monospace;max-width:960px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
-  h1{font-size:1.4rem;margin-bottom:0.25rem}
-  h2{font-size:1rem;margin:1.5rem 0 0.5rem;border-bottom:1px solid #ccc;padding-bottom:0.25rem}
-  .meta{font-size:0.8rem;color:#666;margin-bottom:1rem}
-  table{width:100%;border-collapse:collapse;font-size:0.82rem}
-  th{text-align:left;border-bottom:2px solid #333;padding:0.4rem 0.5rem}
-  td{padding:0.3rem 0.5rem;border-bottom:1px solid #eee;word-break:break-all;vertical-align:top}
-  tr:hover td{background:#f5f5f5}
-  a{color:#0055cc}
-  .zero{color:#aaa}
-  .nav{font-size:0.8rem;margin-bottom:1rem}
-  .badge{border-radius:3px;padding:1px 6px;font-size:0.72rem;font-weight:bold;margin-left:0.4rem}
-  .active{background:#d4edda;color:#155724}
-  .dormant{background:#fff3cd;color:#856404}
-  .expired{background:#f8d7da;color:#721c24}
-  .tag-pill{background:#e8f0fe;color:#174ea6;border-radius:3px;padding:1px 4px;font-size:0.75rem;margin-right:2px}
-  .guidance-block{border-left:3px solid #0055cc;background:#f0f4ff;padding:0.75rem 1rem;margin:0.5rem 0;font-size:0.85rem;white-space:pre-wrap}
-  .guidance-title{font-weight:bold;margin-bottom:0.4rem}
-  .cluster-key{font-size:0.78rem;color:#666;margin-bottom:0.5rem}
-</style>
+<link rel="stylesheet" href="/falconeye.css?v={{ manifest_version }}">
 </head>
 <body>
 <div class="nav">
@@ -92,7 +72,7 @@
 <p class="zero">No IOC detail available.</p>
 {% endif %}
 
-<p class="meta" style="margin-top:1.5rem">
+<p class="meta">
   <a href="/">Dashboard</a> ·
   <a href="/campaign/">All campaigns</a> ·
   <a href="/asn/">ASNs</a> ·

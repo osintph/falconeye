@@ -4,6 +4,7 @@ import ipaddress
 import json
 import logging
 import os
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -24,6 +25,7 @@ log = logging.getLogger(__name__)
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 _DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
+_CSS_SRC = _TEMPLATES_DIR / "static" / "falconeye.css"
 _SITE_URL = "https://falconeye.osintph.info"
 _FEED_LIMIT = 200  # max items in RSS / JSON Feed per run
 
@@ -153,7 +155,8 @@ def _query_stats(conn) -> dict:
 # ---------------------------------------------------------------------------
 
 def _render_html(path: Path, iocs: list[dict], cves: list[dict], stats: dict,
-                 campaigns: list[dict], asns: list[dict], now: datetime) -> None:
+                 campaigns: list[dict], asns: list[dict], now: datetime,
+                 mv: str = "") -> None:
     top_campaigns = [c for c in campaigns if c["status"] == "active"][:5]
     active_asns = [a for a in asns if (a.get("ioc_count") or 0) > 0][:10]
     tmpl = _jinja_env.get_template("index.html.j2")
@@ -164,6 +167,7 @@ def _render_html(path: Path, iocs: list[dict], cves: list[dict], stats: dict,
         top_campaigns=top_campaigns,
         active_asns=active_asns,
         generated_at=now.strftime("%Y-%m-%d %H:%M"),
+        manifest_version=mv,
     )
     path.write_text(html, encoding="utf-8")
     log.info("SSG: wrote %s (%d bytes)", path.name, len(html))
@@ -549,7 +553,7 @@ def _query_asn_detail(conn, asn: int, now: datetime) -> dict:
 
 
 def _render_asn_index(output: Path, asns: list[dict], asn_map: dict[int, dict],
-                      now: datetime) -> None:
+                      now: datetime, mv: str = "") -> None:
     asn_dir = output / "asn"
     asn_dir.mkdir(parents=True, exist_ok=True)
     tmpl = _jinja_env.get_template("asn_index.html.j2")
@@ -557,13 +561,14 @@ def _render_asn_index(output: Path, asns: list[dict], asn_map: dict[int, dict],
     for a in asns:
         op = asn_map.get(a["asn"], {})
         rows.append({**a, "short": op.get("short") or a.get("name") or f"AS{a['asn']}"})
-    html = tmpl.render(asns=rows, generated_at=now.strftime("%Y-%m-%d %H:%M"))
+    html = tmpl.render(asns=rows, generated_at=now.strftime("%Y-%m-%d %H:%M"),
+                       manifest_version=mv)
     (asn_dir / "index.html").write_text(html, encoding="utf-8")
     log.info("SSG: wrote asn/index.html (%d ASNs)", len(rows))
 
 
 def _render_asn_pages(output: Path, conn, asn_map: dict[int, dict],
-                      now: datetime) -> int:
+                      now: datetime, mv: str = "") -> int:
     """Render per-ASN pages. Returns count of pages written."""
     tmpl = _jinja_env.get_template("asn.html.j2")
     written = 0
@@ -589,6 +594,7 @@ def _render_asn_pages(output: Path, conn, asn_map: dict[int, dict],
             weekly_counts=detail["weekly_counts"],
             sparkline_svg=svg,
             generated_at=now.strftime("%Y-%m-%d %H:%M"),
+            manifest_version=mv,
         )
         (page_dir / "index.html").write_text(html, encoding="utf-8")
         written += 1
@@ -645,17 +651,20 @@ def _match_action_templates(iocs: list[dict], templates: list[dict]) -> list[dic
     return matched
 
 
-def _render_campaign_index(output: Path, campaigns: list[dict], now: datetime) -> None:
+def _render_campaign_index(output: Path, campaigns: list[dict], now: datetime,
+                           mv: str = "") -> None:
     camp_dir = output / "campaign"
     camp_dir.mkdir(parents=True, exist_ok=True)
     tmpl = _jinja_env.get_template("campaign_index.html.j2")
-    html = tmpl.render(campaigns=campaigns, generated_at=now.strftime("%Y-%m-%d %H:%M"))
+    html = tmpl.render(campaigns=campaigns, generated_at=now.strftime("%Y-%m-%d %H:%M"),
+                       manifest_version=mv)
     (camp_dir / "index.html").write_text(html, encoding="utf-8")
     log.info("SSG: wrote campaign/index.html (%d campaigns)", len(campaigns))
 
 
 def _render_campaign_pages(output: Path, conn, campaigns: list[dict],
-                           action_templates: list[dict], now: datetime) -> int:
+                           action_templates: list[dict], now: datetime,
+                           mv: str = "") -> int:
     """Render per-campaign pages. Returns count written."""
     tmpl = _jinja_env.get_template("campaign.html.j2")
     written = 0
@@ -669,6 +678,7 @@ def _render_campaign_pages(output: Path, conn, campaigns: list[dict],
             iocs=iocs,
             guidance=guidance,
             generated_at=now.strftime("%Y-%m-%d %H:%M"),
+            manifest_version=mv,
         )
         (page_dir / "index.html").write_text(html, encoding="utf-8")
         written += 1
@@ -856,8 +866,11 @@ def run_ssg(
     _CAMP_DESC = "PH campaign-level threat intelligence from FalconEye by OSINT-PH"
     _IOC_DESC  = "PH raw IOC and CVE stream from FalconEye by OSINT-PH"
 
+    shutil.copy2(_CSS_SRC, output / "falconeye.css")
+    log.info("SSG: copied falconeye.css")
+
     for fn, renderer in [
-        ("index.html",    lambda p: _render_html(p, iocs, cves, stats, campaigns, asns, now)),
+        ("index.html",    lambda p: _render_html(p, iocs, cves, stats, campaigns, asns, now, mv)),
         ("feed.xml",      lambda p: _render_rss(p, campaign_items,
                               f"{_SITE_URL}/feed.xml", "FalconEye PH Campaigns", _CAMP_DESC)),
         ("feed.json",     lambda p: _render_json_feed(p, campaign_items,
@@ -876,15 +889,15 @@ def run_ssg(
             errors += 1
 
     try:
-        _render_asn_index(output, asns, asn_map, now)
-        _render_asn_pages(output, conn, asn_map, now)
+        _render_asn_index(output, asns, asn_map, now, mv)
+        _render_asn_pages(output, conn, asn_map, now, mv)
     except Exception as exc:
         log.error("SSG: failed to write ASN pages: %s", exc)
         errors += 1
 
     try:
-        _render_campaign_index(output, campaigns, now)
-        _render_campaign_pages(output, conn, campaigns, action_templates, now)
+        _render_campaign_index(output, campaigns, now, mv)
+        _render_campaign_pages(output, conn, campaigns, action_templates, now, mv)
     except Exception as exc:
         log.error("SSG: failed to write campaign pages: %s", exc)
         errors += 1
