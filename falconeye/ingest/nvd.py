@@ -185,6 +185,57 @@ def _upsert_batch(conn, batch: list[dict], fetched_at: str, mv: str) -> tuple[in
     return upserted, errors
 
 
+# --- Severity backfill ---
+
+def _backfill_kev_severity(conn, api_key: str | None) -> int:
+    """
+    Fetch NVD severity for sieve-matched CVEs that still have NULL cvss_v3_severity.
+
+    KEV CVEs inserted before the first NVD full sync have NULL severity.
+    Incremental NVD pulls only cover recently modified CVEs, so old KEV entries
+    never get their severity populated unless we explicitly fetch them.
+
+    Queries one CVE at a time via ?cveId= and caps at 50 per run to avoid
+    blocking the main ingest cycle. Returns the count of CVEs updated.
+    """
+    rows = conn.execute("""
+        SELECT DISTINCT c.cve_id
+          FROM cves c
+          JOIN sieve_matches s ON s.record_id = c.id AND s.record_type = 'cve'
+         WHERE c.cvss_v3_severity IS NULL
+         LIMIT 50
+    """).fetchall()
+
+    if not rows:
+        return 0
+
+    updated = 0
+    for (cve_id,) in rows:
+        time.sleep(0.6)
+        try:
+            data = _fetch_page({"cveId": cve_id}, api_key, pre_delay=0)
+        except Exception as exc:
+            log.warning("NVD backfill: error fetching %s: %s", cve_id, exc)
+            continue
+        vulns = data.get("vulnerabilities", [])
+        if not vulns:
+            continue
+        cve = vulns[0].get("cve", {})
+        score, severity = extract_cvss(cve)
+        if severity is None:
+            continue
+        conn.execute(
+            "UPDATE cves SET cvss_v3_score=?, cvss_v3_severity=? WHERE cve_id=?",
+            (score, severity, cve_id),
+        )
+        updated += 1
+
+    conn.commit()
+    if updated:
+        log.info("NVD backfill: updated severity for %d CVEs", updated)
+    return updated
+
+
 # --- Public entry point ---
 
 def ingest(
@@ -250,6 +301,11 @@ def ingest(
         log.error("NVD fetch failed: %s", exc)
 
     log.info("NVD ingest: %d upserted, %d errors", upserted, errors)
+
+    conn = get_connection(db_path)
+    _backfill_kev_severity(conn, api_key)
+    conn.close()
+
     return upserted, errors
 
 
