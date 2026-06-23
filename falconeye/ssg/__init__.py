@@ -89,17 +89,21 @@ def _query_ph_iocs(conn) -> list[dict]:
     return result
 
 
-def _query_ph_cves(conn) -> list[dict]:
+def _query_ph_cves(conn, now: datetime | None = None) -> list[dict]:
+    if now is None:
+        now = _now_utc()
+    cutoff = (now - timedelta(days=730)).strftime("%Y-%m-%dT%H:%M:%SZ")
     rows = conn.execute("""
         SELECT c.id, c.cve_id, c.description, c.cvss_v3_score, c.cvss_v3_severity,
-               c.kev_date_added, c.kev_ransomware_use, c.kev_notes,
+               c.cvss_version, c.kev_date_added, c.kev_ransomware_use, c.kev_notes,
                c.source, c.fetched_at,
                GROUP_CONCAT(s.match_criterion || ': ' || s.matched_value, '; ') AS why
           FROM sieve_matches s
           JOIN cves c ON c.id = s.record_id AND s.record_type = 'cve'
+         WHERE (c.published_date IS NULL OR c.published_date >= ?)
          GROUP BY c.id
          ORDER BY c.kev_date_added DESC, c.fetched_at DESC
-    """).fetchall()
+    """, (cutoff,)).fetchall()
 
     return [
         {
@@ -108,6 +112,7 @@ def _query_ph_cves(conn) -> list[dict]:
             "description":       r["description"],
             "cvss_v3_score":     r["cvss_v3_score"],
             "cvss_v3_severity":  r["cvss_v3_severity"],
+            "cvss_version":      r["cvss_version"],
             "kev_date_added":    r["kev_date_added"],
             "kev_ransomware_use": r["kev_ransomware_use"],
             "kev_notes":         r["kev_notes"],
@@ -837,7 +842,7 @@ def run_ssg(
 
     conn = get_connection(db_path)
     iocs      = _query_ph_iocs(conn)
-    cves      = _query_ph_cves(conn)
+    cves      = _query_ph_cves(conn, now)
     stats     = _query_stats(conn)
     asns      = _query_asns_with_ioc_counts(conn, asn_map)
     campaigns = _query_campaigns(conn)

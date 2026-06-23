@@ -631,3 +631,76 @@ def test_ssg_creates_robots_txt(ssg_output):
 
 def test_ssg_creates_sitemap_xml(ssg_output):
     assert (ssg_output / "sitemap.xml").exists()
+
+
+# ---------------------------------------------------------------------------
+# CVE 730-day date filter (v0.2.2)
+# ---------------------------------------------------------------------------
+
+def test_query_ph_cves_null_published_date_always_included(tmp_path):
+    """CVEs with NULL published_date (KEV-only) survive the 730-day filter."""
+    db = tmp_path / "null_pub.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO cves (cve_id, description, source, fetched_at) "
+        "VALUES ('CVE-2000-0001', 'Old KEV', 'kev', '2026-06-22T00:00:00Z')"
+    )
+    cve_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('cve', ?, 'cpe', 'cpe:x', '2026-06-22T00:00:00Z')",
+        (cve_id,),
+    )
+    conn.commit()
+    now = datetime(2026, 6, 22, tzinfo=timezone.utc)
+    cves = _query_ph_cves(conn, now)
+    conn.close()
+    assert len(cves) == 1
+
+
+def test_query_ph_cves_filters_old_published_date(tmp_path):
+    """CVEs published more than 730 days ago are excluded when published_date is set."""
+    db = tmp_path / "old_pub.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO cves (cve_id, description, source, fetched_at, published_date) "
+        "VALUES ('CVE-2001-0001', 'Ancient CVE', 'nvd', '2026-06-22T00:00:00Z', '2001-01-01T00:00:00Z')"
+    )
+    cve_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('cve', ?, 'cpe', 'cpe:x', '2026-06-22T00:00:00Z')",
+        (cve_id,),
+    )
+    conn.commit()
+    now = datetime(2026, 6, 22, tzinfo=timezone.utc)
+    cves = _query_ph_cves(conn, now)
+    conn.close()
+    assert cves == []
+
+
+def test_query_ph_cves_includes_cvss_version(tmp_path):
+    """cvss_version is returned in the CVE dict."""
+    db = tmp_path / "cvss_ver.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO cves (cve_id, description, cvss_v3_score, cvss_v3_severity, "
+        "cvss_version, source, fetched_at, published_date) "
+        "VALUES ('CVE-2024-9999', 'Test', 9.8, 'CRITICAL', 'v3.1', 'nvd', "
+        "'2026-06-22T00:00:00Z', '2025-01-01T00:00:00Z')"
+    )
+    cve_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('cve', ?, 'cpe', 'cpe:x', '2026-06-22T00:00:00Z')",
+        (cve_id,),
+    )
+    conn.commit()
+    now = datetime(2026, 6, 22, tzinfo=timezone.utc)
+    cves = _query_ph_cves(conn, now)
+    conn.close()
+    assert len(cves) == 1
+    assert cves[0]["cvss_version"] == "v3.1"

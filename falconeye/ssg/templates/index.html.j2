@@ -125,6 +125,7 @@
 {% endif %}
 
 <h2>Latest CVE Activity (PH-relevant)</h2>
+<p class="filter-note">Showing CVEs published in the last 730 days. CVEs with no publish date (KEV-only) are always included.</p>
 {% if cves %}
 <table>
   <thead>
@@ -140,7 +141,7 @@
     {% for cve in cves[:10] %}
     <tr>
       <td><a href="https://nvd.nist.gov/vuln/detail/{{ cve.cve_id }}">{{ cve.cve_id }}</a></td>
-      <td class="{{ cve.cvss_v3_severity or '' }}">{{ cve.cvss_v3_severity or 'N/A' }}</td>
+      <td class="{{ cve.cvss_v3_severity or '' }}">{{ cve.cvss_v3_severity or 'N/A' }}{% if cve.cvss_version == 'v2.0' %} <span class="cvss-ver">(v2)</span>{% endif %}</td>
       <td>{{ cve.cvss_v3_score or '' }}</td>
       <td>{{ (cve.description or '')[:120] }}</td>
       <td class="mono">{{ cve.kev_date_added or '' }}</td>
@@ -149,7 +150,7 @@
   </tbody>
 </table>
 {% else %}
-<p class="zero">No PH-matched CVEs in the current corpus.</p>
+<p class="zero">No PH-matched CVEs in the current corpus (last 730 days).</p>
 {% endif %}
 
 <footer>
