@@ -12,6 +12,7 @@ from falconeye.ingest.nvd import (
     extract_cvss,
     extract_description,
     ingest,
+    _get_nvd_state,
 )
 
 # --- Fixtures ---
@@ -266,7 +267,8 @@ def test_ingest_handles_fetch_error(db):
     assert errors == 0
 
 
-def test_ingest_full_sync_uses_no_date_params(db):
+def test_ingest_full_sync_uses_pub_date_window(db):
+    """full_sync=True resets state and fetches a pubStartDate/pubEndDate window."""
     called_with = {}
 
     def capture_pages(extra_params=None, api_key=None):
@@ -276,16 +278,23 @@ def test_ingest_full_sync_uses_no_date_params(db):
     with patch("falconeye.ingest.nvd.fetch_pages", side_effect=capture_pages):
         ingest(db, full_sync=True)
 
-    assert called_with["extra_params"] is None
+    params = called_with["extra_params"]
+    assert params is not None
+    assert "pubStartDate" in params
+    assert "pubEndDate" in params
 
 
 def test_ingest_incremental_uses_last_modified(db):
-    """After an NVD run, the next call should pass lastModStartDate."""
+    """When backfill_done=1, the next call uses lastModStartDate not pubStartDate."""
     init_db(db)
     conn = get_connection(db)
     conn.execute(
         "INSERT INTO cves (cve_id, source, source_id, fetched_at, last_modified) "
         "VALUES ('CVE-2024-0005', 'nvd', 'CVE-2024-0005', '2026-06-22T00:00:00Z', '2026-06-22T00:00:00Z')"
+    )
+    conn.execute(
+        "INSERT INTO ingest_state (source, backfill_done, oldest_reached, last_run) "
+        "VALUES ('nvd', 1, '1999-01-01T00:00:00Z', '2026-06-22T00:00:00Z')"
     )
     conn.commit()
     conn.close()
@@ -301,6 +310,105 @@ def test_ingest_incremental_uses_last_modified(db):
 
     assert called_with["extra_params"] is not None
     assert "lastModStartDate" in called_with["extra_params"]
+
+
+# ---------------------------------------------------------------------------
+# Backfill state tests
+# ---------------------------------------------------------------------------
+
+def test_backfill_first_run_fetches_recent_window(db):
+    """First run with no ingest_state fetches a 120-day pubStartDate/pubEndDate window."""
+    called_with = {}
+
+    def capture_pages(extra_params=None, api_key=None):
+        called_with["extra_params"] = extra_params
+        return iter([[]])
+
+    with patch("falconeye.ingest.nvd.fetch_pages", side_effect=capture_pages):
+        ingest(db)
+
+    params = called_with["extra_params"]
+    assert params is not None
+    assert "pubStartDate" in params
+    assert "pubEndDate" in params
+
+
+def test_backfill_continues_from_oldest_reached(db):
+    """Subsequent runs use oldest_reached as the window end date."""
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO ingest_state (source, backfill_done, oldest_reached, last_run) "
+        "VALUES ('nvd', 0, '2024-01-01T00:00:00Z', '2026-06-22T00:00:00Z')"
+    )
+    conn.commit()
+    conn.close()
+
+    called_with = {}
+
+    def capture_pages(extra_params=None, api_key=None):
+        called_with["extra_params"] = extra_params
+        return iter([[]])
+
+    with patch("falconeye.ingest.nvd.fetch_pages", side_effect=capture_pages):
+        ingest(db)
+
+    params = called_with["extra_params"]
+    assert params is not None
+    assert "pubEndDate" in params
+    assert params["pubEndDate"].startswith("2024-01-01")
+
+
+def test_backfill_marks_done_when_earliest_reached(db):
+    """When the window reaches 1999-01-01, backfill_done is set to 1."""
+    init_db(db)
+    conn = get_connection(db)
+    # oldest_reached is close enough to BACKFILL_EARLIEST that window_start clamps to it
+    conn.execute(
+        "INSERT INTO ingest_state (source, backfill_done, oldest_reached, last_run) "
+        "VALUES ('nvd', 0, '1999-03-01T00:00:00Z', '2026-06-22T00:00:00Z')"
+    )
+    conn.commit()
+    conn.close()
+
+    with patch("falconeye.ingest.nvd.fetch_pages", return_value=iter([[]])):
+        ingest(db)
+
+    conn = get_connection(db)
+    state = _get_nvd_state(conn)
+    conn.close()
+    assert state is not None
+    assert state["backfill_done"] == 1
+
+
+def test_backfill_incremental_skips_window_when_done(db):
+    """When backfill_done=1, default mode uses lastModStartDate and not pubStartDate."""
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO cves (cve_id, source, source_id, fetched_at, last_modified) "
+        "VALUES ('CVE-2024-0099', 'nvd', 'CVE-2024-0099', '2026-06-22T00:00:00Z', '2026-06-20T00:00:00Z')"
+    )
+    conn.execute(
+        "INSERT INTO ingest_state (source, backfill_done, oldest_reached, last_run) "
+        "VALUES ('nvd', 1, '1999-01-01T00:00:00Z', '2026-06-22T00:00:00Z')"
+    )
+    conn.commit()
+    conn.close()
+
+    called_with = {}
+
+    def capture_pages(extra_params=None, api_key=None):
+        called_with["extra_params"] = extra_params
+        return iter([[]])
+
+    with patch("falconeye.ingest.nvd.fetch_pages", side_effect=capture_pages):
+        ingest(db)
+
+    params = called_with["extra_params"]
+    assert params is not None
+    assert "lastModStartDate" in params
+    assert "pubStartDate" not in params
 
 
 # ---------------------------------------------------------------------------

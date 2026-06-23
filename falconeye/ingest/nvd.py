@@ -131,6 +131,10 @@ def fetch_pages(
         log.info("NVD: fetched %d / %d", fetched, total)
 
 
+_BACKFILL_WINDOW_DAYS = 120
+_BACKFILL_EARLIEST = datetime(1999, 1, 1, tzinfo=timezone.utc)
+
+
 # --- State ---
 
 def _last_nvd_modified(conn) -> str | None:
@@ -138,6 +142,31 @@ def _last_nvd_modified(conn) -> str | None:
         "SELECT MAX(last_modified) FROM cves WHERE source='nvd' AND last_modified IS NOT NULL"
     ).fetchone()
     return row[0] if row and row[0] else None
+
+
+def _get_nvd_state(conn) -> dict | None:
+    row = conn.execute("SELECT * FROM ingest_state WHERE source='nvd'").fetchone()
+    return dict(row) if row else None
+
+
+def _set_nvd_state(
+    conn,
+    *,
+    backfill_done: bool,
+    oldest_reached: str | None,
+    last_run: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO ingest_state (source, backfill_done, oldest_reached, last_run)
+        VALUES ('nvd', ?, ?, ?)
+        ON CONFLICT(source) DO UPDATE SET
+            backfill_done  = excluded.backfill_done,
+            oldest_reached = excluded.oldest_reached,
+            last_run       = excluded.last_run
+        """,
+        (1 if backfill_done else 0, oldest_reached, last_run),
+    )
 
 
 # --- Upsert ---
@@ -263,10 +292,10 @@ def ingest(
     Fetch NVD CVEs and upsert into cves + cve_cpe_matches.
 
     Mode selection (in priority order):
-      start_date provided  → incremental from that date to now
-      full_sync=True       → full backfill, no date filter
-      default              → incremental from MAX(last_modified) in DB,
-                             or full backfill if no NVD records exist yet
+      start_date provided  → incremental from that date to now (lastModStartDate/End)
+      full_sync=True       → reset ingest_state, fetch one 120-day window ending now
+      default              → if backfill_done: incremental from MAX(last_modified);
+                             else: one 120-day backward window from oldest_reached
 
     Returns (upserted, errors).
     """
@@ -275,6 +304,10 @@ def ingest(
     fetched_at = now.strftime("%Y-%m-%dT%H:%M:%SZ")
     mv = _manifest_version()
 
+    # window_start is set when we do a date-window fetch that should update ingest_state.
+    # It remains None for manual incremental and post-backfill incremental modes.
+    window_start: datetime | None = None
+
     if start_date:
         start_dt = datetime.fromisoformat(start_date.replace("Z", "+00:00"))
         extra_params = {
@@ -282,27 +315,61 @@ def ingest(
             "lastModEndDate": _fmt(now),
         }
         log.info("NVD: incremental from %s to %s (manual start_date)", _fmt(start_dt), _fmt(now))
+
     elif full_sync:
-        extra_params = None
-        log.info("NVD: full backfill (--full-sync)")
+        conn = get_connection(db_path)
+        conn.execute("DELETE FROM ingest_state WHERE source='nvd'")
+        conn.commit()
+        conn.close()
+        window_end = now
+        window_start = max(window_end - timedelta(days=_BACKFILL_WINDOW_DAYS), _BACKFILL_EARLIEST)
+        extra_params = {
+            "pubStartDate": _fmt(window_start),
+            "pubEndDate": _fmt(window_end),
+        }
+        log.info("NVD: full-sync reset, backfill window %s to %s", _fmt(window_start), _fmt(window_end))
+
     else:
         conn = get_connection(db_path)
-        last_mod = _last_nvd_modified(conn)
+        state = _get_nvd_state(conn)
         conn.close()
 
-        if last_mod:
-            start_dt = datetime.fromisoformat(last_mod.replace("Z", "+00:00"))
-            start_dt -= timedelta(minutes=5)
-            extra_params = {
-                "lastModStartDate": _fmt(start_dt),
-                "lastModEndDate": _fmt(now),
-            }
-            log.info("NVD: incremental from %s to %s", _fmt(start_dt), _fmt(now))
+        if state and state["backfill_done"]:
+            conn = get_connection(db_path)
+            last_mod = _last_nvd_modified(conn)
+            conn.close()
+            if last_mod:
+                start_dt = datetime.fromisoformat(last_mod.replace("Z", "+00:00"))
+                start_dt -= timedelta(minutes=5)
+                extra_params = {
+                    "lastModStartDate": _fmt(start_dt),
+                    "lastModEndDate": _fmt(now),
+                }
+                log.info("NVD: incremental from %s to %s", _fmt(start_dt), _fmt(now))
+            else:
+                # backfill_done but no NVD records — fetch the most recent window
+                window_end = now
+                window_start = max(window_end - timedelta(days=_BACKFILL_WINDOW_DAYS), _BACKFILL_EARLIEST)
+                extra_params = {
+                    "pubStartDate": _fmt(window_start),
+                    "pubEndDate": _fmt(window_end),
+                }
+                log.info("NVD: no records despite backfill_done, re-fetching %s to %s",
+                         _fmt(window_start), _fmt(window_end))
         else:
-            extra_params = None
-            log.info("NVD: full backfill (no prior NVD records in DB)")
+            if state and state.get("oldest_reached"):
+                window_end = datetime.fromisoformat(state["oldest_reached"].replace("Z", "+00:00"))
+            else:
+                window_end = now
+            window_start = max(window_end - timedelta(days=_BACKFILL_WINDOW_DAYS), _BACKFILL_EARLIEST)
+            extra_params = {
+                "pubStartDate": _fmt(window_start),
+                "pubEndDate": _fmt(window_end),
+            }
+            log.info("NVD: backfill window %s to %s", _fmt(window_start), _fmt(window_end))
 
     upserted = errors = 0
+    fetch_ok = True
 
     try:
         for batch in fetch_pages(extra_params, api_key):
@@ -314,8 +381,23 @@ def ingest(
             errors += e
     except requests.RequestException as exc:
         log.error("NVD fetch failed: %s", exc)
+        fetch_ok = False
 
     log.info("NVD ingest: %d upserted, %d errors", upserted, errors)
+
+    if fetch_ok and window_start is not None:
+        done = window_start <= _BACKFILL_EARLIEST
+        conn = get_connection(db_path)
+        _set_nvd_state(
+            conn,
+            backfill_done=done,
+            oldest_reached=_fmt(window_start),
+            last_run=fetched_at,
+        )
+        conn.commit()
+        conn.close()
+        if done:
+            log.info("NVD: backfill complete, switching to incremental mode")
 
     conn = get_connection(db_path)
     _backfill_kev_severity(conn, api_key)
