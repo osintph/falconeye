@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PH ASN Intelligence — FalconEye</title>
+<style>
+  body{font-family:monospace;max-width:960px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
+  h1{font-size:1.4rem;margin-bottom:0.25rem}
+  .meta{font-size:0.8rem;color:#666;margin-bottom:1.5rem}
+  table{width:100%;border-collapse:collapse;font-size:0.85rem}
+  th{text-align:left;border-bottom:2px solid #333;padding:0.4rem 0.6rem}
+  td{padding:0.35rem 0.6rem;border-bottom:1px solid #eee;vertical-align:middle}
+  tr:hover td{background:#f5f5f5}
+  a{color:#0055cc}
+  .zero{color:#aaa}
+  .nav{font-size:0.8rem;margin-bottom:1rem}
+  .badge-active{background:#d4edda;color:#155724;border-radius:3px;padding:1px 5px;font-size:0.75rem}
+</style>
+</head>
+<body>
+<div class="nav"><a href="/">← FalconEye dashboard</a></div>
+<h1>PH ASN Intelligence</h1>
+<p class="meta">{{ asns | length }} PH autonomous systems · generated {{ generated_at }} UTC</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>ASN</th>
+      <th>Operator</th>
+      <th>IOCs (30d)</th>
+      <th>Last seen</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for a in asns %}
+    <tr>
+      <td><a href="/asn/AS{{ a.asn }}/">AS{{ a.asn }}</a></td>
+      <td>{{ a.short }}</td>
+      <td>{% if a.ioc_count %}<span class="badge-active">{{ a.ioc_count }}</span>{% else %}<span class="zero">0</span>{% endif %}</td>
+      <td>{{ (a.last_seen or '')[:10] or '—' }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="4" class="zero">No PH ASN data yet — run the APNIC ingest worker first.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p class="meta" style="margin-top:1.5rem">
+  Source: APNIC delegated stats ·
+  <a href="/">Dashboard</a> ·
+  <a href="https://github.com/osintph/falconeye">GitHub</a>
+</p>
+</body>
+</html>

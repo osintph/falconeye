@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import jinja2
+import yaml
 from feedgen.feed import FeedGenerator
 
 from falconeye.db import get_connection, init_db
@@ -14,6 +15,7 @@ from falconeye.db import get_connection, init_db
 log = logging.getLogger(__name__)
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
+_DEFAULT_CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 _SITE_URL = "https://falconeye.osintph.info"
 _FEED_LIMIT = 200  # max items in RSS / JSON Feed per run
 
@@ -21,6 +23,7 @@ _jinja_env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(str(_TEMPLATES_DIR)),
     autoescape=jinja2.select_autoescape(["html"]),
 )
+_jinja_env.filters["from_json"] = lambda s: json.loads(s or "[]")
 
 
 def _now_utc() -> datetime:
@@ -319,12 +322,170 @@ def _render_healthz(path: Path, stats: dict, now: datetime, mv: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# ASN helpers
+# ---------------------------------------------------------------------------
+
+def _load_asn_operators(config_dir: Path) -> dict[int, dict]:
+    path = config_dir / "asn_operators.yaml"
+    if not path.exists():
+        return {}
+    with path.open() as f:
+        data = yaml.safe_load(f) or {}
+    return {int(k): v for k, v in (data.get("operators") or {}).items()}
+
+
+def _build_12_week_counts(weekly_rows: list, now: datetime) -> list[int]:
+    """Convert sparse (week_label, count) rows into a 12-element list."""
+    labels = [
+        (now - timedelta(weeks=i)).strftime("%Y-%W")
+        for i in range(11, -1, -1)
+    ]
+    week_map = {row["week"]: row["cnt"] for row in weekly_rows}
+    return [week_map.get(lbl, 0) for lbl in labels]
+
+
+def _sparkline_svg(counts: list[int], width: int = 120, height: int = 30) -> str:
+    """Return an inline SVG polyline sparkline for a list of counts."""
+    if not counts or max(counts, default=0) == 0:
+        return ""
+    max_val = max(counts)
+    n = len(counts)
+    points = []
+    for i, c in enumerate(counts):
+        x = round(i * width / max(n - 1, 1), 1) if n > 1 else width // 2
+        y = round(height - (c / max_val) * (height - 4) - 2, 1)
+        points.append(f"{x},{y}")
+    pts = " ".join(points)
+    return (
+        f'<svg width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}" aria-hidden="true" class="sparkline">'
+        f'<polyline fill="none" stroke="currentColor" stroke-width="1.5" '
+        f'points="{pts}"/></svg>'
+    )
+
+
+def _query_asns_with_ioc_counts(conn) -> list[dict]:
+    rows = conn.execute("""
+        SELECT a.asn, a.name,
+               COUNT(DISTINCT s.record_id) AS ioc_count,
+               MAX(i.fetched_at)           AS last_seen
+          FROM ph_asns a
+          LEFT JOIN ph_prefixes p  ON p.asn = a.asn
+          LEFT JOIN sieve_matches s ON s.matched_value = p.prefix
+               AND s.match_criterion = 'asn' AND s.record_type = 'ioc'
+          LEFT JOIN iocs i ON i.id = s.record_id
+         GROUP BY a.asn
+         ORDER BY ioc_count DESC, a.asn
+    """).fetchall()
+    return [dict(row) for row in rows]
+
+
+def _query_asn_detail(conn, asn: int, now: datetime) -> dict:
+    cutoff_30d = (now - timedelta(days=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    cutoff_12w = (now - timedelta(weeks=12)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    iocs = conn.execute("""
+        SELECT i.id, i.ioc_value, i.ioc_type, i.threat_type, i.tags, i.fetched_at
+          FROM ph_prefixes p
+          JOIN sieve_matches s ON s.matched_value = p.prefix
+               AND s.match_criterion = 'asn' AND s.record_type = 'ioc'
+          JOIN iocs i ON i.id = s.record_id
+         WHERE p.asn = ? AND i.fetched_at >= ?
+         ORDER BY i.fetched_at DESC
+         LIMIT 500
+    """, (asn, cutoff_30d)).fetchall()
+
+    weekly_rows = conn.execute("""
+        SELECT strftime('%Y-%W', i.fetched_at) AS week, COUNT(*) AS cnt
+          FROM ph_prefixes p
+          JOIN sieve_matches s ON s.matched_value = p.prefix
+               AND s.match_criterion = 'asn' AND s.record_type = 'ioc'
+          JOIN iocs i ON i.id = s.record_id
+         WHERE p.asn = ? AND i.fetched_at >= ?
+         GROUP BY week
+         ORDER BY week
+    """, (asn, cutoff_12w)).fetchall()
+
+    # Shodan enrichment for IP-type IOCs on this ASN
+    enrichments = conn.execute("""
+        SELECT e.ip_address, e.ports, e.cpes, e.tags, e.vulns, e.fetched_at
+          FROM ip_enrichments e
+          JOIN iocs i ON i.ioc_value = e.ip_address AND i.ioc_type = 'ip'
+          JOIN sieve_matches s ON s.record_id = i.id
+               AND s.match_criterion = 'asn' AND s.record_type = 'ioc'
+          JOIN ph_prefixes p ON p.prefix = s.matched_value AND p.asn = ?
+         LIMIT 100
+    """, (asn,)).fetchall()
+
+    prefixes = conn.execute(
+        "SELECT prefix, prefix_type FROM ph_prefixes WHERE asn = ? ORDER BY prefix",
+        (asn,),
+    ).fetchall()
+
+    return {
+        "iocs":          [dict(r) for r in iocs],
+        "weekly_counts": _build_12_week_counts(weekly_rows, now),
+        "enrichments":   [dict(r) for r in enrichments],
+        "prefixes":      [dict(r) for r in prefixes],
+    }
+
+
+def _render_asn_index(output: Path, asns: list[dict], asn_map: dict[int, dict],
+                      now: datetime) -> None:
+    asn_dir = output / "asn"
+    asn_dir.mkdir(parents=True, exist_ok=True)
+    tmpl = _jinja_env.get_template("asn_index.html.j2")
+    rows = []
+    for a in asns:
+        op = asn_map.get(a["asn"], {})
+        rows.append({**a, "short": op.get("short") or a.get("name") or f"AS{a['asn']}"})
+    html = tmpl.render(asns=rows, generated_at=now.strftime("%Y-%m-%d %H:%M"))
+    (asn_dir / "index.html").write_text(html, encoding="utf-8")
+    log.info("SSG: wrote asn/index.html (%d ASNs)", len(rows))
+
+
+def _render_asn_pages(output: Path, conn, asn_map: dict[int, dict],
+                      now: datetime) -> int:
+    """Render per-ASN pages. Returns count of pages written."""
+    tmpl = _jinja_env.get_template("asn.html.j2")
+    written = 0
+    for row in conn.execute("SELECT asn, name FROM ph_asns ORDER BY asn"):
+        asn_num = row["asn"]
+        op = asn_map.get(asn_num, {})
+        operator_name = op.get("name") or row["name"] or f"AS{asn_num}"
+        operator_short = op.get("short") or operator_name
+
+        detail = _query_asn_detail(conn, asn_num, now)
+        svg = _sparkline_svg(detail["weekly_counts"])
+
+        page_dir = output / "asn" / f"AS{asn_num}"
+        page_dir.mkdir(parents=True, exist_ok=True)
+
+        html = tmpl.render(
+            asn=asn_num,
+            operator_name=operator_name,
+            operator_short=operator_short,
+            iocs=detail["iocs"],
+            enrichments=detail["enrichments"],
+            prefixes=detail["prefixes"],
+            weekly_counts=detail["weekly_counts"],
+            sparkline_svg=svg,
+            generated_at=now.strftime("%Y-%m-%d %H:%M"),
+        )
+        (page_dir / "index.html").write_text(html, encoding="utf-8")
+        written += 1
+    log.info("SSG: wrote %d per-ASN pages", written)
+    return written
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
 def run_ssg(
     db_path: str | Path,
     output_dir: str | Path,
+    config_dir: str | Path | None = None,
 ) -> tuple[int, int]:
     """
     Regenerate all static output files from the current DB state.
@@ -333,25 +494,27 @@ def run_ssg(
     init_db(db_path)
     output = Path(output_dir)
     output.mkdir(parents=True, exist_ok=True)
+    cfg = Path(config_dir) if config_dir else _DEFAULT_CONFIG_DIR
 
     now = _now_utc()
     mv = _manifest_version(now)
+    asn_map = _load_asn_operators(cfg)
 
     conn = get_connection(db_path)
     iocs  = _query_ph_iocs(conn)
     cves  = _query_ph_cves(conn)
     stats = _query_stats(conn)
-    conn.close()
+    asns  = _query_asns_with_ioc_counts(conn)
 
-    log.info("SSG: %d PH IOCs, %d PH CVEs", len(iocs), len(cves))
+    log.info("SSG: %d PH IOCs, %d PH CVEs, %d ASNs", len(iocs), len(cves), len(asns))
 
     errors = 0
     feed_items = _build_feed_items(iocs, cves, now)
 
     for fn, renderer in [
-        ("index.html",  lambda p: _render_html(p, iocs, cves, stats, now)),
-        ("feed.xml",    lambda p: _render_rss(p, feed_items)),
-        ("feed.json",   lambda p: _render_json_feed(p, feed_items, now)),
+        ("index.html",    lambda p: _render_html(p, iocs, cves, stats, now)),
+        ("feed.xml",      lambda p: _render_rss(p, feed_items)),
+        ("feed.json",     lambda p: _render_json_feed(p, feed_items, now)),
         ("manifest.json", lambda p: _render_manifest(p, stats, now, mv)),
         ("healthz.json",  lambda p: _render_healthz(p, stats, now, mv)),
     ]:
@@ -361,6 +524,14 @@ def run_ssg(
             log.error("SSG: failed to write %s: %s", fn, exc)
             errors += 1
 
+    try:
+        _render_asn_index(output, asns, asn_map, now)
+        _render_asn_pages(output, conn, asn_map, now)
+    except Exception as exc:
+        log.error("SSG: failed to write ASN pages: %s", exc)
+        errors += 1
+
+    conn.close()
     total = len(iocs) + len(cves)
     log.info("SSG: complete — %d PH items, %d errors", total, errors)
     return total, errors

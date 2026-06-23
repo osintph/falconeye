@@ -8,12 +8,15 @@ import pytest
 
 from falconeye.db import get_connection, init_db
 from falconeye.ssg import (
+    _build_12_week_counts,
     _build_feed_items,
     _manifest_version,
     _parse_ts,
+    _query_asns_with_ioc_counts,
     _query_ph_cves,
     _query_ph_iocs,
     _query_stats,
+    _sparkline_svg,
     run_ssg,
 )
 
@@ -293,3 +296,65 @@ def test_ssg_idempotent(db, tmp_path):
     t2, e2 = run_ssg(db, out)
     assert t1 == t2
     assert e1 == e2 == 0
+
+
+# ---------------------------------------------------------------------------
+# ASN rendering
+# ---------------------------------------------------------------------------
+
+def test_ssg_creates_asn_index(ssg_output):
+    assert (ssg_output / "asn" / "index.html").exists()
+
+
+def test_ssg_creates_per_asn_page(ssg_output):
+    # db fixture inserts asn=9836
+    assert (ssg_output / "asn" / "AS9836" / "index.html").exists()
+
+
+def test_ssg_asn_index_lists_asn(ssg_output):
+    html = (ssg_output / "asn" / "index.html").read_text()
+    assert "AS9836" in html
+
+
+def test_query_asns_with_ioc_counts(db):
+    conn = get_connection(db)
+    asns = _query_asns_with_ioc_counts(conn)
+    conn.close()
+    assert any(a["asn"] == 9836 for a in asns)
+
+
+def test_build_12_week_counts_fills_zeros():
+    now = datetime(2026, 6, 23, 12, 0, tzinfo=timezone.utc)
+    counts = _build_12_week_counts([], now)
+    assert len(counts) == 12
+    assert all(c == 0 for c in counts)
+
+
+def test_build_12_week_counts_places_value():
+    now = datetime(2026, 6, 23, 12, 0, tzinfo=timezone.utc)
+    # Current week label
+    this_week = now.strftime("%Y-%W")
+
+    class FakeRow:
+        def __getitem__(self, key):
+            return {"week": this_week, "cnt": 42}[key]
+
+    counts = _build_12_week_counts([FakeRow()], now)
+    assert counts[-1] == 42  # most recent week is last
+
+
+def test_sparkline_svg_empty_returns_empty():
+    assert _sparkline_svg([]) == ""
+    assert _sparkline_svg([0, 0, 0]) == ""
+
+
+def test_sparkline_svg_returns_svg():
+    svg = _sparkline_svg([1, 2, 3, 4, 5])
+    assert svg.startswith("<svg")
+    assert "polyline" in svg
+    assert 'aria-hidden="true"' in svg
+
+
+def test_sparkline_svg_single_point():
+    svg = _sparkline_svg([5])
+    assert "<svg" in svg

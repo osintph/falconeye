@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AS{{ asn }} {{ operator_short }} — FalconEye</title>
+<style>
+  body{font-family:monospace;max-width:960px;margin:2rem auto;padding:0 1rem;color:#1a1a1a}
+  h1{font-size:1.4rem;margin-bottom:0.25rem}
+  h2{font-size:1rem;margin:1.5rem 0 0.5rem;border-bottom:1px solid #ccc;padding-bottom:0.25rem}
+  .meta{font-size:0.8rem;color:#666;margin-bottom:1rem}
+  table{width:100%;border-collapse:collapse;font-size:0.82rem}
+  th{text-align:left;border-bottom:2px solid #333;padding:0.4rem 0.5rem}
+  td{padding:0.3rem 0.5rem;border-bottom:1px solid #eee;vertical-align:top;word-break:break-all}
+  tr:hover td{background:#f5f5f5}
+  a{color:#0055cc}
+  .zero{color:#aaa}
+  .nav{font-size:0.8rem;margin-bottom:1rem}
+  .sparkline-block{display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem}
+  .sparkline svg{color:#0055cc}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .prefix-list{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:1rem}
+  .prefix-tag{background:#f0f0f0;border-radius:3px;padding:2px 6px;font-size:0.78rem}
+  .sev-CRITICAL{color:#b00}
+  .sev-HIGH{color:#c55}
+  .tag-pill{background:#e8f0fe;color:#174ea6;border-radius:3px;padding:1px 4px;font-size:0.75rem;margin-right:2px}
+</style>
+</head>
+<body>
+<div class="nav">
+  <a href="/">← Dashboard</a> ·
+  <a href="/asn/">All ASNs</a>
+</div>
+
+<h1>AS{{ asn }} — {{ operator_name }}</h1>
+<p class="meta">generated {{ generated_at }} UTC</p>
+
+{% if prefixes %}
+<div class="prefix-list">
+  {% for p in prefixes %}
+  <span class="prefix-tag">{{ p.prefix }}</span>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2>Weekly IOC activity (last 12 weeks)</h2>
+{% if sparkline_svg %}
+<div class="sparkline-block">
+  <span class="sr-only">Weekly IOC counts (oldest to newest): {{ weekly_counts | join(', ') }}</span>
+  {{ sparkline_svg | safe }}
+  <span class="meta">{{ weekly_counts | sum }} IOCs in window</span>
+</div>
+{% else %}
+<p class="zero">No IOC activity in the last 12 weeks.</p>
+{% endif %}
+
+<h2>IOCs on AS{{ asn }} prefixes (last 30 days)</h2>
+{% if iocs %}
+<table>
+  <thead>
+    <tr>
+      <th>Type</th>
+      <th>Value</th>
+      <th>Threat type</th>
+      <th>Tags</th>
+      <th>Seen</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ioc in iocs %}
+    <tr>
+      <td>{{ ioc.ioc_type }}</td>
+      <td>{{ ioc.ioc_value }}</td>
+      <td>{{ ioc.threat_type or '—' }}</td>
+      <td>
+        {% set tags = ioc.tags | default('[]') %}
+        {% for t in (tags | from_json) %}
+        <span class="tag-pill">{{ t }}</span>
+        {% endfor %}
+      </td>
+      <td>{{ (ioc.fetched_at or '')[:10] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="zero">No PH-matched IOCs on AS{{ asn }} prefixes in the last 30 days.</p>
+{% endif %}
+
+{% if enrichments %}
+<h2>Shodan enrichment</h2>
+<table>
+  <thead>
+    <tr>
+      <th>IP</th>
+      <th>Open ports</th>
+      <th>CPEs</th>
+      <th>Tags</th>
+      <th>Vulns</th>
+      <th>Enriched</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in enrichments %}
+    <tr>
+      <td><a href="https://internetdb.shodan.io/{{ e.ip_address }}">{{ e.ip_address }}</a></td>
+      <td>{{ (e.ports | from_json) | join(', ') }}</td>
+      <td class="zero">{{ (e.cpes | from_json) | length }} CPEs</td>
+      <td>
+        {% for t in (e.tags | from_json) %}
+        <span class="tag-pill">{{ t }}</span>
+        {% endfor %}
+      </td>
+      <td>{{ (e.vulns | from_json) | join(', ') or '—' }}</td>
+      <td>{{ (e.fetched_at or '')[:10] }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+
+<p class="meta" style="margin-top:1.5rem">
+  <a href="/">Dashboard</a> ·
+  <a href="/asn/">All PH ASNs</a> ·
+  <a href="https://github.com/osintph/falconeye">GitHub</a> · AGPL v3
+</p>
+</body>
+</html>
