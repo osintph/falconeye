@@ -22,7 +22,7 @@
 {% if active_camps %}
 <div class="section-header">Active</div>
 {% for c in active_camps %}
-<div class="card">
+<div class="card active">
   <div class="card-title">
     <a href="/campaign/{{ c.slug }}/">{{ c.name }}</a>
     <span class="badge active">active</span>
@@ -41,7 +41,7 @@
 {% if dormant_camps %}
 <div class="section-header">Dormant (8–30 days)</div>
 {% for c in dormant_camps %}
-<div class="card">
+<div class="card dormant">
   <div class="card-title">
     <a href="/campaign/{{ c.slug }}/">{{ c.name }}</a>
     <span class="badge dormant">dormant</span>
@@ -55,7 +55,7 @@
 {% if expired_camps %}
 <div class="section-header">Expired (&gt;30 days)</div>
 {% for c in expired_camps %}
-<div class="card">
+<div class="card expired">
   <div class="card-title">
     <a href="/campaign/{{ c.slug }}/">{{ c.name }}</a>
     <span class="badge expired">expired</span>

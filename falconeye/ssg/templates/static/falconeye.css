@@ -20,8 +20,12 @@
   --badge-active-fg:  #155724;
   --badge-dormant-bg: #fff3cd;
   --badge-dormant-fg: #856404;
-  --badge-expired-bg: #f8d7da;
-  --badge-expired-fg: #721c24;
+  --badge-expired-bg: #e5e7eb;
+  --badge-expired-fg: #374151;
+
+  --status-active:  #2da44e;
+  --status-dormant: #d29922;
+  --status-expired: #8b949e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -29,7 +33,7 @@
     --bg:        #0f1117;
     --bg-alt:    #1a1d27;
     --bg-card:   #1a2035;
-    --border:    #2d3148;
+    --border:    #30363d;
     --border-hd: #8b9ab8;
     --text:      #d1d5db;
     --text-dim:  #8b9ab8;
@@ -45,8 +49,8 @@
     --badge-active-fg:  #bbf7d0;
     --badge-dormant-bg: #78350f;
     --badge-dormant-fg: #fde68a;
-    --badge-expired-bg: #7f1d1d;
-    --badge-expired-fg: #fecaca;
+    --badge-expired-bg: #374151;
+    --badge-expired-fg: #9ca3af;
   }
 }
 
@@ -125,10 +129,15 @@ h2 {
 
 .campaign-card {
   border: 1px solid var(--border);
+  border-left: 4px solid var(--status-expired);
   border-radius: 5px;
   padding: 0.65rem 0.9rem;
   background: var(--bg-card);
 }
+
+.campaign-card.active  { border-left-color: var(--status-active);  }
+.campaign-card.dormant { border-left-color: var(--status-dormant); }
+.campaign-card.expired { border-left-color: var(--status-expired); }
 
 .campaign-card-title {
   font-weight: 600;
@@ -151,10 +160,15 @@ h2 {
 
 .card {
   border: 1px solid var(--border);
+  border-left: 4px solid var(--status-expired);
   border-radius: 4px;
   padding: 0.75rem 1rem;
   margin-bottom: 0.75rem;
 }
+
+.card.active  { border-left-color: var(--status-active);  }
+.card.dormant { border-left-color: var(--status-dormant); }
+.card.expired { border-left-color: var(--status-expired); }
 
 .card-title { font-weight: bold; font-size: 0.95rem; }
 .card-title a { color: var(--link); text-decoration: none; }
@@ -202,7 +216,7 @@ td {
 
 tr:hover td { background: var(--bg-alt); }
 
-/* --- CVSS severity --- */
+/* --- CVSS severity (table cell text colour, legacy) --- */
 
 .CRITICAL { color: var(--sev-crit); font-weight: 700; }
 .HIGH     { color: var(--sev-high); }
@@ -210,6 +224,22 @@ tr:hover td { background: var(--bg-alt); }
 .LOW      { color: var(--sev-low); }
 
 .cvss-ver { font-size: 0.72rem; color: var(--text-dim); }
+
+/* --- Severity pill badges --- */
+
+.badge-sev {
+  display: inline-block;
+  border-radius: 9999px;
+  padding: 1px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.badge-sev.CRITICAL { background: rgba(185, 28,  28, 0.13); color: var(--sev-crit); }
+.badge-sev.HIGH     { background: rgba(194, 65,  12, 0.12); color: var(--sev-high); }
+.badge-sev.MEDIUM   { background: rgba(180, 83,   9, 0.11); color: var(--sev-med);  }
+.badge-sev.LOW      { background: rgba( 21, 128, 61, 0.11); color: var(--sev-low);  }
 
 /* --- Monospace / IOC data (no max-width) --- */
 
@@ -313,6 +343,19 @@ tr:hover td { background: var(--bg-alt); }
   margin-right: 2px;
 }
 
+/* --- Pivot links column (campaign IOC table) --- */
+
+.pivot-links a {
+  font-size: 0.72rem;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+
+/* --- Guidance ports / reference --- */
+
+.guidance-ports { font-size: 0.82rem; margin: 0.25rem 0; }
+.guidance-ref   { font-size: 0.8rem; margin-top: 0.25rem; }
+
 /* --- Guidance blocks (campaign pages) --- */
 
 .guidance-block {
@@ -344,7 +387,7 @@ tr:hover td { background: var(--bg-alt); }
 
 footer {
   margin-top: 2rem;
-  padding-top: 0.75rem;
+  padding-top: 24px;
   border-top: 1px solid var(--border);
   font-size: 0.7rem;
   color: var(--text-dim);
