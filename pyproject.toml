@@ -16,6 +16,7 @@ dependencies = [
     "python-dateutil>=2.9",
     "tldextract>=5.1",
     "feedgen>=0.9",
+    "PyJWT>=2.8",
 ]
 
 [project.urls]
