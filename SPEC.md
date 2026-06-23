@@ -54,14 +54,12 @@ The tool exists because no public, free, PH-scoped continuous threat surface mon
                   |     with provenance per record   |
                   +----------------------------------+
                                    |
-                  +----------------+----------------+
-                  |                                 |
-                  v                                 v
-   +------------------------------+   +------------------------------+
-   | Jinja2 Static Site Generator |   | Ghost Digest Publisher       |
-   | (HTML, feeds, STIX, TAXII,   |   | (daily Ghost Admin API post) |
-   |  robots.txt, sitemap.xml)    |   |                              |
-   +------------------------------+   +------------------------------+
+                                   v
+                  +----------------------------------+
+                  | Jinja2 Static Site Generator     |
+                  | (HTML, feeds, STIX, TAXII,       |
+                  |  robots.txt, sitemap.xml)        |
+                  +----------------------------------+
                   |
                   v
                   +----------------------------------+
@@ -91,7 +89,6 @@ The tool exists because no public, free, PH-scoped continuous threat surface mon
 - **Database:** SQLite in WAL mode. One file at `db/falconeye.db`. No ORM — raw `sqlite3` module with explicit DDL.
 - **Templating:** Jinja2.
 - **Web server:** nginx-full (Ubuntu package).
-- **Ghost integration:** PyJWT + requests. HMAC-SHA256 JWT auth using the Ghost Admin API `kid:secret_hex` key format.
 - **STIX output:** hand-written JSON, UUIDv5 stable IDs from a fixed namespace (`FALCONEYE_NS`). No STIX library dependency.
 - **No queue, no Redis, no Postgres, no Docker required for production.**
 
@@ -217,18 +214,7 @@ All STIX IDs are UUIDv5 derived from a fixed namespace `FALCONEYE_NS = uuid.UUID
 
 ASN pages include an inline SVG polyline sparkline for 12-week IOC activity. Immediately preceding the SVG, a `<span class="sr-only">` lists weekly counts in text form for screen readers. The `.sr-only` CSS class (clip + 1px box) is defined inline in the template.
 
-## 9. Ghost digest publisher (v0.2)
-
-`falconeye/digest.py` builds and posts a daily "FalconEye PH Daily Threat Brief" to a Ghost blog via the Ghost Admin API.
-
-- Authenticated with HMAC-SHA256 JWT (`kid:secret_hex` key format, `aud: "/admin/"`, 5-minute expiry)
-- Post content uses Ghost HTML cards (not Lexical format) for maximum compatibility and zero client-side conversion overhead
-- Slug: `falconeye-digest-YYYY-MM-DD` for yesterday's data. Upserts: creates if not found, updates if found.
-- Mode: `draft` by default; set `FALCONEYE_DIGEST_MODE=published` to auto-publish
-- Non-blocking: all Ghost API errors are logged and the function always returns 0. Missing config (no `GHOST_API_URL` etc.) silently skips.
-- Runs daily at 22:00 UTC (06:00 PHT) via `falconeye-digest.timer`.
-
-## 10. Roadmap
+## 9. Roadmap
 
 ### v0.1 (shipped)
 
@@ -236,22 +222,23 @@ Dashboard + RSS + JSON + manifest. Four ingest sources. Public-readable, no auth
 
 ### v0.2 (this release)
 
-Campaign clustering (domain, ASN+tag, /24 prefix), Shodan InternetDB enrichment, per-campaign and per-ASN static pages, STIX 2.1 output, TAXII-compatible static API, Ghost daily digest publisher, robots.txt/sitemap.xml, dual feeds (campaign-primary + IOC-secondary).
+Campaign clustering (domain, ASN+tag, /24 prefix), Shodan InternetDB enrichment, per-campaign and per-ASN static pages, STIX 2.1 output, TAXII-compatible static API, robots.txt/sitemap.xml, dual feeds (campaign-primary + IOC-secondary).
 
 ### v0.3 (planned)
 
 Brotli precompression, FalconEye-Match analyst lookup (Bloom filter prefilter, 2-hex sharded indices, `falconeye-cli`), EPSS API integration, OSV.dev for open-source vulnerabilities, GitHub Security Advisories, additional ingest sources (Spamhaus DROP/EDROP, abuse.ch SSLBL, DShield).
 
-## 11. Explicit non-goals for v0.2
+## 10. Explicit non-goals for v0.2
 
 - Active scanning of any kind (FalconEye reads existing data only — Shodan InternetDB is passive)
 - Real-time TAXII server (static files serve the same content without a database query path)
+- Blog/newsletter integration (manual posts via Ghosler; no automated digest pipeline)
 - User accounts of any kind (never)
 - Discord/Telegram/Slack bot integrations (separate repo if ever)
 - Commercial threat intel source ingestion (never)
 - FalconEye-Match CLI lookup tool (v0.3)
 
-## 12. Acceptance criteria for v0.2
+## 11. Acceptance criteria for v0.2
 
 FalconEye v0.2 ships when all of the following are true:
 
@@ -264,11 +251,10 @@ FalconEye v0.2 ships when all of the following are true:
 - STIX bundle at `/api/v1/taxii/collections/ph-iocs/objects.json` validates as a STIX 2.1 Bundle with at least one Indicator.
 - `robots.txt` allows all crawlers and references `sitemap.xml`.
 - `sitemap.xml` enumerates root paths and all active campaign/ASN URLs.
-- Ghost digest integration posts in draft mode when Ghost credentials are provided.
 - Primary feeds (`feed.xml`, `feed.json`) carry campaign-level items; secondary feeds (`feed-iocs.xml`, `feed-iocs.json`) carry raw IOC stream.
-- Test suite: all 265+ tests pass.
+- Test suite: all 245+ tests pass.
 
-## 13. License and acknowledgments
+## 12. License and acknowledgments
 
 FalconEye is licensed under AGPL v3.
 

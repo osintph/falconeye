@@ -17,7 +17,6 @@ Part of the [OSINT-PH](https://osintph.info) tool suite.
 - Clusters PH-matched IOCs into named campaigns by domain, ASN+tag, and /24 prefix
 - Enriches IPs via Shodan InternetDB (keyless, open ports, CPEs, CVEs, hostnames)
 - Generates a static HTML dashboard, per-campaign and per-ASN pages, RSS/JSON feeds, STIX 2.1 bundles, and a TAXII-compatible static API
-- Publishes a daily threat digest post to a Ghost blog (optional, non-blocking)
 - Regenerates `robots.txt` and `sitemap.xml` on every SSG run
 - Serves everything via nginx as static files (no dynamic application code in the public request path)
 - Maintains chain-of-custody provenance for every record (source feed, fetch timestamp, source URL, manifest version)
@@ -37,7 +36,7 @@ All sources are free, require no credit card, and use stable JSON/CSV/text endpo
 ## Roadmap
 
 - **v0.1 (shipped):** ingest + static dashboard + RSS + JSON
-- **v0.2 (current):** campaign clustering, Shodan enrichment, per-campaign and per-ASN pages, STIX 2.1, TAXII-compatible static API, Ghost digest publisher, robots.txt/sitemap.xml
+- **v0.2 (current):** campaign clustering, Shodan enrichment, per-campaign and per-ASN pages, STIX 2.1, TAXII-compatible static API, robots.txt/sitemap.xml
 - **v0.3 (planned):** Brotli precompression, FalconEye-Match analyst lookup with Bloom filter prefilter, EPSS API integration, additional ingest sources (Spamhaus DROP/EDROP, abuse.ch SSLBL, OSV.dev)
 
 See [SPEC.md](SPEC.md) for full design details.
@@ -49,8 +48,6 @@ Canonical deployment: Ubuntu 24.04 LTS, bare systemd + nginx, no Docker required
 You need two free API keys (no payment method required):
 - [abuse.ch](https://auth.abuse.ch/) for URLhaus
 - [nvd.nist.gov](https://nvd.nist.gov/developers/request-an-api-key) for NVD (technically optional, but rate limits are punishing without one)
-
-Ghost digest integration is optional: if `GHOST_API_URL`, `GHOST_ADMIN_KEY`, and `GHOST_AUTHOR_SLUG` are not set, the digest worker is a no-op and the rest of the pipeline is unaffected.
 
 ```bash
 # 1. Create system user and directory layout
@@ -80,7 +77,7 @@ sudo bash /opt/falconeye/src/deploy/install-systemd.sh
 sudo bash /opt/falconeye/src/scripts/run.sh all
 ```
 
-For subsequent manual runs: `sudo bash /opt/falconeye/src/scripts/run.sh <worker>` where worker is `urlhaus`, `kev`, `nvd`, `apnic`, `sieve`, `cluster`, `shodan`, `ssg`, `digest`, or `all`.
+For subsequent manual runs: `sudo bash /opt/falconeye/src/scripts/run.sh <worker>` where worker is `urlhaus`, `kev`, `nvd`, `apnic`, `sieve`, `cluster`, `shodan`, `ssg`, or `all`.
 
 Full operational details are in [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md).
 

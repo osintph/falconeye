@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run a FalconEye ingest worker, the sieve, the SSG, or a full ingest cycle.
 # Usage: sudo bash scripts/run.sh <worker>
-# Workers: urlhaus  kev  nvd  apnic  sieve  cluster  shodan  ssg  digest  all
+# Workers: urlhaus  kev  nvd  apnic  sieve  cluster  shodan  ssg  all
 set -euo pipefail
 
 SECRETS=/opt/falconeye/config/secrets.env
@@ -9,7 +9,7 @@ PYTHON=/opt/falconeye/venv/bin/python
 
 usage() {
   echo "Usage: $0 <worker>"
-  echo "Workers: urlhaus  kev  nvd  apnic  sieve  cluster  shodan  ssg  digest  all"
+  echo "Workers: urlhaus  kev  nvd  apnic  sieve  cluster  shodan  ssg  all"
   exit 1
 }
 
@@ -49,7 +49,6 @@ run_worker() {
     cluster) exec_module="falconeye.cluster" ;;
     shodan)  exec_module="falconeye.ingest.shodan_enrich" ;;
     ssg)     exec_module="falconeye.ssg" ;;
-    digest)  exec_module="falconeye.digest" ;;
     *)       echo "Unknown worker: ${w}"; usage ;;
   esac
   "${PYTHON}" -m "${exec_module}"
@@ -71,7 +70,6 @@ else
     cluster) exec "${PYTHON}" -m falconeye.cluster ;;
     shodan)  exec "${PYTHON}" -m falconeye.ingest.shodan_enrich ;;
     ssg)     exec "${PYTHON}" -m falconeye.ssg ;;
-    digest)  exec "${PYTHON}" -m falconeye.digest ;;
     *)       echo "Unknown worker: ${WORKER}"; usage ;;
   esac
 fi
