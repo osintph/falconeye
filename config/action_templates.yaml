@@ -1,0 +1,64 @@
+# Defender action guidance indexed by threat tag.
+# Used by the campaign card renderer to surface actionable recommendations.
+# match_tag: tag string from iocs.tags (case-insensitive prefix match)
+# match_threat_type: optional iocs.threat_type filter (null = any)
+
+templates:
+  - match_tag: "Mirai"
+    match_threat_type: null
+    title: "Block default-credential IoT scanning"
+    guidance: |
+      Block inbound and outbound telnet (TCP/23) and SSH (TCP/22) connections
+      to and from these IPs at your perimeter. Mirai variants scan for IoT
+      devices with factory-default credentials. Verify no routers, IP cameras,
+      or DVRs on your network are reachable from the internet with default
+      credentials. Check DHCP logs for unmanaged devices in these IP ranges.
+      Reference: https://github.com/jgamblin/Mirai-Source-Code
+
+  - match_tag: "Mozi"
+    match_threat_type: null
+    title: "Block Mozi P2P botnet nodes"
+    guidance: |
+      Drop traffic to/from these IPs at your border. Mozi is a P2P IoT botnet
+      that exploits default credentials and unpatched firmware. Audit all
+      internet-facing IoT assets for firmware currency. Disable UPnP where not
+      required. Log and alert on unusual outbound DHT (UDP/6881-6882) traffic.
+
+  - match_tag: "phishing"
+    match_threat_type: "phishing"
+    title: "Block phishing infrastructure"
+    guidance: |
+      Add these URLs to your web proxy block list and email gateway URL
+      scanner. Alert your fraud or SOC team. Search proxy logs for user
+      accesses to these domains in the past 30 days to identify potentially
+      compromised accounts. If a PH bank or e-wallet is the target, notify
+      the institution's fraud hotline directly.
+
+  - match_tag: "CobaltStrike"
+    match_threat_type: null
+    title: "Hunt for CobaltStrike beacon traffic"
+    guidance: |
+      Block these C2 IPs at egress. Search endpoint and proxy logs for
+      outbound connections to these IPs on any port, particularly
+      TCP/80, TCP/443, and TCP/8080. CobaltStrike beacons may use
+      domain-fronting — also review HTTP Host headers in proxy logs for
+      anomalous patterns. Escalate any hits to incident response.
+
+  - match_tag: "AsyncRAT"
+    match_threat_type: null
+    title: "Hunt for AsyncRAT connections"
+    guidance: |
+      Block these IPs at egress. AsyncRAT commonly uses TCP/6606, TCP/7707,
+      TCP/8808. Search endpoint logs for processes making outbound connections
+      to these IPs. Review email and web download logs for delivery of the
+      initial payload around the time these IOCs were first seen.
+
+  - match_tag: "AgentTesla"
+    match_threat_type: null
+    title: "Check for credential-stealing exfiltration"
+    guidance: |
+      Block these IPs at egress and in your email gateway. AgentTesla is an
+      infostealer that exfiltrates saved browser credentials, email client
+      passwords, and clipboard content. Search SMTP and FTP logs for outbound
+      connections to these IPs. Prompt password resets for any users whose
+      endpoints show suspicious outbound traffic in this window.

@@ -1,0 +1,128 @@
+# PH ASN operator registry.
+# Maps ASN integer to display name, abbreviation, and known CPE vendor prefixes.
+# Source: APNIC delegated stats + public BGP registry (bgpview.io).
+# Update quarterly or when new PH ISPs are encountered in the corpus.
+
+operators:
+  9299:
+    name: "Philippine Long Distance Telephone Company"
+    short: "PLDT"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+      - "cpe:2.3:o:cisco:ios_xe"
+      - "cpe:2.3:o:juniper:junos"
+
+  4775:
+    name: "Globe Telecom"
+    short: "Globe"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+      - "cpe:2.3:o:cisco:ios_xe"
+      - "cpe:2.3:o:juniper:junos"
+
+  17639:
+    name: "Converge ICT Solutions"
+    short: "Converge"
+    cpe_prefixes:
+      - "cpe:2.3:o:mikrotik:routeros"
+      - "cpe:2.3:h:mikrotik"
+
+  131267:
+    name: "Sky Cable Bright Internet"
+    short: "Sky Broadband"
+    cpe_prefixes: []
+
+  132199:
+    name: "Smart Communications"
+    short: "Smart"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+
+  132088:
+    name: "DCTECH Micro Services"
+    short: "DCTECH"
+    cpe_prefixes: []
+
+  9658:
+    name: "Eastern Telecommunications Philippines"
+    short: "Eastern Telecoms"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+
+  23944:
+    name: "DICT Philippine Government Network"
+    short: "DICT PHNet"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+
+  17676:
+    name: "Bayan Telecommunications"
+    short: "Bayan"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+      - "cpe:2.3:o:juniper:junos"
+
+  18001:
+    name: "Now Telecom"
+    short: "Now Telecom"
+    cpe_prefixes: []
+
+  131111:
+    name: "Innove Communications (Globe Business)"
+    short: "Innove"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+
+  132219:
+    name: "RISE"
+    short: "RISE"
+    cpe_prefixes: []
+
+  38193:
+    name: "Department of Science and Technology"
+    short: "DOST"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+
+  136533:
+    name: "Radius Telecoms"
+    short: "Radius"
+    cpe_prefixes: []
+
+  135642:
+    name: "Bayan FTTH"
+    short: "Bayan FTTH"
+    cpe_prefixes: []
+
+  134762:
+    name: "HCPTI / Converge Enterprise"
+    short: "Converge Enterprise"
+    cpe_prefixes:
+      - "cpe:2.3:o:mikrotik:routeros"
+      - "cpe:2.3:o:cisco:ios"
+
+  135607:
+    name: "Bangko Sentral ng Pilipinas"
+    short: "BSP"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+      - "cpe:2.3:o:fortinet:fortios"
+
+  24218:
+    name: "DICT Philippine Government Network (PNGT)"
+    short: "DICT-PNGT"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
+
+  137423:
+    name: "Streamtech Systems Technologies"
+    short: "Streamtech"
+    cpe_prefixes:
+      - "cpe:2.3:o:mikrotik:routeros"
+      - "cpe:2.3:o:ubiquiti:edgeos"
+
+  133619:
+    name: "Philippine Telegraph and Telephone Corporation"
+    short: "PT&T"
+    cpe_prefixes:
+      - "cpe:2.3:o:cisco:ios"
