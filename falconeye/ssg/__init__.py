@@ -709,6 +709,53 @@ def _render_taxii(output: Path, iocs: list[dict], cves: list[dict],
 
 
 # ---------------------------------------------------------------------------
+# robots.txt + sitemap.xml
+# ---------------------------------------------------------------------------
+
+def _render_robots(path: Path) -> None:
+    path.write_text(
+        f"User-agent: *\nAllow: /\nSitemap: {_SITE_URL}/sitemap.xml\n",
+        encoding="utf-8",
+    )
+
+
+def _render_sitemap(
+    path: Path,
+    campaigns: list[dict],
+    asns: list[dict],
+    now: datetime,
+) -> None:
+    lastmod = now.strftime("%Y-%m-%d")
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+
+    static_paths = ["/", "/asn/", "/campaign/", "/api/v1/taxii/"]
+    for p in static_paths:
+        lines.append(
+            f"  <url><loc>{_SITE_URL}{p}</loc><lastmod>{lastmod}</lastmod></url>"
+        )
+
+    for c in campaigns:
+        if c.get("status") in ("active", "dormant"):
+            slug = c["slug"]
+            lines.append(
+                f"  <url><loc>{_SITE_URL}/campaign/{slug}/</loc>"
+                f"<lastmod>{lastmod}</lastmod></url>"
+            )
+
+    for a in asns:
+        if (a.get("ioc_count") or 0) > 0:
+            asn = a["asn"]
+            lines.append(
+                f"  <url><loc>{_SITE_URL}/asn/{asn}/</loc>"
+                f"<lastmod>{lastmod}</lastmod></url>"
+            )
+
+    lines.append("</urlset>")
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -784,6 +831,13 @@ def run_ssg(
         _render_taxii(output, iocs, cves, campaigns, conn, now)
     except Exception as exc:
         log.error("SSG: failed to write TAXII files: %s", exc)
+        errors += 1
+
+    try:
+        _render_robots(output / "robots.txt")
+        _render_sitemap(output / "sitemap.xml", campaigns, asns, now)
+    except Exception as exc:
+        log.error("SSG: failed to write robots.txt/sitemap.xml: %s", exc)
         errors += 1
 
     conn.close()

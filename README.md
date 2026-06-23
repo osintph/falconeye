@@ -2,23 +2,27 @@
 
 Continuous threat intelligence and vulnerability watchdog for Philippine digital infrastructure.
 
-FalconEye monitors authoritative global threat feeds and vulnerability catalogs, filters them to surface entries with PH relevance (.ph TLDs, PH-allocated ASNs, local brand strings, and technology stacks heavily deployed in PH government and financial sectors), and publishes the filtered result as a public, static, zero-attack-surface dashboard.
+FalconEye monitors authoritative global threat feeds and vulnerability catalogs, filters them to surface entries with PH relevance (.ph TLDs, PH-allocated ASNs, local brand strings, and technology stacks heavily deployed in PH government and financial sectors), clusters matching IOCs into named campaigns, and publishes everything as a public, static, zero-attack-surface dashboard with machine-readable STIX 2.1 / TAXII-compatible feeds.
 
 Part of the [OSINT-PH](https://osintph.info) tool suite.
 
 ## Status
 
-**v0.1: in active development.** Public dashboard is not yet live. See the [project spec](SPEC.md) for the design and the [implementation notes](IMPLEMENTATION_NOTES.md) for operational details.
+**v0.2: operational threat intelligence ledger.** Public dashboard is not yet live. See the [project spec](SPEC.md) for the design and the [implementation notes](IMPLEMENTATION_NOTES.md) for operational details.
 
 ## What it does
 
 - Ingests four authoritative free threat intelligence and vulnerability sources every 15 minutes to 24 hours
 - Filters records against PH-specific criteria: ASN allocations from APNIC, .ph TLD, PH brand string watchlist, PH-relevant CPE inventory
-- Generates a static HTML dashboard, RSS feed, JSON feed, and corpus manifest
+- Clusters PH-matched IOCs into named campaigns by domain, ASN+tag, and /24 prefix
+- Enriches IPs via Shodan InternetDB (keyless, open ports, CPEs, CVEs, hostnames)
+- Generates a static HTML dashboard, per-campaign and per-ASN pages, RSS/JSON feeds, STIX 2.1 bundles, and a TAXII-compatible static API
+- Publishes a daily threat digest post to a Ghost blog (optional, non-blocking)
+- Regenerates `robots.txt` and `sitemap.xml` on every SSG run
 - Serves everything via nginx as static files (no dynamic application code in the public request path)
 - Maintains chain-of-custody provenance for every record (source feed, fetch timestamp, source URL, manifest version)
 
-## Data sources (v0.1)
+## Data sources (v0.2)
 
 | Source | What it provides |
 |---|---|
@@ -26,14 +30,15 @@ Part of the [OSINT-PH](https://osintph.info) tool suite.
 | [CISA KEV](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) | Known exploited vulnerabilities |
 | [NVD CVE 2.0](https://nvd.nist.gov/) | All CVE records |
 | [APNIC delegated stats](https://ftp.apnic.net/apnic/stats/apnic/) | PH ASN and IP prefix allocations |
+| [Shodan InternetDB](https://internetdb.shodan.io/) | Open ports, CPEs, CVEs, hostnames per IP (keyless) |
 
 All sources are free, require no credit card, and use stable JSON/CSV/text endpoints with versioned schemas.
 
 ## Roadmap
 
-- **v0.1 (in progress):** ingest + static dashboard + RSS + JSON
-- **v0.2 (planned):** FalconEye-Match analyst lookup tool with Bloom filter prefilter, 2-hex sharded indices, and a `falconeye-cli` for bulk and offline lookups. k-anonymous request model.
-- **v0.3 (planned):** Brotli precompression, TAXII 2.1 server endpoint, EPSS API integration, additional ingest sources.
+- **v0.1 (shipped):** ingest + static dashboard + RSS + JSON
+- **v0.2 (current):** campaign clustering, Shodan enrichment, per-campaign and per-ASN pages, STIX 2.1, TAXII-compatible static API, Ghost digest publisher, robots.txt/sitemap.xml
+- **v0.3 (planned):** Brotli precompression, FalconEye-Match analyst lookup with Bloom filter prefilter, EPSS API integration, additional ingest sources (Spamhaus DROP/EDROP, abuse.ch SSLBL, OSV.dev)
 
 See [SPEC.md](SPEC.md) for full design details.
 
@@ -44,6 +49,8 @@ Canonical deployment: Ubuntu 24.04 LTS, bare systemd + nginx, no Docker required
 You need two free API keys (no payment method required):
 - [abuse.ch](https://auth.abuse.ch/) for URLhaus
 - [nvd.nist.gov](https://nvd.nist.gov/developers/request-an-api-key) for NVD (technically optional, but rate limits are punishing without one)
+
+Ghost digest integration is optional: if `GHOST_API_URL`, `GHOST_ADMIN_KEY`, and `GHOST_AUTHOR_SLUG` are not set, the digest worker is a no-op and the rest of the pipeline is unaffected.
 
 ```bash
 # 1. Create system user and directory layout
@@ -56,7 +63,7 @@ sudo -u falconeye git clone https://github.com/osintph/falconeye.git /opt/falcon
 # 3. Create Python venv and install package
 sudo bash /opt/falconeye/src/deploy/install-venv.sh
 
-# 4. Populate secrets (fill in URLHAUS_AUTH_KEY and NVD_API_KEY)
+# 4. Populate secrets (fill in URLHAUS_AUTH_KEY, NVD_API_KEY, and optionally Ghost keys)
 sudo -u falconeye cp /opt/falconeye/src/config/secrets.env.example /opt/falconeye/config/secrets.env
 sudo -u falconeye vi /opt/falconeye/config/secrets.env
 
@@ -73,13 +80,13 @@ sudo bash /opt/falconeye/src/deploy/install-systemd.sh
 sudo bash /opt/falconeye/src/scripts/run.sh all
 ```
 
-For subsequent manual runs: `sudo bash /opt/falconeye/src/scripts/run.sh <worker>` where worker is `urlhaus`, `kev`, `nvd`, `apnic`, `sieve`, `ssg`, or `all`.
+For subsequent manual runs: `sudo bash /opt/falconeye/src/scripts/run.sh <worker>` where worker is `urlhaus`, `kev`, `nvd`, `apnic`, `sieve`, `cluster`, `shodan`, `ssg`, `digest`, or `all`.
 
 Full operational details are in [IMPLEMENTATION_NOTES.md](IMPLEMENTATION_NOTES.md).
 
 ## Defensive use only
 
-FalconEye is built to help PH defenders. It is not a target acquisition tool, it does not perform any active scanning, and it does not enumerate vulnerabilities in PH systems beyond what the upstream sources have already publicly disclosed. The intended audience is PH government CERTs, bank SOCs, ISP security teams, MSPs, and independent investigators working on PH incidents.
+FalconEye is built to help PH defenders. It is not a target acquisition tool, it does not perform any active scanning, and it does not enumerate vulnerabilities in PH systems beyond what the upstream sources have already publicly disclosed. Shodan InternetDB lookups are passive reads of Shodan's pre-existing scan data — FalconEye never sends network probes. The intended audience is PH government CERTs, bank SOCs, ISP security teams, MSPs, and independent investigators working on PH incidents.
 
 If you are a PH organization and want a specific brand string added to the watchlist, please open a GitHub issue or contact the maintainer.
 
@@ -89,7 +96,7 @@ If you are a PH organization and want a specific brand string added to the watch
 
 ## Acknowledgments
 
-FalconEye stands on the shoulders of free public threat intelligence projects. abuse.ch, CISA, NIST NVD, and APNIC all publish their data in machine-consumable formats specifically so tools like this can exist. Their work is the foundation; FalconEye is the regional filter.
+FalconEye stands on the shoulders of free public threat intelligence projects. abuse.ch, CISA, NIST NVD, APNIC, and Shodan all publish their data in machine-consumable formats specifically so tools like this can exist. Their work is the foundation; FalconEye is the regional filter.
 
 ## Maintainer
 

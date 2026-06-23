@@ -2,11 +2,11 @@
 
 Continuous threat intelligence and vulnerability watchdog for Philippine digital infrastructure. Part of the OSINT-PH suite. Public-good, zero-cost, zero-attack-surface, community self-hostable.
 
-This is the authoritative design document for FalconEye v0.1. All implementation decisions should refer back to this spec. Operational details (exact URLs, system configs, deployment steps) live in `IMPLEMENTATION_NOTES.md`.
+This is the authoritative design document for FalconEye v0.2. All implementation decisions should refer back to this spec. Operational details (exact URLs, system configs, deployment steps) live in `IMPLEMENTATION_NOTES.md`.
 
 ## 1. Mission
 
-FalconEye monitors authoritative global threat intelligence feeds and vulnerability catalogs, filters them to surface entries with PH relevance (.ph TLDs, PH-allocated ASNs, local brand strings, and technology stacks heavily deployed in PH government and financial sectors), and publishes the filtered result as a public, static, zero-attack-surface dashboard.
+FalconEye monitors authoritative global threat intelligence feeds and vulnerability catalogs, filters them to surface entries with PH relevance (.ph TLDs, PH-allocated ASNs, local brand strings, and technology stacks heavily deployed in PH government and financial sectors), clusters matching IOCs into named campaigns, and publishes the filtered result as a public, static, zero-attack-surface dashboard with machine-readable STIX 2.1 and a TAXII-compatible static API.
 
 The tool exists because no public, free, PH-scoped continuous threat surface monitor currently does this. Defenders at PH banks, government agencies, ISPs, and MSPs scroll global feeds manually or pay enterprise threat intel vendors. FalconEye is the public-good middle layer.
 
@@ -38,22 +38,39 @@ The tool exists because no public, free, PH-scoped continuous threat surface mon
                   |  CPE inventory YAML)             |
                   +----------------------------------+
                                    |
-                                   v
+                  +----------------+----------------+
+                  |                                 |
+                  v                                 v
+   +------------------------------+   +------------------------------+
+   | Campaign Clustering          |   | Shodan InternetDB Enrichment |
+   | (domain / ASN+tag / /24)     |   | (keyless, IP enrichment)     |
+   +------------------------------+   +------------------------------+
+                  |                                 |
+                  +-----------------+---------------+
+                                    |
+                                    v
                   +----------------------------------+
                   |     SQLite (WAL mode)            |
                   |     with provenance per record   |
                   +----------------------------------+
                                    |
-                                   v
-                  +----------------------------------+
-                  |     Jinja2 Static Site Generator |
-                  +----------------------------------+
-                                   |
-                                   v
+                  +----------------+----------------+
+                  |                                 |
+                  v                                 v
+   +------------------------------+   +------------------------------+
+   | Jinja2 Static Site Generator |   | Ghost Digest Publisher       |
+   | (HTML, feeds, STIX, TAXII,   |   | (daily Ghost Admin API post) |
+   |  robots.txt, sitemap.xml)    |   |                              |
+   +------------------------------+   +------------------------------+
+                  |
+                  v
                   +----------------------------------+
                   |     Static Output Directory      |
-                  |  index.html, feed.xml, feed.json,|
-                  |  manifest.json                   |
+                  |  index.html, /campaign/, /asn/,  |
+                  |  feed.xml, feed.json,            |
+                  |  feed-iocs.xml, feed-iocs.json,  |
+                  |  /api/v1/taxii/, manifest.json,  |
+                  |  robots.txt, sitemap.xml         |
                   +----------------------------------+
                                    |
                                    v
@@ -68,57 +85,39 @@ The tool exists because no public, free, PH-scoped continuous threat surface mon
 
 ### 3.1 Tech stack
 
-- **Language:** Python 3.12 (Ubuntu 24.04 default).
-- **Ingest framework:** standard library where possible (`urllib`, `csv`, `json`, `sqlite3`). `requests` only if a source needs robust retry semantics or non-trivial headers (abuse.ch Auth-Key handling).
-- **Scheduler:** systemd timer firing every 15 minutes. Not cron, not APScheduler. Native systemd units give us journald logs and unit-level observability without adding a dependency.
-- **Database:** SQLite in WAL mode. One file at `db/falconeye.db`.
+- **Language:** Python 3.9+ (tested on 3.9.6 locally, Ubuntu 24.04 ships 3.12).
+- **Ingest framework:** standard library where possible (`urllib`, `csv`, `json`, `sqlite3`). `requests` for sources requiring auth headers or robust retry semantics.
+- **Scheduler:** systemd timers. Not cron, not APScheduler. Native systemd units give us journald logs and unit-level observability without adding a dependency.
+- **Database:** SQLite in WAL mode. One file at `db/falconeye.db`. No ORM — raw `sqlite3` module with explicit DDL.
 - **Templating:** Jinja2.
 - **Web server:** nginx-full (Ubuntu package).
-- **No queue, no Redis, no Postgres, no Docker required for production.** Docker Compose is published for community self-hosting convenience but the canonical deployment is bare systemd plus nginx.
+- **Ghost integration:** PyJWT + requests. HMAC-SHA256 JWT auth using the Ghost Admin API `kid:secret_hex` key format.
+- **STIX output:** hand-written JSON, UUIDv5 stable IDs from a fixed namespace (`FALCONEYE_NS`). No STIX library dependency.
+- **No queue, no Redis, no Postgres, no Docker required for production.**
 
-## 4. Data sources (v0.1)
-
-Four sources land in v0.1. All are verified free, with stable schemas, and operator-maintained (not third-party scrapes).
+## 4. Data sources (v0.2)
 
 ### 4.1 abuse.ch URLhaus
 
-Malicious URL feed maintained by abuse.ch (now operated jointly with Spamhaus). API at `urlhaus-api.abuse.ch/v1/` requires a free Auth-Key header (obtained at https://auth.abuse.ch via social login). Bulk CSV/JSON dumps available at `urlhaus.abuse.ch/downloads/` may or may not require auth (Claude Code verifies at implementation time and uses whichever path is cleanest).
-
-**Ingest cadence:** every 15 minutes.
-
-**Schema fields consumed:** URL, host, threat type, tags, date added, payload SHA256 (when available), reference link.
-
-**License:** community use free, commercial subscriptions exist for high-volume. FalconEye is non-commercial public-good use and stays in the free tier.
+Malicious URL feed. API at `urlhaus-api.abuse.ch/v1/`. Free Auth-Key required. **Cadence:** 15 minutes.
 
 ### 4.2 CISA Known Exploited Vulnerabilities (KEV)
 
-US CISA's authoritative list of CVEs being actively exploited in the wild. JSON feed at `cisa.gov/known-exploited-vulnerabilities-catalog` (canonical) or the mirror at `github.com/cisagov/kev-data`.
-
-**Ingest cadence:** every 6 hours. CISA typically updates once per US weekday.
-
-**Schema fields consumed:** CVE ID, vendor, product, vulnerability name, date added, due date, required action, notes, ransomware use flag, CWE IDs.
-
-**License:** US government public domain (CC0 on the GitHub mirror). Fully redistributable.
+Active exploitation CVE list. JSON at `cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json`. **Cadence:** 6 hours.
 
 ### 4.3 NVD CVE 2.0 API
 
-National Vulnerability Database REST API at `services.nvd.nist.gov/rest/json/cves/2.0`. Public, no card required. A free API key is recommended for higher rate limits and can be requested at `nvd.nist.gov/developers/request-an-api-key`.
-
-**Ingest cadence:** every 30 minutes for incremental pulls using `lastModStartDate` and `lastModEndDate` parameters. Full backfill on first run.
-
-**Schema fields consumed:** CVE ID, published date, last modified date, descriptions, CVSS v3.1 score, CVSS severity, affected CPEs, references.
-
-**License:** US government public domain.
+Full CVE database. `services.nvd.nist.gov/rest/json/cves/2.0`. Incremental pulls via `lastModStartDate`/`lastModEndDate`. **Cadence:** 30 minutes.
 
 ### 4.4 APNIC delegated statistics
 
-APNIC publishes daily `delegated-apnic-latest` and `delegated-apnic-extended-latest` files listing all IP and ASN allocations to APNIC members, including PH-allocated ASNs and IPv4/IPv6 prefixes. Hosted at `ftp.apnic.net/apnic/stats/apnic/`.
+PH ASN and IP prefix allocations. `ftp.apnic.net/apnic/stats/apnic/delegated-apnic-latest`. **Cadence:** daily.
 
-**Ingest cadence:** daily.
+### 4.5 Shodan InternetDB (v0.2)
 
-**Schema fields consumed:** registry, country code, type (asn/ipv4/ipv6), value, count, status. We filter on country code `PH`.
+Passive IP enrichment. `https://internetdb.shodan.io/<ip>`. Keyless. Returns ports, CPEs, hostnames, tags, vulns for a given IP. FalconEye does not perform any active scanning — InternetDB returns Shodan's pre-existing scan data only.
 
-**License:** APNIC stats files are published under APNIC's terms allowing free use for legitimate purposes. Verify current terms before publishing.
+**Rate limiting:** exponential backoff on 429 (5s → 10s → 20s → 40s → 60s → bail). Hard daily cap of 10,000 requests per UTC day enforced in the worker. Stale records (< 6 hours old) are skipped. Every 429 is logged at WARNING.
 
 ## 5. PH Sieve logic
 
@@ -126,98 +125,153 @@ Each incoming record is evaluated against four match criteria. A record passes t
 
 ### 5.1 ASN match (radix tree)
 
-The APNIC ingest worker produces an in-memory radix tree of current PH IP prefixes and ASN numbers. Any IOC with an IP address is matched against this trie. Match returns the PH ASN integer that contains the IP, or none.
+The APNIC ingest worker produces an in-memory radix tree of current PH IP prefixes and ASN numbers. Any IOC with an IP address is matched against this trie.
 
 ### 5.2 TLD match
 
-Any IOC with a domain or URL is parsed via the Public Suffix List. If the registrable domain ends in `.ph` (including `.com.ph`, `.gov.ph`, `.org.ph`, `.edu.ph`, etc.), it matches.
+Any IOC with a domain or URL is parsed via the Public Suffix List. If the registrable domain ends in `.ph` (including `.com.ph`, `.gov.ph`, etc.), it matches.
 
 ### 5.3 Brand string match
 
-A curated `config/brand_strings.yaml` file lists PH-relevant brand strings (banks, telcos, government agencies, major enterprises). Sources include the BSP-published bank list, PSE-listed companies, and major PH government agency names. Brand match is case-insensitive substring with surrounding-token disambiguation to avoid false positives on short acronyms.
+`config/brand_strings.yaml` lists PH-relevant brand strings. Case-insensitive substring match with surrounding-token disambiguation.
 
 ### 5.4 CPE inventory match
 
-A curated `config/cpe_inventory.yaml` file lists CPE 2.3 vendor/product strings representing technology stacks heavily deployed in PH government and financial sectors. Initial inventory drawn from operator knowledge of PH consulting engagements. Incoming CVE records are matched against this inventory.
+`config/cpe_inventory.yaml` lists CPE 2.3 vendor/product strings for technology stacks heavily deployed in PH government and financial sectors. Incoming CVE records are matched against this inventory.
 
-## 6. SQLite schema (v0.1)
+## 6. Campaign clustering (v0.2)
 
-All tables include provenance fields: `source` (which feed), `source_id` (upstream record ID), `fetched_at` (UTC timestamp of ingest), `source_url` (where the record came from), `manifest_version` (which ingest cycle produced it).
+`falconeye/cluster.py` groups PH-matched IOCs into named campaigns using three bucket strategies:
 
-Core tables:
+### 6.1 Domain clustering (all-time)
 
-- `iocs` - one row per indicator of compromise (URL, IP, domain, hash). Columns include ioc_type, ioc_value, threat_type, tags, confidence, first_seen, last_seen, plus provenance.
-- `cves` - one row per CVE. Columns include cve_id, published_date, last_modified, description, cvss_v3_score, cvss_v3_severity, plus provenance.
-- `cve_cpe_matches` - junction table linking CVEs to affected CPEs.
-- `ph_asns` - current PH ASN allocations from APNIC.
-- `ph_prefixes` - current PH IP prefix allocations from APNIC.
-- `sieve_matches` - junction table linking iocs/cves to the matching criterion (asn, tld, brand, cpe) and the matched value.
+All IOCs sharing the same effective grouping domain are merged into one campaign. For hosting-platform PSL domains (`workers.dev`, `pages.dev`, `github.io`, `netlify.app`, `vercel.app`, `glitch.me`), the grouping key is `{account}.{domain}.{suffix}` to avoid merging unrelated actors. For all other domains, the key is `{domain}.{suffix}`.
 
-WAL mode is enabled at database creation. Indexes on ioc_value, cve_id, fetched_at.
+### 6.2 ASN + tag clustering (14-day rolling window)
 
-## 7. Output surfaces (v0.1)
+IOCs sharing both ASN and URLhaus tag within the last 14 days form a campaign. Captures botnet families (e.g. Mirai nodes across a single ISP) that don't share a domain.
+
+### 6.3 /24 prefix clustering (14-day rolling window)
+
+IOCs sharing a /24 IPv4 prefix within the last 14 days form a campaign. Captures dense IP-range activity from bulletproof hosting.
+
+### 6.4 Campaign lifecycle
+
+Minimum cluster size is 3 IOCs. Slugs are stable (`dom-<key>`, `ast-<key>`, `pfx-<key>` prefix + normalized key, max 80 chars). Idempotent upsert by slug: campaigns that disappear from clustering get `status='expired'` and `expired_at` set. Status values: `active` (last IOC ≤ 7 days), `dormant` (≤ 30 days), `expired` (> 30 days or no longer clustering).
+
+### 6.5 Action templates
+
+`config/action_templates.yaml` maps URLhaus tags (e.g. `Mirai`, `CobaltStrike`, `phishing`) to defender guidance blocks rendered on per-campaign pages.
+
+## 7. SQLite schema (v0.2)
+
+All tables include provenance fields. WAL mode enabled at database creation.
+
+Core tables (v0.1):
+- `iocs` — one row per indicator (URL, IP, domain, hash)
+- `cves` — one row per CVE
+- `cve_cpe_matches` — CVE-to-CPE junction
+- `ph_asns` — current PH ASN allocations from APNIC
+- `ph_prefixes` — current PH IP prefix allocations from APNIC
+- `sieve_matches` — IOC/CVE-to-match-criterion junction
+
+New tables (v0.2):
+- `ip_enrichments` — one row per IP enriched via Shodan InternetDB. Columns: `ip_address` (PK), `ports`, `cpes`, `hostnames`, `tags`, `vulns` (all JSON), `fetched_at`, `source_url`. Re-enriched if older than 6 hours.
+- `campaigns` — one row per cluster. Columns: `slug` (UNIQUE), `name`, `summary`, `campaign_type` (domain/asn_tag/prefix24), `cluster_key`, `status` (active/dormant/expired), `ioc_count`, `first_seen`, `last_seen`, `expired_at`, `generated_at`.
+- `campaign_iocs` — campaign-to-IOC junction with UNIQUE constraint on (campaign_id, ioc_id).
+
+## 8. Output surfaces (v0.2)
 
 Generated by the SSG into `/opt/falconeye/public/`:
 
-- `index.html` - the dashboard. Recent IOCs and CVEs with PH relevance, sortable client-side (no JavaScript framework, vanilla DOM).
-- `feed.xml` - RSS 2.0 of new PH-matched items in the last 24 hours.
-- `feed.json` - JSON Feed 1.1 equivalent of the RSS.
-- `manifest.json` - corpus-level metadata: per-source last-fetched timestamp, row counts, schema version, license attributions. Consumed by future FalconEye-Match v0.2.
+**Root files:**
+- `index.html` — dashboard with stats, active campaigns grid, PH ASN table, recent CVEs
+- `feed.xml` / `feed.json` — primary feeds: campaign-level items (RSS 2.0 / JSON Feed 1.1)
+- `feed-iocs.xml` / `feed-iocs.json` — secondary feeds: raw IOC+CVE stream
+- `manifest.json` — corpus-level metadata, per-source row counts, schema version
+- `healthz.json` — per-source last-success timestamps for monitoring
+- `robots.txt` — allows all user-agents, references sitemap
+- `sitemap.xml` — enumerates `/`, `/asn/`, `/campaign/`, `/api/v1/taxii/`, all active/dormant campaign slugs, all ASNs with IOC count > 0
 
-All four files regenerate after every ingest cycle. nginx serves them with `gzip_static`.
+**Per-ASN pages** under `/asn/`:
+- `asn/index.html` — ASN roster table with IOC counts and last-seen dates
+- `asn/<ASN>/index.html` — per-ASN page: IOC table, weekly sparkline (inline SVG + sr-only accessibility span), open ports/CPEs from Shodan
 
-## 8. Roadmap
+**Per-campaign pages** under `/campaign/`:
+- `campaign/index.html` — campaigns grouped by active / dormant / expired
+- `campaign/<slug>/index.html` — per-campaign page: IOC table, defender guidance from action templates
 
-### v0.1 (this release)
+**STIX 2.1 / TAXII-compatible static API** under `/api/v1/taxii/`:
+- `api/v1/taxii/index.json` — TAXII discovery object
+- `api/v1/taxii/collections/index.json` — collections manifest
+- `api/v1/taxii/collections/<id>/objects.json` — STIX Bundle (indicators, vulnerabilities, campaign objects, relationships)
+- Served with `Content-Type: application/taxii+json` and CORS `Access-Control-Allow-Origin: *`
 
-Dashboard + RSS + JSON + manifest. Four ingest sources. Public-readable, no auth, no JavaScript app. Goal: ship a working continuous-monitoring surface in two weekends.
+All files regenerate on every SSG run.
 
-### v0.2 (FalconEye-Match)
+### 8.1 STIX 2.1 ID stability
 
-Analyst lookup function. Inputs: domain, subdomain, IP, ASN, CPE string, free-form technology name. Output: matching IOCs and CVEs from the FalconEye corpus.
+All STIX IDs are UUIDv5 derived from a fixed namespace `FALCONEYE_NS = uuid.UUID("c40e7b5b-eac2-471d-a05f-2bb8e2be4b39")`. Same IOC value always produces the same STIX indicator ID across runs.
 
-Architecture: pre-published sharded JSON indices (2-hex domain shards, ASN-keyed bulk file, CPE vendor-letter shards), client-side matching in a vanilla JS SPA at `/lookup/`, plus a CLI (`falconeye-cli`) that consumes the same indices. Bloom filter prefilter provides instant negative results with zero network round trips for the common case. k-anonymity via 2-hex hash-prefix lookup.
+### 8.2 Sparkline accessibility
 
-### v0.3 (operational maturity)
+ASN pages include an inline SVG polyline sparkline for 12-week IOC activity. Immediately preceding the SVG, a `<span class="sr-only">` lists weekly counts in text form for screen readers. The `.sr-only` CSS class (clip + 1px box) is defined inline in the template.
 
-Brotli precompression (requires `nginx-extras` package change), TAXII 2.1 server endpoint for SOC ingestion, EPSS API integration, OSV.dev for open-source vulnerabilities, GitHub Security Advisories, additional ingest sources (Spamhaus DROP/EDROP, abuse.ch SSLBL, DShield).
+## 9. Ghost digest publisher (v0.2)
 
-## 9. Explicit non-goals for v0.1
+`falconeye/digest.py` builds and posts a daily "FalconEye PH Daily Threat Brief" to a Ghost blog via the Ghost Admin API.
 
-The following are deliberately excluded from v0.1 to keep the scope shippable in two weekends:
+- Authenticated with HMAC-SHA256 JWT (`kid:secret_hex` key format, `aud: "/admin/"`, 5-minute expiry)
+- Post content uses Ghost HTML cards (not Lexical format) for maximum compatibility and zero client-side conversion overhead
+- Slug: `falconeye-digest-YYYY-MM-DD` for yesterday's data. Upserts: creates if not found, updates if found.
+- Mode: `draft` by default; set `FALCONEYE_DIGEST_MODE=published` to auto-publish
+- Non-blocking: all Ghost API errors are logged and the function always returns 0. Missing config (no `GHOST_API_URL` etc.) silently skips.
+- Runs daily at 22:00 UTC (06:00 PHT) via `falconeye-digest.timer`.
 
-- FalconEye-Match analyst lookup (v0.2)
-- CLI tool (v0.2)
-- Bloom filter generation (v0.2)
-- TAXII or STIX export (v0.3)
-- Per-sector RSS feeds (v0.2 if needed)
-- Brotli compression (v0.3)
+## 10. Roadmap
+
+### v0.1 (shipped)
+
+Dashboard + RSS + JSON + manifest. Four ingest sources. Public-readable, no auth, no JavaScript app.
+
+### v0.2 (this release)
+
+Campaign clustering (domain, ASN+tag, /24 prefix), Shodan InternetDB enrichment, per-campaign and per-ASN static pages, STIX 2.1 output, TAXII-compatible static API, Ghost daily digest publisher, robots.txt/sitemap.xml, dual feeds (campaign-primary + IOC-secondary).
+
+### v0.3 (planned)
+
+Brotli precompression, FalconEye-Match analyst lookup (Bloom filter prefilter, 2-hex sharded indices, `falconeye-cli`), EPSS API integration, OSV.dev for open-source vulnerabilities, GitHub Security Advisories, additional ingest sources (Spamhaus DROP/EDROP, abuse.ch SSLBL, DShield).
+
+## 11. Explicit non-goals for v0.2
+
+- Active scanning of any kind (FalconEye reads existing data only — Shodan InternetDB is passive)
+- Real-time TAXII server (static files serve the same content without a database query path)
 - User accounts of any kind (never)
-- Discord/Telegram/Slack bot integrations (never in this repo, separate repo if ever)
+- Discord/Telegram/Slack bot integrations (separate repo if ever)
 - Commercial threat intel source ingestion (never)
-- Active scanning of PH infrastructure (separate tool, scope creep risk)
+- FalconEye-Match CLI lookup tool (v0.3)
 
-## 10. Acceptance criteria for v0.1
+## 12. Acceptance criteria for v0.2
 
-FalconEye v0.1 ships when all of the following are true:
+FalconEye v0.2 ships when all of the following are true:
 
-- Four ingest workers (URLhaus, KEV, NVD, APNIC) run successfully on the production VPS and land records into SQLite without errors for 48 consecutive hours.
-- Sieve correctly filters at least 100 IOCs and at least 5 CVEs as PH-relevant during that 48-hour window.
-- Dashboard, RSS, and JSON outputs regenerate after every cycle without errors.
-- `/healthz` endpoint returns 200 with per-source last-success timestamps.
-- nginx serves the static directory with gzip_static and the custom telemetry log format.
-- Cloudflare DNS points `falconeye.osintph.info` at the VPS (DNS-only, not proxied).
-- A blog post on blog.osintph.info announces the tool with a link to the public dashboard and the GitHub repo.
+- All v0.1 criteria remain satisfied.
+- `scripts/run.sh all` runs `urlhaus → kev → nvd → apnic → sieve → cluster → shodan → ssg` without errors.
+- Campaign clustering produces at least one named campaign from the live corpus.
+- Shodan enrichment runs within daily cap (< 10,000 requests) and respects the 6-hour staleness window.
+- Per-campaign and per-ASN HTML pages render with correct IOC tables.
+- ASN pages include SVG sparkline and sr-only weekly count span.
+- STIX bundle at `/api/v1/taxii/collections/ph-iocs/objects.json` validates as a STIX 2.1 Bundle with at least one Indicator.
+- `robots.txt` allows all crawlers and references `sitemap.xml`.
+- `sitemap.xml` enumerates root paths and all active campaign/ASN URLs.
+- Ghost digest integration posts in draft mode when Ghost credentials are provided.
+- Primary feeds (`feed.xml`, `feed.json`) carry campaign-level items; secondary feeds (`feed-iocs.xml`, `feed-iocs.json`) carry raw IOC stream.
+- Test suite: all 265+ tests pass.
 
-## 11. License and acknowledgments
+## 13. License and acknowledgments
 
 FalconEye is licensed under AGPL v3.
 
-Data sources are credited per record in the dashboard UI and in `manifest.json`. Specifically:
+Data sources are credited per record in the dashboard UI and in `manifest.json`. Shodan InternetDB is credited in each enrichment record's `source_url` field.
 
-- abuse.ch URLhaus: cited in every URL-derived record
-- CISA KEV: cited in every KEV-derived record
-- NVD: cited in every NVD-derived CVE record
-- APNIC: cited in the regional context section
-
-The OSINT-PH suite is maintained by Sigmund Brandstaetter (sigmund@osintph.net). FalconEye is the second public tool in the suite (following Bantay-Eye).
+The OSINT-PH suite is maintained by Sigmund Brandstaetter (sigmund@osintph.info). FalconEye is the second public tool in the suite (following Bantay-Eye).

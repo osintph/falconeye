@@ -18,6 +18,8 @@ from falconeye.ssg import (
     _query_ph_cves,
     _query_ph_iocs,
     _query_stats,
+    _render_robots,
+    _render_sitemap,
     _sparkline_svg,
     run_ssg,
 )
@@ -454,3 +456,77 @@ def test_match_action_templates_deduplicates():
     templates = [{"match_tag": "Mirai", "title": "Block IoT", "guidance": "Do this."}]
     result = _match_action_templates(iocs, templates)
     assert len(result) == 1
+
+
+# ---------------------------------------------------------------------------
+# robots.txt + sitemap.xml
+# ---------------------------------------------------------------------------
+
+def test_render_robots_creates_file(tmp_path):
+    p = tmp_path / "robots.txt"
+    _render_robots(p)
+    assert p.exists()
+
+
+def test_render_robots_allows_all(tmp_path):
+    p = tmp_path / "robots.txt"
+    _render_robots(p)
+    content = p.read_text()
+    assert "User-agent: *" in content
+    assert "Allow: /" in content
+
+
+def test_render_robots_references_sitemap(tmp_path):
+    p = tmp_path / "robots.txt"
+    _render_robots(p)
+    assert "sitemap.xml" in p.read_text()
+
+
+def test_render_sitemap_creates_file(tmp_path):
+    p = tmp_path / "sitemap.xml"
+    _render_sitemap(p, [], [], _now())
+    assert p.exists()
+
+
+def test_render_sitemap_contains_static_paths(tmp_path):
+    p = tmp_path / "sitemap.xml"
+    _render_sitemap(p, [], [], _now())
+    content = p.read_text()
+    for path in ["/", "/asn/", "/campaign/", "/api/v1/taxii/"]:
+        assert path in content
+
+
+def test_render_sitemap_includes_active_campaign(tmp_path):
+    campaigns = [{"slug": "dom-evil-ph", "status": "active"}]
+    p = tmp_path / "sitemap.xml"
+    _render_sitemap(p, campaigns, [], _now())
+    assert "/campaign/dom-evil-ph/" in p.read_text()
+
+
+def test_render_sitemap_excludes_expired_campaign(tmp_path):
+    campaigns = [{"slug": "dom-old", "status": "expired"}]
+    p = tmp_path / "sitemap.xml"
+    _render_sitemap(p, campaigns, [], _now())
+    assert "dom-old" not in p.read_text()
+
+
+def test_render_sitemap_includes_active_asn(tmp_path):
+    asns = [{"asn": "AS9299", "ioc_count": 5}]
+    p = tmp_path / "sitemap.xml"
+    _render_sitemap(p, [], asns, _now())
+    assert "/asn/AS9299/" in p.read_text()
+
+
+def test_render_sitemap_excludes_zero_count_asn(tmp_path):
+    asns = [{"asn": "AS9299", "ioc_count": 0}]
+    p = tmp_path / "sitemap.xml"
+    _render_sitemap(p, [], asns, _now())
+    assert "AS9299" not in p.read_text()
+
+
+def test_ssg_creates_robots_txt(ssg_output):
+    assert (ssg_output / "robots.txt").exists()
+
+
+def test_ssg_creates_sitemap_xml(ssg_output):
+    assert (ssg_output / "sitemap.xml").exists()
