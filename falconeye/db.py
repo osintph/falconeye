@@ -160,4 +160,9 @@ def init_db(db_path: str | Path) -> None:
         conn.commit()
     except Exception:
         pass  # column already exists in this database
+    try:
+        conn.execute("ALTER TABLE ph_asns ADD COLUMN abuse_contact TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists in this database
     conn.close()
