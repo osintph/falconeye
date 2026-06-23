@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from falconeye.cluster import (
+    _select_primary_tag,
     effective_grouping_domain,
     make_slug,
     run_clustering,
@@ -183,6 +184,13 @@ def config_with_asn(tmp_path):
         "operators:\n  17639:\n    name: Converge ICT Solutions\n    short: Converge\n    cpe_prefixes: []\n"
     )
     (cfg / "action_templates.yaml").write_text("templates: []\n")
+    (cfg / "cluster_tag_priority.yaml").write_text(
+        "priority_levels:\n"
+        "  - level: family\n"
+        "    tags: [mirai, mozi, gafgyt]\n"
+        "  - level: architecture\n"
+        "    tags: [arm, elf, mips]\n"
+    )
     return cfg
 
 
@@ -287,3 +295,44 @@ def test_empty_db_no_error(empty_db, empty_config):
     written, errors = run_clustering(empty_db, empty_config)
     assert written == 0
     assert errors == 0
+
+
+# ---------------------------------------------------------------------------
+# _select_primary_tag unit tests
+# ---------------------------------------------------------------------------
+
+_PRIORITY = [
+    {"level": "family",       "tags": ["mirai", "mozi", "gafgyt"]},
+    {"level": "functional",   "tags": ["c2", "dropper"]},
+    {"level": "architecture", "tags": ["arm", "elf", "mips", "32-bit"]},
+]
+
+
+def test_select_primary_tag_family_beats_architecture():
+    """Family level wins over architecture even when architecture tag appears first."""
+    assert _select_primary_tag(["arm", "elf", "Mirai"], _PRIORITY) == "Mirai"
+
+
+def test_select_primary_tag_alphabetical_within_level():
+    """When two tags from the same level match, alphabetically-first wins."""
+    # 'mirai' < 'mozi' — so Mirai is selected regardless of list order
+    assert _select_primary_tag(["Mozi", "Mirai"], _PRIORITY) == "Mirai"
+
+
+def test_select_primary_tag_no_recognized_tags_returns_none():
+    assert _select_primary_tag(["unknown_malware", "some_other_tag"], _PRIORITY) is None
+
+
+def test_select_primary_tag_empty_returns_none():
+    assert _select_primary_tag([], _PRIORITY) is None
+
+
+def test_asn_tag_cluster_single_tag_per_ioc(asn_tag_cluster_db, config_with_asn):
+    """Multi-tagged IOC (Mirai + elf) produces exactly one asn_tag campaign."""
+    run_clustering(asn_tag_cluster_db, config_with_asn)
+    conn = get_connection(asn_tag_cluster_db)
+    count = conn.execute(
+        "SELECT COUNT(*) FROM campaigns WHERE campaign_type='asn_tag'"
+    ).fetchone()[0]
+    conn.close()
+    assert count == 1
