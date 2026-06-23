@@ -2,31 +2,59 @@
 # Used by the campaign card renderer to surface actionable recommendations.
 # match_tag: tag string from iocs.tags (case-insensitive prefix match)
 # match_threat_type: optional iocs.threat_type filter (null = any)
+# ports: list of port/protocol strings for firewall rule context (optional)
+# rule_ref: external reference URL for context or detection rule (optional)
 
 templates:
   - match_tag: "Mirai"
     match_threat_type: null
     title: "Block default-credential IoT scanning"
+    ports:
+      - "TCP/23 (Telnet)"
+      - "TCP/22 (SSH)"
+      - "TCP/7547 (TR-069)"
+    rule_ref: "https://github.com/jgamblin/Mirai-Source-Code"
     guidance: |
-      Block inbound and outbound telnet (TCP/23) and SSH (TCP/22) connections
+      Block inbound and outbound Telnet (TCP/23) and SSH (TCP/22) connections
       to and from these IPs at your perimeter. Mirai variants scan for IoT
       devices with factory-default credentials. Verify no routers, IP cameras,
       or DVRs on your network are reachable from the internet with default
       credentials. Check DHCP logs for unmanaged devices in these IP ranges.
-      Reference: https://github.com/jgamblin/Mirai-Source-Code
 
   - match_tag: "Mozi"
     match_threat_type: null
     title: "Block Mozi P2P botnet nodes"
+    ports:
+      - "UDP/6881 (DHT)"
+      - "UDP/6882 (DHT)"
+      - "TCP/80"
+      - "TCP/8080"
+    rule_ref: "https://www.mandiant.com/resources/blog/mozi-botnet"
     guidance: |
       Drop traffic to/from these IPs at your border. Mozi is a P2P IoT botnet
       that exploits default credentials and unpatched firmware. Audit all
       internet-facing IoT assets for firmware currency. Disable UPnP where not
       required. Log and alert on unusual outbound DHT (UDP/6881-6882) traffic.
 
+  - match_tag: "gafgyt"
+    match_threat_type: null
+    title: "Block Gafgyt/BASHLITE scanning activity"
+    ports:
+      - "TCP/23 (Telnet)"
+      - "TCP/22 (SSH)"
+      - "UDP/any (DDoS amplification)"
+    rule_ref: "https://attack.mitre.org/software/S0928/"
+    guidance: |
+      Block Telnet and SSH from these IPs at the network perimeter. Gafgyt
+      conducts dictionary attacks against IoT devices and may launch UDP
+      flood DDoS attacks once embedded. Search for new outbound UDP flows
+      from any internal host to these IPs.
+
   - match_tag: "phishing"
     match_threat_type: "phishing"
     title: "Block phishing infrastructure"
+    ports: []
+    rule_ref: "https://www.antiphishing.org/resources/apwg-reports/"
     guidance: |
       Add these URLs to your web proxy block list and email gateway URL
       scanner. Alert your fraud or SOC team. Search proxy logs for user
@@ -37,6 +65,11 @@ templates:
   - match_tag: "CobaltStrike"
     match_threat_type: null
     title: "Hunt for CobaltStrike beacon traffic"
+    ports:
+      - "TCP/80 (HTTP beacon)"
+      - "TCP/443 (HTTPS beacon)"
+      - "TCP/8080"
+    rule_ref: "https://github.com/MichaelKoczwara/Awesome-CobaltStrike-Defence"
     guidance: |
       Block these C2 IPs at egress. Search endpoint and proxy logs for
       outbound connections to these IPs on any port, particularly
@@ -47,6 +80,11 @@ templates:
   - match_tag: "AsyncRAT"
     match_threat_type: null
     title: "Hunt for AsyncRAT connections"
+    ports:
+      - "TCP/6606"
+      - "TCP/7707"
+      - "TCP/8808"
+    rule_ref: "https://attack.mitre.org/software/S0622/"
     guidance: |
       Block these IPs at egress. AsyncRAT commonly uses TCP/6606, TCP/7707,
       TCP/8808. Search endpoint logs for processes making outbound connections
@@ -56,9 +94,84 @@ templates:
   - match_tag: "AgentTesla"
     match_threat_type: null
     title: "Check for credential-stealing exfiltration"
+    ports:
+      - "TCP/25 (SMTP)"
+      - "TCP/587 (Submission)"
+      - "TCP/21 (FTP)"
+    rule_ref: "https://attack.mitre.org/software/S0331/"
     guidance: |
       Block these IPs at egress and in your email gateway. AgentTesla is an
       infostealer that exfiltrates saved browser credentials, email client
       passwords, and clipboard content. Search SMTP and FTP logs for outbound
       connections to these IPs. Prompt password resets for any users whose
       endpoints show suspicious outbound traffic in this window.
+
+  - match_tag: "c2"
+    match_threat_type: null
+    title: "Block generic C2 infrastructure"
+    ports:
+      - "TCP/80"
+      - "TCP/443"
+      - "TCP/8080"
+      - "TCP/4444"
+    rule_ref: null
+    guidance: |
+      Block outbound connections to these IPs at your network perimeter.
+      Search endpoint and proxy logs for any connections to these IPs.
+      Review DNS query logs for lookups that resolved to these IPs.
+
+  - match_tag: "dropper"
+    match_threat_type: null
+    title: "Block malware dropper hosting"
+    ports:
+      - "TCP/80"
+      - "TCP/443"
+    rule_ref: null
+    guidance: |
+      Add these URLs/IPs to your web proxy block list to prevent initial
+      payload download. Search endpoint download history for files retrieved
+      from these hosts. Check endpoint detection logs for process execution
+      following any download from these sources.
+
+  - match_tag: "webshell"
+    match_threat_type: null
+    title: "Investigate web shell activity"
+    ports:
+      - "TCP/80"
+      - "TCP/443"
+    rule_ref: "https://www.cisa.gov/news-events/cybersecurity-advisories/aa21-131a"
+    guidance: |
+      Block these IPs at your WAF and network perimeter. Web shells are
+      signs of server compromise. If any of these IPs appear in your web
+      server access logs, treat the host as compromised and initiate
+      forensic review immediately. Capture access logs before rotation.
+
+  - match_tag: "ransomware"
+    match_threat_type: null
+    title: "Isolate and hunt for ransomware precursors"
+    ports:
+      - "TCP/445 (SMB)"
+      - "TCP/3389 (RDP)"
+      - "TCP/80"
+      - "TCP/443"
+    rule_ref: "https://www.cisa.gov/stopransomware"
+    guidance: |
+      Block these IPs at all network egress points immediately. Ransomware
+      C2 contact before encryption is a critical detection opportunity.
+      Search EDR and network logs for any internal host communicating with
+      these IPs. Verify offline backup integrity. Disable SMB (TCP/445)
+      and RDP (TCP/3389) externally if not already restricted.
+
+  - match_tag: "stealer"
+    match_threat_type: null
+    title: "Block infostealer exfiltration endpoints"
+    ports:
+      - "TCP/443"
+      - "TCP/80"
+    rule_ref: null
+    guidance: |
+      Block these IPs at egress. Infostealers exfiltrate browser passwords,
+      session cookies, and cryptocurrency wallets. If any endpoint has
+      contacted these IPs, assume credentials are compromised — rotate all
+      browser-saved passwords, invalidate active sessions, and check for
+      new OAuth grants on email and cloud accounts.

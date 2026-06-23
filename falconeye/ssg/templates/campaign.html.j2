@@ -35,9 +35,32 @@
 {% for g in guidance %}
 <div class="guidance-block">
   <div class="guidance-title">{{ g.title }}</div>
-  {{ g.guidance }}
+  {% if g.ports %}
+  <p class="guidance-ports"><strong>Relevant ports:</strong>
+    {% for p in g.ports %}<code>{{ p }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+  </p>
+  {% endif %}
+  <p>{{ g.guidance }}</p>
+  {% if g.rule_ref %}
+  <p class="guidance-ref"><a href="{{ g.rule_ref }}" rel="noopener">Reference / detection rules ↗</a></p>
+  {% endif %}
 </div>
 {% endfor %}
+{% endif %}
+
+{% if abuse_contact %}
+<div class="guidance-block">
+  <div class="guidance-title">Report to ISP abuse team</div>
+  <p>
+    <strong>{{ abuse_contact.name }}</strong>
+    {% if abuse_contact.abuse_email %}
+    — abuse: <a href="mailto:{{ abuse_contact.abuse_email }}">{{ abuse_contact.abuse_email }}</a>
+    {% endif %}
+    {% if abuse_contact.noc_email %}
+    · NOC: <a href="mailto:{{ abuse_contact.noc_email }}">{{ abuse_contact.noc_email }}</a>
+    {% endif %}
+  </p>
+</div>
 {% endif %}
 
 <h2>IOCs in this campaign ({{ iocs | length }})</h2>
@@ -50,13 +73,14 @@
       <th>Threat type</th>
       <th>Tags</th>
       <th>Seen</th>
+      <th>Pivot</th>
     </tr>
   </thead>
   <tbody>
     {% for ioc in iocs %}
     <tr>
       <td>{{ ioc.ioc_type }}</td>
-      <td>{{ ioc.ioc_value }}</td>
+      <td><code>{{ ioc.ioc_value }}</code></td>
       <td>{{ ioc.threat_type or '—' }}</td>
       <td>
         {% for t in (ioc.tags | from_json) %}
@@ -64,6 +88,26 @@
         {% endfor %}
       </td>
       <td>{{ (ioc.fetched_at or '')[:10] }}</td>
+      <td class="pivot-links">
+        {% if ioc.ioc_type == 'ip' %}
+          <a href="https://www.abuseipdb.com/check/{{ ioc.ioc_value }}" rel="noopener">AbuseIPDB</a>
+          <a href="https://www.shodan.io/host/{{ ioc.ioc_value }}" rel="noopener">Shodan</a>
+          <a href="https://www.virustotal.com/gui/ip-address/{{ ioc.ioc_value }}" rel="noopener">VT</a>
+          <a href="https://bgp.he.net/ip/{{ ioc.ioc_value }}" rel="noopener">HE.net</a>
+        {% elif ioc.ioc_type == 'url' %}
+          {% if ioc.source == 'urlhaus' and ioc.source_id %}
+          <a href="https://urlhaus.abuse.ch/url/{{ ioc.source_id }}/" rel="noopener">URLhaus</a>
+          {% endif %}
+          {% if ioc.pivot_domain %}
+          <a href="https://www.virustotal.com/gui/domain/{{ ioc.pivot_domain }}" rel="noopener">VT</a>
+          {% endif %}
+        {% elif ioc.ioc_type == 'domain' %}
+          <a href="https://www.virustotal.com/gui/domain/{{ ioc.ioc_value }}" rel="noopener">VT</a>
+          {% if ioc.source == 'urlhaus' and ioc.source_id %}
+          <a href="https://urlhaus.abuse.ch/url/{{ ioc.source_id }}/" rel="noopener">URLhaus</a>
+          {% endif %}
+        {% endif %}
+      </td>
     </tr>
     {% endfor %}
   </tbody>

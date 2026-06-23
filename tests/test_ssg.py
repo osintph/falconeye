@@ -10,10 +10,14 @@ from falconeye.db import get_connection, init_db
 from falconeye.ssg import (
     _build_12_week_counts,
     _build_feed_items,
+    _campaign_abuse_contact,
+    _load_abuse_contacts,
     _manifest_version,
     _match_action_templates,
     _parse_ts,
+    _pivot_domain,
     _query_asns_with_ioc_counts,
+    _query_campaign_iocs,
     _query_campaigns,
     _query_ph_cves,
     _query_ph_iocs,
@@ -815,6 +819,188 @@ def test_query_ph_cves_filters_old_published_date(tmp_path):
     cves = _query_ph_cves(conn, now)
     conn.close()
     assert cves == []
+
+
+# ---------------------------------------------------------------------------
+# I4/I5: pivot links, abuse contacts, rich guidance (v0.2.3)
+# ---------------------------------------------------------------------------
+
+def test_pivot_domain_extracts_host_from_url():
+    assert _pivot_domain("http://evil.example.com/file.exe", "url") == "evil.example.com"
+
+
+def test_pivot_domain_returns_none_for_ip_type():
+    assert _pivot_domain("10.0.0.1", "ip") is None
+
+
+def test_pivot_domain_returns_none_for_domain_type():
+    assert _pivot_domain("evil.com", "domain") is None
+
+
+def test_load_abuse_contacts_returns_empty_when_absent(tmp_path):
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    assert _load_abuse_contacts(cfg) == {}
+
+
+def test_load_abuse_contacts_parses_yaml(tmp_path):
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    (cfg / "asn_abuse_contacts.yaml").write_text(
+        "contacts:\n  9299:\n    name: PLDT\n    abuse_email: security@pldt.com.ph\n"
+    )
+    contacts = _load_abuse_contacts(cfg)
+    assert 9299 in contacts
+    assert contacts[9299]["name"] == "PLDT"
+
+
+def test_campaign_abuse_contact_returns_none_for_domain_campaign():
+    camp = {"campaign_type": "domain", "cluster_key": "bdo.com.ph"}
+    assert _campaign_abuse_contact(camp, {9299: {"name": "PLDT"}}) is None
+
+
+def test_campaign_abuse_contact_returns_contact_for_asn_tag():
+    camp = {"campaign_type": "asn_tag", "cluster_key": "AS9299:mirai"}
+    contacts = {9299: {"name": "PLDT", "abuse_email": "security@pldt.com.ph"}}
+    contact = _campaign_abuse_contact(camp, contacts)
+    assert contact is not None
+    assert contact["name"] == "PLDT"
+
+
+def test_campaign_abuse_contact_returns_none_for_unknown_asn():
+    camp = {"campaign_type": "asn_tag", "cluster_key": "AS9999:mirai"}
+    assert _campaign_abuse_contact(camp, {9299: {"name": "PLDT"}}) is None
+
+
+def test_query_campaign_iocs_returns_source_and_pivot_domain(tmp_path):
+    db = tmp_path / "pivot.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at) "
+        "VALUES ('url', 'http://evil.example.com/dl.php', 'urlhaus', '99999', "
+        "'2026-06-24T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO campaigns (slug, name, campaign_type, cluster_key, status, "
+        "ioc_count, generated_at) VALUES ('dom-t', 'T', 'domain', 'example.com', "
+        "'active', 1, '2026-06-24T00:00:00Z')"
+    )
+    camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (?, ?)", (camp_id, ioc_id)
+    )
+    conn.commit()
+
+    iocs = _query_campaign_iocs(conn, camp_id)
+    conn.close()
+
+    assert len(iocs) == 1
+    assert iocs[0]["source"] == "urlhaus"
+    assert iocs[0]["source_id"] == "99999"
+    assert iocs[0]["pivot_domain"] == "evil.example.com"
+
+
+def test_campaign_page_renders_ip_pivot_links(tmp_path):
+    db = tmp_path / "ip_pivot.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at) "
+        "VALUES ('ip', '1.2.3.4', 'urlhaus', '1', '2026-06-24T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'tld', 'ph', '2026-06-24T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.execute(
+        "INSERT INTO campaigns (slug, name, campaign_type, cluster_key, status, "
+        "ioc_count, generated_at) VALUES ('tst-ip', 'IP Test', 'domain', 'tst', "
+        "'active', 1, '2026-06-24T00:00:00Z')"
+    )
+    camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (?, ?)", (camp_id, ioc_id)
+    )
+    conn.commit()
+    conn.close()
+
+    out = tmp_path / "pub"
+    run_ssg(db, out)
+    html = (out / "campaign" / "tst-ip" / "index.html").read_text()
+    assert "abuseipdb.com/check/1.2.3.4" in html
+    assert "shodan.io/host/1.2.3.4" in html
+    assert "virustotal.com/gui/ip-address/1.2.3.4" in html
+    assert "bgp.he.net/ip/1.2.3.4" in html
+
+
+def test_campaign_page_renders_urlhaus_pivot_for_url_ioc(tmp_path):
+    db = tmp_path / "url_pivot.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at) "
+        "VALUES ('url', 'http://evil.ph/malware.exe', 'urlhaus', '77777', "
+        "'2026-06-24T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'tld', 'ph', '2026-06-24T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.execute(
+        "INSERT INTO campaigns (slug, name, campaign_type, cluster_key, status, "
+        "ioc_count, generated_at) VALUES ('tst-url', 'URL Test', 'domain', 'tst', "
+        "'active', 1, '2026-06-24T00:00:00Z')"
+    )
+    camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (?, ?)", (camp_id, ioc_id)
+    )
+    conn.commit()
+    conn.close()
+
+    out = tmp_path / "pub"
+    run_ssg(db, out)
+    html = (out / "campaign" / "tst-url" / "index.html").read_text()
+    assert "urlhaus.abuse.ch/url/77777/" in html
+    assert "virustotal.com/gui/domain/evil.ph" in html
+
+
+def test_campaign_page_shows_ports_in_guidance(tmp_path):
+    db = tmp_path / "ports_test.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at, tags) "
+        "VALUES ('ip', '5.5.5.5', 'urlhaus', '2', '2026-06-24T00:00:00Z', '[\"Mirai\"]')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'tld', 'ph', '2026-06-24T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.execute(
+        "INSERT INTO campaigns (slug, name, campaign_type, cluster_key, status, "
+        "ioc_count, generated_at) VALUES ('tst-ports', 'Mirai Test', 'domain', 'tst', "
+        "'active', 1, '2026-06-24T00:00:00Z')"
+    )
+    camp_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (?, ?)", (camp_id, ioc_id)
+    )
+    conn.commit()
+    conn.close()
+
+    out = tmp_path / "pub"
+    run_ssg(db, out)
+    html = (out / "campaign" / "tst-ports" / "index.html").read_text()
+    assert "TCP/23" in html or "Telnet" in html
 
 
 def test_query_ph_cves_includes_cvss_version(tmp_path):

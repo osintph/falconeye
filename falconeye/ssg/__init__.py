@@ -8,6 +8,8 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import urllib.parse
+
 import jinja2
 import yaml
 from feedgen.feed import FeedGenerator
@@ -387,6 +389,15 @@ def _load_action_templates(config_dir: Path) -> list[dict]:
     return data.get("templates") or []
 
 
+def _load_abuse_contacts(config_dir: Path) -> dict[int, dict]:
+    path = config_dir / "asn_abuse_contacts.yaml"
+    if not path.exists():
+        return {}
+    with path.open() as f:
+        data = yaml.safe_load(f) or {}
+    return {int(k): v for k, v in (data.get("contacts") or {}).items()}
+
+
 # ---------------------------------------------------------------------------
 # ASN helpers
 # ---------------------------------------------------------------------------
@@ -652,16 +663,33 @@ def _query_campaigns(conn) -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def _pivot_domain(ioc_value: str, ioc_type: str) -> str | None:
+    """Extract hostname from a URL IOC for pivot link generation."""
+    if ioc_type == "url":
+        try:
+            host = urllib.parse.urlparse(ioc_value).hostname or ""
+            return host if host else None
+        except Exception:
+            return None
+    return None
+
+
 def _query_campaign_iocs(conn, campaign_id: int) -> list[dict]:
     rows = conn.execute("""
-        SELECT i.id, i.ioc_value, i.ioc_type, i.threat_type, i.tags, i.fetched_at
+        SELECT i.id, i.ioc_value, i.ioc_type, i.threat_type, i.tags,
+               i.fetched_at, i.source, i.source_id, i.source_url
           FROM campaign_iocs ci
           JOIN iocs i ON i.id = ci.ioc_id
          WHERE ci.campaign_id = ?
          ORDER BY i.fetched_at DESC
          LIMIT 500
     """, (campaign_id,)).fetchall()
-    return [dict(r) for r in rows]
+    result = []
+    for r in rows:
+        d = dict(r)
+        d["pivot_domain"] = _pivot_domain(r["ioc_value"], r["ioc_type"])
+        result.append(d)
+    return result
 
 
 def _match_action_templates(iocs: list[dict], templates: list[dict]) -> list[dict]:
@@ -696,21 +724,40 @@ def _render_campaign_index(output: Path, campaigns: list[dict], now: datetime,
     log.info("SSG: wrote campaign/index.html (%d campaigns)", len(campaigns))
 
 
+def _campaign_abuse_contact(camp: dict, abuse_contacts: dict[int, dict]) -> dict | None:
+    """Return the abuse contact dict for an asn_tag campaign, or None."""
+    if camp.get("campaign_type") != "asn_tag":
+        return None
+    ck = camp.get("cluster_key") or ""
+    if not ck.startswith("AS"):
+        return None
+    try:
+        asn_part = ck.split(":")[0]  # "AS9299"
+        asn_int = int(asn_part[2:])
+        return abuse_contacts.get(asn_int)
+    except (ValueError, IndexError):
+        return None
+
+
 def _render_campaign_pages(output: Path, conn, campaigns: list[dict],
                            action_templates: list[dict], now: datetime,
-                           mv: str = "") -> int:
+                           mv: str = "",
+                           abuse_contacts: dict[int, dict] | None = None) -> int:
     """Render per-campaign pages. Returns count written."""
     tmpl = _jinja_env.get_template("campaign.html.j2")
+    contacts = abuse_contacts or {}
     written = 0
     for camp in campaigns:
         iocs = _query_campaign_iocs(conn, camp["id"])
         guidance = _match_action_templates(iocs, action_templates)
+        abuse_contact = _campaign_abuse_contact(camp, contacts)
         page_dir = output / "campaign" / camp["slug"]
         page_dir.mkdir(parents=True, exist_ok=True)
         html = tmpl.render(
             campaign=camp,
             iocs=iocs,
             guidance=guidance,
+            abuse_contact=abuse_contact,
             generated_at=now.strftime("%Y-%m-%d %H:%M"),
             manifest_version=mv,
         )
@@ -883,6 +930,7 @@ def run_ssg(
     mv = _manifest_version(now)
     asn_map = _load_asn_operators(cfg)
     action_templates = _load_action_templates(cfg)
+    abuse_contacts = _load_abuse_contacts(cfg)
 
     conn = get_connection(db_path)
     iocs      = _query_ph_iocs(conn)
@@ -931,7 +979,8 @@ def run_ssg(
 
     try:
         _render_campaign_index(output, campaigns, now, mv)
-        _render_campaign_pages(output, conn, campaigns, action_templates, now, mv)
+        _render_campaign_pages(output, conn, campaigns, action_templates, now, mv,
+                               abuse_contacts)
     except Exception as exc:
         log.error("SSG: failed to write campaign pages: %s", exc)
         errors += 1
