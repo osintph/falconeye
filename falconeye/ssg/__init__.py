@@ -11,6 +11,13 @@ import yaml
 from feedgen.feed import FeedGenerator
 
 from falconeye.db import get_connection, init_db
+from falconeye.stix import (
+    campaign_to_stix,
+    campaign_uses_indicator,
+    cve_to_vulnerability,
+    ioc_to_indicator,
+    make_bundle,
+)
 
 log = logging.getLogger(__name__)
 
@@ -608,6 +615,100 @@ def _render_campaign_pages(output: Path, conn, campaigns: list[dict],
 
 
 # ---------------------------------------------------------------------------
+# STIX / TAXII-like static output
+# ---------------------------------------------------------------------------
+
+def _render_taxii(output: Path, iocs: list[dict], cves: list[dict],
+                  campaigns: list[dict], conn, now: datetime) -> None:
+    """Write static TAXII-like JSON files under output/api/v1/taxii/."""
+    taxii_root = output / "api" / "v1" / "taxii"
+    collections_dir = taxii_root / "collections"
+    collections_dir.mkdir(parents=True, exist_ok=True)
+
+    now_iso = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Discovery document
+    discovery = {
+        "title": "FalconEye PH Threat Intelligence",
+        "description": "Philippine-scoped STIX 2.1 threat intelligence from OSINT-PH",
+        "contact": "sigmund@osintph.info",
+        "api_roots": [f"{_SITE_URL}/api/v1/taxii/"],
+    }
+    (taxii_root / "index.json").write_text(
+        json.dumps(discovery, indent=2), encoding="utf-8"
+    )
+
+    # Collections list
+    collection_meta = [
+        {"id": "ph-iocs",      "title": "PH IOC Indicators",
+         "description": "STIX 2.1 indicators for PH-matched IOCs",
+         "can_read": True, "can_write": False,
+         "media_types": ["application/taxii+json;version=2.1"]},
+        {"id": "ph-cves",      "title": "PH CVE Vulnerabilities",
+         "description": "STIX 2.1 vulnerabilities for PH-relevant CVEs",
+         "can_read": True, "can_write": False,
+         "media_types": ["application/taxii+json;version=2.1"]},
+        {"id": "ph-campaigns", "title": "PH Campaigns",
+         "description": "STIX 2.1 campaigns and relationships",
+         "can_read": True, "can_write": False,
+         "media_types": ["application/taxii+json;version=2.1"]},
+    ]
+    (collections_dir / "index.json").write_text(
+        json.dumps({"collections": collection_meta}, indent=2), encoding="utf-8"
+    )
+
+    # ph-iocs collection
+    ioc_indicators = [obj for ioc in iocs if (obj := ioc_to_indicator(ioc))]
+    ioc_dir = collections_dir / "ph-iocs"
+    ioc_dir.mkdir(exist_ok=True)
+    (ioc_dir / "objects.json").write_text(
+        json.dumps(make_bundle(ioc_indicators), indent=2), encoding="utf-8"
+    )
+
+    # ph-cves collection
+    vuln_objects = [cve_to_vulnerability(c) for c in cves]
+    cve_dir = collections_dir / "ph-cves"
+    cve_dir.mkdir(exist_ok=True)
+    (cve_dir / "objects.json").write_text(
+        json.dumps(make_bundle(vuln_objects), indent=2), encoding="utf-8"
+    )
+
+    # ph-campaigns collection: campaign objects + relationship objects
+    camp_dir = collections_dir / "ph-campaigns"
+    camp_dir.mkdir(exist_ok=True)
+    campaign_objects: list[dict] = []
+
+    # Build indicator ID map for relationship linking
+    ioc_stix_map = {ioc["id"]: obj for ioc in iocs if (obj := ioc_to_indicator(ioc))}
+
+    for camp in campaigns:
+        camp_obj = campaign_to_stix(camp)
+        campaign_objects.append(camp_obj)
+
+        # Add relationship objects for IOCs in this campaign
+        ioc_ids = [
+            r[0] for r in conn.execute(
+                "SELECT ioc_id FROM campaign_iocs WHERE campaign_id=?", (camp["id"],)
+            )
+        ]
+        for ioc_id in ioc_ids:
+            if ioc_id in ioc_stix_map:
+                rel = campaign_uses_indicator(
+                    camp_obj["id"], ioc_stix_map[ioc_id]["id"], now_iso
+                )
+                campaign_objects.append(rel)
+
+    (camp_dir / "objects.json").write_text(
+        json.dumps(make_bundle(campaign_objects), indent=2), encoding="utf-8"
+    )
+
+    log.info(
+        "SSG: TAXII — %d indicators, %d vulnerabilities, %d campaign objects",
+        len(ioc_indicators), len(vuln_objects), len(campaign_objects),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -677,6 +778,12 @@ def run_ssg(
         _render_campaign_pages(output, conn, campaigns, action_templates, now)
     except Exception as exc:
         log.error("SSG: failed to write campaign pages: %s", exc)
+        errors += 1
+
+    try:
+        _render_taxii(output, iocs, cves, campaigns, conn, now)
+    except Exception as exc:
+        log.error("SSG: failed to write TAXII files: %s", exc)
         errors += 1
 
     conn.close()
