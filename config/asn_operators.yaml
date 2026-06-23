@@ -1,5 +1,6 @@
 # PH ASN operator registry.
-# Maps ASN integer to display name, abbreviation, and known CPE vendor prefixes.
+# Maps ASN integer to display name, abbreviation, known CPE vendor prefixes,
+# and known BGP prefix ranges (ip_ranges) for IOC attribution.
 # Source: APNIC delegated stats + public BGP registry (bgpview.io).
 # Update quarterly or when new PH ISPs are encountered in the corpus.
 
@@ -7,6 +8,14 @@ operators:
   9299:
     name: "Philippine Long Distance Telephone Company"
     short: "PLDT"
+    ip_ranges:
+      - "122.2.0.0/16"
+      - "122.3.0.0/16"
+      - "112.198.0.0/17"
+      - "210.213.0.0/17"
+      - "203.177.0.0/17"
+      - "49.50.64.0/18"
+      - "180.232.0.0/14"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
       - "cpe:2.3:o:cisco:ios_xe"
@@ -15,6 +24,10 @@ operators:
   4775:
     name: "Globe Telecom"
     short: "Globe"
+    ip_ranges:
+      - "110.54.0.0/16"
+      - "121.54.0.0/16"
+      - "112.200.0.0/16"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
       - "cpe:2.3:o:cisco:ios_xe"
@@ -23,6 +36,9 @@ operators:
   17639:
     name: "Converge ICT Solutions"
     short: "Converge"
+    ip_ranges:
+      - "112.204.0.0/14"
+      - "103.28.24.0/22"
     cpe_prefixes:
       - "cpe:2.3:o:mikrotik:routeros"
       - "cpe:2.3:h:mikrotik"
@@ -30,34 +46,50 @@ operators:
   131267:
     name: "Sky Cable Bright Internet"
     short: "Sky Broadband"
+    ip_ranges:
+      - "203.114.128.0/19"
+      - "210.5.224.0/20"
     cpe_prefixes: []
 
   132199:
     name: "Smart Communications"
     short: "Smart"
+    ip_ranges:
+      - "112.199.0.0/16"
+      - "180.191.0.0/18"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
 
   132088:
     name: "DCTECH Micro Services"
     short: "DCTECH"
+    ip_ranges:
+      - "103.151.100.0/22"
     cpe_prefixes: []
 
   9658:
     name: "Eastern Telecommunications Philippines"
     short: "Eastern Telecoms"
+    ip_ranges:
+      - "202.57.0.0/19"
+      - "203.81.96.0/20"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
 
   23944:
     name: "DICT Philippine Government Network"
     short: "DICT PHNet"
+    ip_ranges:
+      - "202.90.128.0/22"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
 
   17676:
     name: "Bayan Telecommunications"
     short: "Bayan"
+    ip_ranges:
+      - "125.60.0.0/17"
+      - "211.26.0.0/19"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
       - "cpe:2.3:o:juniper:junos"
@@ -65,38 +97,53 @@ operators:
   18001:
     name: "Now Telecom"
     short: "Now Telecom"
+    ip_ranges:
+      - "203.119.64.0/18"
     cpe_prefixes: []
 
   131111:
     name: "Innove Communications (Globe Business)"
     short: "Innove"
+    ip_ranges:
+      - "210.23.128.0/18"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
 
   132219:
     name: "RISE"
     short: "RISE"
+    ip_ranges:
+      - "103.145.24.0/22"
     cpe_prefixes: []
 
   38193:
     name: "Department of Science and Technology"
     short: "DOST"
+    ip_ranges:
+      - "202.90.132.0/22"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
 
   136533:
     name: "Radius Telecoms"
     short: "Radius"
+    ip_ranges:
+      - "103.25.60.0/22"
     cpe_prefixes: []
 
   135642:
     name: "Bayan FTTH"
     short: "Bayan FTTH"
+    ip_ranges:
+      - "103.208.72.0/22"
     cpe_prefixes: []
 
   134762:
     name: "HCPTI / Converge Enterprise"
     short: "Converge Enterprise"
+    ip_ranges:
+      - "103.87.60.0/22"
+      - "103.134.112.0/21"
     cpe_prefixes:
       - "cpe:2.3:o:mikrotik:routeros"
       - "cpe:2.3:o:cisco:ios"
@@ -104,6 +151,8 @@ operators:
   135607:
     name: "Bangko Sentral ng Pilipinas"
     short: "BSP"
+    ip_ranges:
+      - "202.59.128.0/24"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
       - "cpe:2.3:o:fortinet:fortios"
@@ -111,12 +160,16 @@ operators:
   24218:
     name: "DICT Philippine Government Network (PNGT)"
     short: "DICT-PNGT"
+    ip_ranges:
+      - "202.90.160.0/23"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"
 
   137423:
     name: "Streamtech Systems Technologies"
     short: "Streamtech"
+    ip_ranges:
+      - "103.156.108.0/22"
     cpe_prefixes:
       - "cpe:2.3:o:mikrotik:routeros"
       - "cpe:2.3:o:ubiquiti:edgeos"
@@ -124,5 +177,7 @@ operators:
   133619:
     name: "Philippine Telegraph and Telephone Corporation"
     short: "PT&T"
+    ip_ranges:
+      - "202.57.32.0/20"
     cpe_prefixes:
       - "cpe:2.3:o:cisco:ios"

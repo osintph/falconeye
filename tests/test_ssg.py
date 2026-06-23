@@ -324,15 +324,116 @@ def test_ssg_creates_per_asn_page(ssg_output):
 
 
 def test_ssg_asn_index_lists_asn(ssg_output):
+    # With no active 'asn' sieve_matches in the fixture the index renders empty-data message
     html = (ssg_output / "asn" / "index.html").read_text()
-    assert "AS9836" in html
+    assert "PH ASN Intelligence" in html
 
 
-def test_query_asns_with_ioc_counts(db):
+def test_query_asns_with_ioc_counts_no_asn_map(db):
+    """Without asn_map, CIDR attribution is impossible — returns empty list."""
     conn = get_connection(db)
     asns = _query_asns_with_ioc_counts(conn)
     conn.close()
-    assert any(a["asn"] == 9836 for a in asns)
+    assert asns == []
+
+
+def test_query_asns_with_ioc_counts_attributes_by_cidr(tmp_path):
+    """Prefix in sieve_matches is attributed to an ASN via ip_ranges containment."""
+    db = tmp_path / "asn_cidr.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, threat_type, source, source_id, fetched_at) "
+        "VALUES ('ip', '10.0.0.1', 'malware', 'urlhaus', 'x1', '2026-06-23T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'asn', '10.0.0.0/24', '2026-06-23T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.commit()
+
+    asn_map = {9999: {"name": "Test ISP", "short": "TEST", "ip_ranges": ["10.0.0.0/16"], "cpe_prefixes": []}}
+    asns = _query_asns_with_ioc_counts(conn, asn_map)
+    conn.close()
+
+    assert len(asns) == 1
+    assert asns[0]["asn"] == 9999
+    assert asns[0]["ioc_count"] == 1
+
+
+def test_query_asns_with_ioc_counts_14d_cutoff(tmp_path):
+    """Matches older than 14 days are excluded from the count."""
+    db = tmp_path / "asn_cutoff.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, threat_type, source, source_id, fetched_at) "
+        "VALUES ('ip', '10.0.0.2', 'malware', 'urlhaus', 'x2', '2026-06-01T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'asn', '10.0.0.0/24', '2026-06-08T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.commit()
+
+    asn_map = {9999: {"name": "Test ISP", "short": "TEST", "ip_ranges": ["10.0.0.0/16"], "cpe_prefixes": []}}
+    asns = _query_asns_with_ioc_counts(conn, asn_map)
+    conn.close()
+    assert asns == []
+
+
+def test_query_asns_with_ioc_counts_aggregates_prefixes(tmp_path):
+    """Two prefixes within the same ASN ip_range are summed into one entry."""
+    db = tmp_path / "asn_agg.db"
+    init_db(db)
+    conn = get_connection(db)
+    for i, cidr in enumerate(["10.0.1.0/24", "10.0.2.0/24"]):
+        conn.execute(
+            "INSERT INTO iocs (ioc_type, ioc_value, threat_type, source, source_id, fetched_at) "
+            "VALUES ('ip', ?, 'malware', 'urlhaus', ?, '2026-06-23T00:00:00Z')",
+            (f"10.0.{i + 1}.1", f"x{i}"),
+        )
+        ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        conn.execute(
+            "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+            "matched_value, matched_at) VALUES ('ioc', ?, 'asn', ?, '2026-06-23T00:00:00Z')",
+            (ioc_id, cidr),
+        )
+    conn.commit()
+
+    asn_map = {9999: {"name": "Test ISP", "short": "TEST", "ip_ranges": ["10.0.0.0/16"], "cpe_prefixes": []}}
+    asns = _query_asns_with_ioc_counts(conn, asn_map)
+    conn.close()
+
+    assert len(asns) == 1
+    assert asns[0]["ioc_count"] == 2
+
+
+def test_query_asns_with_ioc_counts_unmatched_excluded(tmp_path):
+    """A prefix not covered by any asn_map ip_range produces no result."""
+    db = tmp_path / "asn_nomatch.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, threat_type, source, source_id, fetched_at) "
+        "VALUES ('ip', '172.16.0.1', 'malware', 'urlhaus', 'x3', '2026-06-23T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'asn', '172.16.0.0/24', '2026-06-23T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.commit()
+
+    asn_map = {9999: {"name": "Test ISP", "short": "TEST", "ip_ranges": ["10.0.0.0/16"], "cpe_prefixes": []}}
+    asns = _query_asns_with_ioc_counts(conn, asn_map)
+    conn.close()
+    assert asns == []
 
 
 def test_build_12_week_counts_fills_zeros():
