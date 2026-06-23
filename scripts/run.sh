@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run a FalconEye ingest worker, the sieve, the SSG, or a full ingest cycle.
 # Usage: sudo bash scripts/run.sh <worker>
-# Workers: urlhaus  kev  nvd  apnic  sieve  ssg  all
+# Workers: urlhaus  kev  nvd  apnic  sieve  cluster  shodan  ssg  digest  all
 set -euo pipefail
 
 SECRETS=/opt/falconeye/config/secrets.env
@@ -9,7 +9,7 @@ PYTHON=/opt/falconeye/venv/bin/python
 
 usage() {
   echo "Usage: $0 <worker>"
-  echo "Workers: urlhaus  kev  nvd  apnic  sieve  ssg  all"
+  echo "Workers: urlhaus  kev  nvd  apnic  sieve  cluster  shodan  ssg  digest  all"
   exit 1
 }
 
@@ -46,14 +46,17 @@ run_worker() {
     nvd)     exec_module="falconeye.ingest.nvd" ;;
     apnic)   exec_module="falconeye.ingest.apnic" ;;
     sieve)   exec_module="falconeye.sieve" ;;
+    cluster) exec_module="falconeye.cluster" ;;
+    shodan)  exec_module="falconeye.ingest.shodan_enrich" ;;
     ssg)     exec_module="falconeye.ssg" ;;
+    digest)  exec_module="falconeye.digest" ;;
     *)       echo "Unknown worker: ${w}"; usage ;;
   esac
   "${PYTHON}" -m "${exec_module}"
 }
 
 if [ "${WORKER}" = "all" ]; then
-  for w in urlhaus kev nvd apnic sieve ssg; do
+  for w in urlhaus kev nvd apnic sieve cluster shodan ssg; do
     echo "--- ${w} ---"
     run_worker "${w}" || { echo "FAILED: ${w}"; exit 1; }
   done
@@ -65,7 +68,10 @@ else
     nvd)     exec "${PYTHON}" -m falconeye.ingest.nvd ;;
     apnic)   exec "${PYTHON}" -m falconeye.ingest.apnic ;;
     sieve)   exec "${PYTHON}" -m falconeye.sieve ;;
+    cluster) exec "${PYTHON}" -m falconeye.cluster ;;
+    shodan)  exec "${PYTHON}" -m falconeye.ingest.shodan_enrich ;;
     ssg)     exec "${PYTHON}" -m falconeye.ssg ;;
+    digest)  exec "${PYTHON}" -m falconeye.digest ;;
     *)       echo "Unknown worker: ${WORKER}"; usage ;;
   esac
 fi

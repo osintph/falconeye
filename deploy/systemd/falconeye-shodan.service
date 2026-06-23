@@ -1,0 +1,21 @@
+[Unit]
+Description=FalconEye Shodan InternetDB enrichment worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=falconeye
+Group=falconeye
+WorkingDirectory=/opt/falconeye/src
+EnvironmentFile=/opt/falconeye/config/secrets.env
+ExecStart=/opt/falconeye/venv/bin/python -m falconeye.ingest.shodan_enrich
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=falconeye-shodan
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/falconeye/db /opt/falconeye/logs
