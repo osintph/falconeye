@@ -81,10 +81,47 @@ CREATE TABLE IF NOT EXISTS sieve_matches (
     matched_at      TEXT    NOT NULL    -- ISO8601 UTC
 );
 
-CREATE INDEX IF NOT EXISTS idx_iocs_value   ON iocs(ioc_value);
-CREATE INDEX IF NOT EXISTS idx_iocs_fetched ON iocs(fetched_at);
-CREATE INDEX IF NOT EXISTS idx_cves_fetched ON cves(fetched_at);
-CREATE INDEX IF NOT EXISTS idx_sieve_record ON sieve_matches(record_type, record_id);
+CREATE TABLE IF NOT EXISTS ip_enrichments (
+    ip_address  TEXT    NOT NULL PRIMARY KEY,
+    ports       TEXT,           -- JSON list of integers
+    cpes        TEXT,           -- JSON list of CPE strings
+    hostnames   TEXT,           -- JSON list of strings
+    tags        TEXT,           -- JSON list of strings (e.g. ["iot","self-signed"])
+    vulns       TEXT,           -- JSON list of CVE IDs reported by Shodan
+    fetched_at  TEXT    NOT NULL,
+    source_url  TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS campaigns (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug            TEXT    NOT NULL UNIQUE,
+    name            TEXT    NOT NULL,
+    summary         TEXT,
+    campaign_type   TEXT    NOT NULL,    -- 'domain', 'asn_tag', 'prefix24'
+    cluster_key     TEXT    NOT NULL,
+    status          TEXT    NOT NULL DEFAULT 'active',  -- 'active','dormant','expired'
+    ioc_count       INTEGER NOT NULL DEFAULT 0,
+    first_seen      TEXT,
+    last_seen       TEXT,
+    expired_at      TEXT,                -- set when status transitions to 'expired'
+    generated_at    TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS campaign_iocs (
+    campaign_id INTEGER NOT NULL,
+    ioc_id      INTEGER NOT NULL,
+    UNIQUE(campaign_id, ioc_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_iocs_value            ON iocs(ioc_value);
+CREATE INDEX IF NOT EXISTS idx_iocs_fetched          ON iocs(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_cves_fetched          ON cves(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_sieve_record          ON sieve_matches(record_type, record_id);
+CREATE INDEX IF NOT EXISTS idx_ip_enrichments_fetched ON ip_enrichments(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_campaigns_status      ON campaigns(status);
+CREATE INDEX IF NOT EXISTS idx_campaigns_generated   ON campaigns(generated_at);
+CREATE INDEX IF NOT EXISTS idx_campaign_iocs_campaign ON campaign_iocs(campaign_id);
+CREATE INDEX IF NOT EXISTS idx_campaign_iocs_ioc     ON campaign_iocs(ioc_id);
 """
 
 

@@ -2,7 +2,10 @@ import sqlite3
 import pytest
 from falconeye.db import get_connection, init_db
 
-EXPECTED_TABLES = {"iocs", "cves", "cve_cpe_matches", "ph_asns", "ph_prefixes", "sieve_matches"}
+EXPECTED_TABLES = {
+    "iocs", "cves", "cve_cpe_matches", "ph_asns", "ph_prefixes", "sieve_matches",
+    "ip_enrichments", "campaigns", "campaign_iocs",
+}
 
 
 @pytest.fixture
@@ -115,3 +118,41 @@ def test_sieve_matches_insert(db):
     conn.close()
     assert row["match_criterion"] == "tld"
     assert row["matched_value"] == ".ph"
+
+
+def test_ip_enrichments_insert(db):
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO ip_enrichments (ip_address, ports, fetched_at, source_url) "
+        "VALUES ('1.2.3.4', '[80,443]', '2026-06-23T00:00:00Z', 'https://internetdb.shodan.io/1.2.3.4')"
+    )
+    conn.commit()
+    row = conn.execute("SELECT * FROM ip_enrichments WHERE ip_address='1.2.3.4'").fetchone()
+    conn.close()
+    assert row["ports"] == "[80,443]"
+
+
+def test_campaigns_insert_and_unique_slug(db):
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO campaigns (slug, name, campaign_type, cluster_key, generated_at) "
+        "VALUES ('test-slug-20260623', 'Test Campaign', 'domain', 'evil.com.ph', '2026-06-23T00:00:00Z')"
+    )
+    conn.commit()
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO campaigns (slug, name, campaign_type, cluster_key, generated_at) "
+            "VALUES ('test-slug-20260623', 'Duplicate', 'domain', 'evil.com.ph', '2026-06-23T01:00:00Z')"
+        )
+    conn.close()
+
+
+def test_campaign_iocs_unique_pair(db):
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (1, 42)"
+    )
+    conn.commit()
+    with pytest.raises(sqlite3.IntegrityError):
+        conn.execute("INSERT INTO campaign_iocs (campaign_id, ioc_id) VALUES (1, 42)")
+    conn.close()
