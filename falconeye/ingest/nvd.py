@@ -39,17 +39,30 @@ def extract_description(cve: dict) -> str | None:
     return None
 
 
-def extract_cvss(cve: dict) -> tuple[float | None, str | None]:
-    """Return (baseScore, baseSeverity) from CVSSv3.1, falling back to v3.0."""
+def extract_cvss(cve: dict) -> tuple[float | None, str | None, str | None]:
+    """
+    Return (baseScore, baseSeverity, cvss_version) preferring CVSSv3.1 > v3.0 > v2.0.
+
+    For v3 metrics baseSeverity is inside cvssData; for v2 it is at the metric-entry
+    level.  Returns (None, None, None) when no metrics are present at all.
+    """
     metrics = cve.get("metrics", {})
-    for key in ("cvssMetricV31", "cvssMetricV30"):
+    for key, ver in [("cvssMetricV31", "v3.1"), ("cvssMetricV30", "v3.0")]:
         entries = metrics.get(key, [])
         primary = next((e for e in entries if e.get("type") == "Primary"), None)
         entry = primary or (entries[0] if entries else None)
         if entry:
             data = entry.get("cvssData", {})
-            return data.get("baseScore"), data.get("baseSeverity")
-    return None, None
+            return data.get("baseScore"), data.get("baseSeverity"), ver
+    # CVSS v2 fallback: baseSeverity lives at the metric-entry level, not inside cvssData
+    entries = metrics.get("cvssMetricV2", [])
+    primary = next((e for e in entries if e.get("type") == "Primary"), None)
+    entry = primary or (entries[0] if entries else None)
+    if entry:
+        score = entry.get("cvssData", {}).get("baseScore")
+        severity = entry.get("baseSeverity")
+        return score, severity, "v2.0"
+    return None, None, None
 
 
 def extract_cpes(cve: dict) -> list[str]:
@@ -139,7 +152,7 @@ def _upsert_batch(conn, batch: list[dict], fetched_at: str, mv: str) -> tuple[in
             continue
 
         description = extract_description(cve)
-        score, severity = extract_cvss(cve)
+        score, severity, cvss_ver = extract_cvss(cve)
         cpes = extract_cpes(cve)
 
         try:
@@ -147,15 +160,16 @@ def _upsert_batch(conn, batch: list[dict], fetched_at: str, mv: str) -> tuple[in
                 """
                 INSERT INTO cves
                     (cve_id, published_date, last_modified, description,
-                     cvss_v3_score, cvss_v3_severity,
+                     cvss_v3_score, cvss_v3_severity, cvss_version,
                      source, source_id, fetched_at, source_url, manifest_version)
-                VALUES (?, ?, ?, ?, ?, ?, 'nvd', ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'nvd', ?, ?, ?, ?)
                 ON CONFLICT(cve_id) DO UPDATE SET
                     published_date   = excluded.published_date,
                     last_modified    = excluded.last_modified,
                     description      = excluded.description,
                     cvss_v3_score    = excluded.cvss_v3_score,
                     cvss_v3_severity = excluded.cvss_v3_severity,
+                    cvss_version     = excluded.cvss_version,
                     fetched_at       = excluded.fetched_at,
                     manifest_version = excluded.manifest_version
                 """,
@@ -166,6 +180,7 @@ def _upsert_batch(conn, batch: list[dict], fetched_at: str, mv: str) -> tuple[in
                     description,
                     score,
                     severity,
+                    cvss_ver,
                     cve_id,
                     fetched_at,
                     _NVD_URL,
@@ -221,12 +236,12 @@ def _backfill_kev_severity(conn, api_key: str | None) -> int:
         if not vulns:
             continue
         cve = vulns[0].get("cve", {})
-        score, severity = extract_cvss(cve)
+        score, severity, cvss_ver = extract_cvss(cve)
         if severity is None:
             continue
         conn.execute(
-            "UPDATE cves SET cvss_v3_score=?, cvss_v3_severity=? WHERE cve_id=?",
-            (score, severity, cve_id),
+            "UPDATE cves SET cvss_v3_score=?, cvss_v3_severity=?, cvss_version=? WHERE cve_id=?",
+            (score, severity, cvss_ver, cve_id),
         )
         updated += 1
 

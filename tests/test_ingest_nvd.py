@@ -77,9 +77,10 @@ def test_extract_description_missing():
 
 def test_extract_cvss_primary():
     cve = _make_vuln(score=9.8, severity="CRITICAL")["cve"]
-    score, sev = extract_cvss(cve)
+    score, sev, ver = extract_cvss(cve)
     assert score == 9.8
     assert sev == "CRITICAL"
+    assert ver == "v3.1"
 
 
 def test_extract_cvss_prefers_v31_over_v30():
@@ -89,12 +90,42 @@ def test_extract_cvss_prefers_v31_over_v30():
             "cvssMetricV30": [{"type": "Primary", "cvssData": {"baseScore": 7.5, "baseSeverity": "HIGH"}}],
         }
     }
-    score, sev = extract_cvss(cve)
+    score, sev, ver = extract_cvss(cve)
     assert score == 9.8
+    assert ver == "v3.1"
 
 
 def test_extract_cvss_missing():
-    assert extract_cvss({}) == (None, None)
+    assert extract_cvss({}) == (None, None, None)
+
+
+def test_extract_cvss_v2_fallback():
+    """When only CVSS v2 data is present, returns (score, severity, 'v2.0')."""
+    cve = {
+        "metrics": {
+            "cvssMetricV2": [{
+                "type": "Primary",
+                "cvssData": {"baseScore": 7.5},
+                "baseSeverity": "HIGH",
+            }]
+        }
+    }
+    score, sev, ver = extract_cvss(cve)
+    assert score == 7.5
+    assert sev == "HIGH"
+    assert ver == "v2.0"
+
+
+def test_extract_cvss_v3_preferred_over_v2():
+    """When both v3.1 and v2 are present, v3.1 wins."""
+    cve = {
+        "metrics": {
+            "cvssMetricV31": [{"type": "Primary", "cvssData": {"baseScore": 9.8, "baseSeverity": "CRITICAL"}}],
+            "cvssMetricV2":  [{"type": "Primary", "cvssData": {"baseScore": 7.5}, "baseSeverity": "HIGH"}],
+        }
+    }
+    _, _, ver = extract_cvss(cve)
+    assert ver == "v3.1"
 
 
 def test_extract_cpes_vulnerable_only():
@@ -151,6 +182,17 @@ def test_ingest_upserts_cve(db):
     assert row["cvss_v3_score"] == 7.5
     assert row["cvss_v3_severity"] == "HIGH"
     assert row["published_date"] == "2024-01-01T00:00:00Z"
+
+
+def test_ingest_writes_cvss_version(db):
+    """cvss_version column is populated from extract_cvss third return value."""
+    vulns = [_make_vuln("CVE-2024-0099", score=9.8, severity="CRITICAL")]
+    with _mock_fetch_pages(vulns):
+        ingest(db, start_date="2024-01-01T00:00:00Z")
+    conn = get_connection(db)
+    row = conn.execute("SELECT cvss_version FROM cves WHERE cve_id='CVE-2024-0099'").fetchone()
+    conn.close()
+    assert row["cvss_version"] == "v3.1"
 
 
 def test_ingest_populates_cpe_matches(db):
