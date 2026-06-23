@@ -6,7 +6,7 @@ Safe to run multiple times; all DDL uses CREATE TABLE IF NOT EXISTS.
 Usage:
     python scripts/init_db.py [db_path]
 
-Default db_path: db/falconeye.db
+If db_path is omitted, FALCONEYE_DB_PATH from the environment is used.
 Production path: /opt/falconeye/db/falconeye.db
 """
 import argparse
@@ -23,14 +23,20 @@ def main() -> None:
     parser.add_argument(
         "db_path",
         nargs="?",
-        default="db/falconeye.db",
-        help="Path to database file (default: db/falconeye.db)",
+        default=None,
+        help="Path to database file (default: FALCONEYE_DB_PATH env var)",
     )
     args = parser.parse_args()
 
-    init_db(args.db_path)
+    if args.db_path:
+        db_path = args.db_path
+    else:
+        from falconeye.config import ConfigError, get_db_path
+        db_path = get_db_path()
 
-    conn = get_connection(args.db_path)
+    init_db(db_path)
+
+    conn = get_connection(db_path)
     tables = sorted(
         row[0]
         for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -38,7 +44,7 @@ def main() -> None:
     mode = conn.execute("PRAGMA journal_mode").fetchone()[0]
     conn.close()
 
-    print(f"Database ready: {args.db_path}")
+    print(f"Database ready: {db_path}")
     print(f"Journal mode:   {mode}")
     print(f"Tables:         {', '.join(tables)}")
 
