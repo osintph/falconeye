@@ -624,6 +624,8 @@ def _render_asn_pages(output: Path, conn, asn_map: dict[int, dict],
         operator_short = op.get("short") or operator_name
 
         detail = _query_asn_detail(conn, asn_num, now)
+        if not detail["iocs"] and sum(detail["weekly_counts"]) == 0:
+            continue
         svg = _sparkline_svg(detail["weekly_counts"])
 
         page_dir = output / "asn" / f"AS{asn_num}"

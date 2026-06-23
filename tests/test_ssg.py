@@ -322,9 +322,40 @@ def test_ssg_creates_asn_index(ssg_output):
     assert (ssg_output / "asn" / "index.html").exists()
 
 
-def test_ssg_creates_per_asn_page(ssg_output):
-    # db fixture inserts asn=9836
-    assert (ssg_output / "asn" / "AS9836" / "index.html").exists()
+def test_ssg_skips_per_asn_page_with_no_iocs(ssg_output):
+    # db fixture inserts asn=9836 but has no sieve_matches for it → page is gated
+    assert not (ssg_output / "asn" / "AS9836" / "index.html").exists()
+
+
+def test_ssg_creates_per_asn_page_when_asn_has_iocs(tmp_path):
+    """An ASN page is only written when the ASN has at least one recent IOC."""
+    db = tmp_path / "asn_ioc.db"
+    init_db(db)
+    conn = get_connection(db)
+    conn.execute(
+        "INSERT INTO ph_asns (asn, name, source, fetched_at) "
+        "VALUES (9299, 'PLDT', 'apnic', '2026-06-24T00:00:00Z')"
+    )
+    conn.execute(
+        "INSERT INTO ph_prefixes (prefix, prefix_type, asn, fetched_at) "
+        "VALUES ('1.2.3.0/24', 'ipv4', 9299, '2026-06-24T00:00:00Z')"
+    )
+    conn.execute(
+        "INSERT INTO iocs (ioc_type, ioc_value, source, source_id, fetched_at) "
+        "VALUES ('ip', '1.2.3.4', 'urlhaus', 'u1', '2026-06-24T00:00:00Z')"
+    )
+    ioc_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+    conn.execute(
+        "INSERT INTO sieve_matches (record_type, record_id, match_criterion, "
+        "matched_value, matched_at) VALUES ('ioc', ?, 'asn', '1.2.3.0/24', '2026-06-24T00:00:00Z')",
+        (ioc_id,),
+    )
+    conn.commit()
+    conn.close()
+
+    out = tmp_path / "pub"
+    run_ssg(db, out)
+    assert (out / "asn" / "AS9299" / "index.html").exists()
 
 
 def test_ssg_asn_index_lists_asn(ssg_output):
