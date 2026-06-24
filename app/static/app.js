@@ -35,6 +35,11 @@ async function runCryptoLookup() {
 
   try {
     const res = await fetch(`/api/crypto/lookup/${encodeURIComponent(address)}`);
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      summaryEl.innerHTML = `<p class="text-red-400 text-sm">Unexpected response from server (HTTP ${res.status}). If this persists, the API may be rate-limited.</p>`;
+      return;
+    }
     const data = await res.json();
 
     if (!res.ok) {
