@@ -13,6 +13,32 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
+// ---- PHT timezone formatter ----
+function fmtPHT(utcString) {
+  if (!utcString) return '';
+  try {
+    let d;
+    if (typeof utcString === 'number') {
+      d = new Date(utcString);
+    } else {
+      const s = String(utcString);
+      d = new Date(s.includes('T') || s.includes('Z') ? s : s.replace(' ', 'T') + 'Z');
+    }
+    if (isNaN(d)) return String(utcString).slice(0, 16);
+    return d.toLocaleString('en-PH', {
+      timeZone: 'Asia/Manila',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).replace(',', '');
+  } catch {
+    return String(utcString).slice(0, 16);
+  }
+}
+
 // ---- Crypto Workbench ----
 document.getElementById('crypto-btn').addEventListener('click', runCryptoLookup);
 document.getElementById('crypto-address').addEventListener('keydown', e => {
@@ -89,8 +115,8 @@ function renderCryptoSummary(el, data) {
         </div>` : ''}
         ${data.first_seen ? `
         <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen</p>
-          <p class="text-gray-300 text-xs">${data.first_seen}</p>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen (PHT)</p>
+          <p class="text-gray-300 text-xs">${fmtPHT(data.first_seen)}</p>
         </div>` : ''}
       </div>
     </div>`;
@@ -119,11 +145,7 @@ function renderTimeline(el, data) {
       amountStr = `${tx.amount_usdt} USDT`;
     }
 
-    const timeStr = tx.time
-      ? (typeof tx.time === 'number'
-          ? new Date(tx.time).toISOString().replace('T', ' ').slice(0, 19)
-          : String(tx.time).slice(0, 19))
-      : '';
+    const timeStr = fmtPHT(tx.time);
 
     const counterparty = tx.from || tx.sender || tx.recipient || '';
     const shortCounterparty = counterparty ? counterparty.slice(0, 16) + '...' : '';
@@ -331,7 +353,7 @@ async function loadNews(category) {
       <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="news-card block">
         <div class="flex items-center justify-between mb-2">
           <span class="text-xs text-amber-400 font-bold">${item.feed_source}</span>
-          <span class="text-xs text-gray-600">${item.published_at ? item.published_at.slice(0, 16) : ''}</span>
+          <span class="text-xs text-gray-600">${fmtPHT(item.published_at)}</span>
         </div>
         <p class="text-sm text-white leading-snug mb-1">${item.title}</p>
         ${item.summary ? `<p class="text-xs text-gray-500 leading-relaxed line-clamp-2">${item.summary.replace(/<[^>]*>/g, '')}</p>` : ''}

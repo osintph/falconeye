@@ -20,11 +20,15 @@ FEEDS = {
     ],
     "ph_cyber": [
         {"name": "CyberSecurity.PH", "url": "https://www.cybersecurity.ph/feed/"},
-        {"name": "Philippine News Agency", "url": "https://www.pna.gov.ph/rss/technology"},
+        {"name": "Inquirer Technology", "url": "https://technology.inquirer.net/feed"},
+        {"name": "Rappler Technology", "url": "https://www.rappler.com/technology/feed/"},
     ],
     "ph_tech": [
-        {"name": "Manila Bulletin Tech", "url": "https://mb.com.ph/category/technews/feed/"},
-        {"name": "Philippine News Agency Tech", "url": "https://www.pna.gov.ph/rss/technology"},
+        {"name": "Rappler Technology", "url": "https://www.rappler.com/technology/feed/"},
+        {"name": "Inquirer Technology", "url": "https://technology.inquirer.net/feed"},
+        {"name": "GMA SciTech", "url": "https://data.gmanetwork.com/gno/rss/scitech/feed.xml"},
+        {"name": "Philstar Technology", "url": "https://www.philstar.com/rss/business"},
+        {"name": "Manila Times Technology", "url": "https://www.manilatimes.net/business/technology/feed/"},
     ],
 }
 
@@ -43,10 +47,20 @@ def cache_is_stale(db: sqlite3.Connection, category: str) -> bool:
 
 
 def refresh_category(db: sqlite3.Connection, category: str) -> None:
+    import logging
+    log = logging.getLogger("falconeye.news")
     feeds = FEEDS.get(category, [])
+
     for feed in feeds:
         try:
             parsed = feedparser.parse(feed["url"])
+            if parsed.bozo and not parsed.entries:
+                log.warning(f"Feed parse failed for {feed['name']}: {parsed.get('bozo_exception')}")
+                continue
+            if not parsed.entries:
+                log.warning(f"Feed returned no entries: {feed['name']}")
+                continue
+            entry_count = 0
             for entry in parsed.entries[:15]:
                 title = entry.get("title", "").strip()
                 url = entry.get("link", "").strip()
@@ -61,11 +75,13 @@ def refresh_category(db: sqlite3.Connection, category: str) -> None:
                     """,
                     (category, feed["name"], title, url, summary, published),
                 )
-        except Exception:
-            pass
+                entry_count += 1
+            log.info(f"Feed {feed['name']}: stored {entry_count} entries")
+        except Exception as e:
+            log.warning(f"Feed exception for {feed['name']}: {e}")
+
     db.commit()
 
-    # Keep only the latest 200 entries per category
     db.execute(
         """
         DELETE FROM news_cache WHERE feed_category = ? AND id NOT IN (
