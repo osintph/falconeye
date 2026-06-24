@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FalconEye — PH Fraud Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-mono">
+
+  <header class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <div>
+      <span class="text-amber-400 font-bold text-xl">FALCON</span><span class="text-white font-bold text-xl">EYE</span>
+      <span class="ml-3 text-xs text-gray-500 uppercase tracking-widest">PH Fraud Intelligence</span>
+    </div>
+    <div id="stats-badge" class="text-xs text-gray-500"></div>
+  </header>
+
+  <nav class="border-b border-gray-800 px-6 flex gap-6">
+    <button class="tab-btn py-3 text-sm border-b-2 border-amber-400 text-amber-400" data-tab="scanner">Phishing Scanner</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="repository">Scam Repository</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="submit">Submit</button>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6 py-8">
+
+    <!-- Scanner Tab -->
+    <div id="tab-scanner" class="tab-content">
+      <h2 class="text-lg font-bold mb-1">Phishing Kit Scanner</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a suspected URL or raw HTML to fingerprint known PH phishing kit indicators.</p>
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Suspected URL</label>
+        <input id="scan-url" type="text" placeholder="https://bdo-verify-ph.xyz"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+      </div>
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Or paste raw HTML</label>
+        <textarea id="scan-html" rows="5" placeholder="Paste page source here..."
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"></textarea>
+      </div>
+
+      <button id="scan-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+        Run Scan
+      </button>
+
+      <div id="scan-result" class="mt-8 hidden"></div>
+    </div>
+
+    <!-- Repository Tab -->
+    <div id="tab-repository" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Scam Text Repository</h2>
+      <p class="text-gray-400 text-sm mb-6">Searchable archive of PH-targeted smishing and phishing messages.</p>
+
+      <div class="flex gap-3 mb-6">
+        <input id="repo-search" type="text" placeholder="Search messages..."
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+        <select id="repo-brand" class="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+          <option value="">All Brands</option>
+          <option>GCASH</option><option>MAYA</option><option>BDO</option><option>BPI</option>
+          <option>LANDBANK</option><option>UNIONBANK</option><option>RCBC</option>
+          <option>METROBANK</option><option>LBC</option><option>PHLPOST</option><option>OTHER</option>
+        </select>
+        <button id="repo-search-btn" class="bg-gray-700 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">Search</button>
+      </div>
+
+      <div id="repo-results" class="space-y-3"></div>
+    </div>
+
+    <!-- Submit Tab -->
+    <div id="tab-submit" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Submit Scam Message</h2>
+      <p class="text-gray-400 text-sm mb-6">Contribute to the repository. Duplicate messages are automatically rejected.</p>
+
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Brand Target</label>
+          <select id="submit-brand" class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400">
+            <option value="">Select brand...</option>
+            <option>GCASH</option><option>MAYA</option><option>BDO</option><option>BPI</option>
+            <option>LANDBANK</option><option>UNIONBANK</option><option>RCBC</option>
+            <option>METROBANK</option><option>LBC</option><option>PHLPOST</option><option>OTHER</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Sender ID (optional)</label>
+          <input id="submit-sender" type="text" placeholder="e.g. ALERTT or 09171234567"
+            class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Message Content</label>
+          <textarea id="submit-message" rows="6" placeholder="Paste the full scam message here..."
+            class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"></textarea>
+        </div>
+        <button id="submit-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Submit Message
+        </button>
+        <div id="submit-result" class="hidden"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

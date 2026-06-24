@@ -1,0 +1,23 @@
+[Unit]
+Description=FalconEye v2 — PH Fraud Intelligence Platform
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/falconeye/app_src
+Environment="FALCONEYE_DB=/opt/falconeye/data/falconeye.db"
+ExecStart=/opt/falconeye/venv/bin/gunicorn app.main:app \
+    --workers 3 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --timeout 30 \
+    --keep-alive 5 \
+    --access-logfile /var/log/falconeye/access.log \
+    --error-logfile /var/log/falconeye/error.log
+ExecStartPre=/bin/mkdir -p /var/log/falconeye
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
