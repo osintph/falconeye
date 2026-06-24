@@ -1,36 +1,20 @@
+from datetime import datetime, timezone
+
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.config import HTTPX_TIMEOUT
+from app.utils.ssrf import validate_url
+
 router = APIRouter(prefix="/api/crypto", tags=["crypto"])
 limiter = Limiter(key_func=get_remote_address)
 
-BLOCKCHAIR_BASE = "https://api.blockchair.com"
+BLOCKSTREAM_BASE = "https://blockstream.info/api"
+BLOCKCYPHER_ETH_BASE = "https://api.blockcypher.com/v1/eth/main/addrs"
 TRONGRID_BASE = "https://api.trongrid.io"
 USDT_TRC20_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
-
-KNOWN_EXCHANGES = {
-    "binance": ["binance", "bnb"],
-    "coinbase": ["coinbase"],
-    "kraken": ["kraken"],
-    "okx": ["okx", "okex"],
-    "bybit": ["bybit"],
-    "huobi": ["huobi", "htx"],
-    "kucoin": ["kucoin"],
-    "bitfinex": ["bitfinex"],
-    "gate": ["gate.io", "gateio"],
-}
-
-
-def detect_exchange(label: str) -> str | None:
-    if not label:
-        return None
-    label_lower = label.lower()
-    for exchange, keywords in KNOWN_EXCHANGES.items():
-        if any(kw in label_lower for kw in keywords):
-            return exchange
-    return None
 
 
 def detect_chain(address: str) -> str:
@@ -51,7 +35,10 @@ async def lookup_address(request: Request, address: str):
     chain = detect_chain(address)
 
     if chain == "unknown":
-        raise HTTPException(status_code=400, detail="Unrecognized address format. Supported: BTC, ETH, USDT TRC20 (TRON).")
+        raise HTTPException(
+            status_code=400,
+            detail="Unrecognized address format. Supported: BTC, ETH, USDT TRC20 (TRON).",
+        )
 
     if chain == "btc":
         return await lookup_btc(address)
@@ -62,112 +49,168 @@ async def lookup_address(request: Request, address: str):
 
 
 async def lookup_btc(address: str) -> dict:
-    url = f"{BLOCKCHAIR_BASE}/bitcoin/dashboards/address/{address}?transaction_details=true&limit=50"
+    info_url = f"{BLOCKSTREAM_BASE}/address/{address}"
+    txs_url = f"{BLOCKSTREAM_BASE}/address/{address}/txs"
+
+    for url in (info_url, txs_url):
+        ok, reason = validate_url(url)
+        if not ok:
+            raise HTTPException(status_code=400, detail=f"Invalid URL: {reason}")
+
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get(url, headers={"User-Agent": "FalconEye/3.0 (osintph.info)"})
-            r.raise_for_status()
-            data = r.json()
+        async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+            r_info = await client.get(info_url, headers={"User-Agent": "FalconEye/3.0"})
+            r_info.raise_for_status()
+            info = r_info.json()
+
+            r_txs = await client.get(txs_url, headers={"User-Agent": "FalconEye/3.0"})
+            r_txs.raise_for_status()
+            raw_txs = r_txs.json()
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 402:
-            raise HTTPException(status_code=429, detail="Blockchair daily limit reached. Try again tomorrow.")
-        raise HTTPException(status_code=502, detail=f"Blockchair error: {e.response.status_code}")
+        if e.response.status_code == 429:
+            raise HTTPException(status_code=429, detail="Blockstream rate limit reached. Try again in a moment.")
+        raise HTTPException(status_code=503, detail=f"Blockstream API error: {e.response.status_code}")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Upstream fetch failed: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Upstream fetch failed: {str(e)}")
 
-    addr_data = data.get("data", {}).get(address, {})
-    if not addr_data:
-        raise HTTPException(status_code=404, detail="Address not found on Bitcoin blockchain.")
-
-    info = addr_data.get("address", {})
-    txs_raw = addr_data.get("transactions", [])
+    chain_stats = info.get("chain_stats", {})
+    funded_sat = chain_stats.get("funded_txo_sum", 0) or 0
+    spent_sat = chain_stats.get("spent_txo_sum", 0) or 0
+    balance_sat = funded_sat - spent_sat
+    tx_count = chain_stats.get("tx_count", 0) or 0
 
     transactions = []
-    for tx in txs_raw[:50]:
+    for tx in raw_txs[:25]:
+        received_sat = sum(
+            out.get("value", 0)
+            for out in tx.get("vout", [])
+            if out.get("scriptpubkey_address") == address
+        )
+        sent_sat_tx = sum(
+            inp.get("prevout", {}).get("value", 0)
+            for inp in tx.get("vin", [])
+            if inp.get("prevout", {}).get("scriptpubkey_address") == address
+        )
+        balance_change = received_sat - sent_sat_tx
+        is_received = balance_change > 0
+
+        if is_received:
+            counterparty = next(
+                (
+                    inp.get("prevout", {}).get("scriptpubkey_address", "")
+                    for inp in tx.get("vin", [])
+                    if inp.get("prevout", {}).get("scriptpubkey_address") != address
+                ),
+                "",
+            )
+        else:
+            counterparty = next(
+                (
+                    out.get("scriptpubkey_address", "")
+                    for out in tx.get("vout", [])
+                    if out.get("scriptpubkey_address") != address
+                ),
+                "",
+            )
+
+        block_time = tx.get("status", {}).get("block_time")
         transactions.append({
-            "hash": tx.get("hash"),
-            "time": tx.get("time"),
-            "balance_change": tx.get("balance_change"),
-            "is_received": (tx.get("balance_change", 0) or 0) > 0,
+            "hash": tx.get("txid", ""),
+            "time": block_time * 1000 if block_time else None,
+            "balance_change": balance_change,
+            "is_received": is_received,
+            "from": counterparty if is_received else address,
+            "to": address if is_received else counterparty,
         })
 
     return {
         "chain": "BTC",
         "address": address,
-        "balance_satoshi": info.get("balance", 0),
-        "balance_btc": round((info.get("balance", 0) or 0) / 1e8, 8),
-        "received_btc": round((info.get("received", 0) or 0) / 1e8, 8),
-        "spent_btc": round((info.get("spent", 0) or 0) / 1e8, 8),
-        "tx_count": info.get("transaction_count", 0),
-        "first_seen": info.get("first_seen_receiving"),
-        "last_seen": info.get("last_seen_receiving"),
+        "balance_satoshi": balance_sat,
+        "balance_btc": round(balance_sat / 1e8, 8),
+        "received_btc": round(funded_sat / 1e8, 8),
+        "spent_btc": round(spent_sat / 1e8, 8),
+        "tx_count": tx_count,
+        "first_seen": None,
         "transactions": transactions,
     }
 
 
 async def lookup_eth(address: str) -> dict:
-    url = f"{BLOCKCHAIR_BASE}/ethereum/dashboards/address/{address}?transaction_details=true&limit=50"
+    url = f"{BLOCKCYPHER_ETH_BASE}/{address}"
+    ok, reason = validate_url(url)
+    if not ok:
+        raise HTTPException(status_code=400, detail=f"Invalid URL: {reason}")
+
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            r = await client.get(url, headers={"User-Agent": "FalconEye/3.0 (osintph.info)"})
+        async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+            r = await client.get(url, headers={"User-Agent": "FalconEye/3.0"})
             r.raise_for_status()
-            data = r.json()
+            info = r.json()
     except httpx.HTTPStatusError as e:
-        if e.response.status_code == 402:
-            raise HTTPException(status_code=429, detail="Blockchair daily limit reached. Try again tomorrow.")
-        raise HTTPException(status_code=502, detail=f"Blockchair error: {e.response.status_code}")
+        if e.response.status_code == 429:
+            raise HTTPException(status_code=429, detail="BlockCypher rate limit reached. Try again in a moment.")
+        raise HTTPException(status_code=503, detail=f"BlockCypher API error: {e.response.status_code}")
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Upstream fetch failed: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"Upstream fetch failed: {str(e)}")
 
-    addr_data = data.get("data", {}).get(address.lower(), {}) or data.get("data", {}).get(address, {})
-    if not addr_data:
-        raise HTTPException(status_code=404, detail="Address not found on Ethereum blockchain.")
-
-    info = addr_data.get("address", {})
-    txs_raw = addr_data.get("calls", []) or addr_data.get("transactions", [])
+    balance_wei = info.get("balance", 0) or 0
+    tx_count = info.get("n_tx", 0) or 0
 
     transactions = []
-    for tx in txs_raw[:50]:
+    for tx in (info.get("txrefs") or [])[:25]:
+        value_wei = tx.get("value", 0) or 0
+        # tx_output_n >= 0 means this is an output (received); tx_input_n >= 0 means input (sent)
+        is_received = (tx.get("tx_output_n") or -1) >= 0
+        block_time_ms = None
+        confirmed_str = tx.get("confirmed") or ""
+        if confirmed_str:
+            try:
+                dt = datetime.strptime(confirmed_str[:19], "%Y-%m-%dT%H:%M:%S")
+                block_time_ms = int(dt.replace(tzinfo=timezone.utc).timestamp() * 1000)
+            except Exception:
+                pass
+
         transactions.append({
-            "hash": tx.get("transaction_hash") or tx.get("hash"),
-            "time": tx.get("time"),
-            "value_wei": tx.get("value", 0),
-            "value_eth": round((tx.get("value", 0) or 0) / 1e18, 6),
-            "is_received": (tx.get("recipient") or "").lower() == address.lower(),
-            "sender": tx.get("sender"),
-            "recipient": tx.get("recipient"),
+            "hash": tx.get("tx_hash", ""),
+            "time": block_time_ms,
+            "value_eth": round(value_wei / 1e18, 6),
+            "is_received": is_received,
         })
 
     return {
         "chain": "ETH",
         "address": address,
-        "balance_wei": info.get("balance", 0),
-        "balance_eth": round((info.get("balance", 0) or 0) / 1e18, 6),
-        "tx_count": info.get("transaction_count", 0),
-        "first_seen": info.get("first_seen_receiving"),
-        "last_seen": info.get("last_seen_receiving"),
+        "balance_wei": balance_wei,
+        "balance_eth": round(balance_wei / 1e18, 6),
+        "tx_count": tx_count,
         "transactions": transactions,
     }
 
 
 async def lookup_trc20(address: str) -> dict:
+    acc_url = f"{TRONGRID_BASE}/v1/accounts/{address}"
+    tx_url = f"{TRONGRID_BASE}/v1/accounts/{address}/transactions/trc20"
+
+    for url in (acc_url, tx_url):
+        ok, reason = validate_url(url)
+        if not ok:
+            raise HTTPException(status_code=400, detail=f"Invalid URL: {reason}")
+
     try:
-        async with httpx.AsyncClient(timeout=15.0) as client:
-            acc_r = await client.get(
-                f"{TRONGRID_BASE}/v1/accounts/{address}",
-                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
-            )
+        async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+            acc_r = await client.get(acc_url, headers={"User-Agent": "FalconEye/3.0"})
             tx_r = await client.get(
-                f"{TRONGRID_BASE}/v1/accounts/{address}/transactions/trc20",
+                tx_url,
                 params={
                     "limit": 50,
                     "contract_address": USDT_TRC20_CONTRACT,
                     "only_confirmed": "true",
                 },
-                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+                headers={"User-Agent": "FalconEye/3.0"},
             )
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"TronGrid fetch failed: {str(e)}")
+        raise HTTPException(status_code=503, detail=f"TronGrid fetch failed: {str(e)}")
 
     acc_data = acc_r.json() if acc_r.status_code == 200 else {}
     tx_data = tx_r.json() if tx_r.status_code == 200 else {}
