@@ -9,7 +9,9 @@ echo "=== FalconEye v3 Provisioning ==="
 
 echo "[1/8] Creating directories..."
 mkdir -p "$INSTALL_DIR/data"
+mkdir -p /var/log/falconeye
 chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
+chown "$SERVICE_USER:$SERVICE_USER" /var/log/falconeye
 
 echo "[2/8] Updating package index..."
 apt-get update -qq
