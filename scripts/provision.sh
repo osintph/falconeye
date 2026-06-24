@@ -52,10 +52,20 @@ ln -sf /etc/nginx/sites-available/falconeye /etc/nginx/sites-enabled/falconeye
 rm -f /etc/nginx/sites-enabled/default
 nginx -t && systemctl reload nginx
 
-# Install cron cleanup job
-echo "[9/9] Installing cron cleanup..."
+echo "[9/9] Installing cron jobs..."
+# Temp file cleanup
 echo "*/30 * * * * root find /tmp -name 'falconeye_*' -mmin +30 -delete" > /etc/cron.d/falconeye-cleanup
 chmod 644 /etc/cron.d/falconeye-cleanup
+
+# Feed ingest — runs every 4 hours
+cat > /etc/cron.d/falconeye-ingest << 'CRON'
+0 */4 * * * root cd /opt/falconeye/app_src && /opt/falconeye/venv/bin/python scripts/run_ingest.py >> /var/log/falconeye/ingest.log 2>&1
+CRON
+chmod 644 /etc/cron.d/falconeye-ingest
+
+# Run ingest once immediately after install so the DB is not empty on first visit
+echo "Running initial feed ingest (this may take 1-2 minutes)..."
+cd /opt/falconeye/app_src && /opt/falconeye/venv/bin/python scripts/run_ingest.py
 
 echo ""
 echo "=== Provisioning complete ==="

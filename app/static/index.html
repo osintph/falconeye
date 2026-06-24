@@ -19,8 +19,7 @@
 
   <nav class="border-b border-gray-800 px-6 flex gap-6">
     <button class="tab-btn py-3 text-sm border-b-2 border-amber-400 text-amber-400" data-tab="scanner">Phishing Scanner</button>
-    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="repository">Scam Repository</button>
-    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="submit">Submit</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="repository">PH Phishing Feed</button>
   </nav>
 
   <main class="max-w-4xl mx-auto px-6 py-8">
@@ -51,54 +50,30 @@
 
     <!-- Repository Tab -->
     <div id="tab-repository" class="tab-content hidden">
-      <h2 class="text-lg font-bold mb-1">Scam Text Repository</h2>
-      <p class="text-gray-400 text-sm mb-6">Searchable archive of PH-targeted smishing and phishing messages.</p>
+      <h2 class="text-lg font-bold mb-1">PH Phishing Feed</h2>
+      <p class="text-gray-400 text-sm mb-2">Auto-updated from OpenPhish and URLhaus. Filtered for Philippine-targeting lures.</p>
+      <div id="feed-meta" class="text-xs text-gray-500 mb-6"></div>
 
-      <div class="flex gap-3 mb-6">
-        <input id="repo-search" type="text" placeholder="Search messages..."
-          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+      <div class="flex gap-3 mb-6 flex-wrap">
         <select id="repo-brand" class="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
           <option value="">All Brands</option>
-          <option>GCASH</option><option>MAYA</option><option>BDO</option><option>BPI</option>
-          <option>LANDBANK</option><option>UNIONBANK</option><option>RCBC</option>
-          <option>METROBANK</option><option>LBC</option><option>PHLPOST</option><option>OTHER</option>
+          <option>GCash</option><option>Maya</option><option>BDO</option><option>BPI</option>
+          <option>Landbank</option><option>UnionBank</option><option>RCBC</option>
+          <option>Metrobank</option><option>LBC</option><option>PHLPost</option><option>Unknown</option>
         </select>
-        <button id="repo-search-btn" class="bg-gray-700 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">Search</button>
+        <select id="repo-source" class="bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+          <option value="">All Sources</option>
+          <option value="openphish">OpenPhish</option>
+          <option value="urlhaus_ph">URLhaus PH</option>
+        </select>
+        <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+          <input type="checkbox" id="repo-live-only" class="accent-amber-400" />
+          Live only
+        </label>
+        <button id="repo-search-btn" class="bg-gray-700 text-white px-4 py-2 rounded text-sm hover:bg-gray-600">Filter</button>
       </div>
 
       <div id="repo-results" class="space-y-3"></div>
-    </div>
-
-    <!-- Submit Tab -->
-    <div id="tab-submit" class="tab-content hidden">
-      <h2 class="text-lg font-bold mb-1">Submit Scam Message</h2>
-      <p class="text-gray-400 text-sm mb-6">Contribute to the repository. Duplicate messages are automatically rejected.</p>
-
-      <div class="space-y-4">
-        <div>
-          <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Brand Target</label>
-          <select id="submit-brand" class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400">
-            <option value="">Select brand...</option>
-            <option>GCASH</option><option>MAYA</option><option>BDO</option><option>BPI</option>
-            <option>LANDBANK</option><option>UNIONBANK</option><option>RCBC</option>
-            <option>METROBANK</option><option>LBC</option><option>PHLPOST</option><option>OTHER</option>
-          </select>
-        </div>
-        <div>
-          <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Sender ID (optional)</label>
-          <input id="submit-sender" type="text" placeholder="e.g. ALERTT or 09171234567"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Message Content</label>
-          <textarea id="submit-message" rows="6" placeholder="Paste the full scam message here..."
-            class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"></textarea>
-        </div>
-        <button id="submit-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
-          Submit Message
-        </button>
-        <div id="submit-result" class="hidden"></div>
-      </div>
     </div>
 
   </main>

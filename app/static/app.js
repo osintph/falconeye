@@ -12,15 +12,20 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
   });
 });
 
-// Load stats badge on startup
-async function loadStats() {
+// Feed status badge on load
+async function loadFeedMeta() {
   try {
-    const r = await fetch('/api/scamtext/stats');
+    const r = await fetch('/api/feeds/status');
     const data = await r.json();
-    document.getElementById('stats-badge').textContent = `${data.total} scam messages archived`;
+    const meta = document.getElementById('feed-meta');
+    if (meta) {
+      meta.textContent = `${data.total} entries indexed · ${data.live} live · Sources: ${data.by_source.map(s => `${s.ingest_source} (${s.n})`).join(', ')}`;
+    }
+    const badge = document.getElementById('stats-badge');
+    if (badge) badge.textContent = `${data.total} phishing entries indexed`;
   } catch {}
 }
-loadStats();
+loadFeedMeta();
 
 // Scanner
 document.getElementById('scan-btn').addEventListener('click', async () => {
@@ -95,98 +100,69 @@ document.getElementById('scan-btn').addEventListener('click', async () => {
   }
 });
 
-// Repository search
+// PH Phishing Feed
 async function loadRepo() {
-  const q = document.getElementById('repo-search').value.trim();
   const brand = document.getElementById('repo-brand').value;
+  const source = document.getElementById('repo-source').value;
+  const liveOnly = document.getElementById('repo-live-only').checked;
   const resultsEl = document.getElementById('repo-results');
 
   resultsEl.innerHTML = '<p class="text-gray-400 text-sm">Loading...</p>';
 
   const params = new URLSearchParams();
-  if (q) params.set('q', q);
   if (brand) params.set('brand', brand);
+  if (source) params.set('source', source);
+  if (liveOnly) params.set('live_only', 'true');
   params.set('limit', '50');
 
   try {
-    const res = await fetch(`/api/scamtext/search?${params}`);
+    const res = await fetch(`/api/feeds/search?${params}`);
     const data = await res.json();
 
     if (data.length === 0) {
-      resultsEl.innerHTML = '<p class="text-gray-500 text-sm">No results found.</p>';
+      resultsEl.innerHTML = '<p class="text-gray-500 text-sm">No results. Try removing filters or wait for the next ingest cycle.</p>';
       return;
     }
 
-    resultsEl.innerHTML = data.map(row => `
-      <div class="scam-card">
-        <div class="flex items-center justify-between mb-2">
-          <span class="brand-badge">${row.brand_tag}</span>
-          <span class="text-xs text-gray-500">${row.date_reported ? row.date_reported.split('T')[0] : ''}</span>
-        </div>
-        ${row.sender_id ? `<p class="text-xs text-gray-400 mb-1">Sender: ${row.sender_id}</p>` : ''}
-        <p class="text-sm text-gray-200 mb-2 leading-relaxed">${row.message_content}</p>
-        ${row.extracted_url ? `
-          <div class="mt-2 flex items-center gap-2">
-            <span class="text-xs text-gray-500">Extracted URL:</span>
-            <span class="text-xs text-amber-400 break-all">${row.extracted_url}</span>
-            <button class="text-xs bg-gray-700 px-2 py-1 rounded hover:bg-gray-600"
-              onclick="scanExtractedUrl('${row.extracted_url}')">Scan</button>
-          </div>` : ''}
-      </div>`).join('');
+    resultsEl.innerHTML = data.map(row => {
+      const indicators = (() => {
+        try { return JSON.parse(row.kit_indicators || '[]'); } catch { return []; }
+      })();
+      const indicatorBadge = indicators.length > 0
+        ? `<span class="ml-2 text-xs text-red-400 font-bold">${indicators.length} indicator${indicators.length > 1 ? 's' : ''} matched</span>`
+        : '';
+      return `
+        <div class="scam-card">
+          <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <div class="flex items-center gap-2">
+              <span class="brand-badge">${row.target_brand}</span>
+              <span class="text-xs text-gray-500">${row.ingest_source}</span>
+              ${row.is_live ? '<span class="text-xs text-green-400 font-bold">LIVE</span>' : '<span class="text-xs text-gray-600">OFFLINE</span>'}
+              ${indicatorBadge}
+            </div>
+            <span class="text-xs text-gray-600">${row.date_scanned ? row.date_scanned.split('T')[0] : ''}</span>
+          </div>
+          <p class="text-xs text-amber-300 break-all mb-2">${row.phishing_url}</p>
+          <button class="text-xs bg-gray-700 px-3 py-1 rounded hover:bg-gray-600"
+            onclick="scanExtractedUrl('${row.phishing_url.replace(/'/g, "\\'")}')">
+            Scan this URL
+          </button>
+        </div>`;
+    }).join('');
   } catch (e) {
     resultsEl.innerHTML = `<p class="text-red-400 text-sm">Load failed: ${e.message}</p>`;
   }
 }
 
 document.getElementById('repo-search-btn').addEventListener('click', loadRepo);
-document.getElementById('tab-repository') && loadRepo();
+document.querySelector('[data-tab="repository"]').addEventListener('click', () => {
+  loadFeedMeta();
+  loadRepo();
+});
 
-// Auto-scan from repository
+// Auto-scan from feed
 function scanExtractedUrl(url) {
   document.getElementById('scan-url').value = url;
   document.querySelector('[data-tab="scanner"]').click();
   document.getElementById('scan-btn').click();
 }
-
-// Submit
-document.getElementById('submit-btn').addEventListener('click', async () => {
-  const brand = document.getElementById('submit-brand').value;
-  const sender = document.getElementById('submit-sender').value.trim();
-  const message = document.getElementById('submit-message').value.trim();
-  const resultEl = document.getElementById('submit-result');
-
-  if (!brand || !message) {
-    resultEl.innerHTML = '<p class="text-red-400 text-sm">Brand and message are required.</p>';
-    resultEl.classList.remove('hidden');
-    return;
-  }
-
-  try {
-    const res = await fetch('/api/scamtext/submit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ brand_tag: brand, sender_id: sender || null, message_content: message }),
-    });
-
-    const data = await res.json();
-
-    if (res.status === 409) {
-      resultEl.innerHTML = '<p class="text-yellow-400 text-sm">This message is already in the repository.</p>';
-    } else if (res.status === 429) {
-      resultEl.innerHTML = '<p class="text-red-400 text-sm">Rate limit reached. Wait a minute.</p>';
-    } else if (!res.ok) {
-      resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${data.detail}</p>`;
-    } else {
-      resultEl.innerHTML = `<p class="text-green-400 text-sm">Submitted. SHA-256: ${data.sha256}</p>`;
-      document.getElementById('submit-message').value = '';
-    }
-
-    resultEl.classList.remove('hidden');
-  } catch (e) {
-    resultEl.innerHTML = `<p class="text-red-400 text-sm">Submit failed: ${e.message}</p>`;
-    resultEl.classList.remove('hidden');
-  }
-});
-
-// Load repository on tab click
-document.querySelector('[data-tab="repository"]').addEventListener('click', loadRepo);
