@@ -126,6 +126,7 @@ Cadences:
 | `falconeye-kev` | 6 hours |
 | `falconeye-nvd` | 30 minutes |
 | `falconeye-apnic` | 24 hours |
+| `falconeye-prefix-enrich` | Weekly, Wednesday 02:00 UTC (v0.2.3) |
 | `falconeye-ssg` | 5 minutes (fallback timer; also triggered via `OnSuccess=` chain) |
 | `falconeye-shodan` | 1 hour |
 | `falconeye-digest` | Daily at 22:00 UTC (06:00 PHT) via `OnCalendar=` |
@@ -178,6 +179,20 @@ Verify these are current at implementation time by hitting the landing page.
 - Daily cap: 10,000 requests per UTC day, enforced per-worker-run in `shodan_enrich.py`
 - Staleness: skip IPs enriched within the last 6 hours
 
+### RIPEstat Data API (v0.2.3)
+
+Prefix-to-ASN enrichment for `ph_prefixes.asn`. No auth required.
+
+- Routing status: `https://stat.ripe.net/data/routing-status/data.json?resource=<prefix>`
+  - Parses `data.visibility.v4.origins[0]` (strips leading `AS`). Falls back to `v6.origins[0]` for IPv6 prefixes.
+  - An empty `origins` list means the prefix is not currently announced in BGP — `asn` stays NULL but `fetched_at` is updated.
+- AS overview: `https://stat.ripe.net/data/as-overview/data.json?resource=AS<n>`
+  - Parses `data.holder` as the operator name; upserts into `ph_asns`.
+- Rate: 0.5 s sleep between requests; exponential backoff on 429 (5 s start, 60 s cap, abort after 3 consecutive).
+- Staleness: skip prefixes with `fetched_at` younger than 7 days (`_STALE_DAYS = 7`).
+- Worker: `falconeye/ingest/prefix_enrich.py` — `enrich(db_path)` returns `(updated, errors)`.
+- Timer: `falconeye-prefix-enrich.timer` — Wednesday 02:00 UTC weekly, `RandomizedDelaySec=300`, `Persistent=true`. `OnSuccess=falconeye-ssg.service` triggers a re-render after each enrichment run.
+
 ## 8. Campaign clustering details
 
 `falconeye/cluster.py` runs three bucket strategies against the `iocs` and `sieve_matches` tables:
@@ -190,7 +205,13 @@ Verify these are current at implementation time by hitting the landing page.
 
 Minimum cluster size: 3 IOCs. Slugs are stable: `dom-`, `ast-`, or `pfx-` prefix + normalized cluster key, max 80 chars. The `run_clustering()` function upserts by slug using `ON CONFLICT(slug) DO UPDATE` — disappeared slugs get `status='expired'` and `expired_at` set.
 
-`config/asn_operators.yaml` maps 20 PH ASN numbers to operator names for display. `config/action_templates.yaml` maps URLhaus tags to defender guidance blocks rendered on campaign pages.
+`config/asn_operators.yaml` maps PH ASN numbers to operator names for display.
+
+`config/action_templates.yaml` maps URLhaus tags to defender guidance blocks on campaign pages. Each template may include `ports` (list of port/protocol strings) and `rule_ref` (external reference URL), both rendered on the campaign page.
+
+`config/cluster_tag_whitelist.yaml` (v0.2.3): positive allowlist of tags permitted as primary ASN+tag campaign labels. Only `family` and `functional` tags are whitelisted. A tag selected by `cluster_tag_priority.yaml` that is absent from the whitelist causes the IOC to be excluded from ASN+tag clustering. The architecture level has been removed from `cluster_tag_priority.yaml` entirely.
+
+`config/asn_abuse_contacts.yaml` (v0.2.3): abuse and NOC contact information for 10 PH ISPs, keyed by ASN. `_load_abuse_contacts()` in the SSG parses this and resolves a per-campaign contact for ASN-attributed campaigns. The contact block renders below the guidance section on campaign pages.
 
 ## 9. STIX 2.1 output
 

@@ -8,15 +8,18 @@ Part of the [OSINT-PH](https://osintph.info) tool suite.
 
 ## Status
 
-**v0.2: operational threat intelligence ledger.** Public dashboard is not yet live. See the [project spec](SPEC.md) for the design and the [implementation notes](IMPLEMENTATION_NOTES.md) for operational details.
+**v0.2.3: operational threat intelligence ledger.** Public dashboard is not yet live. See the [project spec](SPEC.md) for the design and the [implementation notes](IMPLEMENTATION_NOTES.md) for operational details.
 
 ## What it does
 
 - Ingests four authoritative free threat intelligence and vulnerability sources every 15 minutes to 24 hours
 - Filters records against PH-specific criteria: ASN allocations from APNIC, .ph TLD, PH brand string watchlist, PH-relevant CPE inventory
-- Clusters PH-matched IOCs into named campaigns by domain, ASN+tag, and /24 prefix
+- Enriches PH IP prefixes with origin ASN via the RIPEstat Data API (weekly, no auth required); populates `ph_prefixes.asn` for accurate IOC-to-ASN attribution even when the APNIC delegation file doesn't carry routing data
+- Clusters PH-matched IOCs into named campaigns by domain, ASN+tag (family/functional tags only — architecture tags excluded via `cluster_tag_whitelist.yaml`), and /24 prefix
 - Enriches IPs via Shodan InternetDB (keyless, open ports, CPEs, CVEs, hostnames)
 - Generates a static HTML dashboard, per-campaign and per-ASN pages, RSS/JSON feeds, STIX 2.1 bundles, and a TAXII-compatible static API
+- Per-campaign pages include IOC pivot links (AbuseIPDB, Shodan, VirusTotal, HE.net for IPs; URLhaus and VirusTotal for URLs/domains), ISP abuse contact blocks for ASN-attributed campaigns, and defender guidance with port lists and reference links
+- Per-ASN pages are skipped when the ASN has no recent IOCs (no stub pages)
 - Regenerates `robots.txt` and `sitemap.xml` on every SSG run
 - Serves everything via nginx as static files (no dynamic application code in the public request path)
 - Maintains chain-of-custody provenance for every record (source feed, fetch timestamp, source URL, manifest version)
