@@ -133,7 +133,7 @@ async def passive_fingerprint(url: str) -> tuple[list, Optional[str], int]:
 async def ingest_openphish(db: sqlite3.Connection) -> int:
     log.info("Fetching OpenPhish community feed...")
     try:
-        async with httpx.AsyncClient(timeout=FETCH_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=FETCH_TIMEOUT, follow_redirects=True) as client:
             r = await client.get(
                 "https://openphish.com/feed.txt",
                 headers={"User-Agent": "FalconEye/2.0 (osintph.info; research)"},
@@ -176,19 +176,21 @@ async def ingest_urlhaus_ph(db: sqlite3.Connection) -> int:
     lines = [l for l in r.text.splitlines() if not l.startswith("#") and l.strip()]
     stored = 0
 
+    # Actual URLhaus country feed columns (quoted CSV, no id column):
+    # Dateadded,URL,URL_status,Threat,Host,IPaddress,ASnumber,Country
     reader = csv.DictReader(
         io.StringIO("\n".join(lines)),
-        fieldnames=["id", "dateadded", "url", "url_status", "last_online", "threat", "tags", "urlhaus_link", "reporter"],
+        fieldnames=["dateadded", "url", "url_status", "threat", "host", "ipaddress", "asnumber", "country"],
     )
 
     for row in reader:
-        url = row.get("url", "").strip()
+        url = row.get("url", "").strip().strip('"')
         if not url or not url.startswith("http"):
             continue
         if already_stored(db, url):
             continue
         brand = detect_brand(url)
-        is_live = 1 if row.get("url_status", "").lower() == "online" else 0
+        is_live = 1 if row.get("url_status", "").strip().strip('"').lower() == "online" else 0
         indicators, telegram_bot_id, _ = await passive_fingerprint(url) if is_live else ([], None, 0)
         store_entry(db, url, brand, "urlhaus_ph", indicators, telegram_bot_id, is_live)
         stored += 1
