@@ -1,0 +1,23 @@
+[Unit]
+Description=FalconEye v3 — Cyber Intelligence Platform
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/falconeye/app_src
+Environment="FALCONEYE_DB=/opt/falconeye/data/falconeye.db"
+ExecStartPre=/bin/mkdir -p /var/log/falconeye
+ExecStart=/opt/falconeye/venv/bin/gunicorn app.main:app \
+    --workers 3 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 127.0.0.1:8000 \
+    --timeout 30 \
+    --keep-alive 5 \
+    --access-logfile /var/log/falconeye/access.log \
+    --error-logfile /var/log/falconeye/error.log
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

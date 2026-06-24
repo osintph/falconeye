@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FalconEye — Cyber Intelligence</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-mono">
+
+  <header class="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+    <div>
+      <span class="text-amber-400 font-bold text-xl">FALCON</span><span class="text-white font-bold text-xl">EYE</span>
+      <span class="ml-3 text-xs text-gray-500 uppercase tracking-widest">Cyber Intelligence</span>
+    </div>
+  </header>
+
+  <nav class="border-b border-gray-800 px-6 flex gap-6">
+    <button class="tab-btn active-tab py-3 text-sm border-b-2 border-amber-400 text-amber-400" data-tab="crypto">Crypto Workbench</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="scanner">Phishing Scanner</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="news">Cyber News</button>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-6 py-8">
+
+    <!-- Crypto Workbench Tab -->
+    <div id="tab-crypto" class="tab-content">
+      <h2 class="text-lg font-bold mb-1">Crypto Investigation Workbench</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a Bitcoin, Ethereum, or USDT TRC20 wallet address to investigate transaction history and counterparties.</p>
+
+      <div class="flex gap-3 mb-6">
+        <input id="crypto-address" type="text" placeholder="BTC / ETH / USDT-TRC20 address"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="crypto-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Investigate
+        </button>
+      </div>
+
+      <div id="crypto-result" class="hidden">
+        <!-- Summary card -->
+        <div id="crypto-summary" class="mb-6"></div>
+
+        <!-- Transaction graph -->
+        <div class="mb-6">
+          <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Transaction Graph</h3>
+          <div id="crypto-graph" class="bg-gray-900 border border-gray-800 rounded" style="height:400px;"></div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="mb-6">
+          <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Transaction Timeline</h3>
+          <div id="crypto-timeline" class="space-y-2"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phishing Scanner Tab -->
+    <div id="tab-scanner" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Phishing Kit Scanner</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a suspected URL or raw HTML to fingerprint known PH phishing kit indicators.</p>
+
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Suspected URL</label>
+        <input id="scan-url" type="text" placeholder="https://bdo-verify-ph.xyz"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+      </div>
+      <div class="mb-4">
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Or paste raw HTML</label>
+        <textarea id="scan-html" rows="5" placeholder="Paste page source here..."
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"></textarea>
+      </div>
+      <button id="scan-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Run Scan</button>
+      <div id="scan-result" class="mt-8 hidden"></div>
+    </div>
+
+    <!-- News Tab -->
+    <div id="tab-news" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Cyber News</h2>
+      <p class="text-gray-400 text-sm mb-6">Aggregated from global and Philippine cybersecurity sources. Refreshed every 30 minutes.</p>
+
+      <div class="flex gap-3 mb-6">
+        <button class="news-cat-btn active-news bg-amber-400 text-gray-950 font-bold px-4 py-1.5 rounded text-xs" data-cat="global_cyber">Global Cyber</button>
+        <button class="news-cat-btn bg-gray-800 text-gray-300 px-4 py-1.5 rounded text-xs hover:bg-gray-700" data-cat="ph_cyber">PH Cyber</button>
+        <button class="news-cat-btn bg-gray-800 text-gray-300 px-4 py-1.5 rounded text-xs hover:bg-gray-700" data-cat="ph_tech">PH Tech</button>
+      </div>
+
+      <div id="news-results" class="grid gap-3"></div>
+    </div>
+
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
