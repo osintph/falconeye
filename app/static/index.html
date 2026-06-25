@@ -69,6 +69,10 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8L4.5 20.5a2.5 2.5 0 0 0 2 3.5h11a2.5 2.5 0 0 0 2-3.5L14 10V2"/><path d="M8 2h8"/><path d="M7 16h10"/></svg>
       Sandbox
     </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="email">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg>
+      Email Header
+    </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="news">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
       News
@@ -357,6 +361,29 @@
       </button>
 
       <div id="sandbox-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- EMAIL HEADER ANALYZER TAB -->
+    <div id="tab-email" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Email Header Analyzer</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a complete email header to analyze authentication, sender alignment, routing, and BEC indicators. Get the header from your mail client's "View source" or "Show original" menu.</p>
+
+      <div class="flex flex-col gap-3 mb-3">
+        <textarea id="email-header-input"
+                  placeholder="Paste raw email header here (everything from 'Return-Path:' or 'Received:' down to the empty line before the body)"
+                  rows="10"
+                  class="bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+        <div class="flex gap-3">
+          <button id="email-header-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+            Analyze Header
+          </button>
+          <button id="email-header-clear" class="bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div id="email-header-result" class="hidden mt-6"></div>
     </div>
 
     <!-- News Tab -->

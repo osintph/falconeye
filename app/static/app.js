@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -1404,6 +1404,349 @@ async function loadLandingNews() {
     el.innerHTML = `<p class="text-xs text-red-400 col-span-3">Failed to load news: ${e.message}</p>`;
   }
 }
+
+// ---- Email Header Analyzer ----
+
+document.getElementById('email-header-clear')?.addEventListener('click', () => {
+  document.getElementById('email-header-input').value = '';
+  const resultEl = document.getElementById('email-header-result');
+  resultEl.classList.add('hidden');
+  resultEl.innerHTML = '';
+});
+
+document.getElementById('email-header-btn')?.addEventListener('click', async () => {
+  const input = document.getElementById('email-header-input');
+  const resultEl = document.getElementById('email-header-result');
+  const btn = document.getElementById('email-header-btn');
+  const raw = (input.value || '').trim();
+
+  if (!raw) {
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Paste an email header first.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Analyzing...';
+  resultEl.classList.remove('hidden');
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Parsing header and running DNS lookups...</p>';
+
+  try {
+    const res = await fetch('/api/email-header/analyze', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({raw_header: raw}),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({detail: `HTTP ${res.status}`}));
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Analysis failed: ${err.detail || res.status}</p>`;
+      return;
+    }
+
+    const data = await res.json();
+    resultEl.innerHTML = renderEmailHeaderResult(data);
+  } catch (e) {
+    console.error('email-header analyze exception:', e);
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Network error: ${e.message}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analyze Header';
+  }
+});
+
+
+function renderEmailHeaderResult(d) {
+  const bec = d.bec_assessment || {};
+  const auth = d.authentication || {};
+  const from = (d.from || [])[0] || {};
+  const replyTo = (d.reply_to || [])[0] || {};
+  const returnPath = (d.return_path || [])[0] || {};
+
+  const verdictColor = {
+    'high_risk': 'red',
+    'medium_risk': 'amber',
+    'low_risk_with_indicators': 'yellow',
+    'low_risk': 'green',
+  }[bec.verdict] || 'gray';
+
+  const verdictLabel = {
+    'high_risk': 'HIGH RISK',
+    'medium_risk': 'MEDIUM RISK',
+    'low_risk_with_indicators': 'LOW RISK (with indicators)',
+    'low_risk': 'LOW RISK',
+  }[bec.verdict] || 'UNKNOWN';
+
+  let html = `
+    <div class="bg-gray-900 border border-${verdictColor}-500 rounded p-5 mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-${verdictColor}-400 uppercase tracking-wider">BEC Assessment</h3>
+        <span class="text-2xl font-bold text-${verdictColor}-400">${verdictLabel}</span>
+      </div>
+      <div class="mb-3">
+        <div class="text-xs text-gray-500 uppercase mb-1">Risk Score</div>
+        <div class="bg-gray-800 rounded h-3 overflow-hidden">
+          <div class="bg-${verdictColor}-500 h-3" style="width:${bec.score || 0}%"></div>
+        </div>
+        <div class="text-xs text-gray-400 mt-1">${bec.score || 0} / 100</div>
+      </div>
+      <div class="space-y-2">
+        ${(bec.indicators || []).map(ind => `
+          <div class="flex items-start gap-2 text-xs">
+            <span class="font-bold uppercase ${
+              ind.severity === 'high' ? 'text-red-400' :
+              ind.severity === 'medium' ? 'text-amber-400' :
+              ind.severity === 'info' ? 'text-blue-400' : 'text-gray-400'
+            }">${ind.severity}</span>
+            <span class="text-white">${escapeHtml(ind.name)}:</span>
+            <span class="text-gray-400">${escapeHtml(ind.detail)}</span>
+          </div>
+        `).join('') || '<p class="text-xs text-gray-500">No suspicious indicators found.</p>'}
+      </div>
+    </div>
+  `;
+
+  html += `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+      ${emailAuthCard('SPF', auth.spf, d.spf_live)}
+      ${emailAuthCard('DKIM', auth.dkim, d.dkim_live)}
+      ${emailAuthCard('DMARC', auth.dmarc, d.dmarc_live)}
+    </div>
+  `;
+
+  html += `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Sender Identity</h3>
+      <table class="w-full text-xs">
+        <tr class="border-b border-gray-800">
+          <td class="py-2 text-gray-500 uppercase">From</td>
+          <td class="py-2 text-white font-mono">
+            ${from.display ? `<span class="text-amber-300">${escapeHtml(from.display)}</span> ` : ''}
+            &lt;${escapeHtml(from.email || '(none)')}&gt;
+          </td>
+        </tr>
+        <tr class="border-b border-gray-800">
+          <td class="py-2 text-gray-500 uppercase">Reply-To</td>
+          <td class="py-2 text-white font-mono">${escapeHtml(replyTo.email || '(same as From)')}</td>
+        </tr>
+        <tr class="border-b border-gray-800">
+          <td class="py-2 text-gray-500 uppercase">Return-Path</td>
+          <td class="py-2 text-white font-mono">${escapeHtml(returnPath.email || '(none)')}</td>
+        </tr>
+        <tr class="border-b border-gray-800">
+          <td class="py-2 text-gray-500 uppercase">Subject</td>
+          <td class="py-2 text-white">${escapeHtml(d.subject || '(none)')}</td>
+        </tr>
+        <tr class="border-b border-gray-800">
+          <td class="py-2 text-gray-500 uppercase">Date</td>
+          <td class="py-2 text-white">${escapeHtml(d.date || '(none)')}</td>
+        </tr>
+        <tr>
+          <td class="py-2 text-gray-500 uppercase">Message-ID</td>
+          <td class="py-2 text-white font-mono text-xs break-all">${escapeHtml(d.message_id || '(none)')}</td>
+        </tr>
+      </table>
+    </div>
+  `;
+
+  if (d.originating_ip) {
+    const oip = d.originating_ip;
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Originating IP</h3>
+          <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-3 py-1 rounded transition"
+                  onclick="pivotToIp('${escapeAttr(oip.ip)}')">
+            Investigate in IP Reputation
+          </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+          <div><div class="text-gray-500 uppercase">IP</div><div class="text-white font-mono">${escapeHtml(oip.ip)}</div></div>
+          <div><div class="text-gray-500 uppercase">Reverse DNS</div><div class="text-white font-mono break-all">${escapeHtml(oip.rdns || '-')}</div></div>
+          <div><div class="text-gray-500 uppercase">ASN</div><div class="text-white">${escapeHtml(String(oip.asn || '-'))}</div></div>
+          <div><div class="text-gray-500 uppercase">Country</div><div class="text-white">${escapeHtml(oip.country || '-')}</div></div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (d.received_chain && d.received_chain.length > 0) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Received Chain (oldest first)</h3>
+        <div class="space-y-2">
+          ${d.received_chain.map((hop, i) => `
+            <div class="bg-gray-950 border border-gray-800 rounded p-3 text-xs">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="bg-amber-400 text-gray-950 font-bold px-2 py-0.5 rounded text-xs">${i}</span>
+                ${hop.delay_seconds !== undefined ? `<span class="text-gray-600">+${Math.round(hop.delay_seconds)}s</span>` : ''}
+                ${hop.timestamp ? `<span class="text-gray-500">${fmtPHT(hop.timestamp)}</span>` : ''}
+              </div>
+              <div class="text-gray-400 font-mono break-all">
+                ${hop.from_host ? `from <span class="text-white">${escapeHtml(hop.from_host)}</span>` : ''}
+                ${hop.ip ? `[<span class="text-amber-300 cursor-pointer hover:underline" onclick="pivotToIp('${escapeAttr(hop.ip)}')">${escapeHtml(hop.ip)}</span>]` : ''}
+                ${hop.by_host ? `by <span class="text-white">${escapeHtml(hop.by_host)}</span>` : ''}
+                ${hop.with_protocol ? `with <span class="text-gray-500">${escapeHtml(hop.with_protocol)}</span>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  const iocs = d.iocs || {};
+  const iocTotal = (iocs.urls?.length || 0) + (iocs.ips?.length || 0) + (iocs.sha256?.length || 0);
+  if (iocTotal > 0) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Extracted IOCs</h3>
+        ${iocs.urls?.length ? `
+          <div class="mb-3">
+            <p class="text-xs text-gray-500 uppercase mb-2">URLs (${iocs.urls.length})</p>
+            <div class="flex flex-wrap gap-2">
+              ${iocs.urls.map(u => `
+                <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
+                        onclick="pivotToScanner('${escapeAttr(u)}')">${escapeHtml(u.length > 70 ? u.slice(0, 70) + '...' : u)}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${iocs.ips?.length ? `
+          <div class="mb-3">
+            <p class="text-xs text-gray-500 uppercase mb-2">IPs (${iocs.ips.length})</p>
+            <div class="flex flex-wrap gap-2">
+              ${iocs.ips.map(ip => `
+                <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
+                        onclick="pivotToIp('${escapeAttr(ip)}')">${escapeHtml(ip)}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${iocs.sha256?.length ? `
+          <div class="mb-3">
+            <p class="text-xs text-gray-500 uppercase mb-2">SHA256 hashes (${iocs.sha256.length})</p>
+            <div class="flex flex-wrap gap-2">
+              ${iocs.sha256.map(h => `
+                <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
+                        onclick="pivotToSandbox('${escapeAttr(h)}')">${escapeHtml(h.slice(0, 16) + '...')}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  if (d.x_headers && Object.keys(d.x_headers).length > 0) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <details>
+          <summary class="text-sm font-bold text-gray-300 uppercase tracking-wider cursor-pointer">X-Headers (${Object.keys(d.x_headers).length})</summary>
+          <table class="w-full text-xs mt-3">
+            ${Object.entries(d.x_headers).map(([k, v]) => `
+              <tr class="border-b border-gray-800">
+                <td class="py-1 pr-3 text-gray-500 font-mono align-top">${escapeHtml(k)}</td>
+                <td class="py-1 text-white font-mono break-all">${escapeHtml((v || '').slice(0, 300))}</td>
+              </tr>
+            `).join('')}
+          </table>
+        </details>
+      </div>
+    `;
+  }
+
+  if (d.user_agent || d.list_unsubscribe || d.auto_submitted) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Mail Client / Metadata</h3>
+        <div class="space-y-2 text-xs">
+          ${d.user_agent ? `<div><span class="text-gray-500 uppercase mr-2">Mailer:</span><span class="text-white font-mono">${escapeHtml(d.user_agent)}</span></div>` : ''}
+          ${d.list_unsubscribe ? `<div><span class="text-gray-500 uppercase mr-2">List-Unsubscribe:</span><span class="text-white font-mono break-all">${escapeHtml(d.list_unsubscribe)}</span></div>` : ''}
+          ${d.auto_submitted ? `<div><span class="text-gray-500 uppercase mr-2">Auto-Submitted:</span><span class="text-white font-mono">${escapeHtml(d.auto_submitted)}</span></div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  return html;
+}
+
+
+function emailAuthCard(name, result, live) {
+  const color = {
+    pass: 'green',
+    fail: 'red',
+    softfail: 'amber',
+    neutral: 'gray',
+    none: 'gray',
+    temperror: 'amber',
+    permerror: 'red',
+  }[result] || 'gray';
+
+  const label = (result || 'none').toUpperCase();
+
+  let liveBlock = '';
+  if (live) {
+    if (live.found) {
+      liveBlock = `<p class="text-xs text-gray-400 mt-2 font-mono break-all">${escapeHtml((live.record || '').slice(0, 200))}</p>`;
+      if (live.policy) {
+        liveBlock += `<p class="text-xs text-gray-500 mt-1">Policy: <span class="text-amber-300">${escapeHtml(live.policy)}</span></p>`;
+      }
+    } else {
+      liveBlock = `<p class="text-xs text-gray-600 mt-2">No record published</p>`;
+    }
+  }
+
+  return `
+    <div class="bg-gray-900 border border-${color}-500 rounded p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs text-gray-500 uppercase tracking-wider">${name}</span>
+        <span class="text-${color}-400 font-bold text-sm">${label}</span>
+      </div>
+      ${liveBlock}
+    </div>
+  `;
+}
+
+
+function pivotToIp(ip) {
+  window.location.hash = '#ip';
+  setTimeout(() => {
+    const input = document.getElementById('ip-input');
+    const btn = document.getElementById('ip-btn');
+    if (input && btn) {
+      input.value = ip;
+      btn.click();
+    }
+  }, 200);
+}
+
+
+function pivotToSandbox(value) {
+  window.location.hash = '#sandbox';
+  setTimeout(() => {
+    const input = document.getElementById('sandbox-input');
+    const btn = document.getElementById('sandbox-btn');
+    if (input && btn) {
+      input.value = value;
+      btn.click();
+    }
+  }, 200);
+}
+
+
+function escapeAttr(s) {
+  if (s === null || s === undefined) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/`/g, '&#96;');
+}
+
 
 // Load both on page ready (they fire in parallel)
 loadThreatPulse();
