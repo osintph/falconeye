@@ -520,17 +520,49 @@ function renderNetworkCard(network) {
 }
 
 function renderCtCard(ct) {
-  if (!ct || !ct.certificates || ct.certificates.length === 0) {
+  if (!ct) {
     return `
       <div class="bg-gray-900 border border-gray-800 rounded p-5">
         <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Certificate Transparency</h3>
-        <p class="text-sm text-gray-500">No certificates found in CT logs.</p>
+        <p class="text-sm text-gray-500">No data returned.</p>
+      </div>`;
+  }
+
+  let sourceBadge = '';
+  if (ct.source === 'crt.sh') {
+    sourceBadge = '<span class="text-xs text-gray-500">via crt.sh</span>';
+  } else if (ct.source === 'google_ct') {
+    sourceBadge = '<span class="text-xs text-blue-400">via Google CT (crt.sh fallback)</span>';
+  }
+
+  if (ct.error) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Certificate Transparency</h3>
+        <div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-3">
+          <p class="text-sm text-yellow-400 font-bold mb-1">CT sources unavailable</p>
+          <p class="text-xs text-gray-400">${ct.error}</p>
+        </div>
+      </div>`;
+  }
+
+  if (!ct.certificates || ct.certificates.length === 0) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">Certificate Transparency</h3>
+          ${sourceBadge}
+        </div>
+        <p class="text-sm text-gray-500">No certificates found in CT logs for this domain.</p>
       </div>`;
   }
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
-      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Certificate Transparency Timeline</h3>
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">Certificate Transparency Timeline</h3>
+        ${sourceBadge}
+      </div>
       <p class="text-xs text-gray-500 mb-3">${ct.certificates.length} certificate${ct.certificates.length !== 1 ? 's' : ''} found in CT logs (showing latest 25)</p>
       <div class="space-y-2">
         ${ct.certificates.slice(0, 25).map(c => `
@@ -539,7 +571,7 @@ function renderCtCard(ct) {
               <p class="text-xs text-amber-300 font-mono">${c.common_name || '(no CN)'}</p>
               <p class="text-xs text-gray-500">${fmtPHT(c.not_before)}</p>
             </div>
-            <p class="text-xs text-gray-500 mb-1">Issuer: ${c.issuer.length > 80 ? c.issuer.slice(0, 80) + '...' : c.issuer}</p>
+            <p class="text-xs text-gray-500 mb-1">Issuer: ${c.issuer && c.issuer.length > 80 ? c.issuer.slice(0, 80) + '...' : (c.issuer || 'Unknown')}</p>
             ${c.sans && c.sans.length > 1 ? `<p class="text-xs text-gray-400">SANs: ${c.sans.slice(0, 10).join(', ')}${c.sans.length > 10 ? ' ...' : ''}</p>` : ''}
           </div>`).join('')}
       </div>
@@ -547,7 +579,7 @@ function renderCtCard(ct) {
 }
 
 function renderSubdomainsCard(ct) {
-  if (!ct || !ct.subdomains || ct.subdomains.length === 0) return '';
+  if (!ct || ct.error || !ct.subdomains || ct.subdomains.length === 0) return '';
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded p-5">

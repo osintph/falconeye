@@ -240,30 +240,151 @@ async def fetch_dns(domain: str) -> dict:
 
 # ---- Certificate Transparency ----
 
-async def fetch_ct(client: httpx.AsyncClient, domain: str) -> list:
+async def fetch_ct_crtsh(client: httpx.AsyncClient, domain: str) -> dict | None:
     """
-    Query crt.sh for all certificates ever issued for this domain.
-    Returns a deduplicated, sorted list of cert events.
+    Primary CT source: crt.sh. Returns None on failure (caller falls back to Google CT).
+    Includes one retry with backoff for transient 502s.
+    """
+    for attempt in range(2):
+        try:
+            r = await client.get(
+                f"https://crt.sh/?q={domain}&output=json",
+                timeout=CT_TIMEOUT,
+                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+            )
+            if r.status_code == 200 and "json" in r.headers.get("content-type", "").lower():
+                try:
+                    return {"raw": r.json(), "source": "crt.sh"}
+                except Exception as e:
+                    log.warning(f"crt.sh JSON parse failed for {domain}: {e}")
+                    return None
+            elif r.status_code == 200:
+                # 200 with HTML body — error page
+                log.warning(f"crt.sh returned 200 with non-JSON content for {domain}")
+                if attempt == 0:
+                    await asyncio.sleep(3)
+                    continue
+                return None
+            else:
+                log.warning(f"crt.sh returned {r.status_code} for {domain} (attempt {attempt + 1})")
+                if attempt == 0 and r.status_code in (500, 502, 503, 504):
+                    await asyncio.sleep(3)
+                    continue
+                return None
+        except Exception as e:
+            log.warning(f"crt.sh exception for {domain} attempt {attempt + 1}: {e}")
+            if attempt == 0:
+                await asyncio.sleep(2)
+                continue
+            return None
+    return None
+
+
+async def fetch_ct_google(client: httpx.AsyncClient, domain: str) -> dict | None:
+    """
+    Fallback CT source: Google Transparency Report.
+    Undocumented but stable JSON endpoint that backs the public CT search UI.
     """
     try:
         r = await client.get(
-            f"https://crt.sh/?q={domain}&output=json",
+            "https://transparencyreport.google.com/transparencyreport/api/v3/httpsreport/ct/certsearch",
+            params={
+                "include_expired": "true",
+                "include_subdomains": "true",
+                "domain": domain,
+            },
             timeout=CT_TIMEOUT,
-            headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+            headers={
+                "User-Agent": "FalconEye/3.0 (osintph.info)",
+                "Accept": "application/json",
+            },
         )
         if r.status_code != 200:
-            log.warning(f"crt.sh returned {r.status_code} for {domain}")
-            return []
-        raw = r.json()
-    except Exception as e:
-        log.warning(f"crt.sh exception for {domain}: {e}")
-        return []
+            log.warning(f"Google CT returned {r.status_code} for {domain}")
+            return None
 
-    # Deduplicate by serial number; collect all SANs
+        # Strip XSSI anti-prefix if present
+        text = r.text
+        if text.startswith(")]}'"):
+            text = text.split("\n", 1)[1] if "\n" in text else text[4:]
+
+        try:
+            data = json.loads(text)
+        except Exception as e:
+            log.warning(f"Google CT JSON parse failed for {domain}: {e}")
+            return None
+
+        # Google CT response shape: [0, results_array, ...]
+        # results_array is a list of [cn, [sans], not_before_ms, not_after_ms, issuer_dn, ...]
+        if not isinstance(data, list) or len(data) < 2 or not isinstance(data[1], list):
+            log.warning(f"Google CT unexpected response shape for {domain}")
+            return None
+
+        normalized = []
+        for entry in data[1][:300]:
+            if not isinstance(entry, list) or len(entry) < 5:
+                continue
+            try:
+                cn = entry[0] if len(entry) > 0 else ""
+                sans = entry[1] if len(entry) > 1 and isinstance(entry[1], list) else []
+                not_before_ms = entry[2] if len(entry) > 2 else 0
+                not_after_ms = entry[3] if len(entry) > 3 else 0
+                issuer = entry[4] if len(entry) > 4 else ""
+
+                not_before = (
+                    datetime.fromtimestamp(int(not_before_ms) / 1000, tz=timezone.utc).isoformat()
+                    if not_before_ms else None
+                )
+                not_after = (
+                    datetime.fromtimestamp(int(not_after_ms) / 1000, tz=timezone.utc).isoformat()
+                    if not_after_ms else None
+                )
+
+                normalized.append({
+                    "serial": None,
+                    "issuer": issuer,
+                    "common_name": cn,
+                    "sans": sans[:20],
+                    "not_before": not_before,
+                    "not_after": not_after,
+                })
+            except Exception:
+                continue
+
+        return {"raw_normalized": normalized, "source": "google_ct"}
+    except Exception as e:
+        log.warning(f"Google CT exception for {domain}: {e}")
+        return None
+
+
+async def fetch_ct(client: httpx.AsyncClient, domain: str) -> dict:
+    """
+    Query CT sources with fallback. Returns a dict with certificates, subdomains,
+    source attribution, and an error field if all sources failed.
+    """
+    primary = await fetch_ct_crtsh(client, domain)
+
+    if primary:
+        raw_certs = primary["raw"]
+        source = primary["source"]
+    else:
+        log.info(f"Falling back to Google CT for {domain}")
+        fallback = await fetch_ct_google(client, domain)
+        if fallback:
+            return _normalize_google_ct(fallback, domain)
+        else:
+            return {
+                "certificates": [],
+                "subdomains": [],
+                "source": None,
+                "error": "All CT sources unavailable. crt.sh and Google CT both failed. Try again in a few minutes.",
+            }
+
+    # Normalize crt.sh response
     seen = {}
     all_sans = set()
 
-    for cert in raw[:300]:  # cap on volume
+    for cert in raw_certs[:300]:
         serial = cert.get("serial_number")
         if serial and serial in seen:
             continue
@@ -273,7 +394,6 @@ async def fetch_ct(client: httpx.AsyncClient, domain: str) -> list:
         common_name = cert.get("common_name", "")
         name_value = cert.get("name_value", "")
 
-        # name_value is newline-separated SANs
         sans = [s.strip() for s in name_value.split("\n") if s.strip()]
         all_sans.update(sans)
 
@@ -287,14 +407,41 @@ async def fetch_ct(client: httpx.AsyncClient, domain: str) -> list:
         }
 
     certs = sorted(seen.values(), key=lambda c: c.get("not_before") or "", reverse=True)
-
-    # Build a sorted, deduplicated subdomain list from all SANs
     subdomains = sorted(set(
         s.lower() for s in all_sans
         if s.endswith(f".{domain}") or s == domain
     ))
 
-    return {"certificates": certs[:100], "subdomains": subdomains}
+    return {
+        "certificates": certs[:100],
+        "subdomains": subdomains,
+        "source": source,
+        "error": None,
+    }
+
+
+def _normalize_google_ct(fallback: dict, domain: str) -> dict:
+    """Convert Google CT normalized entries into the standard FalconEye CT response."""
+    certs_in = fallback["raw_normalized"]
+    all_sans = set()
+    for c in certs_in:
+        for san in c.get("sans", []):
+            if san:
+                all_sans.add(san)
+
+    subdomains = sorted(set(
+        s.lower() for s in all_sans
+        if s.endswith(f".{domain}") or s == domain
+    ))
+
+    certs = sorted(certs_in, key=lambda c: c.get("not_before") or "", reverse=True)
+
+    return {
+        "certificates": certs[:100],
+        "subdomains": subdomains,
+        "source": "google_ct",
+        "error": None,
+    }
 
 
 # ---- Network attribution (ASN / hosting) ----
