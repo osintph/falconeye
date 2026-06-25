@@ -280,80 +280,47 @@ async def fetch_ct_crtsh(client: httpx.AsyncClient, domain: str) -> dict | None:
     return None
 
 
-async def fetch_ct_google(client: httpx.AsyncClient, domain: str) -> dict | None:
+async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict | None:
     """
-    Fallback CT source: Google Transparency Report.
-    Undocumented but stable JSON endpoint that backs the public CT search UI.
+    Fallback CT source: Certspotter by SSLMate (api.certspotter.com).
+    Free tier, no key required, returns up to 100 issuances per query.
+    Response shape: list of {id, dns_names, not_before, not_after, revoked}.
     """
     try:
         r = await client.get(
-            "https://transparencyreport.google.com/transparencyreport/api/v3/httpsreport/ct/certsearch",
+            "https://api.certspotter.com/v1/issuances",
             params={
-                "include_expired": "true",
-                "include_subdomains": "true",
                 "domain": domain,
+                "include_subdomains": "true",
+                "expand": "dns_names",
             },
             timeout=CT_TIMEOUT,
-            headers={
-                "User-Agent": "FalconEye/3.0 (osintph.info)",
-                "Accept": "application/json",
-            },
+            headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
         )
         if r.status_code != 200:
-            log.warning(f"Google CT returned {r.status_code} for {domain}")
+            log.warning(f"Certspotter returned {r.status_code} for {domain}")
             return None
 
-        # Strip XSSI anti-prefix if present
-        text = r.text
-        if text.startswith(")]}'"):
-            text = text.split("\n", 1)[1] if "\n" in text else text[4:]
-
-        try:
-            data = json.loads(text)
-        except Exception as e:
-            log.warning(f"Google CT JSON parse failed for {domain}: {e}")
-            return None
-
-        # Google CT response shape: [0, results_array, ...]
-        # results_array is a list of [cn, [sans], not_before_ms, not_after_ms, issuer_dn, ...]
-        if not isinstance(data, list) or len(data) < 2 or not isinstance(data[1], list):
-            log.warning(f"Google CT unexpected response shape for {domain}")
+        data = r.json()
+        if not isinstance(data, list):
+            log.warning(f"Certspotter unexpected response shape for {domain}")
             return None
 
         normalized = []
-        for entry in data[1][:300]:
-            if not isinstance(entry, list) or len(entry) < 5:
-                continue
-            try:
-                cn = entry[0] if len(entry) > 0 else ""
-                sans = entry[1] if len(entry) > 1 and isinstance(entry[1], list) else []
-                not_before_ms = entry[2] if len(entry) > 2 else 0
-                not_after_ms = entry[3] if len(entry) > 3 else 0
-                issuer = entry[4] if len(entry) > 4 else ""
+        for entry in data[:300]:
+            dns_names = entry.get("dns_names") or []
+            normalized.append({
+                "serial": entry.get("id"),
+                "issuer": "",
+                "common_name": dns_names[0] if dns_names else "",
+                "sans": dns_names[:20],
+                "not_before": entry.get("not_before"),
+                "not_after": entry.get("not_after"),
+            })
 
-                not_before = (
-                    datetime.fromtimestamp(int(not_before_ms) / 1000, tz=timezone.utc).isoformat()
-                    if not_before_ms else None
-                )
-                not_after = (
-                    datetime.fromtimestamp(int(not_after_ms) / 1000, tz=timezone.utc).isoformat()
-                    if not_after_ms else None
-                )
-
-                normalized.append({
-                    "serial": None,
-                    "issuer": issuer,
-                    "common_name": cn,
-                    "sans": sans[:20],
-                    "not_before": not_before,
-                    "not_after": not_after,
-                })
-            except Exception:
-                continue
-
-        return {"raw_normalized": normalized, "source": "google_ct"}
+        return {"raw_normalized": normalized, "source": "certspotter"}
     except Exception as e:
-        log.warning(f"Google CT exception for {domain}: {e}")
+        log.warning(f"Certspotter exception for {domain}: {e}")
         return None
 
 
@@ -368,8 +335,8 @@ async def fetch_ct(client: httpx.AsyncClient, domain: str) -> dict:
         raw_certs = primary["raw"]
         source = primary["source"]
     else:
-        log.info(f"Falling back to Google CT for {domain}")
-        fallback = await fetch_ct_google(client, domain)
+        log.info(f"Falling back to Certspotter for {domain}")
+        fallback = await fetch_ct_certspotter(client, domain)
         if fallback:
             return _normalize_google_ct(fallback, domain)
         else:
@@ -377,7 +344,7 @@ async def fetch_ct(client: httpx.AsyncClient, domain: str) -> dict:
                 "certificates": [],
                 "subdomains": [],
                 "source": None,
-                "error": "All CT sources unavailable. crt.sh and Google CT both failed. Try again in a few minutes.",
+                "error": "All CT sources unavailable. crt.sh and Certspotter both failed. Try again in a few minutes.",
             }
 
     # Normalize crt.sh response
@@ -439,7 +406,7 @@ def _normalize_google_ct(fallback: dict, domain: str) -> dict:
     return {
         "certificates": certs[:100],
         "subdomains": subdomains,
-        "source": "google_ct",
+        "source": "certspotter",
         "error": None,
     }
 

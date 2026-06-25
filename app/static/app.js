@@ -531,8 +531,8 @@ function renderCtCard(ct) {
   let sourceBadge = '';
   if (ct.source === 'crt.sh') {
     sourceBadge = '<span class="text-xs text-gray-500">via crt.sh</span>';
-  } else if (ct.source === 'google_ct') {
-    sourceBadge = '<span class="text-xs text-blue-400">via Google CT (crt.sh fallback)</span>';
+  } else if (ct.source === 'certspotter') {
+    sourceBadge = '<span class="text-xs text-blue-400">via Certspotter (crt.sh fallback)</span>';
   }
 
   if (ct.error) {
