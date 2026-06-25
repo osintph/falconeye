@@ -105,11 +105,12 @@ async def fetch_urlhaus_ph_feed() -> list[dict]:
     if not csv_text:
         return []
 
+    # Feed columns: Dateadded (UTC),URL,URL_status,Threat,Host,IPaddress,ASnumber,Country
+    # The header line starts with '#' and is filtered below; data rows start with '"'.
     lines = [l for l in csv_text.splitlines() if not l.startswith("#") and l.strip()]
     reader = csv.DictReader(
         io.StringIO("\n".join(lines)),
-        fieldnames=["id", "dateadded", "url", "url_status", "last_online",
-                    "threat", "tags", "urlhaus_link", "reporter"],
+        fieldnames=["dateadded", "url", "url_status", "threat", "host", "ip", "asn", "country"],
     )
 
     entries = []
@@ -119,11 +120,10 @@ async def fetch_urlhaus_ph_feed() -> list[dict]:
             continue
         entries.append({
             "url": url,
-            "url_status": (row.get("url_status") or "").strip().lower(),
-            "dateadded": (row.get("dateadded") or "").strip(),
-            "threat": (row.get("threat") or "").strip(),
-            "tags": (row.get("tags") or "").strip(),
-            "urlhaus_link": (row.get("urlhaus_link") or "").strip(),
+            "url_status": (row.get("url_status") or "").strip().strip('"').lower(),
+            "dateadded": (row.get("dateadded") or "").strip().strip('"'),
+            "threat": (row.get("threat") or "").strip().strip('"'),
+            "urlhaus_link": "",
         })
     return entries
 
