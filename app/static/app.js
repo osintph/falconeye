@@ -814,6 +814,44 @@ function pivotToScanner(url) {
   document.getElementById('scan-btn').click();
 }
 
+// ---- Sample button handler ----
+// Pre-fills target input with sample value, then triggers the lookup button
+
+document.querySelectorAll('.sample-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const sample = btn.dataset.sample;
+    const targetId = btn.dataset.target;
+    const triggerId = btn.dataset.trigger;
+    const targetEl = document.getElementById(targetId);
+    const triggerEl = document.getElementById(triggerId);
+    if (targetEl) {
+      targetEl.value = sample;
+      targetEl.focus();
+    }
+    if (triggerEl) {
+      // Slight delay so the input update visually registers before the click
+      setTimeout(() => triggerEl.click(), 100);
+    }
+  });
+});
+
+// ---- Hero collapse on first investigation ----
+// The capability hero on the crypto tab hides after the user runs their first lookup
+
+(function setupHeroCollapse() {
+  const heroEl = document.getElementById('crypto-hero');
+  const resultEl = document.getElementById('crypto-result');
+  if (!heroEl || !resultEl) return;
+
+  // Use a MutationObserver to detect when the result becomes visible
+  const observer = new MutationObserver(() => {
+    if (!resultEl.classList.contains('hidden')) {
+      heroEl.style.display = 'none';
+    }
+  });
+  observer.observe(resultEl, { attributes: true, attributeFilter: ['class'] });
+})();
+
 // ---- IP Reputation ----
 
 document.getElementById('ip-btn').addEventListener('click', runIpLookup);

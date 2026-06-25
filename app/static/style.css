@@ -52,3 +52,64 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 .node.target circle { fill: #fbbf24; }
 .node.exchange circle { fill: #60a5fa; }
 .node.counterparty circle { fill: #374151; }
+
+/* Data source pill in footer */
+.data-source {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 14px;
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  transition: all 0.15s ease;
+  cursor: default;
+}
+
+.data-source:hover {
+  border-color: #fbbf24;
+  color: #fbbf24;
+}
+
+/* Sample button hover state */
+.sample-btn {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  display: inline-block;
+}
+
+/* Hero card hover lift */
+#crypto-hero > div {
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+#crypto-hero > div:hover {
+  border-color: #374151;
+}
+
+/* Smooth tab transitions */
+.tab-content {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Make tab buttons feel clickable */
+.tab-btn {
+  cursor: pointer;
+  background: none;
+  font-family: inherit;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Tab icon stroke matches text color */
+.tab-btn svg {
+  transition: stroke 0.15s ease;
+}
