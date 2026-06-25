@@ -1,17 +1,68 @@
-// ---- Tab navigation ----
+// ---- Hash-based tab routing ----
+// Tab name <-> URL hash <-> visible tab content
+// Browser back/forward buttons walk through the hash history natively.
+
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'news'];
+const DEFAULT_TAB = 'home';
+
+function showTab(tabName) {
+  if (!VALID_TABS.includes(tabName)) {
+    tabName = DEFAULT_TAB;
+  }
+
+  document.querySelectorAll('.tab-content').forEach(el => {
+    el.classList.add('hidden');
+  });
+
+  const targetContent = document.getElementById(`tab-${tabName}`);
+  if (targetContent) {
+    targetContent.classList.remove('hidden');
+  }
+
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if (btn.dataset.tab === tabName) {
+      btn.classList.remove('border-transparent', 'text-gray-400');
+      btn.classList.add('border-amber-400', 'text-amber-400');
+    } else {
+      btn.classList.remove('border-amber-400', 'text-amber-400');
+      btn.classList.add('border-transparent', 'text-gray-400');
+    }
+  });
+
+  // Scroll to top so a user who scrolled down on a long result doesn't land mid-page on the next tab
+  window.scrollTo({ top: 0, behavior: 'instant' });
+
+  if (tabName === 'news') loadNews(currentNewsCategory);
+}
+
+function getTabFromHash() {
+  const hash = window.location.hash.replace(/^#/, '').toLowerCase().trim();
+  return hash || DEFAULT_TAB;
+}
+
+// Tab button clicks: update the hash. The hashchange event handler renders the tab.
 document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => {
-      b.classList.remove('border-amber-400', 'text-amber-400');
-      b.classList.add('border-transparent', 'text-gray-400');
-    });
-    btn.classList.add('border-amber-400', 'text-amber-400');
-    btn.classList.remove('border-transparent', 'text-gray-400');
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-    document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
-    if (btn.dataset.tab === 'news') loadNews(currentNewsCategory);
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    const tabName = btn.dataset.tab;
+    if (!tabName) return;
+
+    if (getTabFromHash() !== tabName) {
+      window.location.hash = `#${tabName}`;
+      // hashchange listener below will call showTab()
+    } else {
+      showTab(tabName);
+    }
   });
 });
+
+// Browser back/forward buttons fire hashchange. So does setting window.location.hash above.
+window.addEventListener('hashchange', () => {
+  showTab(getTabFromHash());
+});
+
+// Initial render on page load: read the hash or default to Home.
+showTab(getTabFromHash());
 
 // ---- PHT timezone formatter ----
 function fmtPHT(utcString) {
