@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from app.routers import crypto, scanner, news, domain_intel, telegram_inspector, ip_intel, sandbox
+from app.routers import crypto, scanner, news, domain_intel, telegram_inspector, ip_intel, sandbox, threat_pulse
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -19,6 +19,7 @@ app.include_router(domain_intel.router)
 app.include_router(telegram_inspector.router)
 app.include_router(ip_intel.router)
 app.include_router(sandbox.router)
+app.include_router(threat_pulse.router)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 

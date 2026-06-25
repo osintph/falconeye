@@ -71,6 +71,12 @@ CREATE TABLE IF NOT EXISTS sandbox_cache (
 
 CREATE INDEX IF NOT EXISTS idx_ip_cache_fetched ON ip_intel_cache(fetched_at);
 CREATE INDEX IF NOT EXISTS idx_sandbox_cache_fetched ON sandbox_cache(fetched_at);
+
+CREATE TABLE IF NOT EXISTS threat_pulse_cache (
+    id TEXT PRIMARY KEY,
+    response_json TEXT,
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 """)
 
 conn.commit()

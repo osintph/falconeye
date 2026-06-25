@@ -113,3 +113,26 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 .tab-btn svg {
   transition: stroke 0.15s ease;
 }
+
+/* Examples grid card hover state */
+.example-card {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.example-card:hover {
+  transform: translateY(-1px);
+}
+
+/* Line clamp for news titles */
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* PH Threat Pulse stat number emphasis */
+#threat-pulse [data-stat] {
+  font-variant-numeric: tabular-nums;
+}

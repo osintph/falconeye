@@ -835,18 +835,20 @@ document.querySelectorAll('.sample-btn').forEach(btn => {
   });
 });
 
-// ---- Hero collapse on first investigation ----
-// The capability hero on the crypto tab hides after the user runs their first lookup
+// ---- Landing extras collapse on first investigation ----
+// Hides the hero cards, threat pulse, examples grid, and news strip
+// once the user runs their first crypto lookup.
 
-(function setupHeroCollapse() {
+(function setupLandingCollapse() {
   const heroEl = document.getElementById('crypto-hero');
+  const extrasEl = document.getElementById('landing-extras');
   const resultEl = document.getElementById('crypto-result');
-  if (!heroEl || !resultEl) return;
+  if (!resultEl) return;
 
-  // Use a MutationObserver to detect when the result becomes visible
   const observer = new MutationObserver(() => {
     if (!resultEl.classList.contains('hidden')) {
-      heroEl.style.display = 'none';
+      if (heroEl) heroEl.style.display = 'none';
+      if (extrasEl) extrasEl.style.display = 'none';
     }
   });
   observer.observe(resultEl, { attributes: true, attributeFilter: ['class'] });
@@ -1197,3 +1199,148 @@ function renderMalwarebazaar(mb) {
       ${intel.downloads ? `<p class="text-xs text-gray-500">Downloaded ${intel.downloads} times · ${intel.uploads || 0} unique uploaders</p>` : ''}
     </div>`;
 }
+
+// ---- PH Threat Pulse widget ----
+
+async function loadThreatPulse() {
+  const contentEl = document.getElementById('threat-pulse-content');
+  const statusEl = document.getElementById('threat-pulse-status');
+  if (!contentEl) return;
+
+  try {
+    const res = await fetch('/api/threat-pulse');
+    const data = await res.json();
+
+    if (data.error) {
+      contentEl.innerHTML = `<p class="text-xs text-yellow-500">${data.error}</p>`;
+      statusEl.textContent = '';
+      return;
+    }
+
+    const fetchedAt = data.fetched_at ? fmtPHT(data.fetched_at) : 'just now';
+    const staleNote = data.stale ? ' · stale cache (URLhaus unreachable)' : '';
+    statusEl.textContent = `updated ${fetchedAt}${staleNote}`;
+
+    const brandsHtml = data.top_brands && data.top_brands.length > 0
+      ? data.top_brands.slice(0, 6).map(([brand, count]) => `
+          <span class="inline-flex items-center gap-1 bg-gray-950 border border-gray-800 rounded px-2 py-1 text-xs">
+            <span class="text-gray-400">${brand}:</span>
+            <span class="text-amber-300 font-bold">${count}</span>
+          </span>`).join('')
+      : '<span class="text-xs text-gray-600">no brand patterns matched in feed</span>';
+
+    const latestHtml = data.latest && data.latest.length > 0
+      ? data.latest.slice(0, 3).map(item => `
+          <div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-3">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs bg-gray-800 text-amber-300 px-1.5 py-0.5 rounded">${item.brand}</span>
+                <span class="text-xs ${item.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(item.url_status || 'unknown').toUpperCase()}</span>
+                <span class="text-xs text-gray-600">${item.dateadded ? item.dateadded.split(' ')[0] : ''}</span>
+              </div>
+              <p class="text-xs text-gray-300 font-mono truncate">${item.url}</p>
+            </div>
+            <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-3 py-1 rounded transition whitespace-nowrap"
+                    onclick="pivotThreatPulseToScanner('${item.url.replace(/'/g, "\\'")}')">
+              Scan
+            </button>
+          </div>`).join('')
+      : '<p class="text-xs text-gray-600">No recent PH-targeting URLs in feed.</p>';
+
+    contentEl.innerHTML = `
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last 24h</p>
+          <p class="text-amber-300 font-bold text-2xl">${data.count_24h}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last 7d</p>
+          <p class="text-amber-300 font-bold text-2xl">${data.count_7d}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Currently Live</p>
+          <p class="text-red-400 font-bold text-2xl">${data.live_count}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Tracked</p>
+          <p class="text-gray-200 font-bold text-2xl">${data.total_tracked}</p>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Top Impersonated Brands</p>
+        <div class="flex flex-wrap gap-2">${brandsHtml}</div>
+      </div>
+
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Latest URLs</p>
+        <div class="space-y-2">${latestHtml}</div>
+      </div>
+    `;
+  } catch (e) {
+    contentEl.innerHTML = `<p class="text-xs text-red-400">Failed to load threat pulse: ${e.message}</p>`;
+  }
+}
+
+function pivotThreatPulseToScanner(url) {
+  document.getElementById('scan-url').value = url;
+  document.querySelector('[data-tab="scanner"]').click();
+  document.getElementById('scan-btn').click();
+}
+
+// ---- Examples grid click handlers ----
+
+document.querySelectorAll('.example-card').forEach(card => {
+  card.addEventListener('click', () => {
+    const tab = card.dataset.tab;
+    const targetId = card.dataset.target;
+    const triggerId = card.dataset.trigger;
+    const value = card.dataset.value;
+
+    // Switch to the target tab
+    const tabBtn = document.querySelector(`[data-tab="${tab}"]`);
+    if (tabBtn) tabBtn.click();
+
+    // Pre-fill and trigger after a short delay so the tab switch renders first
+    setTimeout(() => {
+      const targetEl = document.getElementById(targetId);
+      const triggerEl = document.getElementById(triggerId);
+      if (targetEl) targetEl.value = value;
+      if (triggerEl) triggerEl.click();
+    }, 150);
+  });
+});
+
+// ---- Landing news strip ----
+
+async function loadLandingNews() {
+  const el = document.getElementById('landing-news');
+  if (!el) return;
+
+  try {
+    const res = await fetch('/api/news/global_cyber');
+    const data = await res.json();
+
+    if (!data || data.length === 0) {
+      el.innerHTML = '<p class="text-xs text-gray-500 col-span-3">No headlines available.</p>';
+      return;
+    }
+
+    el.innerHTML = data.slice(0, 3).map(item => `
+      <a href="${item.url}" target="_blank" rel="noopener noreferrer"
+         class="bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-3 block transition">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-amber-400 font-bold">${item.feed_source}</span>
+          <span class="text-xs text-gray-600">${fmtPHT(item.published_at)}</span>
+        </div>
+        <p class="text-sm text-white leading-snug line-clamp-3">${item.title}</p>
+      </a>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<p class="text-xs text-red-400 col-span-3">Failed to load news: ${e.message}</p>`;
+  }
+}
+
+// Load both on page ready (they fire in parallel)
+loadThreatPulse();
+loadLandingNews();
