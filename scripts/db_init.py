@@ -36,6 +36,18 @@ CREATE TABLE IF NOT EXISTS news_cache (
 CREATE INDEX IF NOT EXISTS idx_news_category ON news_cache(feed_category);
 CREATE INDEX IF NOT EXISTS idx_news_fetched ON news_cache(fetched_at);
 CREATE INDEX IF NOT EXISTS idx_phishing_hash ON phishing_scans(url_hash);
+
+CREATE TABLE IF NOT EXISTS domain_intel_cache (
+    domain TEXT PRIMARY KEY,
+    rdap_json TEXT,
+    whois_text TEXT,
+    dns_json TEXT,
+    ct_json TEXT,
+    network_json TEXT,
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_domain_cache_fetched ON domain_intel_cache(fetched_at);
 """)
 
 conn.commit()

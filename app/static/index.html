@@ -20,6 +20,7 @@
   <nav class="border-b border-gray-800 px-6 flex gap-6">
     <button class="tab-btn active-tab py-3 text-sm border-b-2 border-amber-400 text-amber-400" data-tab="crypto">Crypto Workbench</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="scanner">Phishing Scanner</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="domain">Domain Intel</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="news">Cyber News</button>
   </nav>
 
@@ -75,6 +76,22 @@
       <div id="scan-result" class="mt-8 hidden"></div>
     </div>
 
+    <!-- Domain Intelligence Tab -->
+    <div id="tab-domain" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Domain Intelligence</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a domain for unified RDAP, DNS, certificate transparency, and ASN intelligence. Results cached for 6 hours.</p>
+
+      <div class="flex gap-3 mb-6">
+        <input id="domain-input" type="text" placeholder="example.com"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="domain-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Investigate
+        </button>
+      </div>
+
+      <div id="domain-result" class="hidden space-y-4"></div>
+    </div>
+
     <!-- News Tab -->
     <div id="tab-news" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Cyber News</h2>
@@ -91,6 +108,6 @@
 
   </main>
 
-  <script src="/static/app.js?v=4730fe7"></script>
+  <script src="/static/app.js?v=domainv1"></script>
 </body>
 </html>

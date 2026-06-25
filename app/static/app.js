@@ -336,6 +336,229 @@ document.querySelectorAll('.news-cat-btn').forEach(btn => {
   });
 });
 
+// ---- Domain Intelligence ----
+
+document.getElementById('domain-btn').addEventListener('click', runDomainLookup);
+document.getElementById('domain-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runDomainLookup();
+});
+
+async function runDomainLookup() {
+  const raw = document.getElementById('domain-input').value.trim();
+  const resultEl = document.getElementById('domain-result');
+
+  if (!raw) return;
+
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Querying RDAP, DNS, certificate transparency, and ASN sources...</p>';
+  resultEl.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/domain/lookup/${encodeURIComponent(raw)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${data.detail}</p>`;
+      return;
+    }
+
+    renderDomainResult(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
+  }
+}
+
+function renderDomainResult(el, data) {
+  const cacheBadge = data.cache_hit
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="brand-badge text-sm px-3 py-1">${data.domain}</span>
+          ${data.rdap?.events?.registration ? `<span class="ml-3 text-xs text-gray-400">Registered ${fmtPHT(data.rdap.events.registration)}</span>` : ''}
+        </div>
+        ${cacheBadge}
+      </div>
+    </div>
+    ${renderRdapCard(data.rdap, data.whois_text)}
+    ${renderDnsCard(data.dns)}
+    ${renderNetworkCard(data.network)}
+    ${renderCtCard(data.ct)}
+    ${renderSubdomainsCard(data.ct)}
+  `;
+}
+
+function renderRdapCard(rdap, whoisText) {
+  if (!rdap || rdap.error === 'not_found') {
+    if (whoisText) {
+      return `
+        <div class="bg-gray-900 border border-gray-800 rounded p-5">
+          <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Registration (WHOIS fallback)</h3>
+          <p class="text-xs text-amber-400 mb-3">RDAP unavailable for this TLD. Falling back to legacy WHOIS.</p>
+          <pre class="text-xs text-gray-400 bg-gray-950 p-3 rounded overflow-x-auto max-h-64 whitespace-pre-wrap">${whoisText.replace(/</g, '&lt;')}</pre>
+        </div>`;
+    }
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Registration</h3>
+        <p class="text-sm text-gray-500">Domain not found or no registration data available.</p>
+      </div>`;
+  }
+
+  const events = rdap.events || {};
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Registration (RDAP)</h3>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Registered</p>
+          <p class="text-amber-300 text-sm">${fmtPHT(events.registration)}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Expires</p>
+          <p class="text-amber-300 text-sm">${fmtPHT(events.expiration)}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last Changed</p>
+          <p class="text-gray-400 text-sm">${fmtPHT(events['last changed'] || events['last update of RDAP database'])}</p>
+        </div>
+      </div>
+
+      ${rdap.registrar ? `
+      <div class="mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Registrar</p>
+        <p class="text-sm text-white">${rdap.registrar.name || rdap.registrar.handle || 'Unknown'}</p>
+        ${rdap.registrar.email ? `<p class="text-xs text-gray-400">${rdap.registrar.email}</p>` : ''}
+      </div>` : ''}
+
+      ${rdap.registrant ? `
+      <div class="mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Registrant</p>
+        <p class="text-sm text-white">${rdap.registrant.name || rdap.registrant.handle || 'Redacted (GDPR)'}</p>
+        ${rdap.registrant.email ? `<p class="text-xs text-gray-400">${rdap.registrant.email}</p>` : ''}
+      </div>` : ''}
+
+      ${rdap.abuse_contact ? `
+      <div class="mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Abuse Contact</p>
+        <p class="text-sm text-white">${rdap.abuse_contact.email || rdap.abuse_contact.name || 'Not listed'}</p>
+      </div>` : ''}
+
+      ${rdap.nameservers && rdap.nameservers.length ? `
+      <div class="mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Nameservers</p>
+        <div class="flex flex-wrap gap-2">
+          ${rdap.nameservers.map(ns => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">${ns}</span>`).join('')}
+        </div>
+      </div>` : ''}
+
+      ${rdap.status && rdap.status.length ? `
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">EPP Status</p>
+        <div class="flex flex-wrap gap-2">
+          ${rdap.status.map(s => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-amber-300">${s}</span>`).join('')}
+        </div>
+      </div>` : ''}
+    </div>`;
+}
+
+function renderDnsCard(dns) {
+  if (!dns) return '';
+
+  const sections = [];
+  const types = ['A', 'AAAA', 'MX', 'NS', 'TXT', 'CAA', 'SOA'];
+  for (const t of types) {
+    const records = dns[t] || [];
+    if (records.length === 0) continue;
+    sections.push(`
+      <div class="mb-3">
+        <p class="text-xs text-amber-400 font-bold uppercase tracking-wide mb-1">${t} Records</p>
+        ${records.map(r => `<p class="text-xs text-gray-300 font-mono break-all">${r}</p>`).join('')}
+      </div>`);
+  }
+
+  // Reverse DNS
+  const ptrEntries = Object.entries(dns.ptr_records || {});
+  if (ptrEntries.length > 0) {
+    sections.push(`
+      <div class="mb-3">
+        <p class="text-xs text-amber-400 font-bold uppercase tracking-wide mb-1">Reverse DNS</p>
+        ${ptrEntries.map(([ip, ptrs]) => `
+          <p class="text-xs text-gray-300 font-mono">
+            <span class="text-gray-500">${ip}</span> → ${ptrs.length ? ptrs.join(', ') : '<span class="text-gray-600">no PTR</span>'}
+          </p>`).join('')}
+      </div>`);
+  }
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">DNS Records</h3>
+      ${sections.length ? sections.join('') : '<p class="text-sm text-gray-500">No DNS records returned.</p>'}
+    </div>`;
+}
+
+function renderNetworkCard(network) {
+  if (!network || !network.ips || network.ips.length === 0) return '';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Network Attribution</h3>
+      ${network.ips.map(n => `
+        <div class="mb-3 pb-3 border-b border-gray-800 last:border-0 last:pb-0">
+          <div class="flex items-center gap-3 mb-2">
+            <span class="text-amber-300 font-mono text-sm">${n.ip}</span>
+            ${n.prefix ? `<span class="text-xs text-gray-500">${n.prefix}</span>` : ''}
+          </div>
+          <p class="text-xs text-gray-400">
+            <span class="text-gray-500">ASN:</span> AS${n.asn || '?'}
+            ${n.asn_holder ? `<span class="text-gray-500 ml-3">Holder:</span> ${n.asn_holder}` : ''}
+          </p>
+        </div>`).join('')}
+    </div>`;
+}
+
+function renderCtCard(ct) {
+  if (!ct || !ct.certificates || ct.certificates.length === 0) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Certificate Transparency</h3>
+        <p class="text-sm text-gray-500">No certificates found in CT logs.</p>
+      </div>`;
+  }
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Certificate Transparency Timeline</h3>
+      <p class="text-xs text-gray-500 mb-3">${ct.certificates.length} certificate${ct.certificates.length !== 1 ? 's' : ''} found in CT logs (showing latest 25)</p>
+      <div class="space-y-2">
+        ${ct.certificates.slice(0, 25).map(c => `
+          <div class="bg-gray-950 rounded p-3 border border-gray-800">
+            <div class="flex items-center justify-between mb-1">
+              <p class="text-xs text-amber-300 font-mono">${c.common_name || '(no CN)'}</p>
+              <p class="text-xs text-gray-500">${fmtPHT(c.not_before)}</p>
+            </div>
+            <p class="text-xs text-gray-500 mb-1">Issuer: ${c.issuer.length > 80 ? c.issuer.slice(0, 80) + '...' : c.issuer}</p>
+            ${c.sans && c.sans.length > 1 ? `<p class="text-xs text-gray-400">SANs: ${c.sans.slice(0, 10).join(', ')}${c.sans.length > 10 ? ' ...' : ''}</p>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderSubdomainsCard(ct) {
+  if (!ct || !ct.subdomains || ct.subdomains.length === 0) return '';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Subdomains (from CT logs)</h3>
+      <p class="text-xs text-gray-500 mb-3">${ct.subdomains.length} unique subdomain${ct.subdomains.length !== 1 ? 's' : ''} observed</p>
+      <div class="flex flex-wrap gap-2">
+        ${ct.subdomains.slice(0, 100).map(s => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300 font-mono">${s}</span>`).join('')}
+      </div>
+    </div>`;
+}
+
 async function loadNews(category) {
   const el = document.getElementById('news-results');
   el.innerHTML = '<p class="text-gray-400 text-sm animate-pulse col-span-2">Loading feed...</p>';
