@@ -284,7 +284,10 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
     """
     Fallback CT source: Certspotter by SSLMate (api.certspotter.com).
     Free tier, no key required, returns up to 100 issuances per query.
-    Response shape: list of {id, dns_names, not_before, not_after, revoked}.
+
+    The expand parameter MUST include every field we want returned. Without
+    it, the API returns only the default minimal fields (id, sha256 hashes,
+    not_before, not_after, revoked).
     """
     try:
         r = await client.get(
@@ -292,7 +295,7 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
             params={
                 "domain": domain,
                 "include_subdomains": "true",
-                "expand": "dns_names",
+                "expand": "dns_names,issuer",
             },
             timeout=CT_TIMEOUT,
             headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
@@ -309,9 +312,17 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
         normalized = []
         for entry in data[:300]:
             dns_names = entry.get("dns_names") or []
+            issuer_obj = entry.get("issuer") or {}
+
+            issuer_label = (
+                issuer_obj.get("friendly_name")
+                or issuer_obj.get("name")
+                or ""
+            )
+
             normalized.append({
                 "serial": entry.get("id"),
-                "issuer": "",
+                "issuer": issuer_label,
                 "common_name": dns_names[0] if dns_names else "",
                 "sans": dns_names[:20],
                 "not_before": entry.get("not_before"),
