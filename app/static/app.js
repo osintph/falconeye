@@ -625,17 +625,28 @@ document.getElementById('telegram-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') runTelegramLookup();
 });
 
+function normalizeChannelInput(raw) {
+  raw = raw.trim();
+  if (raw.startsWith('@')) raw = raw.slice(1);
+  // Extract name from any t.me URL form (t.me/x, t.me/s/x, https://t.me/x)
+  const m = raw.match(/t\.me\/(?:s\/)?([a-zA-Z0-9_]{4,32})/i);
+  if (m) return m[1];
+  return raw.split('/')[0].split('?')[0].split('#')[0];
+}
+
 async function runTelegramLookup() {
   const raw = document.getElementById('telegram-input').value.trim();
   const resultEl = document.getElementById('telegram-result');
 
   if (!raw) return;
 
+  const channel = normalizeChannelInput(raw);
+
   resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Fetching channel preview from t.me...</p>';
   resultEl.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/telegram/lookup/${encodeURIComponent(raw)}`);
+    const res = await fetch(`/api/telegram/lookup/${encodeURIComponent(channel)}`);
     const data = await res.json();
 
     if (!res.ok) {
