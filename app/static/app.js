@@ -813,3 +813,349 @@ function pivotToScanner(url) {
   document.querySelector('[data-tab="scanner"]').click();
   document.getElementById('scan-btn').click();
 }
+
+// ---- IP Reputation ----
+
+document.getElementById('ip-btn').addEventListener('click', runIpLookup);
+document.getElementById('ip-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runIpLookup();
+});
+
+async function runIpLookup() {
+  const raw = document.getElementById('ip-input').value.trim();
+  const resultEl = document.getElementById('ip-result');
+
+  if (!raw) return;
+
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Querying Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, and reverse DNS...</p>';
+  resultEl.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/ip/lookup/${encodeURIComponent(raw)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Lookup failed</p>
+        <p class="text-xs text-gray-400">${data.detail}</p>
+      </div>`;
+      return;
+    }
+
+    renderIpResult(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
+  }
+}
+
+function renderIpResult(el, data) {
+  const cacheBadge = data.cache_hit
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  el.innerHTML = `
+    ${renderIpSummary(data, cacheBadge)}
+    ${renderIpClassification(data.greynoise)}
+    ${renderIpPorts(data.shodan, data.cve_details)}
+    ${renderIpUrlhaus(data.urlhaus)}
+  `;
+}
+
+function renderIpSummary(data, cacheBadge) {
+  const rs = data.ripestat || {};
+  const ptr = data.reverse_dns || [];
+  const ptrStr = ptr.length ? ptr.join(', ') : '<span class="text-gray-600">no PTR</span>';
+  const locStr = [rs.city, rs.country].filter(Boolean).join(', ');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <span class="brand-badge text-sm px-3 py-1">${data.ip}</span>
+          ${locStr ? `<span class="text-xs text-gray-400">${locStr}</span>` : ''}
+        </div>
+        ${cacheBadge}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-3">
+        ${rs.asn ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">ASN</p><p class="text-amber-300 text-sm">AS${rs.asn}</p></div>` : ''}
+        ${rs.asn_holder ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Network</p><p class="text-gray-200 text-sm">${rs.asn_holder}</p></div>` : ''}
+        ${rs.prefix ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Prefix</p><p class="text-gray-200 text-sm font-mono">${rs.prefix}</p></div>` : ''}
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Reverse DNS</p>
+        <p class="text-xs text-gray-300 font-mono break-all">${ptrStr}</p>
+      </div>
+    </div>`;
+}
+
+function renderIpClassification(gn) {
+  if (!gn || (gn.message === undefined && !gn.classification)) return '';
+
+  if (gn.message && gn.message.includes("not observed")) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wide">GreyNoise Classification</h3>
+        <p class="text-sm text-gray-400">Not observed scanning the internet or in the RIOT (known-benign) dataset.</p>
+      </div>`;
+  }
+
+  const classification = gn.classification || 'unknown';
+  const classColor = {
+    'malicious': 'text-red-400 bg-red-900/30 border-red-700/50',
+    'benign': 'text-green-400 bg-green-900/30 border-green-700/50',
+    'unknown': 'text-gray-400 bg-gray-800 border-gray-700',
+  }[classification] || 'text-gray-400 bg-gray-800';
+
+  const tags = [];
+  if (gn.noise) tags.push('Scanning the internet');
+  if (gn.riot) tags.push('Known benign service (RIOT)');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">GreyNoise Classification</h3>
+      <div class="flex items-center gap-3 mb-2">
+        <span class="${classColor} border px-3 py-1 rounded text-xs font-bold uppercase">${classification}</span>
+        ${gn.name && gn.name !== 'unknown' ? `<span class="text-sm text-gray-200">${gn.name}</span>` : ''}
+      </div>
+      ${tags.length ? `<p class="text-xs text-gray-400 mt-2">${tags.join(' · ')}</p>` : ''}
+      ${gn.last_seen ? `<p class="text-xs text-gray-500 mt-1">Last seen: ${gn.last_seen}</p>` : ''}
+      ${gn.link ? `<a href="${gn.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-amber-400 hover:text-amber-300 mt-2 inline-block">View in GreyNoise ↗</a>` : ''}
+    </div>`;
+}
+
+function renderIpPorts(shodan, cveDetails) {
+  if (!shodan || shodan.empty) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wide">Open Ports & Services (Shodan)</h3>
+        <p class="text-sm text-gray-500">IP not in Shodan InternetDB or no open ports observed.</p>
+      </div>`;
+  }
+
+  const ports = shodan.ports || [];
+  const cpes = shodan.cpes || [];
+  const hostnames = shodan.hostnames || [];
+  const tags = shodan.tags || [];
+  const vulns = shodan.vulns || [];
+
+  const cveHtml = vulns.length ? `
+    <div class="mt-3">
+      <p class="text-xs text-red-400 font-bold uppercase tracking-wide mb-2">Known Vulnerabilities (${vulns.length})</p>
+      <div class="space-y-2">
+        ${vulns.slice(0, 10).map(cve => {
+          const detail = (cveDetails && cveDetails[cve]) || {};
+          const cvssBadge = detail.cvss ? `<span class="text-xs bg-red-900/40 text-red-300 px-2 py-0.5 rounded">CVSS ${detail.cvss}</span>` : '';
+          const epssBadge = detail.epss ? `<span class="text-xs bg-orange-900/40 text-orange-300 px-2 py-0.5 rounded">EPSS ${(detail.epss * 100).toFixed(2)}%</span>` : '';
+          const kevBadge = detail.kev ? `<span class="text-xs bg-purple-900/40 text-purple-300 px-2 py-0.5 rounded">CISA KEV</span>` : '';
+          return `
+            <div class="bg-gray-950 rounded p-2 border border-gray-800">
+              <div class="flex items-center gap-2 flex-wrap mb-1">
+                <a href="https://nvd.nist.gov/vuln/detail/${cve}" target="_blank" rel="noopener" class="text-amber-300 font-mono text-xs font-bold">${cve} ↗</a>
+                ${cvssBadge} ${epssBadge} ${kevBadge}
+              </div>
+              ${detail.summary ? `<p class="text-xs text-gray-400">${detail.summary}</p>` : ''}
+            </div>`;
+        }).join('')}
+        ${vulns.length > 10 ? `<p class="text-xs text-gray-500">... and ${vulns.length - 10} more</p>` : ''}
+      </div>
+    </div>` : '';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Open Ports & Services (Shodan InternetDB)</h3>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-3">
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Ports</p>
+          <div class="flex flex-wrap gap-1">
+            ${ports.length ? ports.map(p => `<span class="text-xs bg-gray-800 text-amber-300 px-2 py-0.5 rounded font-mono">${p}</span>`).join('') : '<span class="text-xs text-gray-600">none</span>'}
+          </div>
+        </div>
+        ${tags.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tags</p><div class="flex flex-wrap gap-1">${tags.map(t => `<span class="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded">${t}</span>`).join('')}</div></div>` : ''}
+      </div>
+      ${hostnames.length ? `<div class="mb-2"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Hostnames</p><div class="flex flex-wrap gap-1">${hostnames.slice(0, 10).map(h => `<span class="text-xs bg-gray-800 text-gray-300 px-2 py-0.5 rounded font-mono">${h}</span>`).join('')}</div></div>` : ''}
+      ${cpes.length ? `<div class="mb-2"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Software (CPEs)</p><div class="flex flex-wrap gap-1">${cpes.slice(0, 10).map(c => `<span class="text-xs bg-gray-800 text-gray-400 px-2 py-0.5 rounded font-mono">${c}</span>`).join('')}</div></div>` : ''}
+      ${cveHtml}
+    </div>`;
+}
+
+function renderIpUrlhaus(uh) {
+  if (!uh || uh.query_status !== "ok") {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wide">URLhaus History</h3>
+        <p class="text-sm text-gray-500">No URLhaus records for this host.</p>
+      </div>`;
+  }
+
+  const urls = uh.urls || [];
+  const blacklists = uh.blacklists || {};
+  const firstseen = uh.firstseen;
+  const urlCount = uh.url_count || urls.length;
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus History</h3>
+        ${uh.urlhaus_reference ? `<a href="${uh.urlhaus_reference}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total Malicious URLs</p>
+          <p class="text-red-400 font-bold">${urlCount}</p>
+        </div>
+        ${firstseen ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen</p><p class="text-amber-300 text-sm">${fmtPHT(firstseen)}</p></div>` : ''}
+      </div>
+      ${Object.keys(blacklists).length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Blacklist Status</p><div class="flex flex-wrap gap-2">${Object.entries(blacklists).map(([k, v]) => `<span class="text-xs bg-red-900/20 border border-red-700/30 px-2 py-1 rounded text-red-300">${k}: ${v}</span>`).join('')}</div></div>` : ''}
+      ${urls.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent URLs (${Math.min(urls.length, 15)} of ${urls.length})</p><div class="space-y-1">${urls.slice(0, 15).map(u => `<div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-2"><span class="text-xs text-amber-300 font-mono break-all flex-1">${u.url}</span><span class="text-xs ${u.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(u.url_status || 'unknown').toUpperCase()}</span></div>`).join('')}</div></div>` : ''}
+    </div>`;
+}
+
+// ---- Sandbox History ----
+
+document.getElementById('sandbox-btn').addEventListener('click', runSandboxLookup);
+document.getElementById('sandbox-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runSandboxLookup();
+});
+
+async function runSandboxLookup() {
+  const raw = document.getElementById('sandbox-input').value.trim();
+  const resultEl = document.getElementById('sandbox-result');
+
+  if (!raw) return;
+
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Querying URLhaus and MalwareBazaar...</p>';
+  resultEl.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/sandbox/lookup?indicator=${encodeURIComponent(raw)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Lookup failed</p>
+        <p class="text-xs text-gray-400">${data.detail}</p>
+      </div>`;
+      return;
+    }
+
+    renderSandboxResult(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
+  }
+}
+
+function renderSandboxResult(el, data) {
+  const cacheBadge = data.cache_hit
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex items-center gap-3">
+          <span class="brand-badge text-sm px-3 py-1">${data.indicator_type.toUpperCase()}</span>
+          <span class="text-xs text-gray-400 break-all">${data.indicator}</span>
+        </div>
+        ${cacheBadge}
+      </div>
+    </div>
+    ${renderUrlhausUrl(data.urlhaus_url)}
+    ${renderUrlhausPayload(data.urlhaus_payload)}
+    ${renderMalwarebazaar(data.malwarebazaar)}
+  `;
+}
+
+function renderUrlhausUrl(uh) {
+  if (!uh || uh.query_status !== "ok") {
+    if (uh && uh.query_status === "no_results") {
+      return `
+        <div class="bg-gray-900 border border-gray-800 rounded p-5">
+          <h3 class="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wide">URLhaus URL Lookup</h3>
+          <p class="text-sm text-gray-500">URL not present in URLhaus database.</p>
+        </div>`;
+    }
+    return '';
+  }
+
+  const payloads = uh.payloads || [];
+  const tags = uh.tags || [];
+  const blacklists = uh.blacklists || {};
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus URL Match</h3>
+        ${uh.urlhaus_reference ? `<a href="${uh.urlhaus_reference}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Status</p>
+          <p class="text-${uh.url_status === 'online' ? 'green' : 'gray'}-400 font-bold uppercase text-sm">${uh.url_status || 'unknown'}</p>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Threat</p>
+          <p class="text-red-300 text-sm">${uh.threat || 'unknown'}</p>
+        </div>
+        ${uh.date_added ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Reported</p><p class="text-amber-300 text-sm">${fmtPHT(uh.date_added)}</p></div>` : ''}
+      </div>
+      ${tags.length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tags</p><div class="flex flex-wrap gap-1">${tags.map(t => `<span class="text-xs bg-gray-800 text-amber-300 px-2 py-0.5 rounded">${t}</span>`).join('')}</div></div>` : ''}
+      ${Object.keys(blacklists).length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Blacklists</p><div class="flex flex-wrap gap-2">${Object.entries(blacklists).map(([k, v]) => `<span class="text-xs bg-red-900/20 border border-red-700/30 px-2 py-1 rounded text-red-300">${k}: ${v}</span>`).join('')}</div></div>` : ''}
+      ${payloads.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Associated Payloads (${payloads.length})</p><div class="space-y-2">${payloads.slice(0, 5).map(p => `<div class="bg-gray-950 border border-gray-800 rounded p-2"><p class="text-xs text-amber-300 font-mono break-all">${p.response_sha256 || p.response_md5 || ''}</p><p class="text-xs text-gray-400 mt-1">${p.file_type || '?'} · ${p.signature || 'no signature'}</p></div>`).join('')}</div></div>` : ''}
+    </div>`;
+}
+
+function renderUrlhausPayload(uh) {
+  if (!uh || uh.query_status !== "ok") return '';
+
+  const urls = uh.urls || [];
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus Hash Match</h3>
+        ${uh.urlhaus_download ? `<a href="${uh.urlhaus_download}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">Sample on URLhaus ↗</a>` : ''}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">File Type</p><p class="text-amber-300 text-sm">${uh.file_type || 'unknown'}</p></div>
+        <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">File Size</p><p class="text-gray-200 text-sm">${uh.file_size || '?'} bytes</p></div>
+        <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Signature</p><p class="text-red-300 text-sm">${uh.signature || 'none'}</p></div>
+        ${uh.firstseen ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen</p><p class="text-gray-300 text-xs">${fmtPHT(uh.firstseen)}</p></div>` : ''}
+      </div>
+      ${urls.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Distribution URLs (${urls.length})</p><div class="space-y-1">${urls.slice(0, 10).map(u => `<div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-2"><span class="text-xs text-amber-300 font-mono break-all flex-1">${u.url}</span><span class="text-xs ${u.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(u.url_status || 'unknown').toUpperCase()}</span></div>`).join('')}</div></div>` : ''}
+    </div>`;
+}
+
+function renderMalwarebazaar(mb) {
+  if (!mb || mb.query_status !== "ok") {
+    if (mb && mb.query_status === "hash_not_found") {
+      return `
+        <div class="bg-gray-900 border border-gray-800 rounded p-5">
+          <h3 class="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wide">MalwareBazaar</h3>
+          <p class="text-sm text-gray-500">Hash not present in MalwareBazaar.</p>
+        </div>`;
+    }
+    return '';
+  }
+
+  const data = (mb.data && mb.data[0]) || {};
+  const tags = data.tags || [];
+  const yara = data.yara_rules || [];
+  const intel = data.intelligence || {};
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">MalwareBazaar Match</h3>
+        ${data.sha256_hash ? `<a href="https://bazaar.abuse.ch/sample/${data.sha256_hash}/" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on MalwareBazaar ↗</a>` : ''}
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">File Name</p><p class="text-gray-200 text-sm break-all">${data.file_name || 'unknown'}</p></div>
+        <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">File Type</p><p class="text-amber-300 text-sm">${data.file_type || 'unknown'}</p></div>
+        <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Signature</p><p class="text-red-300 text-sm">${data.signature || 'none'}</p></div>
+        ${data.first_seen ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen</p><p class="text-gray-300 text-xs">${fmtPHT(data.first_seen)}</p></div>` : ''}
+      </div>
+      ${tags.length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tags</p><div class="flex flex-wrap gap-1">${tags.map(t => `<span class="text-xs bg-gray-800 text-amber-300 px-2 py-0.5 rounded">${t}</span>`).join('')}</div></div>` : ''}
+      ${yara.length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">YARA Rule Hits</p><div class="flex flex-wrap gap-1">${yara.slice(0, 10).map(y => `<span class="text-xs bg-red-900/20 border border-red-700/30 px-2 py-1 rounded text-red-300 font-mono">${y.rule_name || y}</span>`).join('')}</div></div>` : ''}
+      ${intel.downloads ? `<p class="text-xs text-gray-500">Downloaded ${intel.downloads} times · ${intel.uploads || 0} unique uploaders</p>` : ''}
+    </div>`;
+}

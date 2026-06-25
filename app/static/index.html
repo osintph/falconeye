@@ -22,6 +22,8 @@
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="scanner">Phishing Scanner</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="domain">Domain Intel</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="telegram">Telegram</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="ip">IP Reputation</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="sandbox">Sandbox</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="news">Cyber News</button>
   </nav>
 
@@ -107,6 +109,38 @@
       </div>
 
       <div id="telegram-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- IP Reputation Tab -->
+    <div id="tab-ip" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">IP Reputation & Threat Lookup</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a public IPv4 or IPv6 address for ASN, geolocation, open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
+
+      <div class="flex gap-3 mb-6">
+        <input id="ip-input" type="text" placeholder="8.8.8.8"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="ip-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Investigate
+        </button>
+      </div>
+
+      <div id="ip-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- Sandbox Tab -->
+    <div id="tab-sandbox" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">File & URL Sandbox History</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a URL or a file hash (MD5, SHA1, SHA256) to query URLhaus and MalwareBazaar for community threat intel. Results cached for 6 hours.</p>
+
+      <div class="flex gap-3 mb-6">
+        <input id="sandbox-input" type="text" placeholder="URL or hash..."
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="sandbox-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Lookup
+        </button>
+      </div>
+
+      <div id="sandbox-result" class="hidden space-y-4"></div>
     </div>
 
     <!-- News Tab -->

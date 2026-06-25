@@ -56,6 +56,21 @@ CREATE TABLE IF NOT EXISTS telegram_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_telegram_cache_fetched ON telegram_cache(fetched_at);
+
+CREATE TABLE IF NOT EXISTS ip_intel_cache (
+    ip TEXT PRIMARY KEY,
+    response_json TEXT,
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS sandbox_cache (
+    indicator_key TEXT PRIMARY KEY,
+    response_json TEXT,
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_ip_cache_fetched ON ip_intel_cache(fetched_at);
+CREATE INDEX IF NOT EXISTS idx_sandbox_cache_fetched ON sandbox_cache(fetched_at);
 """)
 
 conn.commit()
