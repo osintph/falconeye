@@ -190,7 +190,7 @@ async def lookup_channel(request: Request, channel: str, db: sqlite3.Connection 
 
     html = r.text
 
-    if ".tgme_widget_message" not in html and "tgme_page_title" not in html:
+    if "tgme_channel_info" not in html and ".tgme_widget_message" not in html:
         raise HTTPException(
             status_code=404,
             detail="Channel has no public preview, is private, or does not exist.",
