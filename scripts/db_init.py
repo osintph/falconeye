@@ -48,6 +48,14 @@ CREATE TABLE IF NOT EXISTS domain_intel_cache (
 );
 
 CREATE INDEX IF NOT EXISTS idx_domain_cache_fetched ON domain_intel_cache(fetched_at);
+
+CREATE TABLE IF NOT EXISTS telegram_cache (
+    channel TEXT PRIMARY KEY,
+    response_json TEXT,
+    fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_telegram_cache_fetched ON telegram_cache(fetched_at);
 """)
 
 conn.commit()

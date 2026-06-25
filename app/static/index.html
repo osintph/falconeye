@@ -21,6 +21,7 @@
     <button class="tab-btn active-tab py-3 text-sm border-b-2 border-amber-400 text-amber-400" data-tab="crypto">Crypto Workbench</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="scanner">Phishing Scanner</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="domain">Domain Intel</button>
+    <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="telegram">Telegram</button>
     <button class="tab-btn py-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white" data-tab="news">Cyber News</button>
   </nav>
 
@@ -92,6 +93,22 @@
       <div id="domain-result" class="hidden space-y-4"></div>
     </div>
 
+    <!-- Telegram Inspector Tab -->
+    <div id="tab-telegram" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Telegram Channel Inspector</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a public Telegram channel name or t.me link to extract metadata, recent messages, and IOCs. Results cached for 6 hours. Private channels and groups not supported.</p>
+
+      <div class="flex gap-3 mb-6">
+        <input id="telegram-input" type="text" placeholder="@channelname or t.me/channelname"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="telegram-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Inspect
+        </button>
+      </div>
+
+      <div id="telegram-result" class="hidden space-y-4"></div>
+    </div>
+
     <!-- News Tab -->
     <div id="tab-news" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Cyber News</h2>
@@ -108,6 +125,6 @@
 
   </main>
 
-  <script src="/static/app.js?v=domainv1"></script>
+  <script src="/static/app.js?v=telegramv1"></script>
 </body>
 </html>

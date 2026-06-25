@@ -617,3 +617,188 @@ async function loadNews(category) {
     el.innerHTML = `<p class="text-red-400 text-sm">Load failed: ${e.message}</p>`;
   }
 }
+
+// ---- Telegram Channel Inspector ----
+
+document.getElementById('telegram-btn').addEventListener('click', runTelegramLookup);
+document.getElementById('telegram-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runTelegramLookup();
+});
+
+async function runTelegramLookup() {
+  const raw = document.getElementById('telegram-input').value.trim();
+  const resultEl = document.getElementById('telegram-result');
+
+  if (!raw) return;
+
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Fetching channel preview from t.me...</p>';
+  resultEl.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/telegram/lookup/${encodeURIComponent(raw)}`);
+    const data = await res.json();
+
+    if (!res.ok) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Lookup failed</p>
+        <p class="text-xs text-gray-400">${data.detail}</p>
+      </div>`;
+      return;
+    }
+
+    renderTelegramResult(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
+  }
+}
+
+function renderTelegramResult(el, data) {
+  const cacheBadge = data.cache_hit
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  el.innerHTML = `
+    ${renderTelegramHeader(data, cacheBadge)}
+    ${renderTelegramIocs(data.aggregated_iocs)}
+    ${renderTelegramMessages(data.messages)}
+  `;
+}
+
+function renderTelegramHeader(data, cacheBadge) {
+  const photoHtml = data.photo_url
+    ? `<img src="${data.photo_url}" class="w-16 h-16 rounded-full border border-gray-700" alt="" onerror="this.style.display='none'" />`
+    : `<div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-amber-400 font-bold text-2xl">${(data.title || '?').charAt(0).toUpperCase()}</div>`;
+
+  const stats = [];
+  if (data.subscribers) stats.push(`<span class="text-amber-300 font-bold">${data.subscribers}</span> subscribers`);
+  if (data.photos) stats.push(`<span class="text-gray-300">${data.photos}</span> photos`);
+  if (data.videos) stats.push(`<span class="text-gray-300">${data.videos}</span> videos`);
+  if (data.files) stats.push(`<span class="text-gray-300">${data.files}</span> files`);
+  if (data.links) stats.push(`<span class="text-gray-300">${data.links}</span> links`);
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-start justify-between mb-3">
+        <div class="flex items-start gap-4">
+          ${photoHtml}
+          <div>
+            <h3 class="text-base font-bold text-white">${data.title}</h3>
+            <p class="text-xs text-amber-400 mb-2">${data.username}</p>
+            ${data.description ? `<p class="text-xs text-gray-400 max-w-2xl">${data.description}</p>` : ''}
+          </div>
+        </div>
+        ${cacheBadge}
+      </div>
+      ${stats.length ? `<div class="flex gap-4 text-xs text-gray-400 mt-3 pt-3 border-t border-gray-800">${stats.join(' · ')}</div>` : ''}
+    </div>`;
+}
+
+function renderTelegramIocs(iocs) {
+  if (!iocs) return '';
+
+  const sections = [
+    {key: "urls", label: "URLs", color: "amber-300"},
+    {key: "crypto_btc", label: "Bitcoin Addresses", color: "yellow-400"},
+    {key: "crypto_eth", label: "Ethereum Addresses", color: "blue-400"},
+    {key: "crypto_trc20", label: "TRON / USDT TRC20", color: "green-400"},
+    {key: "emails", label: "Email Addresses", color: "purple-400"},
+    {key: "phones_ph", label: "PH Phone Numbers", color: "amber-300"},
+    {key: "phones_intl", label: "International Phones", color: "gray-300"},
+    {key: "possible_accounts", label: "Possible Account Numbers", color: "orange-300"},
+    {key: "brands", label: "Brands Mentioned", color: "amber-300"},
+  ];
+
+  const renderedSections = sections
+    .filter(s => iocs[s.key] && iocs[s.key].length > 0)
+    .map(s => {
+      const items = iocs[s.key].slice(0, 50);
+      const isCrypto = s.key.startsWith("crypto_");
+      const itemsHtml = items.map(item => {
+        if (isCrypto) {
+          return `<span class="inline-flex items-center gap-1 bg-gray-800 px-2 py-1 rounded text-xs font-mono">
+            <span class="text-gray-200 break-all">${item}</span>
+            <button onclick="pivotToCrypto('${item}')" class="text-amber-400 hover:text-amber-300 text-xs font-bold">↗</button>
+          </span>`;
+        }
+        if (s.key === "urls") {
+          return `<span class="inline-flex items-center gap-1 bg-gray-800 px-2 py-1 rounded text-xs font-mono">
+            <span class="text-gray-200 break-all">${item}</span>
+            <button onclick="pivotToScanner('${item.replace(/'/g, "\\'")}')" class="text-amber-400 hover:text-amber-300 text-xs font-bold">↗</button>
+          </span>`;
+        }
+        return `<span class="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-200 break-all">${item}</span>`;
+      }).join('');
+
+      return `
+        <div class="mb-4">
+          <p class="text-xs text-${s.color} font-bold uppercase tracking-wide mb-2">${s.label} (${iocs[s.key].length})</p>
+          <div class="flex flex-wrap gap-2">${itemsHtml}</div>
+        </div>`;
+    });
+
+  if (renderedSections.length === 0) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Aggregated IOCs</h3>
+        <p class="text-sm text-gray-500">No IOCs extracted from the visible message preview.</p>
+      </div>`;
+  }
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wide">Aggregated IOCs (across all messages)</h3>
+      ${renderedSections.join('')}
+    </div>`;
+}
+
+function renderTelegramMessages(messages) {
+  if (!messages || messages.length === 0) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent Messages</h3>
+        <p class="text-sm text-gray-500">No messages in the public preview.</p>
+      </div>`;
+  }
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent Messages (${messages.length})</h3>
+      <div class="space-y-3">
+        ${messages.slice().reverse().map(m => `
+          <div class="bg-gray-950 rounded p-3 border border-gray-800">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">${fmtPHT(m.timestamp)}</span>
+                ${m.views ? `<span class="text-xs text-gray-600">${m.views} views</span>` : ''}
+                ${m.forwarded_from ? `<span class="text-xs text-blue-400">⤴ ${m.forwarded_from}</span>` : ''}
+              </div>
+              ${m.link ? `<a href="${m.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-amber-400 hover:text-amber-300">view ↗</a>` : ''}
+            </div>
+            ${m.body ? `<p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escapeHtml(m.body).slice(0, 800)}${m.body.length > 800 ? '...' : ''}</p>` : ''}
+            ${m.media_descriptions && m.media_descriptions.length ? `
+              <div class="mt-2 text-xs text-gray-500">📎 ${m.media_descriptions.map(escapeHtml).join(' · ')}</div>` : ''}
+            ${m.brands && m.brands.length ? `
+              <div class="mt-2 flex flex-wrap gap-1">
+                ${m.brands.map(b => `<span class="text-xs bg-gray-800 px-2 py-0.5 rounded text-amber-300">${b}</span>`).join('')}
+              </div>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function escapeHtml(s) {
+  if (!s) return '';
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function pivotToCrypto(address) {
+  document.getElementById('crypto-address').value = address;
+  document.querySelector('[data-tab="crypto"]').click();
+  document.getElementById('crypto-btn').click();
+}
+
+function pivotToScanner(url) {
+  document.getElementById('scan-url').value = url;
+  document.querySelector('[data-tab="scanner"]').click();
+  document.getElementById('scan-btn').click();
+}
