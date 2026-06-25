@@ -1279,27 +1279,44 @@ function pivotThreatPulseToScanner(url) {
   document.getElementById('scan-btn').click();
 }
 
-// ---- Examples grid click handlers ----
+// ---- Example cards (delegated handler, works regardless of DOM ready timing) ----
 
-document.querySelectorAll('.example-card').forEach(card => {
-  card.addEventListener('click', () => {
-    const tab = card.dataset.tab;
-    const targetId = card.dataset.target;
-    const triggerId = card.dataset.trigger;
-    const value = card.dataset.value;
+document.body.addEventListener('click', (e) => {
+  const card = e.target.closest('.example-card');
+  if (!card) return;
 
-    // Switch to the target tab
-    const tabBtn = document.querySelector(`[data-tab="${tab}"]`);
-    if (tabBtn) tabBtn.click();
+  const tab = card.dataset.tab;
+  const targetId = card.dataset.target;
+  const triggerId = card.dataset.trigger;
+  const value = card.dataset.value;
 
-    // Pre-fill and trigger after a short delay so the tab switch renders first
-    setTimeout(() => {
-      const targetEl = document.getElementById(targetId);
-      const triggerEl = document.getElementById(triggerId);
-      if (targetEl) targetEl.value = value;
-      if (triggerEl) triggerEl.click();
-    }, 150);
-  });
+  if (!tab || !targetId || !triggerId || !value) {
+    console.warn('example-card missing required data attributes:', card);
+    return;
+  }
+
+  const tabBtn = document.querySelector(`[data-tab="${tab}"]`);
+  if (tabBtn) {
+    tabBtn.click();
+  } else {
+    console.warn('example-card: tab button not found for tab', tab);
+    return;
+  }
+
+  setTimeout(() => {
+    const targetEl = document.getElementById(targetId);
+    const triggerEl = document.getElementById(triggerId);
+    if (!targetEl) {
+      console.warn('example-card: target input not found:', targetId);
+      return;
+    }
+    if (!triggerEl) {
+      console.warn('example-card: trigger button not found:', triggerId);
+      return;
+    }
+    targetEl.value = value;
+    triggerEl.click();
+  }, 200);
 });
 
 // ---- Landing news strip ----

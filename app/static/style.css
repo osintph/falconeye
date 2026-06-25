@@ -64,12 +64,15 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
   font-size: 0.7rem;
   letter-spacing: 0.02em;
   transition: all 0.15s ease;
-  cursor: default;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 }
 
 .data-source:hover {
   border-color: #fbbf24;
   color: #fbbf24;
+  text-decoration: none;
 }
 
 /* Sample button hover state */
