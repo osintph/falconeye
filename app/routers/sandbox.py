@@ -59,6 +59,7 @@ async def fetch_urlhaus_url(client: httpx.AsyncClient, url: str) -> dict | None:
         )
         if r.status_code == 200:
             return r.json()
+        log.warning(f"URLhaus URL returned {r.status_code}")
         return None
     except Exception as e:
         log.warning(f"URLhaus URL exception: {e}")
@@ -67,6 +68,7 @@ async def fetch_urlhaus_url(client: httpx.AsyncClient, url: str) -> dict | None:
 
 async def fetch_urlhaus_payload(client: httpx.AsyncClient, hash_type: str, hash_value: str) -> dict | None:
     if not ABUSECH_AUTH_KEY:
+        log.warning("URLhaus payload: ABUSECH_AUTH_KEY not set")
         return None
     if hash_type not in ("md5", "sha256"):
         return None
@@ -79,6 +81,7 @@ async def fetch_urlhaus_payload(client: httpx.AsyncClient, hash_type: str, hash_
         )
         if r.status_code == 200:
             return r.json()
+        log.warning(f"URLhaus payload returned {r.status_code}")
         return None
     except Exception as e:
         log.warning(f"URLhaus payload exception: {e}")
@@ -88,6 +91,7 @@ async def fetch_urlhaus_payload(client: httpx.AsyncClient, hash_type: str, hash_
 async def fetch_malwarebazaar(client: httpx.AsyncClient, hash_value: str) -> dict | None:
     """MalwareBazaar accepts md5, sha1, or sha256 in a single `hash` field."""
     if not ABUSECH_AUTH_KEY:
+        log.warning("MalwareBazaar: ABUSECH_AUTH_KEY not set")
         return None
     try:
         r = await client.post(
@@ -98,6 +102,7 @@ async def fetch_malwarebazaar(client: httpx.AsyncClient, hash_value: str) -> dic
         )
         if r.status_code == 200:
             return r.json()
+        log.warning(f"MalwareBazaar returned {r.status_code}")
         return None
     except Exception as e:
         log.warning(f"MalwareBazaar exception: {e}")
