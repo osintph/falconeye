@@ -839,20 +839,6 @@ document.querySelectorAll('.sample-btn').forEach(btn => {
 // Hides the hero cards, threat pulse, examples grid, and news strip
 // once the user runs their first crypto lookup.
 
-(function setupLandingCollapse() {
-  const heroEl = document.getElementById('crypto-hero');
-  const extrasEl = document.getElementById('landing-extras');
-  const resultEl = document.getElementById('crypto-result');
-  if (!resultEl) return;
-
-  const observer = new MutationObserver(() => {
-    if (!resultEl.classList.contains('hidden')) {
-      if (heroEl) heroEl.style.display = 'none';
-      if (extrasEl) extrasEl.style.display = 'none';
-    }
-  });
-  observer.observe(resultEl, { attributes: true, attributeFilter: ['class'] });
-})();
 
 // ---- IP Reputation ----
 
@@ -1209,6 +1195,11 @@ async function loadThreatPulse() {
 
   try {
     const res = await fetch('/api/threat-pulse');
+    if (!res.ok) {
+      console.error('loadThreatPulse: HTTP', res.status);
+      contentEl.innerHTML = `<p class="text-xs text-red-400">Failed to load threat pulse (HTTP ${res.status}).</p>`;
+      return;
+    }
     const data = await res.json();
 
     if (data.error) {
@@ -1319,6 +1310,11 @@ async function loadLandingNews() {
 
   try {
     const res = await fetch('/api/news/global_cyber');
+    if (!res.ok) {
+      console.error('loadLandingNews: HTTP', res.status);
+      el.innerHTML = `<p class="text-xs text-red-400 col-span-3">Failed to load news (HTTP ${res.status}).</p>`;
+      return;
+    }
     const data = await res.json();
 
     if (!data || data.length === 0) {

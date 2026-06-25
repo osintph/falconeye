@@ -41,7 +41,11 @@
 
   <!-- Tab nav with inline SVG icons -->
   <nav class="border-b border-gray-800 px-6 flex gap-1 overflow-x-auto">
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-amber-400 text-amber-400 flex items-center gap-2 whitespace-nowrap" data-tab="crypto">
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-amber-400 text-amber-400 flex items-center gap-2 whitespace-nowrap" data-tab="home">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="crypto">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h.01"/><path d="M2 10h20"/></svg>
       Crypto
     </button>
@@ -73,128 +77,143 @@
 
   <main class="max-w-6xl mx-auto px-6 py-8 w-full flex-grow">
 
-    <!-- Crypto Workbench Tab -->
-    <div id="tab-crypto" class="tab-content">
-      <!-- Landing hero — collapses when result is shown -->
-      <div id="crypto-hero" class="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-gray-900 border border-gray-800 rounded p-5">
-          <div class="flex items-center gap-2 mb-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-            <h3 class="text-sm font-bold text-white">Trace Crypto Wallets</h3>
+    <!-- HOME TAB — default landing -->
+    <div id="tab-home" class="tab-content">
+
+      <!-- About FalconEye story block -->
+      <section class="mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div class="lg:col-span-2">
+            <h1 class="text-2xl font-bold text-white mb-3">An investigator's toolkit for the open web.</h1>
+            <p class="text-gray-300 leading-relaxed mb-3">
+              FalconEye is a free, self-hosted OSINT workbench built for cybersecurity investigators, fraud analysts, and journalists. It collapses the dozen browser tabs an investigator usually juggles — wallet explorers, RDAP lookups, certificate transparency, ASN tools, phishing kit analysis, malware databases, Telegram channel inspection — into one focused interface.
+            </p>
+            <p class="text-gray-300 leading-relaxed mb-3">
+              Every tab takes a single indicator as input and returns structured intelligence pulled from free, reputable public data sources. There is no paywall, no enterprise sales call, no API budget. Just the tools.
+            </p>
+            <p class="text-gray-400 text-sm leading-relaxed">
+              Built and maintained by <a href="https://blog.osintph.info" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">OSINT-PH</a> — a Philippine-based OSINT and incident response practice. The platform is open source under AGPL-3.0 at <a href="https://github.com/osintph/falconeye" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">github.com/osintph/falconeye</a>.
+            </p>
           </div>
-          <p class="text-xs text-gray-400 leading-relaxed">Investigate Bitcoin, Ethereum, and USDT TRC20 wallets. Transaction graph, counterparty clustering, balance history.</p>
+
+          <!-- Quick capabilities sidebar -->
+          <div class="bg-gray-900 border border-gray-800 rounded p-5">
+            <h3 class="text-xs text-gray-500 uppercase tracking-widest mb-3">What this does</h3>
+            <ul class="space-y-2 text-sm text-gray-300">
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">→</span>
+                <span>Trace crypto wallets across BTC, ETH, and USDT TRC20</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">→</span>
+                <span>Fingerprint phishing kits by their indicators</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">→</span>
+                <span>Profile domains with RDAP, DNS, and CT logs</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">→</span>
+                <span>Check IP reputation, open ports, and scanner activity</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">→</span>
+                <span>Inspect public Telegram channels for IOCs</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">→</span>
+                <span>Look up URLs and file hashes in community threat databases</span>
+              </li>
+            </ul>
+          </div>
         </div>
-        <div class="bg-gray-900 border border-gray-800 rounded p-5">
-          <div class="flex items-center gap-2 mb-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/></svg>
-            <h3 class="text-sm font-bold text-white">Fingerprint Phishing Kits</h3>
+      </section>
+
+      <!-- PH Threat Pulse Widget -->
+      <div id="threat-pulse" class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+            </svg>
+            <h3 class="text-sm font-bold text-white">PH Threat Pulse</h3>
+            <span class="text-xs text-gray-500 ml-2">live from URLhaus PH feed</span>
           </div>
-          <p class="text-xs text-gray-400 leading-relaxed">Scan suspected URLs for known PH phishing kit indicators. Telegram bot exfiltration, cloned bank asset paths, OTP capture endpoints.</p>
+          <span id="threat-pulse-status" class="text-xs text-gray-600"></span>
         </div>
-        <div class="bg-gray-900 border border-gray-800 rounded p-5">
-          <div class="flex items-center gap-2 mb-2">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
-            <h3 class="text-sm font-bold text-white">Profile Domains & IPs</h3>
-          </div>
-          <p class="text-xs text-gray-400 leading-relaxed">RDAP, DNS, certificate transparency, ASN attribution, GreyNoise scanner activity, URLhaus history, and more.</p>
+        <div id="threat-pulse-content" class="text-sm text-gray-400">
+          <p class="animate-pulse">Loading PH threat data...</p>
         </div>
       </div>
 
-      <!-- End of crypto-hero, start of landing-extras -->
-      <div id="landing-extras">
-
-        <!-- PH Threat Pulse Widget -->
-        <div id="threat-pulse" class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
-          <div class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-2">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-              </svg>
-              <h3 class="text-sm font-bold text-white">PH Threat Pulse</h3>
-              <span class="text-xs text-gray-500 ml-2">live from URLhaus PH feed</span>
+      <!-- Examples Grid -->
+      <div class="mb-6">
+        <h3 class="text-xs text-gray-500 uppercase tracking-widest mb-3">Start with a sample investigation</h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
+                  data-tab="crypto" data-target="crypto-address" data-trigger="crypto-btn"
+                  data-value="1Mz7153HMuxXTuR2R1t78mGSdzaAtNbBWX">
+            <div class="flex items-center gap-2 mb-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+              <span class="text-xs font-bold text-white">Crypto Wallet</span>
             </div>
-            <span id="threat-pulse-status" class="text-xs text-gray-600"></span>
-          </div>
-          <div id="threat-pulse-content" class="text-sm text-gray-400">
-            <p class="animate-pulse">Loading PH threat data...</p>
-          </div>
+            <p class="text-xs text-gray-500 font-mono break-all">1Mz7153H...NbBWX</p>
+            <p class="text-xs text-gray-600 mt-2">WannaCry BTC wallet</p>
+          </button>
+
+          <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
+                  data-tab="domain" data-target="domain-input" data-trigger="domain-btn"
+                  data-value="osintph.info">
+            <div class="flex items-center gap-2 mb-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
+              <span class="text-xs font-bold text-white">Domain</span>
+            </div>
+            <p class="text-xs text-gray-500 font-mono">osintph.info</p>
+            <p class="text-xs text-gray-600 mt-2">RDAP, DNS, CT logs, ASN</p>
+          </button>
+
+          <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
+                  data-tab="ip" data-target="ip-input" data-trigger="ip-btn"
+                  data-value="8.8.8.8">
+            <div class="flex items-center gap-2 mb-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 18h.01"/></svg>
+              <span class="text-xs font-bold text-white">IP Address</span>
+            </div>
+            <p class="text-xs text-gray-500 font-mono">8.8.8.8</p>
+            <p class="text-xs text-gray-600 mt-2">Shodan, GreyNoise, ASN</p>
+          </button>
+
+          <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
+                  data-tab="telegram" data-target="telegram-input" data-trigger="telegram-btn"
+                  data-value="durov">
+            <div class="flex items-center gap-2 mb-2">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
+              <span class="text-xs font-bold text-white">Telegram Channel</span>
+            </div>
+            <p class="text-xs text-gray-500 font-mono">@durov</p>
+            <p class="text-xs text-gray-600 mt-2">Messages and IOC extraction</p>
+          </button>
         </div>
-
-        <!-- Examples Grid -->
-        <div class="mb-6">
-          <h3 class="text-xs text-gray-500 uppercase tracking-widest mb-3">What you can investigate</h3>
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
-                    data-tab="crypto"
-                    data-target="crypto-address"
-                    data-trigger="crypto-btn"
-                    data-value="1Mz7153HMuxXTuR2R1t78mGSdzaAtNbBWX">
-              <div class="flex items-center gap-2 mb-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
-                <span class="text-xs font-bold text-white">Crypto Wallet</span>
-              </div>
-              <p class="text-xs text-gray-500 font-mono break-all">1Mz7153H...NbBWX</p>
-              <p class="text-xs text-gray-600 mt-2">WannaCry BTC wallet</p>
-            </button>
-
-            <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
-                    data-tab="domain"
-                    data-target="domain-input"
-                    data-trigger="domain-btn"
-                    data-value="osintph.info">
-              <div class="flex items-center gap-2 mb-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/></svg>
-                <span class="text-xs font-bold text-white">Domain</span>
-              </div>
-              <p class="text-xs text-gray-500 font-mono">osintph.info</p>
-              <p class="text-xs text-gray-600 mt-2">RDAP, DNS, CT logs, ASN</p>
-            </button>
-
-            <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
-                    data-tab="ip"
-                    data-target="ip-input"
-                    data-trigger="ip-btn"
-                    data-value="8.8.8.8">
-              <div class="flex items-center gap-2 mb-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 18h.01"/></svg>
-                <span class="text-xs font-bold text-white">IP Address</span>
-              </div>
-              <p class="text-xs text-gray-500 font-mono">8.8.8.8</p>
-              <p class="text-xs text-gray-600 mt-2">Shodan, GreyNoise, ASN</p>
-            </button>
-
-            <button class="example-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left transition"
-                    data-tab="telegram"
-                    data-target="telegram-input"
-                    data-trigger="telegram-btn"
-                    data-value="durov">
-              <div class="flex items-center gap-2 mb-2">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
-                <span class="text-xs font-bold text-white">Telegram Channel</span>
-              </div>
-              <p class="text-xs text-gray-500 font-mono">@durov</p>
-              <p class="text-xs text-gray-600 mt-2">Messages and IOC extraction</p>
-            </button>
-          </div>
-        </div>
-
-        <!-- Latest News Strip -->
-        <div class="mb-8">
-          <div class="flex items-center justify-between mb-3">
-            <h3 class="text-xs text-gray-500 uppercase tracking-widest">Latest from the cyber news desk</h3>
-            <button class="text-xs text-amber-400 hover:text-amber-300 transition"
-                    onclick="document.querySelector('[data-tab=news]').click()">
-              All news →
-            </button>
-          </div>
-          <div id="landing-news" class="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <p class="text-xs text-gray-500 col-span-3 animate-pulse">Loading latest headlines...</p>
-          </div>
-        </div>
-
       </div>
-      <!-- End of landing-extras -->
 
+      <!-- Latest News Strip -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs text-gray-500 uppercase tracking-widest">Latest from the cyber news desk</h3>
+          <button class="text-xs text-amber-400 hover:text-amber-300 transition"
+                  onclick="document.querySelector('[data-tab=news]').click()">
+            All news →
+          </button>
+        </div>
+        <div id="landing-news" class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <p class="text-xs text-gray-500 col-span-3 animate-pulse">Loading latest headlines...</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CRYPTO TAB — focused workbench, no landing content -->
+    <div id="tab-crypto" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Crypto Investigation Workbench</h2>
       <p class="text-gray-400 text-sm mb-6">Paste a Bitcoin, Ethereum, or USDT TRC20 wallet address to investigate transaction history and counterparties.</p>
 
@@ -213,16 +232,11 @@
       </button>
 
       <div id="crypto-result" class="hidden">
-        <!-- Summary card -->
         <div id="crypto-summary" class="mb-6"></div>
-
-        <!-- Transaction graph -->
         <div class="mb-6">
           <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Transaction Graph</h3>
           <div id="crypto-graph" class="bg-gray-900 border border-gray-800 rounded" style="height:400px;"></div>
         </div>
-
-        <!-- Transaction timeline -->
         <div class="mb-6">
           <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Transaction Timeline</h3>
           <div id="crypto-timeline" class="space-y-2"></div>
