@@ -1409,6 +1409,8 @@ async function loadLandingNews() {
 
 document.getElementById('email-header-clear')?.addEventListener('click', () => {
   document.getElementById('email-header-input').value = '';
+  const bodyEl = document.getElementById('email-body-input');
+  if (bodyEl) bodyEl.value = '';
   const resultEl = document.getElementById('email-header-result');
   resultEl.classList.add('hidden');
   resultEl.innerHTML = '';
@@ -1432,10 +1434,11 @@ document.getElementById('email-header-btn')?.addEventListener('click', async () 
   resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Parsing header and running DNS lookups...</p>';
 
   try {
+    const rawBody = (document.getElementById('email-body-input')?.value || '').trim();
     const res = await fetch('/api/email-header/analyze', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({raw_header: raw}),
+      body: JSON.stringify({raw_header: raw, raw_body: rawBody || null}),
     });
 
     if (!res.ok) {
@@ -1505,6 +1508,58 @@ function renderEmailHeaderResult(d) {
       </div>
     </div>
   `;
+
+  if (d.body_provided && d.body_analysis) {
+    const ba = d.body_analysis;
+    const catLabels = {
+      urgency: 'Urgency / pressure',
+      threat: 'Threat language',
+      authority_impersonation: 'Authority impersonation',
+      financial_lure: 'Financial lure',
+      credential_phishing: 'Credential phishing',
+      crypto_scam: 'Crypto scam',
+      romance: 'Romance / pig butchering',
+      invoice_wire_fraud: 'Invoice / wire fraud',
+      url_deception: 'URL deception',
+      crypto_address_in_body: 'Crypto address in body',
+      suspicious_attachment: 'Suspicious attachment',
+      reply_trap: 'Reply trap',
+      homoglyph: 'Homoglyph attack',
+    };
+    const catKeys = Object.keys(ba.category_hits || {});
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Body Analysis</h3>
+        ${catKeys.length === 0 ? '<p class="text-xs text-green-400">No scam patterns detected in body.</p>' : `
+          <div class="flex flex-wrap gap-2 mb-3">
+            ${catKeys.map(k => `<span class="bg-red-900 text-red-300 text-xs font-bold px-2 py-0.5 rounded">${escapeHtml(catLabels[k] || k)}</span>`).join('')}
+          </div>
+        `}
+        ${ba.crypto_addresses && ba.crypto_addresses.length > 0 ? `
+          <div class="mb-3">
+            <p class="text-xs text-gray-500 uppercase mb-2">Crypto Addresses in Body (${ba.crypto_addresses.length})</p>
+            <div class="flex flex-wrap gap-2">
+              ${ba.crypto_addresses.map(ca => `
+                <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
+                        onclick="pivotToCrypto('${escapeAttr(ca.address)}')">${escapeHtml(ca.type)}: ${escapeHtml(ca.address.slice(0, 16) + '...')}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        ${ba.urls && ba.urls.length > 0 ? `
+          <div class="mb-3">
+            <p class="text-xs text-gray-500 uppercase mb-2">URLs in Body (${ba.urls.length})</p>
+            <div class="flex flex-wrap gap-2">
+              ${ba.urls.slice(0, 10).map(u => `
+                <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
+                        onclick="pivotToScanner('${escapeAttr(u)}')">${escapeHtml(u.length > 60 ? u.slice(0, 60) + '...' : u)}</button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
 
   html += `
     <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">

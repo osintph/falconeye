@@ -366,16 +366,30 @@
     <!-- EMAIL HEADER ANALYZER TAB -->
     <div id="tab-email" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Email Header Analyzer</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a complete email header to analyze authentication, sender alignment, routing, and BEC indicators. Get the header from your mail client's "View source" or "Show original" menu.</p>
+      <p class="text-gray-400 text-sm mb-6">Paste a complete email header (and optionally the body) to analyze authentication, sender alignment, routing, BEC risk, and scam patterns.</p>
 
       <div class="flex flex-col gap-3 mb-3">
-        <textarea id="email-header-input"
-                  placeholder="Paste raw email header here (everything from 'Return-Path:' or 'Received:' down to the empty line before the body)"
-                  rows="10"
-                  class="bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+        <div>
+          <label class="block text-xs text-gray-500 uppercase mb-1">Email Header <span class="text-gray-600">(required)</span></label>
+          <textarea id="email-header-input"
+                    placeholder="Paste raw email header here (everything from 'Return-Path:' or 'Received:' down to the empty line before the body)"
+                    rows="8"
+                    class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+        </div>
+        <details class="bg-gray-900 border border-gray-800 rounded">
+          <summary class="cursor-pointer px-4 py-2 text-xs text-gray-400 hover:text-white select-none">
+            + Email Body <span class="text-gray-600">(optional — enables scam pattern detection)</span>
+          </summary>
+          <div class="px-4 pb-4 pt-2">
+            <textarea id="email-body-input"
+                      placeholder="Paste the email body text or HTML here for scam/phishing pattern analysis"
+                      rows="8"
+                      class="w-full bg-gray-950 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+          </div>
+        </details>
         <div class="flex gap-3">
           <button id="email-header-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
-            Analyze Header
+            Analyze
           </button>
           <button id="email-header-clear" class="bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">
             Clear

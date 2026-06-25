@@ -3,6 +3,7 @@ Email Header Analyzer.
 
 Takes a raw email header text, parses it, runs authentication checks,
 traces the Received chain, attributes hops to ASNs, and surfaces BEC indicators.
+Optionally accepts an email body for scam-pattern detection.
 """
 import asyncio
 import hashlib
@@ -12,6 +13,7 @@ import sqlite3
 from datetime import datetime, timezone
 from email import message_from_string
 from email.utils import getaddresses, parsedate_to_datetime
+from html.parser import HTMLParser as _HTMLParser
 from typing import Any
 import logging
 
@@ -35,9 +37,135 @@ FREE_WEBMAIL = {
     "zoho.com", "fastmail.com", "hushmail.com", "yahoo.co.uk", "yahoo.co.jp",
 }
 
+# ---- Scam / phishing body pattern library ----
+
+SCAM_PATTERNS = {
+    "urgency": {
+        "weight": 10,
+        "severity": "medium",
+        "label": "Urgency / pressure language",
+        "patterns": [
+            r"\b(act|respond|verify|confirm|click|update)\s+(now|immediately|today|within\s+\d+)",
+            r"\b(urgent(?:ly)?|asap|immediate(?:ly)?|last\s+(chance|warning|reminder))\b",
+            r"\b(final|last)\s+(notice|warning|reminder)\b",
+            r"\bwithin\s+\d+\s+(hour|minute|day)s?\b",
+            r"\b(time[\s\-]sensitive|limited[\s\-]time|expires?\s+(today|soon|in\s+\d))\b",
+            r"\b(deadline|due\s+date)\s+(is|today|tomorrow)\b",
+            r"\b(don'?t|do\s+not)\s+(ignore|delay|miss)\b",
+        ],
+    },
+    "threat": {
+        "weight": 15,
+        "severity": "high",
+        "label": "Threat language",
+        "patterns": [
+            r"\blegal\s+(action|consequences|proceedings|notice)\b",
+            r"\b(warrant|arrest|lawsuit|subpoena|prosecution|criminal\s+charges?)\b",
+            r"\b(account|access|service)\s+(will\s+be|has\s+been)\s+(suspended|terminated|closed|blocked|frozen|disabled|deactivated)\b",
+            r"\b(data|information|details|files?)\s+(will\s+be\s+)?(leaked|published|exposed|released|disclosed)\b",
+            r"\breport(ed)?\s+to\s+(authorities|police|ftc|bir|irs|sec|nbi)\b",
+            r"\b(face|facing)\s+(legal|criminal|civil)\s+(action|consequences|charges)\b",
+        ],
+    },
+    "authority_impersonation": {
+        "weight": 12,
+        "severity": "medium",
+        "label": "Authority impersonation",
+        "patterns": [
+            r"\b(IRS|Internal\s+Revenue\s+Service|BIR|Bureau\s+of\s+Internal\s+Revenue|HMRC|tax\s+(refund|authority|office|department))\b",
+            r"\b(Microsoft|Apple|Google|Amazon|Norton|McAfee|Adobe)\s+(Support|Security|Account\s+Team|Helpdesk)\b",
+            r"\b(DHL|FedEx|UPS|USPS|PhilPost|LBC|J&T|2GO|Ninja\s+Van)\s+(notification|delivery|customs|pending|shipment)\b",
+            r"\b(GCash|Maya|PayMaya|BDO|BPI|Metrobank|UnionBank|RCBC|PNB|EastWest|Landbank|Security\s+Bank)\s+(security|verification|account)\b",
+            r"\b(PayPal|Visa|MasterCard|Bank\s+of\s+America|Chase|Wells\s+Fargo|HSBC|Citibank|Barclays)\s+(security|account|fraud|verification)\b",
+            r"\b(SSS|GSIS|PhilHealth|Pag-?IBIG|DSWD|COMELEC|LTO|BI)\s+(notice|notification|verification)\b",
+        ],
+    },
+    "financial_lure": {
+        "weight": 18,
+        "severity": "high",
+        "label": "Financial lure",
+        "patterns": [
+            r"\bcongratulations[!\s]+you('?ve?|\s+have)\s+(won|been\s+selected|been\s+chosen)\b",
+            r"\b(lottery|jackpot|prize|raffle|sweepstakes|draw)\s+(winner|claim|won)\b",
+            r"\b(inheritance|will|estate|beneficiary)\s+(of|from|left|worth)\b",
+            r"\b(refund|rebate|reimbursement|compensation)\s+(of|pending|approved|available|due)\s*[\$€£]?\s*[\d,]+",
+            r"\b(unclaimed|dormant|abandoned)\s+(funds|account|money|deposit|estate)\b",
+            r"\b(\d+(?:\.\d+)?)\s+(million|billion)\s+(dollars|USD|EUR|GBP|pounds|euros)\b",
+            r"\b(easy|quick|fast)\s+(money|cash|income|earn)\s+(opportunity|from\s+home)\b",
+        ],
+    },
+    "credential_phishing": {
+        "weight": 20,
+        "severity": "high",
+        "label": "Credential phishing language",
+        "patterns": [
+            r"\b(verify|confirm|update|validate|secure)\s+(your\s+)?(account|password|identity|credentials|details|information|profile)\b",
+            r"\b(re|sign)[\-\s]?(in|enter)\s+(your\s+)?(password|credentials|account)\b",
+            r"\b(click\s+(here|below|the\s+link|the\s+button))\s+to\s+(login|verify|confirm|access|continue|view|unlock|reactivate)\b",
+            r"\bsuspicious\s+(login|activity|access|sign[\-\s]?in|attempt)\s+(was\s+)?(attempt|detected|noticed|observed)\b",
+            r"\b(reset|change|update)\s+(your\s+)?password\s+(now|immediately|to\s+continue|here)\b",
+            r"\b(unusual|new\s+device)\s+(sign[\-\s]?in|login|access)\b",
+        ],
+    },
+    "crypto_scam": {
+        "weight": 22,
+        "severity": "high",
+        "label": "Crypto scam indicators",
+        "patterns": [
+            r"\b(investment|trading|earning)\s+(opportunity|platform|signal|bot|club|circle)\b",
+            r"\b(guaranteed|risk[\-\s]?free|sure|certain)\s+(returns?|profit|investment|growth)\b",
+            r"\b(\d+x|\d+%\s+(daily|weekly|monthly|guaranteed))\s+(return|profit|gain|roi)",
+            r"\b(double|triple|multiply|10x|100x)\s+your\s+(bitcoin|crypto|investment|money|btc|eth)\b",
+            r"\b(elon\s+musk|elon|tesla|spacex)\s+(gives\s+away|giveaway|crypto|btc)\b",
+            r"\bsend\s+(0?\.\d+|\d+)\s+(BTC|ETH|USDT|crypto)\s+(to|and\s+receive|wallet)\b",
+            r"\b(presale|ico|defi|yield\s+farming|liquidity\s+pool)\s+(opportunity|invitation|whitelist)\b",
+        ],
+    },
+    "romance": {
+        "weight": 25,
+        "severity": "high",
+        "label": "Romance / pig butchering",
+        "patterns": [
+            r"\b(love|miss|need|adore|cherish)\s+you\s+(so\s+much|deeply|already|terribly)\b",
+            r"\b(my\s+(uncle|aunt|cousin|friend))\s+(taught|told|showed)\s+me\s+(about|how\s+to)\s+(invest|trade)\b",
+            r"\b(special|crypto|investment)\s+(opportunity|platform|tip)\s+(only|just)\s+for\s+(you|us|insiders)\b",
+            r"\b(my\s+(heart|destiny|fate|soul))\s+(brought|told|led)\s+(us|me)\b",
+            r"\b(stuck|abandoned|stranded)\s+(at|in)\s+(airport|customs|hospital|hotel)\b.{0,120}\b(send|wire|transfer|help|money|funds)\b",
+            r"\b(when|until)\s+(we|i)\s+(meet|see)\s+(in\s+person|each\s+other)\b.{0,80}\b(invest|trade|business)\b",
+        ],
+    },
+    "invoice_wire_fraud": {
+        "weight": 30,
+        "severity": "high",
+        "label": "Invoice / wire fraud (BEC)",
+        "patterns": [
+            r"\b(change|update|new|revised)\s+(of\s+)?(bank|payment|wire|account|banking)\s+(details|instructions|information|account)\b",
+            r"\b(updated|new|revised)\s+(invoice|payment|wire|banking)\s+(instructions|details|routing)\b",
+            r"\b(routing|swift|iban|account)\s+(number|code|details)\s+(has\s+|have\s+)?(changed|been\s+updated|is\s+different|updated)\b",
+            r"\b(use\s+(this|the\s+following|the\s+new))\s+(account|wire|payment|banking)\s+(details|instructions)\b",
+            r"\bplease\s+(transfer|wire|send|remit|pay)\s+(the|this|payment)\b.{0,80}\b(today|asap|immediately|by\s+(end\s+of\s+day|eod|cob))\b",
+            r"\b(for\s+security\s+reasons|due\s+to\s+(audit|policy))\s+(we|please)\s+(have\s+)?(changed|updated|use)\b",
+        ],
+    },
+}
+
+SHORTENER_DOMAINS = {
+    "bit.ly", "tinyurl.com", "goo.gl", "ow.ly", "is.gd", "t.co",
+    "rebrand.ly", "cutt.ly", "short.io", "tiny.cc", "shorturl.at",
+    "bitly.com", "rb.gy", "shorturl.com", "buff.ly", "lnkd.in",
+    "trib.al", "v.gd", "shrtco.de", "1url.com", "soo.gd",
+}
+
+SUSPICIOUS_ATTACHMENT_EXT = {
+    ".scr", ".lnk", ".iso", ".img", ".vbs", ".js", ".jse", ".wsf",
+    ".bat", ".cmd", ".com", ".exe", ".hta", ".pif", ".cpl",
+    ".docm", ".dotm", ".xlsm", ".xltm", ".pptm", ".potm",
+}
+
 
 class HeaderAnalyzeRequest(BaseModel):
     raw_header: str
+    raw_body: str | None = None
 
 
 def _init_cache():
@@ -69,6 +197,45 @@ PRIVATE_RANGES = ("10.", "192.168.", "172.16.", "172.17.", "172.18.", "172.19.",
                   "172.20.", "172.21.", "172.22.", "172.23.", "172.24.", "172.25.",
                   "172.26.", "172.27.", "172.28.", "172.29.", "172.30.", "172.31.",
                   "127.")
+
+# ---------- body parsing helpers ----------
+
+URL_BODY_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
+IP_URL_RE = re.compile(r"https?://\d{1,3}(?:\.\d{1,3}){3}", re.IGNORECASE)
+BTC_RE = re.compile(r"\b(bc1[a-zA-Z0-9]{25,90}|[13][a-zA-Z0-9]{25,40})\b")
+ETH_RE = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
+TRX_RE = re.compile(r"\bT[A-Za-z1-9]{33}\b")
+ATTACH_MENTION_RE = re.compile(
+    r"([A-Za-z0-9_\-]{2,40}\.(?:scr|lnk|iso|img|vbs|jse?|wsf|bat|cmd|exe|hta|pif|cpl|docm|dotm|xlsm|xltm|pptm|potm|zip|rar|7z))\b",
+    re.IGNORECASE,
+)
+
+
+class _AnchorExtractor(_HTMLParser):
+    """Extracts <a href=...>display text</a> pairs from HTML body."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.anchors: list[dict] = []
+        self._current_href: str | None = None
+        self._current_text: list[str] = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag.lower() == "a":
+            attrs_dict = {k.lower(): v for k, v in attrs}
+            self._current_href = attrs_dict.get("href", "")
+            self._current_text = []
+
+    def handle_data(self, data):
+        if self._current_href is not None:
+            self._current_text.append(data)
+
+    def handle_endtag(self, tag):
+        if tag.lower() == "a" and self._current_href is not None:
+            text = "".join(self._current_text).strip()
+            self.anchors.append({"href": self._current_href, "text": text})
+            self._current_href = None
+            self._current_text = []
 
 
 def _is_public_ip(ip: str) -> bool:
@@ -110,7 +277,6 @@ def _parse_received_chain(headers: list[tuple[str, str]]) -> list[dict[str, Any]
 
 
 def _compute_hop_delays(hops: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Add delay_seconds between hops."""
     prev_ts = None
     for hop in hops:
         if hop.get("timestamp"):
@@ -237,6 +403,186 @@ async def _enrich_ip(ip: str) -> dict[str, Any]:
     return out
 
 
+# ---------- body analysis ----------
+
+def _looks_like_html(body: str) -> bool:
+    lower = body[:2000].lower()
+    return any(marker in lower for marker in ("<html", "<a href", "<body", "<table", "<div"))
+
+
+def _detect_homoglyphs(text: str) -> list[str]:
+    findings = []
+    for word in re.findall(r"[A-Za-zЀ-ӿͰ-Ͽ]{4,}", text):
+        has_latin = any("a" <= c.lower() <= "z" for c in word)
+        has_cyrillic = any("Ѐ" <= c <= "ӿ" for c in word)
+        has_greek = any("Ͱ" <= c <= "Ͽ" for c in word)
+        if has_latin and (has_cyrillic or has_greek):
+            findings.append(word)
+    return findings[:5]
+
+
+def _analyze_urls_in_body(body: str) -> dict:
+    findings = []
+    all_urls = list(set(URL_BODY_RE.findall(body)))
+
+    for url in all_urls:
+        if IP_URL_RE.match(url):
+            findings.append({
+                "severity": "medium",
+                "category": "url_deception",
+                "name": "IP-based URL",
+                "detail": f"Direct IP link (no domain): {url[:80]}",
+            })
+
+    for url in all_urls:
+        m = re.match(r"https?://([^/\s]+)", url)
+        if m and m.group(1).lower() in SHORTENER_DOMAINS:
+            findings.append({
+                "severity": "medium",
+                "category": "url_deception",
+                "name": "URL shortener",
+                "detail": f"Hidden destination via {m.group(1)}: {url[:80]}",
+            })
+
+    if _looks_like_html(body):
+        try:
+            parser = _AnchorExtractor()
+            parser.feed(body)
+            for anchor in parser.anchors:
+                href = anchor["href"] or ""
+                text = anchor["text"] or ""
+                if not href or not text:
+                    continue
+                text_url_match = re.search(r"https?://([^/\s]+)", text)
+                href_url_match = re.search(r"https?://([^/\s]+)", href)
+                if text_url_match and href_url_match:
+                    text_domain = text_url_match.group(1).lower()
+                    href_domain = href_url_match.group(1).lower()
+                    if text_domain != href_domain:
+                        findings.append({
+                            "severity": "high",
+                            "category": "url_deception",
+                            "name": "Display URL mismatches actual link",
+                            "detail": f"Shows: {text[:60]} -> Goes to: {href[:60]}",
+                        })
+                elif text and not text.startswith("http"):
+                    if any(word in text.lower() for word in ("click", "login", "verify", "secure", "account")):
+                        findings.append({
+                            "severity": "medium",
+                            "category": "url_deception",
+                            "name": "Action-word link",
+                            "detail": f"'{text[:50]}' -> {href[:60]}",
+                        })
+        except Exception:
+            pass
+
+    return {"findings": findings, "urls": all_urls[:30]}
+
+
+def _analyze_body(body: str, from_addrs: list[dict]) -> dict:
+    if not body or not body.strip():
+        return {
+            "findings": [], "category_hits": {}, "score_delta": 0,
+            "urls": [], "crypto_addresses": [], "attachment_mentions": [],
+        }
+
+    findings = []
+    category_hits = {}
+
+    text_only = re.sub(r"<[^>]+>", " ", body)
+    text_only = re.sub(r"\s+", " ", text_only)
+    text_only = text_only.replace("=20", " ").replace("=3D", "=").replace("=0A", " ")
+
+    for category, cfg in SCAM_PATTERNS.items():
+        for pat in cfg["patterns"]:
+            try:
+                m = re.search(pat, text_only, re.IGNORECASE)
+                if m:
+                    category_hits[category] = cfg["weight"]
+                    findings.append({
+                        "severity": cfg["severity"],
+                        "category": category,
+                        "name": cfg["label"],
+                        "detail": f"Match: '{m.group(0)[:80]}'",
+                    })
+                    break
+            except re.error:
+                continue
+
+    url_result = _analyze_urls_in_body(body)
+    findings.extend(url_result["findings"])
+    if url_result["findings"]:
+        category_hits["url_deception"] = 15
+
+    crypto_addresses = []
+    for addr in BTC_RE.findall(text_only):
+        crypto_addresses.append({"type": "BTC", "address": addr})
+    for addr in ETH_RE.findall(text_only):
+        crypto_addresses.append({"type": "ETH", "address": addr})
+    for addr in TRX_RE.findall(text_only):
+        crypto_addresses.append({"type": "TRX", "address": addr})
+    if crypto_addresses:
+        findings.append({
+            "severity": "high",
+            "category": "crypto_address_in_body",
+            "name": "Crypto wallet address in body",
+            "detail": f"{len(crypto_addresses)} address(es) found - common scam payment vector",
+        })
+        category_hits["crypto_address_in_body"] = 15
+
+    attachments_mentioned = []
+    for m in ATTACH_MENTION_RE.finditer(text_only):
+        fname = m.group(1)
+        ext = "." + fname.rsplit(".", 1)[-1].lower()
+        if ext in SUSPICIOUS_ATTACHMENT_EXT:
+            attachments_mentioned.append({"filename": fname, "ext": ext})
+    if attachments_mentioned:
+        findings.append({
+            "severity": "high",
+            "category": "suspicious_attachment",
+            "name": "Suspicious attachment referenced",
+            "detail": f"Files: {', '.join(a['filename'] for a in attachments_mentioned[:3])}",
+        })
+        category_hits["suspicious_attachment"] = 20
+
+    reply_match = re.search(
+        r"\b(reply\s+to|send\s+(?:your\s+)?(?:reply|response)\s+to|contact\s+(?:me|us)\s+at)\s+([\w.\-]+@[\w.\-]+\.\w+)",
+        text_only, re.IGNORECASE,
+    )
+    if reply_match and from_addrs:
+        suggested_email = reply_match.group(2).lower()
+        from_email = (from_addrs[0].get("email") or "").lower()
+        if suggested_email and from_email and suggested_email != from_email:
+            findings.append({
+                "severity": "high",
+                "category": "reply_trap",
+                "name": "Reply trap",
+                "detail": f"Body asks reply to {suggested_email} (From is {from_email})",
+            })
+            category_hits["reply_trap"] = 20
+
+    homoglyphs = _detect_homoglyphs(text_only)
+    if homoglyphs:
+        findings.append({
+            "severity": "medium",
+            "category": "homoglyph",
+            "name": "Unicode homoglyph in body text",
+            "detail": f"Mixed-script words: {', '.join(homoglyphs[:3])}",
+        })
+        category_hits["homoglyph"] = 10
+
+    score_delta = sum(category_hits.values())
+
+    return {
+        "findings": findings,
+        "category_hits": category_hits,
+        "score_delta": score_delta,
+        "urls": url_result["urls"],
+        "crypto_addresses": crypto_addresses,
+        "attachment_mentions": attachments_mentioned,
+    }
+
+
 # ---------- BEC scoring ----------
 
 def _score_bec_indicators(parsed: dict[str, Any]) -> dict[str, Any]:
@@ -352,12 +698,17 @@ def _score_bec_indicators(parsed: dict[str, Any]) -> dict[str, Any]:
 @router.post("/api/email-header/analyze")
 async def analyze(req: HeaderAnalyzeRequest):
     raw = req.raw_header.strip()
+    body_input = (req.raw_body or "").strip()
+
     if not raw:
         raise HTTPException(status_code=400, detail="empty header input")
     if len(raw) > 200000:
         raise HTTPException(status_code=400, detail="header too large (max 200KB)")
+    if len(body_input) > 500000:
+        raise HTTPException(status_code=400, detail="body too large (max 500KB)")
 
-    header_id = _hash_header(raw)
+    cache_key_source = raw + "\n\n----BODY----\n\n" + body_input
+    header_id = _hash_header(cache_key_source)
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
@@ -376,6 +727,27 @@ async def analyze(req: HeaderAnalyzeRequest):
 
     msg = message_from_string(raw)
     headers_pairs = list(msg.items())
+
+    # Determine body to analyze: explicit input > auto-extracted from full email paste
+    body_to_analyze = body_input
+    if not body_to_analyze:
+        try:
+            if msg.is_multipart():
+                for part in msg.walk():
+                    ctype = part.get_content_type()
+                    if ctype in ("text/html", "text/plain"):
+                        payload = part.get_payload(decode=True)
+                        if payload:
+                            charset = part.get_content_charset() or "utf-8"
+                            body_to_analyze = payload.decode(charset, errors="replace")
+                            if ctype == "text/html":
+                                break
+            else:
+                payload = msg.get_payload(decode=True)
+                if payload:
+                    body_to_analyze = payload.decode(errors="replace")
+        except Exception:
+            body_to_analyze = ""
 
     parsed: dict[str, Any] = {
         "from": _parse_addresses(msg.get("From", "")),
@@ -398,10 +770,9 @@ async def analyze(req: HeaderAnalyzeRequest):
 
     from_domain = parsed["from"][0]["domain"] if parsed["from"] else None
     if from_domain:
-        spf_lookup, dmarc_lookup = await asyncio.gather(
-            _lookup_spf(from_domain),
-            _lookup_dmarc(from_domain),
-        )
+        spf_task = _lookup_spf(from_domain)
+        dmarc_task = _lookup_dmarc(from_domain)
+        spf_lookup, dmarc_lookup = await asyncio.gather(spf_task, dmarc_task)
         parsed["spf_live"] = spf_lookup
         parsed["dmarc_live"] = dmarc_lookup
 
@@ -427,7 +798,26 @@ async def analyze(req: HeaderAnalyzeRequest):
     }
     parsed["iocs"] = iocs
 
+    body_analysis = _analyze_body(body_to_analyze, parsed["from"]) if body_to_analyze else None
+    parsed["body_analysis"] = body_analysis
+    parsed["body_provided"] = bool(body_to_analyze and body_to_analyze.strip())
+
     parsed["bec_assessment"] = _score_bec_indicators(parsed)
+    if body_analysis:
+        parsed["bec_assessment"]["score"] = min(
+            100, parsed["bec_assessment"]["score"] + body_analysis["score_delta"]
+        )
+        parsed["bec_assessment"]["indicators"].extend(body_analysis["findings"])
+        score = parsed["bec_assessment"]["score"]
+        if score >= 70:
+            parsed["bec_assessment"]["verdict"] = "high_risk"
+        elif score >= 40:
+            parsed["bec_assessment"]["verdict"] = "medium_risk"
+        elif score >= 20:
+            parsed["bec_assessment"]["verdict"] = "low_risk_with_indicators"
+        else:
+            parsed["bec_assessment"]["verdict"] = "low_risk"
+
     parsed["cache_hit"] = False
     parsed["fetched_at"] = datetime.now(timezone.utc).isoformat()
 
