@@ -292,11 +292,12 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
     try:
         r = await client.get(
             "https://api.certspotter.com/v1/issuances",
-            params={
-                "domain": domain,
-                "include_subdomains": "true",
-                "expand": "dns_names,issuer",
-            },
+            params=[
+                ("domain", domain),
+                ("include_subdomains", "true"),
+                ("expand", "dns_names"),
+                ("expand", "issuer"),
+            ],
             timeout=CT_TIMEOUT,
             headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
         )
