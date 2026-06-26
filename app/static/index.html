@@ -757,8 +757,189 @@
     </div>
     <p class="text-center text-xs text-gray-700 mt-4">
       FalconEye is open source · <a href="https://github.com/osintph/falconeye" class="hover:text-amber-400 transition" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>
+      · <a href="#" id="open-privacy-policy" class="hover:text-amber-400 transition">Privacy Policy</a>
+      · <a href="mailto:security@osintph.info" class="hover:text-amber-400 transition">Contact</a>
     </p>
   </footer>
+
+  <!-- Privacy Policy Modal -->
+  <div id="privacy-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 z-50 overflow-y-auto" style="backdrop-filter: blur(4px);">
+    <div class="min-h-screen flex items-start justify-center p-4">
+      <div class="bg-gray-950 border border-gray-800 rounded-lg max-w-3xl w-full my-8 shadow-2xl">
+
+        <!-- Header -->
+        <div class="border-b border-gray-800 px-6 py-4 flex items-center justify-between sticky top-0 bg-gray-950 z-10">
+          <h2 class="text-lg font-bold text-amber-400">Privacy Policy</h2>
+          <button id="close-privacy-policy" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+        </div>
+
+        <!-- Body -->
+        <div class="px-6 py-5 text-sm text-gray-300 leading-relaxed space-y-5">
+
+          <p class="text-xs text-gray-500">
+            <strong>Effective date:</strong> 25 June 2026<br>
+            <strong>Last updated:</strong> 25 June 2026<br>
+            <strong>Operator:</strong> OSINT-PH (<a href="https://blog.osintph.info" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">blog.osintph.info</a>)
+          </p>
+
+          <hr class="border-gray-800">
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Summary</h3>
+            <p>FalconEye is a free, self-hosted OSINT investigator's toolkit. This policy explains what data we collect when you use the live instance at <code class="text-amber-300">falconeye.osintph.info</code>, what we do with it, and who it is shared with.</p>
+            <p class="mt-2">Short version: input you submit is processed to produce analysis results, cached for 24 hours by content hash, and then discarded. We do not maintain user accounts. We do not sell data. We do not run third-party advertising or analytics. The only third parties that ever see your input are the OSINT data providers we query on your behalf (when applicable) and Anthropic (only for LLM-powered tabs).</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">What data we collect</h3>
+            <ul class="list-disc list-inside space-y-2">
+              <li><strong>Input you submit.</strong> Crypto addresses, domains, URLs, IPs, email headers, email bodies, file hashes, Telegram channel names, search goals. This is what the tool is for.</li>
+              <li><strong>Uploaded files (Email Header tab only).</strong> .eml and .msg files are parsed in memory and discarded immediately. The original file content is never written to persistent storage and never logged.</li>
+              <li><strong>Source IP address.</strong> Used for rate limiting on LLM-powered features (10 requests per 24 hours per IP, per feature). Stored in our SQLite database with a timestamp. Rows older than 48 hours are automatically deleted.</li>
+              <li><strong>nginx access logs.</strong> Standard web server logs: timestamp, source IP, requested URL, response status, user agent. Used for security monitoring and capacity planning. Retained for 30 days, then deleted by log rotation.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">What we do NOT collect</h3>
+            <ul class="list-disc list-inside space-y-2">
+              <li>User accounts. There is no signup, no login, no profile.</li>
+              <li>Cookies set by FalconEye itself (Cloudflare may set its own cookies; see Cloudflare section below).</li>
+              <li>Browser fingerprints, device IDs, or behavioral analytics.</li>
+              <li>Email addresses or personal identifiers, unless you voluntarily paste them as input.</li>
+              <li>The raw content of uploaded .eml / .msg files after parsing.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">How long we keep your input</h3>
+            <p>When you submit input, FalconEye:</p>
+            <ol class="list-decimal list-inside space-y-2 mt-2">
+              <li>Calculates a SHA256 hash of the input</li>
+              <li>Queries the relevant third-party data providers and assembles the result</li>
+              <li>Stores the assembled result (NOT the raw input) in a local SQLite cache, keyed by the hash, for 24 hours</li>
+              <li>Returns the result to your browser</li>
+            </ol>
+            <p class="mt-2">After 24 hours the cached result expires and is overwritten on the next matching query. The original input is not stored beyond the moments needed to process it.</p>
+            <p class="mt-2">For uploaded files specifically: the file bytes are held in memory during parsing only, then explicitly cleared. The parsed text proceeds through the normal cache pipeline above.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Third parties that may receive your input</h3>
+            <p class="mb-3">FalconEye routes specific input to specific data providers depending on which tab you use. We do not control these providers and you should review their own privacy policies if you submit sensitive data.</p>
+
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="border-b border-gray-700">
+                  <th class="text-left py-2 text-gray-500 uppercase">When you use</th>
+                  <th class="text-left py-2 text-gray-500 uppercase">We send</th>
+                  <th class="text-left py-2 text-gray-500 uppercase">To</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Crypto Workbench</td>
+                  <td class="py-2 font-mono">wallet address</td>
+                  <td class="py-2">Blockstream, BlockCypher, TronGrid</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Phishing Scanner</td>
+                  <td class="py-2 font-mono">URL to scan</td>
+                  <td class="py-2">The URL's own server (we fetch its HTML)</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Domain Intelligence</td>
+                  <td class="py-2 font-mono">domain</td>
+                  <td class="py-2">rdap.org, crt.sh, Cert Spotter, RIPEstat</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Telegram Inspector</td>
+                  <td class="py-2 font-mono">channel name</td>
+                  <td class="py-2">Telegram (public web preview at t.me/s)</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">IP Reputation</td>
+                  <td class="py-2 font-mono">IP address</td>
+                  <td class="py-2">Shodan InternetDB / CVEDB, GreyNoise, RIPEstat, URLhaus</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Sandbox History</td>
+                  <td class="py-2 font-mono">URL or file hash</td>
+                  <td class="py-2">URLhaus, MalwareBazaar (abuse.ch)</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Email Header (LLM analysis)</td>
+                  <td class="py-2 font-mono">email header + body</td>
+                  <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Dork Generator</td>
+                  <td class="py-2 font-mono">goal + target</td>
+                  <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
+                </tr>
+                <tr>
+                  <td class="py-2">Script Decoder</td>
+                  <td class="py-2 font-mono">code snippet</td>
+                  <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
+                </tr>
+              </tbody>
+            </table>
+
+            <p class="mt-3">The LLM-powered tabs (Email Header, Dork Generator, and Script Decoder) send your input to Anthropic's API. Anthropic's data handling policy is at <a href="https://www.anthropic.com/legal/privacy" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">anthropic.com/legal/privacy</a>. At the time of writing, Anthropic does not use API input to train their models by default.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Cloudflare</h3>
+            <p>FalconEye sits behind Cloudflare for caching, DDoS protection, and TLS. This means Cloudflare sees every request you make to <code class="text-amber-300">falconeye.osintph.info</code>, including your IP address and the URL path. Cloudflare may set its own cookies for security purposes (e.g., bot detection). See <a href="https://www.cloudflare.com/privacypolicy/" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">Cloudflare's privacy policy</a> for details.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Stats page</h3>
+            <p>The <code class="text-amber-300">/stats/</code> path serves a GoAccess dashboard accessible only by the operator (gated by Cloudflare Access with operator-only authentication). General users do not have access to traffic stats. The data shown in the stats dashboard is aggregated from nginx access logs and contains no email content, no investigated indicators, and no LLM input/output.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Self-hosting</h3>
+            <p>FalconEye is open source under AGPL-3.0. If you do not want to send your input to the live instance at <code class="text-amber-300">falconeye.osintph.info</code>, you can self-host your own copy from <a href="https://github.com/osintph/falconeye" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>. Self-hosted instances do not communicate with this site or its operator.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Your rights</h3>
+            <p>Because FalconEye does not maintain user accounts and stores only short-lived caches keyed by content hash (not by user identity), most data subject rights (access, deletion, correction) are not applicable in the traditional sense. If you believe your IP address or some input you submitted is being retained inappropriately, contact us using the address below and we will investigate.</p>
+            <p class="mt-2">If you are based in the Philippines, you have rights under the Data Privacy Act of 2012 (RA 10173). If you are based in the EU/EEA, you have rights under GDPR. If you are based in California, you have rights under CCPA.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Children</h3>
+            <p>FalconEye is intended for use by cybersecurity professionals, OSINT investigators, journalists, and security researchers. It is not directed at children under 16. We do not knowingly collect data from children.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Changes to this policy</h3>
+            <p>If we change how FalconEye handles data, we will update this policy and update the "Last updated" date at the top. For material changes (new third parties, new data categories), we will also make the modal display a "Policy updated" indicator for 14 days.</p>
+          </section>
+
+          <section>
+            <h3 class="text-base font-bold text-white mb-2">Contact</h3>
+            <p>For privacy questions, data requests, or security disclosures:</p>
+            <ul class="list-disc list-inside mt-2 space-y-1">
+              <li>Privacy and general: <a href="mailto:privacy@osintph.info" class="text-amber-400 hover:text-amber-300">privacy@osintph.info</a></li>
+              <li>Security disclosures: <a href="mailto:security@osintph.info" class="text-amber-400 hover:text-amber-300">security@osintph.info</a></li>
+            </ul>
+          </section>
+
+        </div>
+
+        <!-- Footer -->
+        <div class="border-t border-gray-800 px-6 py-4 flex justify-end">
+          <button id="close-privacy-policy-btn" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">
+            Close
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
 
   <script src="/static/app.js"></script>
 </body>

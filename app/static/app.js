@@ -2524,3 +2524,43 @@ function pivotToDomain(domain) {
 // Load both on page ready (they fire in parallel)
 loadThreatPulse();
 loadLandingNews();
+
+// ---- Privacy Policy Modal ----
+
+const privacyModal = document.getElementById('privacy-modal');
+const openPrivacyBtn = document.getElementById('open-privacy-policy');
+const closePrivacyBtnX = document.getElementById('close-privacy-policy');
+const closePrivacyBtnFooter = document.getElementById('close-privacy-policy-btn');
+
+function openPrivacyPolicy(e) {
+  if (e) e.preventDefault();
+  if (privacyModal) {
+    privacyModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closePrivacyPolicy() {
+  if (privacyModal) {
+    privacyModal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+if (openPrivacyBtn) openPrivacyBtn.addEventListener('click', openPrivacyPolicy);
+if (closePrivacyBtnX) closePrivacyBtnX.addEventListener('click', closePrivacyPolicy);
+if (closePrivacyBtnFooter) closePrivacyBtnFooter.addEventListener('click', closePrivacyPolicy);
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && privacyModal && !privacyModal.classList.contains('hidden')) {
+    closePrivacyPolicy();
+  }
+});
+
+if (privacyModal) {
+  privacyModal.addEventListener('click', (e) => {
+    if (e.target === privacyModal) closePrivacyPolicy();
+  });
+}
+
+window.openPrivacyPolicy = openPrivacyPolicy;
