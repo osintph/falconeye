@@ -1480,10 +1480,39 @@ function renderEmailHeaderResult(d) {
     'low_risk': 'LOW RISK',
   }[bec.verdict] || 'UNKNOWN';
 
-  let html = `
+  let summaryHtml = '';
+  if (bec.llm_scam_type || bec.llm_summary) {
+    const scamType = bec.llm_scam_type || 'Email analyzed';
+    const summaryText = bec.llm_summary || '';
+    summaryHtml = `
+      <div class="bg-gradient-to-br from-gray-900 to-gray-950 border-l-4 border-${verdictColor}-500 rounded p-5 mb-4">
+        <div class="flex items-start gap-3">
+          <div class="flex-shrink-0 mt-1">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-${verdictColor}-400">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" x2="12" y1="8" y2="12"/>
+              <line x1="12" x2="12.01" y1="16" y2="16"/>
+            </svg>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xs uppercase tracking-widest text-gray-500">Summary</h3>
+              <span class="text-xs text-gray-600 font-mono">Claude Haiku 4.5</span>
+            </div>
+            <p class="text-lg font-bold text-${verdictColor}-300 mb-2">${escapeHtml(scamType)}</p>
+            <p class="text-sm text-gray-300 leading-relaxed">${escapeHtml(summaryText)}</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  let html = summaryHtml;
+
+  html += `
     <div class="bg-gray-900 border border-${verdictColor}-500 rounded p-5 mb-6">
       <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-bold text-${verdictColor}-400 uppercase tracking-wider">BEC Assessment</h3>
+        <h3 class="text-sm font-bold text-${verdictColor}-400 uppercase tracking-wider">Email Risk Assessment</h3>
         <span class="text-2xl font-bold text-${verdictColor}-400">${verdictLabel}</span>
       </div>
       <div class="mb-3">
@@ -1493,13 +1522,6 @@ function renderEmailHeaderResult(d) {
         </div>
         <div class="text-xs text-gray-400 mt-1">${bec.score || 0} / 100</div>
       </div>
-      ${bec.llm_scam_type ? `
-        <div class="bg-gray-950 border border-${verdictColor}-700 rounded p-3 mb-3">
-          <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">LLM Classification (Claude Haiku 4.5)</div>
-          <div class="text-sm text-${verdictColor}-300 font-bold mb-1">${escapeHtml(bec.llm_scam_type)}</div>
-          <div class="text-xs text-gray-400">${escapeHtml(bec.llm_summary || '')}</div>
-        </div>
-      ` : ''}
       <div class="space-y-2">
         ${(bec.indicators || []).map(ind => `
           <div class="flex items-start gap-2 text-xs">
