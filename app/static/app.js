@@ -2025,6 +2025,257 @@ function copyDorkToClipboard(btn, text) {
 }
 
 
+// ---- Email client header retrieval guide ----
+
+const EMAIL_CLIENT_INSTRUCTIONS = {
+  'gmail': {
+    title: 'Gmail (web)',
+    steps: [
+      'Open the message in your inbox.',
+      'Click the three-dot menu in the top right of the message (next to the Reply button).',
+      'Select "Show original".',
+      'A new tab opens with the raw message. Click "Copy to clipboard" at the top, OR scroll to the "Original Message" section and select everything from the first "Received:" or "Delivered-To:" line down to the empty line before the body.',
+      'Paste into the textarea above, or click "Download Original" to save as .eml and upload it instead.',
+    ],
+    note: 'The "Show original" page also includes a summary box at the top with SPF / DKIM / DMARC results, but the analyzer here goes deeper.',
+  },
+  'owa': {
+    title: 'Outlook on the Web (OWA / outlook.office.com / outlook.live.com)',
+    steps: [
+      'Open the message.',
+      'Click the three-dot menu at the top right of the message.',
+      'Hover over "View" and select "View message source" (or in some versions: "Message details").',
+      'A modal or new window opens with the raw message.',
+      'Select all text and copy, then paste into the textarea above.',
+    ],
+  },
+  'outlook-desktop': {
+    title: 'Outlook for Windows (Classic and New)',
+    steps: [
+      'Classic Outlook: Open the message in its own window (double-click it). Go to File menu → Properties. The "Internet headers" box at the bottom contains the header.',
+      'For full message export: File menu → Save As → choose .msg format. Then upload the .msg file above.',
+      'New Outlook: Open the message. Click the three-dot menu → View → View message source.',
+    ],
+    note: 'Outlook .msg files are the preferred upload format for Windows users. The analyzer parses them natively.',
+  },
+  'outlook-mac': {
+    title: 'Outlook for Mac',
+    steps: [
+      'Open the message.',
+      'Go to View menu → Message → Internet Headers (or right-click the message and select "View Source").',
+      'Copy the displayed header text and paste into the textarea above.',
+      'Alternative: File menu → Save As → choose .eml format, then upload the file.',
+    ],
+  },
+  'apple-mail': {
+    title: 'Apple Mail (macOS)',
+    steps: [
+      'Open the message.',
+      'Go to View menu → Message → Raw Source (keyboard shortcut: Cmd + Option + U).',
+      'A new window opens with the full raw message.',
+      'Select the header section and copy, then paste into the textarea above.',
+      'Alternative: drag the message from the inbox to the Desktop. macOS creates a .eml file you can upload.',
+    ],
+    note: 'If "Raw Source" is greyed out, the message may still be downloading. Wait a few seconds and try again.',
+  },
+  'thunderbird': {
+    title: 'Mozilla Thunderbird',
+    steps: [
+      'Open the message.',
+      'Go to View menu → Message Source (keyboard shortcut: Ctrl+U on Windows/Linux, Cmd+U on Mac).',
+      'A new window opens with the full raw message.',
+      'Copy the header section and paste into the textarea above.',
+      'Alternative: File menu → Save As → .eml format, then upload.',
+    ],
+  },
+  'emclient': {
+    title: 'eM Client',
+    steps: [
+      'Right-click the message in the message list.',
+      'Select View → Show source.',
+      'A new window opens with the raw message.',
+      'Copy the header section and paste into the textarea above.',
+    ],
+    note: 'eM Client also has a "Headers" tab at the bottom of the message preview that shows just the header without the body.',
+  },
+  'proton': {
+    title: 'ProtonMail',
+    steps: [
+      'Open the message.',
+      'Click the three-dot menu at the top right of the message.',
+      'Select "View headers".',
+      'A panel opens showing the raw headers.',
+      'Copy the entire header text and paste into the textarea above.',
+    ],
+    note: 'ProtonMail strips some headers for privacy (e.g. the sender IP is replaced with a Proton internal hop). Auth results from the originating server are preserved.',
+  },
+  'yahoo': {
+    title: 'Yahoo Mail',
+    steps: [
+      'Open the message.',
+      'Click the three-dot menu at the top of the message.',
+      'Select "View raw message".',
+      'A new window opens with the full raw message.',
+      'Copy the header section and paste into the textarea above.',
+    ],
+  },
+  'mobile': {
+    title: 'Mobile (iOS Mail, Gmail app, Outlook app, etc.)',
+    steps: [
+      'Mobile apps generally do NOT expose raw email headers.',
+      'Workaround 1: forward the suspicious message to yourself, then open the forwarded copy on a desktop client.',
+      "Workaround 2: open your mail provider in the phone's browser (Gmail web, Outlook web) which exposes \"Show original\" / \"View source\" the same way as desktop.",
+    ],
+    note: 'Forwarded messages introduce new Received hops and the original SPF/DKIM/DMARC results may no longer be valid. Prefer the web interface approach when possible.',
+  },
+};
+
+
+function renderEmailClientInstructions(client) {
+  const c = EMAIL_CLIENT_INSTRUCTIONS[client];
+  const target = document.getElementById('email-client-instructions');
+  if (!c || !target) return;
+
+  const stepsHtml = c.steps.map((step, i) => `
+    <li class="flex gap-3 mb-2">
+      <span class="text-amber-400 font-bold text-xs flex-shrink-0 mt-0.5">${i + 1}.</span>
+      <span class="text-sm text-gray-300">${escapeHtml(step)}</span>
+    </li>
+  `).join('');
+
+  target.innerHTML = `
+    <h4 class="text-sm font-bold text-white mb-3">${escapeHtml(c.title)}</h4>
+    <ol class="mb-3">${stepsHtml}</ol>
+    ${c.note ? `<p class="text-xs text-gray-500 italic mt-3 border-t border-gray-800 pt-3">${escapeHtml(c.note)}</p>` : ''}
+  `;
+}
+
+
+document.querySelectorAll('.email-client-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const client = btn.dataset.client;
+    document.querySelectorAll('.email-client-btn').forEach(b => {
+      b.classList.remove('bg-amber-400', 'text-gray-950');
+      b.classList.add('bg-gray-800', 'hover:bg-gray-700', 'text-gray-300');
+    });
+    btn.classList.remove('bg-gray-800', 'hover:bg-gray-700', 'text-gray-300');
+    btn.classList.add('bg-amber-400', 'text-gray-950');
+    renderEmailClientInstructions(client);
+  });
+});
+
+if (document.getElementById('email-client-instructions')) {
+  renderEmailClientInstructions('gmail');
+}
+
+const emailAnalyzeBtnEl = document.getElementById('email-header-btn');
+const emailHelpEl = document.getElementById('email-header-help');
+if (emailAnalyzeBtnEl && emailHelpEl) {
+  emailAnalyzeBtnEl.addEventListener('click', () => {
+    setTimeout(() => { emailHelpEl.open = false; }, 1500);
+  });
+}
+
+
+// ---- Email file upload ----
+
+const emailDropzone = document.getElementById('email-upload-dropzone');
+const emailFileInput = document.getElementById('email-file-input');
+const emailUploadStatus = document.getElementById('email-upload-status');
+
+if (emailDropzone && emailFileInput) {
+  emailDropzone.addEventListener('click', () => emailFileInput.click());
+
+  emailDropzone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    emailDropzone.classList.add('border-amber-400', 'bg-gray-900');
+  });
+
+  emailDropzone.addEventListener('dragleave', () => {
+    emailDropzone.classList.remove('border-amber-400', 'bg-gray-900');
+  });
+
+  emailDropzone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    emailDropzone.classList.remove('border-amber-400', 'bg-gray-900');
+    if (e.dataTransfer.files.length > 0) {
+      handleEmailFile(e.dataTransfer.files[0]);
+    }
+  });
+
+  emailFileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleEmailFile(e.target.files[0]);
+    }
+  });
+}
+
+
+async function handleEmailFile(file) {
+  if (!emailUploadStatus) return;
+
+  const allowedExtensions = ['.eml', '.msg', '.txt'];
+  const lowerName = file.name.toLowerCase();
+  if (!allowedExtensions.some(ext => lowerName.endsWith(ext))) {
+    emailUploadStatus.classList.remove('hidden', 'text-green-400', 'text-gray-400');
+    emailUploadStatus.classList.add('text-red-400');
+    emailUploadStatus.textContent = 'Unsupported file type. Use .eml, .msg, or .txt.';
+    return;
+  }
+
+  const maxBytes = 5 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    emailUploadStatus.classList.remove('hidden', 'text-green-400', 'text-gray-400');
+    emailUploadStatus.classList.add('text-red-400');
+    emailUploadStatus.textContent = `File too large (${(file.size / 1024 / 1024).toFixed(1)}MB). Max 5MB.`;
+    return;
+  }
+
+  emailUploadStatus.classList.remove('hidden', 'text-red-400', 'text-green-400');
+  emailUploadStatus.classList.add('text-gray-400');
+  emailUploadStatus.textContent = `Parsing ${file.name}...`;
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  try {
+    const res = await fetch('/api/email-header/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({detail: `HTTP ${res.status}`}));
+      emailUploadStatus.classList.remove('text-gray-400', 'text-green-400');
+      emailUploadStatus.classList.add('text-red-400');
+      emailUploadStatus.textContent = `Upload failed: ${err.detail || res.status}`;
+      return;
+    }
+
+    const data = await res.json();
+
+    const headerEl = document.getElementById('email-header-input');
+    const bodyEl = document.getElementById('email-body-input');
+    if (headerEl) headerEl.value = data.raw_header || '';
+    if (bodyEl) bodyEl.value = data.raw_body || '';
+
+    const bodySection = document.getElementById('email-body-section');
+    if (bodySection && data.raw_body) bodySection.open = true;
+
+    emailUploadStatus.classList.remove('text-gray-400', 'text-red-400');
+    emailUploadStatus.classList.add('text-green-400');
+    emailUploadStatus.textContent = `Loaded ${data.filename}: ${data.header_bytes} bytes header, ${data.body_bytes} bytes body. File discarded. Click Analyze to continue.`;
+  } catch (e) {
+    console.error('email upload exception:', e);
+    emailUploadStatus.classList.remove('text-gray-400', 'text-green-400');
+    emailUploadStatus.classList.add('text-red-400');
+    emailUploadStatus.textContent = `Upload error: ${e.message}`;
+  } finally {
+    if (emailFileInput) emailFileInput.value = '';
+  }
+}
+
+
 // Load both on page ready (they fire in parallel)
 loadThreatPulse();
 loadLandingNews();

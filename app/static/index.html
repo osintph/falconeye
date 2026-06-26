@@ -370,25 +370,81 @@
     <!-- EMAIL HEADER ANALYZER TAB -->
     <div id="tab-email" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Email Header Analyzer</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a complete email header (and optionally the body) to analyze authentication, sender alignment, routing, BEC risk, and scam patterns.</p>
+      <p class="text-gray-400 text-sm mb-4">Paste a complete email header (and optionally the body) to analyze authentication, sender alignment, routing, and scam patterns. You can also upload a .eml or .msg file to skip the copy-paste step.</p>
 
+      <!-- Privacy notice -->
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <div class="text-xs text-blue-200">
+          <strong class="text-blue-300">Privacy:</strong> Uploaded files and pasted headers are processed in memory only. The original content is NEVER written to disk and NEVER logged. The parsed analysis result is cached for 24 hours by content hash (so re-analyzing the same email returns instantly), but the raw email itself is discarded immediately after parsing.
+        </div>
+      </div>
+
+      <!-- File upload -->
+      <div class="mb-4">
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Upload email file (optional)</label>
+        <div id="email-upload-dropzone" class="border-2 border-dashed border-gray-700 hover:border-amber-400 rounded p-6 text-center transition cursor-pointer">
+          <input id="email-file-input" type="file" accept=".eml,.msg,.txt" class="hidden" />
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-500 mx-auto mb-2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" x2="12" y1="3" y2="15"/>
+          </svg>
+          <p class="text-sm text-gray-400">Click to upload or drag a file here</p>
+          <p class="text-xs text-gray-600 mt-1">Supported: .eml (Apple Mail, Thunderbird, raw email), .msg (Outlook), .txt</p>
+          <p class="text-xs text-gray-600">Max 5MB. File is parsed in memory and discarded immediately.</p>
+        </div>
+        <div id="email-upload-status" class="hidden mt-2 text-xs text-gray-400"></div>
+      </div>
+
+      <!-- Help: how to get email headers from common clients -->
+      <details id="email-header-help" class="bg-gray-900 border border-gray-800 rounded mb-4" open>
+        <summary class="cursor-pointer px-5 py-3 text-sm font-bold text-gray-300 hover:text-amber-400 transition select-none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline mr-2 align-middle"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+          How to get the raw email header (or export the email as a file)
+        </summary>
+        <div class="px-5 pb-5">
+          <p class="text-xs text-gray-500 mb-4">Open the message you want to analyze, then follow the steps for your mail client below. The "View source" / "Show original" option gives you the FULL raw email. You can paste it into the Header textarea, or export as .eml / .msg and upload above.</p>
+          <div class="flex flex-wrap gap-2 mb-4" id="email-client-tabs">
+            <button class="email-client-btn bg-amber-400 text-gray-950 text-xs font-bold px-3 py-1 rounded transition" data-client="gmail">Gmail</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="owa">Outlook on the Web</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="outlook-desktop">Outlook (Windows)</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="outlook-mac">Outlook (Mac)</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="apple-mail">Apple Mail</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="thunderbird">Thunderbird</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="emclient">eM Client</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="proton">ProtonMail</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="yahoo">Yahoo Mail</button>
+            <button class="email-client-btn bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold px-3 py-1 rounded transition" data-client="mobile">Mobile</button>
+          </div>
+          <div id="email-client-instructions" class="bg-gray-950 border border-gray-800 rounded p-4 text-sm text-gray-300 leading-relaxed"></div>
+          <p class="text-xs text-gray-600 mt-4">Tip: Privacy headers stripped by your mail provider cannot be recovered. The header reflects what was visible at delivery time.</p>
+        </div>
+      </details>
+
+      <!-- Header + body textareas -->
       <div class="flex flex-col gap-3 mb-3">
         <div>
-          <label class="block text-xs text-gray-500 uppercase mb-1">Email Header <span class="text-gray-600">(required)</span></label>
+          <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Raw header (required)</label>
           <textarea id="email-header-input"
-                    placeholder="Paste raw email header here (everything from 'Return-Path:' or 'Received:' down to the empty line before the body)"
-                    rows="8"
+                    placeholder="Paste raw email header here, or use the upload above. If you paste the full raw email (header + body), the analyzer will use the body too."
+                    rows="10"
                     class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
         </div>
-        <details class="bg-gray-900 border border-gray-800 rounded">
-          <summary class="cursor-pointer px-4 py-2 text-xs text-gray-400 hover:text-white select-none">
-            + Email Body <span class="text-gray-600">(optional — enables scam pattern detection)</span>
+        <details id="email-body-section" class="bg-gray-950 border border-gray-800 rounded">
+          <summary class="cursor-pointer px-4 py-2 text-xs text-gray-400 hover:text-amber-400 transition select-none">
+            <span class="font-bold uppercase tracking-wider">Email body (optional)</span>
+            <span class="text-gray-600 ml-2">- adds scam / phishing pattern detection</span>
           </summary>
-          <div class="px-4 pb-4 pt-2">
+          <div class="p-4">
             <textarea id="email-body-input"
-                      placeholder="Paste the email body text or HTML here for scam/phishing pattern analysis"
+                      placeholder="Paste the email body (plain text or HTML). The analyzer detects urgency language, financial lures, credential phishing patterns, crypto scams, BEC indicators, suspicious URLs, and more."
                       rows="8"
-                      class="w-full bg-gray-950 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+                      class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+            <p class="text-xs text-gray-600 mt-2">Tip: If you already pasted the full raw email above, or uploaded a file, the body is extracted automatically.</p>
           </div>
         </details>
         <div class="flex gap-3">

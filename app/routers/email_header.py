@@ -7,9 +7,11 @@ Optionally accepts an email body for scam-pattern detection.
 """
 import asyncio
 import hashlib
+import io
 import json
 import re
 import sqlite3
+import tempfile
 from datetime import datetime, timezone
 from email import message_from_string
 from email.utils import getaddresses, parsedate_to_datetime
@@ -20,7 +22,7 @@ import logging
 import dns.resolver
 import httpx
 from anthropic import AsyncAnthropic, APIError, APIStatusError, APITimeoutError
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, UploadFile, File
 from pydantic import BaseModel
 
 from app.config import (
@@ -596,6 +598,84 @@ def _analyze_body(body: str, from_addrs: list[dict]) -> dict:
     }
 
 
+# ---------- Email file parser ----------
+
+def _parse_email_file(file_bytes: bytes, filename: str) -> tuple[str, str]:
+    """
+    Parse an uploaded email file and return (raw_header, raw_body).
+
+    Supports .eml / .txt (RFC 822 MIME) and .msg (Outlook binary).
+    Processed entirely in memory; .msg uses a tempfile that is deleted immediately
+    after parsing, even if an exception is raised. Returns (header_text, body_text).
+    Raises ValueError on unsupported or malformed content.
+    """
+    lower_name = (filename or "").lower()
+
+    if lower_name.endswith(".eml") or lower_name.endswith(".txt"):
+        try:
+            text = file_bytes.decode("utf-8", errors="replace")
+        except Exception as e:
+            raise ValueError(f"Could not decode .eml file: {e}")
+
+        if "\r\n\r\n" in text:
+            header_part, body_part = text.split("\r\n\r\n", 1)
+        elif "\n\n" in text:
+            header_part, body_part = text.split("\n\n", 1)
+        else:
+            header_part = text
+            body_part = ""
+        return header_part, body_part
+
+    if lower_name.endswith(".msg"):
+        try:
+            import extract_msg
+        except ImportError:
+            raise ValueError(".msg support requires extract-msg package. Contact the operator.")
+
+        with tempfile.NamedTemporaryFile(suffix=".msg", delete=True) as tmp:
+            tmp.write(file_bytes)
+            tmp.flush()
+            try:
+                msg = extract_msg.Message(tmp.name)
+            except Exception as e:
+                raise ValueError(f"Could not parse .msg file: {e}")
+
+            try:
+                header_lines = []
+                if msg.header:
+                    header_lines.append(str(msg.header))
+                else:
+                    if msg.sender:
+                        header_lines.append(f"From: {msg.sender}")
+                    if msg.to:
+                        header_lines.append(f"To: {msg.to}")
+                    if msg.cc:
+                        header_lines.append(f"Cc: {msg.cc}")
+                    if msg.subject:
+                        header_lines.append(f"Subject: {msg.subject}")
+                    if msg.date:
+                        header_lines.append(f"Date: {msg.date}")
+                    if msg.messageId:
+                        header_lines.append(f"Message-ID: {msg.messageId}")
+
+                header_text = "\n".join(header_lines)
+
+                body_text = ""
+                if msg.htmlBody:
+                    body_text = msg.htmlBody if isinstance(msg.htmlBody, str) else msg.htmlBody.decode("utf-8", errors="replace")
+                elif msg.body:
+                    body_text = msg.body
+
+                return header_text, body_text
+            finally:
+                try:
+                    msg.close()
+                except Exception:
+                    pass
+
+    raise ValueError(f"Unsupported file type: {filename}. Supported formats: .eml, .msg, .txt")
+
+
 # ---------- LLM rate limiting ----------
 
 def _check_llm_rate_limit(source_ip: str) -> tuple[bool, int]:
@@ -1054,3 +1134,45 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     conn.close()
 
     return parsed
+
+
+@router.post("/api/email-header/upload")
+async def upload(file: UploadFile = File(...)):
+    """
+    Parse an uploaded .eml or .msg file and return header + body as text.
+
+    The file is processed in memory and discarded immediately after parsing.
+    Nothing is written to persistent storage; the bytes buffer is zeroed in
+    the finally block. The caller submits the returned text to /analyze normally.
+    """
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="no filename provided")
+
+    MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+    file_bytes = await file.read()
+    try:
+        if len(file_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"file too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)}MB)",
+            )
+        if len(file_bytes) < 50:
+            raise HTTPException(status_code=400, detail="file too small to be a valid email")
+
+        try:
+            header_text, body_text = _parse_email_file(file_bytes, file.filename)
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            log.warning(f"Email file upload parse exception ({file.filename}, {len(file_bytes)} bytes): {type(e).__name__}: {e}")
+            raise HTTPException(status_code=400, detail="failed to parse email file")
+
+        return {
+            "filename": file.filename,
+            "raw_header": header_text,
+            "raw_body": body_text,
+            "header_bytes": len(header_text),
+            "body_bytes": len(body_text),
+        }
+    finally:
+        file_bytes = b""
