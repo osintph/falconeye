@@ -1,101 +1,81 @@
 # Contributing to FalconEye
 
-FalconEye is an open-source OSINT workbench maintained by [OSINT-PH](https://osintph.info). Contributions are welcome within the scope described below.
+Thanks for considering a contribution. This project exists to be useful to OSINT investigators, security researchers, and incident responders. Contributions that move it in that direction are welcome.
+
+## Ways to contribute
+
+### Report a bug
+
+Open a GitHub issue with:
+
+1. What you did (the steps, including the input you submitted)
+2. What you expected to happen
+3. What actually happened
+4. Browser, OS, and rough time of day (helps correlate with server logs)
+
+If the bug involves the live site at falconeye.osintph.info, include the rough time of the failed request so we can grep the server logs.
+
+### Suggest a new tab or feature
+
+Open a GitHub issue tagged "enhancement". Explain:
+
+1. What problem are you trying to solve (real-world investigative scenario)
+2. What data sources or techniques would the tab use
+3. Why this fits in FalconEye specifically rather than a separate tool
+
+The best tab suggestions come with concrete examples: "I work BEC cases and I keep needing to do X by hand, here's what an automated version would look like."
+
+### Submit a pull request
+
+For non-trivial changes, please open an issue first to discuss the approach. For small fixes (typos, broken links, dependency bumps), a direct PR is fine.
+
+PR checklist:
+
+- [ ] Code follows the existing style (FastAPI router per tab, vanilla JS, no new frontend frameworks)
+- [ ] If you added a new dependency, add it to `requirements.txt` with a pinned major version
+- [ ] If you added an API endpoint, add it to the README's API table
+- [ ] If you added user-facing functionality, update the README's tab list and sitemap.xml
+- [ ] If you added an LLM-powered feature, follow the safeguard pattern: hardcoded model, per-IP daily rate limit, env kill switch, prompt caching
+- [ ] Tested locally with `uvicorn app.main:app --reload`
+- [ ] No secrets, API keys, or operator hostnames committed
+
+### Improve documentation
+
+Documentation improvements are first-class contributions. Examples of useful doc PRs:
+
+- Clearer install instructions for a specific Linux distro
+- Self-hosting guide for non-OVH providers (AWS Lightsail, Hetzner, DigitalOcean, etc)
+- Worked examples of using each tab for a specific investigation type
+- Translating the privacy policy or contact form to another language
 
 ---
 
-## What is welcome
+## Code style
 
-- **New data source integrations** — additional lookup APIs behind existing tabs (IP, domain, sandbox, crypto). Prefer free-tier or key-optional APIs so the tool stays accessible without accounts.
-- **Bug fixes** — broken lookups, parsing failures, UI rendering issues.
-- **PH Threat Pulse improvements** — better brand detection patterns, additional Philippine-specific indicators.
-- **Performance fixes** — caching improvements, reducing unnecessary API round-trips.
-- **Accessibility** — keyboard navigation, contrast, screen reader support.
-- **Documentation** — corrections, clearer setup instructions, new deployment environments.
-
-## What is not welcome
-
-- Features requiring paid API keys as a hard dependency (no key = tool breaks).
-- Removing or breaking existing lookups to add new ones.
-- Frontend framework rewrites. The vanilla JS + Tailwind CDN stack is intentional: zero build step, easy deployment, readable source.
-- Backend ORM migrations. SQLite + raw SQL is intentional.
-- Features unrelated to threat intelligence, OSINT, or cyber investigation.
+- Python: PEP 8, type hints where they add clarity, no aggressive refactors of existing code unless the PR specifically calls that out
+- JavaScript: ES2020+, no build step, no transpilation. Vanilla JS only.
+- HTML: Tailwind utility classes only, no custom CSS files unless absolutely necessary (style.css exists for the few places it is)
+- Commit messages: imperative mood, scoped prefix (`feat:`, `fix:`, `docs:`, `chore:`)
 
 ---
 
-## Architecture overview
+## What we will not merge
 
-```
-app/
-  main.py                 — FastAPI app init, router mounts, rate limiter
-  config.py               — env-var config (DB path, API keys)
-  database.py             — SQLite connection factory
-  routers/
-    crypto.py             — BTC/ETH/USDT blockchain lookups + D3 graph data
-    domain_intel.py       — RDAP, DNS, WHOIS, CT logs, network enrichment
-    ip_intel.py           — GreyNoise, Shodan, AbuseIPDB, ASN lookup
-    scanner.py            — Phishing kit fingerprinting
-    telegram_inspector.py — Telegram public channel web scrape + IOC extraction
-    sandbox.py            — URLScan, VirusTotal, MalwareBazaar, Any.run history
-    news.py               — RSS/Atom feed aggregator with SQLite cache
-    threat_pulse.py       — URLhaus PH country feed aggregator
-  static/
-    index.html            — Single-page app shell (tab layout)
-    app.js                — All frontend logic (tab routing, API calls, D3 graph)
-    style.css             — Minimal custom styles (Tailwind handles the rest)
-scripts/
-  db_init.py              — Creates all SQLite tables
-  provision.sh            — Ubuntu 24.04 VPS setup (nginx, gunicorn, systemd)
-```
-
-All lookups go through FastAPI endpoints. The frontend never calls third-party APIs directly — everything is proxied through the backend, which handles rate limiting and caching.
+- Tabs that primarily exist to collect user data
+- Tabs that require user accounts or login
+- Features that require proprietary or paid third-party services without a viable free-tier fallback
+- Closed-source dependencies
+- Code that ships a backdoor, telemetry, ads, or tracking
+- Anything that would change the AGPL-3.0 license
 
 ---
 
-## Development setup
+## License of your contributions
 
-```bash
-git clone https://github.com/osintph/falconeye.git
-cd falconeye
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-
-# Init the database (defaults to /opt/falconeye/data/falconeye.db)
-# Override with FALCONEYE_DB env var for local dev:
-export FALCONEYE_DB=./falconeye.db
-python scripts/db_init.py
-
-# Run the dev server
-uvicorn app.main:app --reload --port 8000
-```
-
-Open `http://localhost:8000` in a browser.
-
-Optional API keys (set as environment variables — the tool degrades gracefully without them):
-
-```
-ABUSECH_AUTH_KEY      — URLhaus authenticated lookups
-GREYNOISE_API_KEY     — GreyNoise Community API
-SHODAN_API_KEY        — Shodan InternetDB or full API
-VIRUSTOTAL_API_KEY    — VirusTotal file/URL lookups
-URLSCAN_API_KEY       — URLScan.io submissions
-ANYRUN_API_KEY        — Any.run sandbox API
-```
+By submitting a pull request, you agree your contribution will be licensed under AGPL-3.0, the same license as the rest of the project.
 
 ---
 
-## Submitting changes
+## Code of conduct
 
-1. Fork the repo and create a branch from `main`.
-2. Make the smallest change that addresses the issue. One concern per PR.
-3. Test manually against the live endpoints you changed.
-4. Open a PR with a clear description: what changed, why, and how you tested it.
-
-There is no automated test suite currently. Manual verification against real indicators is the standard.
-
----
-
-## License
-
-By contributing you agree that your changes will be licensed under [AGPL-3.0](LICENSE).
+Be useful. Be respectful. Disagree with ideas, not with people. If your PR is not merged, accept that and move on. If you feel a reviewer was unfair, contact the maintainer at security@osintph.info.
