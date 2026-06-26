@@ -19,10 +19,16 @@ import logging
 
 import dns.resolver
 import httpx
-from fastapi import APIRouter, HTTPException
+from anthropic import AsyncAnthropic, APIError, APIStatusError, APITimeoutError
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
-from app.config import DB_PATH
+from app.config import (
+    DB_PATH,
+    LLM_ANALYSIS_ENABLED, LLM_MAX_BODY_TOKENS,
+    LLM_RATE_LIMIT_PER_DAY, LLM_TIMEOUT_SECONDS, LLM_MIN_BODY_CHARS,
+    ANTHROPIC_API_KEY,
+)
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -177,6 +183,13 @@ def _init_cache():
             fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS llm_rate_limit (
+            source_ip TEXT NOT NULL,
+            called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_llm_rate_ip ON llm_rate_limit(source_ip, called_at)")
     conn.commit()
     conn.close()
 
@@ -583,6 +596,170 @@ def _analyze_body(body: str, from_addrs: list[dict]) -> dict:
     }
 
 
+# ---------- LLM rate limiting ----------
+
+def _check_llm_rate_limit(source_ip: str) -> tuple[bool, int]:
+    """Returns (allowed, calls_used_in_window)."""
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.execute(
+        "SELECT COUNT(*) FROM llm_rate_limit WHERE source_ip = ? AND called_at > datetime('now', '-24 hours')",
+        (source_ip,),
+    )
+    count = cur.fetchone()[0]
+    conn.close()
+    return (count < LLM_RATE_LIMIT_PER_DAY, count)
+
+
+def _record_llm_call(source_ip: str):
+    """Insert a tracking row and clean up rows older than 48 hours."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("INSERT INTO llm_rate_limit (source_ip) VALUES (?)", (source_ip,))
+    conn.execute("DELETE FROM llm_rate_limit WHERE called_at < datetime('now', '-48 hours')")
+    conn.commit()
+    conn.close()
+
+
+# ---------- LLM body analyzer ----------
+
+LLM_SYSTEM_PROMPT = """You are an email security analyst specializing in scam, phishing, and BEC detection.
+
+You will be given the body of an email (header data is analyzed separately and combined with your assessment).
+
+Analyze the body for scam indicators. Look for:
+
+1. Advance fee fraud: any scheme where the recipient is asked to pay a fee, tax, processing charge, application fee, evaluation fee, customs charge, lawyer fee, or any other upfront cost to receive a larger sum
+2. Inheritance / lottery / compensation scams: claims of unclaimed funds, lottery wins, inheritance from a stranger, government compensation programs, UN/IMF/World Bank disbursements
+3. Authority impersonation: pretending to be IRS, BIR, Microsoft Support, banks, shipping companies, government agencies, the United Nations
+4. Romance / pig butchering: love bombing combined with investment opportunities or requests for money transfers
+5. BEC / wire fraud: requests to change bank account details, urgent wire transfers, payment instruction updates, vendor account changes
+6. Credential phishing: requests to verify accounts, click suspicious links, reset passwords, urgent account warnings
+7. Crypto scams: guaranteed returns, giveaway promises, double-your-Bitcoin schemes, wallet recovery scams
+8. Tech support scams: claims your computer is infected, security alerts, fake virus warnings
+9. PII harvesting: requests for full name + phone + address + ID combined together
+10. Reply traps: body asks reader to reply to or contact a different email/phone than the From address
+11. Urgency manipulation: artificial deadlines, threats of account closure, "act now" language
+12. Suspicious narrative inconsistencies: foreign-claimed sender writing in broken English, story shifts mid-email, signature does not match sender
+
+Return ONLY valid JSON in this exact schema, no markdown, no preamble:
+
+{
+  "scam_score": <integer 0-100, where 0 = clearly legitimate, 100 = textbook scam>,
+  "verdict": "<one of: clearly_legitimate, likely_legitimate, suspicious, likely_scam, textbook_scam>",
+  "scam_type": "<short label like 'advance fee fraud', 'BEC wire fraud', 'crypto giveaway scam', 'credential phishing', 'legitimate', etc.>",
+  "confidence": "<low|medium|high>",
+  "findings": [
+    {
+      "severity": "<high|medium|low|info>",
+      "category": "<short category label>",
+      "name": "<short finding name>",
+      "evidence": "<exact quoted sentence or phrase from the body that triggered this finding, max 200 chars>"
+    }
+  ],
+  "summary": "<one-sentence explanation of your overall verdict>"
+}
+
+Be strict but fair. A clean transactional email (receipt, calendar invite, newsletter) should score 0-10. A suspicious one with one or two indicators should score 20-50. A clear scam with multiple obvious indicators (e.g. UN compensation + advance fee + reply trap + PII harvest) should score 90-100. Maximum 8 findings.
+"""
+
+
+async def _llm_analyze_body(body: str, sender_email: str = "") -> dict | None:
+    """
+    Run Claude Haiku 4.5 against the body. Returns None on any failure.
+
+    Hard preconditions enforced inside this function (defense in depth, do not remove):
+      - LLM_ANALYSIS_ENABLED must be True
+      - ANTHROPIC_API_KEY must be set
+      - body must be non-empty and at least LLM_MIN_BODY_CHARS after HTML stripping
+      - estimated token count must not exceed LLM_MAX_BODY_TOKENS
+    """
+    # ===== HARDCODED MODEL: do NOT replace with a config variable =====
+    # This is intentional. Even if config is misconfigured, this function
+    # only ever calls Claude Haiku 4.5. To change the model, edit this line directly.
+    HARDCODED_MODEL = "claude-haiku-4-5"
+    # ==================================================================
+
+    if not LLM_ANALYSIS_ENABLED:
+        return None
+
+    if not ANTHROPIC_API_KEY:
+        log.warning("LLM analysis enabled but ANTHROPIC_API_KEY not set")
+        return None
+
+    if not body:
+        return None
+
+    text_only = re.sub(r"<[^>]+>", " ", body)
+    text_only = re.sub(r"\s+", " ", text_only).strip()
+
+    if len(text_only) < LLM_MIN_BODY_CHARS:
+        return None
+
+    estimated_tokens = len(text_only) // 4
+    if estimated_tokens > LLM_MAX_BODY_TOKENS:
+        log.info(f"Body too large for LLM analysis ({estimated_tokens} est tokens), skipping")
+        return None
+
+    text_only = text_only[:30000]
+
+    user_msg = f"Sender (From header): {sender_email}\n\nEmail body to analyze:\n\n{text_only}"
+
+    client = AsyncAnthropic(api_key=ANTHROPIC_API_KEY, timeout=LLM_TIMEOUT_SECONDS)
+
+    try:
+        response = await client.messages.create(
+            model=HARDCODED_MODEL,
+            max_tokens=1500,
+            system=[
+                {
+                    "type": "text",
+                    "text": LLM_SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            messages=[{"role": "user", "content": user_msg}],
+        )
+    except APITimeoutError:
+        log.warning("LLM call timed out")
+        return None
+    except APIStatusError as e:
+        log.warning(f"LLM API status error: {e.status_code} {e.message}")
+        return None
+    except APIError as e:
+        log.warning(f"LLM API error: {e}")
+        return None
+    except Exception as e:
+        log.warning(f"LLM call exception: {type(e).__name__}: {e}")
+        return None
+
+    actual_model = getattr(response, "model", "")
+    if HARDCODED_MODEL not in actual_model:
+        log.warning(f"Response model mismatch: expected {HARDCODED_MODEL}, got {actual_model}")
+
+    raw_text = ""
+    try:
+        for block in response.content:
+            if getattr(block, "type", None) == "text":
+                raw_text += block.text
+
+        raw_text = raw_text.strip()
+        if raw_text.startswith("```"):
+            raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
+            raw_text = re.sub(r"\s*```$", "", raw_text)
+
+        parsed = json.loads(raw_text)
+        parsed["_usage"] = {
+            "model": actual_model,
+            "input_tokens": response.usage.input_tokens,
+            "output_tokens": response.usage.output_tokens,
+            "cache_read_input_tokens": getattr(response.usage, "cache_read_input_tokens", 0),
+            "cache_creation_input_tokens": getattr(response.usage, "cache_creation_input_tokens", 0),
+        }
+        return parsed
+    except (json.JSONDecodeError, AttributeError) as e:
+        log.warning(f"LLM returned non-JSON: {raw_text[:200]}... ({e})")
+        return None
+
+
 # ---------- BEC scoring ----------
 
 def _score_bec_indicators(parsed: dict[str, Any]) -> dict[str, Any]:
@@ -696,7 +873,7 @@ def _score_bec_indicators(parsed: dict[str, Any]) -> dict[str, Any]:
 # ---------- main analyze endpoint ----------
 
 @router.post("/api/email-header/analyze")
-async def analyze(req: HeaderAnalyzeRequest):
+async def analyze(req: HeaderAnalyzeRequest, request: Request):
     raw = req.raw_header.strip()
     body_input = (req.raw_body or "").strip()
 
@@ -798,9 +975,11 @@ async def analyze(req: HeaderAnalyzeRequest):
     }
     parsed["iocs"] = iocs
 
-    body_analysis = _analyze_body(body_to_analyze, parsed["from"]) if body_to_analyze else None
+    # Regex body analysis (always runs, free, no preconditions other than body presence)
+    body_provided = bool(body_to_analyze and body_to_analyze.strip())
+    body_analysis = _analyze_body(body_to_analyze, parsed["from"]) if body_provided else None
     parsed["body_analysis"] = body_analysis
-    parsed["body_provided"] = bool(body_to_analyze and body_to_analyze.strip())
+    parsed["body_provided"] = body_provided
 
     parsed["bec_assessment"] = _score_bec_indicators(parsed)
     if body_analysis:
@@ -817,6 +996,51 @@ async def analyze(req: HeaderAnalyzeRequest):
             parsed["bec_assessment"]["verdict"] = "low_risk_with_indicators"
         else:
             parsed["bec_assessment"]["verdict"] = "low_risk"
+
+    # LLM body analysis: ONLY runs if body is provided
+    llm_analysis = None
+    if body_provided and LLM_ANALYSIS_ENABLED and ANTHROPIC_API_KEY:
+        source_ip = request.client.host if request and request.client else "unknown"
+        allowed, calls_used = _check_llm_rate_limit(source_ip)
+        if allowed:
+            sender_email = parsed["from"][0]["email"] if parsed["from"] else ""
+            llm_analysis = await _llm_analyze_body(body_to_analyze, sender_email)
+            if llm_analysis:
+                _record_llm_call(source_ip)
+        else:
+            llm_analysis = {
+                "rate_limited": True,
+                "message": f"LLM analysis daily limit reached for this IP ({calls_used}/{LLM_RATE_LIMIT_PER_DAY} per 24 hours). Regex analysis still applied.",
+            }
+    parsed["llm_analysis"] = llm_analysis
+
+    # Merge LLM verdict into BEC score
+    if llm_analysis and not llm_analysis.get("rate_limited"):
+        llm_score = llm_analysis.get("scam_score", 0)
+        current_score = parsed["bec_assessment"]["score"]
+        new_score = max(current_score, llm_score)
+        parsed["bec_assessment"]["score"] = new_score
+
+        for finding in llm_analysis.get("findings", []):
+            parsed["bec_assessment"]["indicators"].append({
+                "severity": finding.get("severity", "medium"),
+                "name": f"[LLM] {finding.get('name', 'Detection')}",
+                "detail": finding.get("evidence", "")[:200],
+            })
+
+        score = parsed["bec_assessment"]["score"]
+        if score >= 70:
+            parsed["bec_assessment"]["verdict"] = "high_risk"
+        elif score >= 40:
+            parsed["bec_assessment"]["verdict"] = "medium_risk"
+        elif score >= 20:
+            parsed["bec_assessment"]["verdict"] = "low_risk_with_indicators"
+        else:
+            parsed["bec_assessment"]["verdict"] = "low_risk"
+
+        parsed["bec_assessment"]["llm_verdict"] = llm_analysis.get("verdict", "unknown")
+        parsed["bec_assessment"]["llm_scam_type"] = llm_analysis.get("scam_type", "")
+        parsed["bec_assessment"]["llm_summary"] = llm_analysis.get("summary", "")
 
     parsed["cache_hit"] = False
     parsed["fetched_at"] = datetime.now(timezone.utc).isoformat()

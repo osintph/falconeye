@@ -1493,6 +1493,13 @@ function renderEmailHeaderResult(d) {
         </div>
         <div class="text-xs text-gray-400 mt-1">${bec.score || 0} / 100</div>
       </div>
+      ${bec.llm_scam_type ? `
+        <div class="bg-gray-950 border border-${verdictColor}-700 rounded p-3 mb-3">
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">LLM Classification (Claude Haiku 4.5)</div>
+          <div class="text-sm text-${verdictColor}-300 font-bold mb-1">${escapeHtml(bec.llm_scam_type)}</div>
+          <div class="text-xs text-gray-400">${escapeHtml(bec.llm_summary || '')}</div>
+        </div>
+      ` : ''}
       <div class="space-y-2">
         ${(bec.indicators || []).map(ind => `
           <div class="flex items-start gap-2 text-xs">
@@ -1508,6 +1515,24 @@ function renderEmailHeaderResult(d) {
       </div>
     </div>
   `;
+
+  if (d.llm_analysis && d.llm_analysis._usage) {
+    const u = d.llm_analysis._usage;
+    html += `
+      <p class="text-xs text-gray-700 mb-6 text-right font-mono">
+        ${escapeHtml(u.model || 'LLM')}: ${u.input_tokens || 0} in + ${u.output_tokens || 0} out tokens
+        ${u.cache_read_input_tokens ? `(${u.cache_read_input_tokens} cached)` : ''}
+      </p>
+    `;
+  }
+
+  if (d.llm_analysis && d.llm_analysis.rate_limited) {
+    html += `
+      <div class="bg-amber-950 border border-amber-700 rounded p-3 mb-6">
+        <p class="text-xs text-amber-300">${escapeHtml(d.llm_analysis.message)}</p>
+      </div>
+    `;
+  }
 
   if (d.body_provided && d.body_analysis) {
     const ba = d.body_analysis;
