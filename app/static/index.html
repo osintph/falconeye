@@ -73,6 +73,10 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg>
       Email Header
     </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="dorks">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+      Dork Gen
+    </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="news">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
       News
@@ -398,6 +402,56 @@
       </div>
 
       <div id="email-header-result" class="hidden mt-6"></div>
+    </div>
+
+    <!-- Google Dork Generator Tab -->
+    <div id="tab-dorks" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Google Dork Generator</h2>
+      <p class="text-gray-400 text-sm mb-6">Describe what you want to find and get LLM-generated Google search queries with explanations and defensive-use notes. Powered by Claude Haiku 4.5.</p>
+
+      <div class="mb-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wider mb-2">Quick presets</p>
+        <div class="flex flex-wrap gap-2" id="dork-presets">
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="exposed_files" data-goal="Find exposed configuration files, .env files, database dumps, and backup files indexed by Google">Exposed Files</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="subdomain_discovery" data-goal="Discover subdomains and hidden assets indexed by Google for a target domain">Subdomains</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="admin_panels" data-goal="Find admin login pages, authentication portals, and management interfaces">Admin Panels</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="credential_leaks" data-goal="Find leaked credentials and secrets posted to Pastebin, GitHub gists, and similar paste sites">Credential Leaks</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="cloud_buckets" data-goal="Find publicly listable S3 buckets, GCS buckets, and Azure blob containers">Cloud Buckets</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="vpn_remote_access" data-goal="Find exposed VPN portals, Citrix Gateway, Pulse Secure, Fortinet SSL VPN, and RDP gateways">VPN / Remote Access</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="gov_data_exposure" data-goal="Find exposed PII, sensitive documents, or data leaks on government domains">Gov Data Exposure</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="camera_iot" data-goal="Find unauthenticated IP cameras, DVR systems, and IoT device interfaces indexed by Google">Cameras / IoT</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="document_leaks" data-goal="Find sensitive PDF, DOC, XLS, and DOCX documents containing confidential or restricted keywords">Document Leaks</button>
+          <button class="dork-preset bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-3 py-1.5 rounded transition" data-preset="vuln_discovery" data-goal="Find systems matching known vulnerable banners, CVE signatures, or specific version strings">Vuln Discovery</button>
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3 mb-3">
+        <div>
+          <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">What do you want to find? (required)</label>
+          <textarea id="dork-goal"
+                    placeholder="Describe what you want to find in natural language. Example: 'Find exposed admin panels on Philippine government domains' or 'Find leaked API keys mentioning Stripe on GitHub'"
+                    rows="3"
+                    class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-y"></textarea>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Target domain or organization (optional)</label>
+          <input id="dork-target" type="text"
+                 placeholder="example.com or 'Acme Corp' - leave empty for generic dorks with TARGET.com placeholder"
+                 class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        </div>
+        <div class="flex gap-3">
+          <button id="dork-generate-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+            Generate Dorks
+          </button>
+          <button id="dork-clear-btn" class="bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <p class="text-xs text-gray-600 mb-6">This tool is intended for defensive surface monitoring, authorized penetration testing, and OSINT research on organizations or domains you have permission to investigate. Each dork comes with a defensive-use note.</p>
+
+      <div id="dork-result" class="hidden mt-6"></div>
     </div>
 
     <!-- News Tab -->

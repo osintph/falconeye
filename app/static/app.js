@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'dorks', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -1847,6 +1847,181 @@ function escapeAttr(s) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
     .replace(/`/g, '&#96;');
+}
+
+
+// ---- Google Dork Generator ----
+
+document.querySelectorAll('.dork-preset').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const goal = btn.dataset.goal || '';
+    const goalEl = document.getElementById('dork-goal');
+    if (goalEl) {
+      goalEl.value = goal;
+      goalEl.focus();
+    }
+  });
+});
+
+document.getElementById('dork-clear-btn')?.addEventListener('click', () => {
+  document.getElementById('dork-goal').value = '';
+  document.getElementById('dork-target').value = '';
+  const result = document.getElementById('dork-result');
+  result.classList.add('hidden');
+  result.innerHTML = '';
+});
+
+document.getElementById('dork-generate-btn')?.addEventListener('click', async () => {
+  const goalEl = document.getElementById('dork-goal');
+  const targetEl = document.getElementById('dork-target');
+  const resultEl = document.getElementById('dork-result');
+  const btn = document.getElementById('dork-generate-btn');
+
+  const goal = (goalEl.value || '').trim();
+  const target = (targetEl.value || '').trim();
+
+  if (!goal) {
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Describe what you want to find first.</p>';
+    return;
+  }
+  if (goal.length < 10) {
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Goal too short. Add more detail about what you want to find.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Generating...';
+  resultEl.classList.remove('hidden');
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Calling Claude Haiku 4.5 to generate dorks...</p>';
+
+  try {
+    const res = await fetch('/api/dork-generator/generate', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({goal: goal, target: target || null}),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({detail: `HTTP ${res.status}`}));
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">${escapeHtml(err.detail || `Request failed (${res.status})`)}</p>`;
+      return;
+    }
+
+    const data = await res.json();
+    resultEl.innerHTML = renderDorkResult(data);
+  } catch (e) {
+    console.error('dork generator exception:', e);
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Network error: ${escapeHtml(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Generate Dorks';
+  }
+});
+
+
+function renderDorkResult(d) {
+  if (d.refused) {
+    return `
+      <div class="bg-amber-950 border border-amber-700 rounded p-5 mb-6">
+        <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider mb-2">Request Declined</h3>
+        <p class="text-sm text-amber-200">${escapeHtml(d.refusal_reason || 'The generator declined this request.')}</p>
+        <p class="text-xs text-amber-300 mt-2">Try rephrasing your goal in terms of an organization, domain, or general category rather than a specific named individual.</p>
+      </div>
+    `;
+  }
+
+  const dorks = d.dorks || [];
+  if (dorks.length === 0) {
+    return '<p class="text-gray-400 text-sm">No dorks generated. Try rephrasing your goal.</p>';
+  }
+
+  let html = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Generated Dorks (${dorks.length})</h3>
+        ${d.target ? `<span class="text-xs text-gray-500">Target: <span class="text-amber-300 font-mono">${escapeHtml(d.target)}</span></span>` : ''}
+      </div>
+      ${d.notes ? `<p class="text-xs text-gray-400 mb-4 italic border-l-2 border-gray-700 pl-3">${escapeHtml(d.notes)}</p>` : ''}
+      <div class="space-y-4">
+  `;
+
+  dorks.forEach((dk, idx) => {
+    const riskColor = {
+      'high_impact': 'red',
+      'sensitive': 'amber',
+      'info': 'blue',
+    }[dk.risk_level] || 'gray';
+    const riskLabel = {
+      'high_impact': 'HIGH IMPACT',
+      'sensitive': 'SENSITIVE',
+      'info': 'INFO',
+    }[dk.risk_level] || (dk.risk_level || 'INFO').toUpperCase();
+
+    const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(dk.query)}`;
+
+    html += `
+      <div class="bg-gray-950 border border-${riskColor}-700 rounded p-4">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-gray-500">#${idx + 1}</span>
+          <span class="text-xs font-bold px-2 py-0.5 rounded bg-${riskColor}-900 text-${riskColor}-300">${riskLabel}</span>
+        </div>
+        <div class="bg-black border border-gray-800 rounded p-3 mb-3 font-mono text-xs text-amber-300 break-all relative group">
+          <button class="absolute top-1 right-1 text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 transition"
+                  onclick="copyDorkToClipboard(this, '${escapeAttr(dk.query)}')">Copy</button>
+          ${escapeHtml(dk.query)}
+        </div>
+        <div class="space-y-2 text-xs">
+          <div>
+            <span class="text-gray-500 uppercase tracking-wider">What it finds:</span>
+            <span class="text-gray-300 ml-2">${escapeHtml(dk.explanation || '')}</span>
+          </div>
+          <div>
+            <span class="text-green-500 uppercase tracking-wider">Defensive use:</span>
+            <span class="text-gray-300 ml-2">${escapeHtml(dk.defensive_use || '')}</span>
+          </div>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <a href="${googleUrl}" target="_blank" rel="noopener noreferrer"
+             class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-3 py-1.5 rounded transition inline-flex items-center gap-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+            Search on Google
+          </a>
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div></div>';
+
+  if (d._usage) {
+    const u = d._usage;
+    html += `
+      <p class="text-xs text-gray-700 mb-6 text-right font-mono">
+        ${escapeHtml(u.model || 'LLM')}: ${u.input_tokens || 0} in + ${u.output_tokens || 0} out tokens
+        ${u.cache_read_input_tokens ? `(${u.cache_read_input_tokens} cached)` : ''}
+        ${d.cache_hit ? '· result from cache' : ''}
+      </p>
+    `;
+  }
+
+  return html;
+}
+
+
+function copyDorkToClipboard(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('bg-green-500', 'text-gray-950');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('bg-green-500', 'text-gray-950');
+    }, 1500);
+  }).catch(() => {
+    btn.textContent = 'Copy failed';
+  });
 }
 
 
