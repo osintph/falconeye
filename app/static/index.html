@@ -3,12 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FalconEye — Investigator's Toolkit</title>
-  <meta name="description" content="FalconEye is an investigator's toolkit for OSINT, crypto tracing, phishing kit analysis, domain intelligence, and threat reputation lookups.">
 
-  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
-  <link rel="apple-touch-icon" href="/static/favicon-32x32.png">
+  <!-- Primary SEO -->
+  <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
+  <meta name="description" content="Free self-hosted OSINT toolkit with 12 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram channel inspector, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, and more. AGPL-3.0 open source." />
+  <meta name="keywords" content="OSINT toolkit, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, OSINT-PH" />
+  <meta name="author" content="OSINT-PH" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <link rel="canonical" href="https://falconeye.osintph.info/" />
+
+  <!-- OpenGraph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://falconeye.osintph.info/" />
+  <meta property="og:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
+  <meta property="og:description" content="12 OSINT modules in one self-hosted interface: crypto tracing, phishing fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email BEC analysis, Google dorks, script deobfuscation. AGPL-3.0." />
+  <meta property="og:image" content="https://falconeye.osintph.info/static/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:site_name" content="FalconEye" />
+  <meta property="og:locale" content="en_US" />
+
+  <!-- Twitter / X Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:url" content="https://falconeye.osintph.info/" />
+  <meta name="twitter:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
+  <meta name="twitter:description" content="12-module OSINT workbench: crypto tracing, phishing scanner, domain intel, email BEC analyzer, Google dorks, script decoder. Free, open source, AGPL-3.0." />
+  <meta name="twitter:image" content="https://falconeye.osintph.info/static/og-image.png" />
+
+  <!-- Favicons -->
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png" />
+  <link rel="apple-touch-icon" href="/static/favicon-32x32.png" />
+
+  <!-- Theme color -->
+  <meta name="theme-color" content="#0a0a0a" />
+
+  <!-- JSON-LD: SoftwareApplication -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "FalconEye",
+    "alternateName": "FalconEye OSINT Toolkit",
+    "url": "https://falconeye.osintph.info/",
+    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram channel inspection, IP reputation, email header analysis with BEC detection, Google dork generation, and suspicious script deobfuscation into a single interface.",
+    "applicationCategory": "SecurityApplication",
+    "applicationSubCategory": "OSINT Tool",
+    "operatingSystem": "Any (web-based)",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+    "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
+    "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
+    "softwareVersion": "3.0",
+    "featureList": [
+      "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
+      "Phishing kit fingerprinting",
+      "Domain intelligence with RDAP, DNS, and CT logs",
+      "Telegram channel OSINT",
+      "IP reputation with Shodan and GreyNoise",
+      "URL and file hash sandbox lookup",
+      "Email header analyzer with BEC and scam detection",
+      "Google dork generator (LLM-powered)",
+      "Suspicious script decoder (LLM-powered)",
+      "Cyber news aggregator"
+    ]
+  }
+  </script>
+
+  <!-- JSON-LD: Organization -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    "name": "OSINT-PH",
+    "url": "https://blog.osintph.info",
+    "logo": "https://falconeye.osintph.info/static/favicon-32x32.png",
+    "sameAs": ["https://github.com/osintph", "https://blog.osintph.info"]
+  }
+  </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -76,6 +148,14 @@
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="dorks">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
       Dork Gen
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="decoder">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      Script Decoder
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="contact">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Contact
     </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="news">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
@@ -508,6 +588,138 @@
       <p class="text-xs text-gray-600 mb-6">This tool is intended for defensive surface monitoring, authorized penetration testing, and OSINT research on organizations or domains you have permission to investigate. Each dork comes with a defensive-use note.</p>
 
       <div id="dork-result" class="hidden mt-6"></div>
+    </div>
+
+    <!-- SUSPICIOUS SCRIPT DECODER TAB -->
+    <div id="tab-decoder" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Suspicious Script Decoder</h2>
+      <p class="text-gray-400 text-sm mb-4">Paste obfuscated PowerShell, encoded Base64, packed JavaScript, VBA macros, or any suspicious code. Claude Haiku 4.5 deobfuscates the code, explains what it does, extracts IOCs, and suggests detections.</p>
+
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" x2="12.01" y1="8" y2="8"/>
+          <line x1="12" x2="12" y1="12" y2="16"/>
+        </svg>
+        <div class="text-xs text-blue-200">
+          <strong class="text-blue-300">Privacy:</strong> Pasted code is sent to Anthropic's API for analysis. The parsed result is cached for 24 hours by content hash. The raw code is not logged or persisted.
+        </div>
+      </div>
+
+      <div class="flex flex-col gap-3 mb-3">
+        <div>
+          <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Suspicious code (required)</label>
+          <textarea id="decoder-code"
+                    placeholder="Paste obfuscated or encoded code here. Examples: PowerShell with -EncodedCommand, packed JavaScript (eval/unescape/atob chains), VBA macros, Base64 blobs, hex-encoded shells, etc. Minimum 20 characters, maximum 100,000."
+                    rows="12"
+                    class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+        </div>
+
+        <details class="bg-gray-950 border border-gray-800 rounded">
+          <summary class="cursor-pointer px-4 py-2 text-xs text-gray-400 hover:text-amber-400 transition select-none">
+            <span class="font-bold uppercase tracking-wider">Optional hint</span>
+            <span class="text-gray-600 ml-2">- tell the analyzer what you think this is</span>
+          </summary>
+          <div class="p-4">
+            <input id="decoder-hint" type="text"
+                   placeholder="e.g. 'extracted from a Word doc macro' or 'C2 callback from EDR alert'"
+                   class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+            <p class="text-xs text-gray-600 mt-2">A short hint about the context helps the LLM produce a more accurate analysis. Optional.</p>
+          </div>
+        </details>
+
+        <div class="flex gap-3">
+          <button id="decoder-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+            Decode &amp; Analyze
+          </button>
+          <button id="decoder-clear-btn" class="bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <div id="decoder-result" class="hidden mt-6"></div>
+    </div>
+
+    <!-- CONTACT TAB -->
+    <div id="tab-contact" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Contact</h2>
+      <p class="text-gray-400 text-sm mb-6">Found a bug, have a feature request, or want to suggest a new OSINT tab? Send a note. Replies go to the OSINT-PH operator inbox.</p>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2">
+          <form action="https://formspree.io/f/mojoezkp" method="POST" class="space-y-4">
+            <div>
+              <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block" for="contact-name">Your name (optional)</label>
+              <input id="contact-name" type="text" name="name"
+                     placeholder="How should we address you?"
+                     class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block" for="contact-email">Email (required for reply)</label>
+              <input id="contact-email" type="email" name="email" required
+                     placeholder="you@example.com"
+                     class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block" for="contact-subject">Subject</label>
+              <select id="contact-subject" name="subject"
+                      class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400">
+                <option value="Bug report">Bug report</option>
+                <option value="Feature request">Feature request</option>
+                <option value="New tab suggestion">New tab suggestion</option>
+                <option value="False positive / detection feedback">False positive / detection feedback</option>
+                <option value="Partnership / collaboration">Partnership / collaboration</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block" for="contact-message">Message (required)</label>
+              <textarea id="contact-message" name="message" required rows="8"
+                        placeholder="Describe what you found, what you want, or what you think we should build. Include reproduction steps if it's a bug."
+                        class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-y"></textarea>
+            </div>
+            <input type="hidden" name="_subject" value="FalconEye contact form" />
+            <input type="hidden" name="_source" value="falconeye.osintph.info" />
+            <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
+            <button type="submit" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+              Send Message
+            </button>
+          </form>
+        </div>
+
+        <div>
+          <div class="bg-gray-900 border border-gray-800 rounded p-5">
+            <h3 class="text-xs text-gray-500 uppercase tracking-widest mb-3">Direct channels</h3>
+            <div class="space-y-3 text-sm">
+              <div>
+                <p class="text-gray-500 text-xs uppercase mb-1">Security disclosures</p>
+                <a href="mailto:security@osintph.info" class="text-amber-400 hover:text-amber-300 font-mono text-xs break-all">security@osintph.info</a>
+              </div>
+              <div class="border-t border-gray-800 pt-3">
+                <p class="text-gray-500 text-xs uppercase mb-1">Blog</p>
+                <a href="https://blog.osintph.info" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">blog.osintph.info</a>
+              </div>
+              <div class="border-t border-gray-800 pt-3">
+                <p class="text-gray-500 text-xs uppercase mb-1">Source code</p>
+                <a href="https://github.com/osintph/falconeye" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">github.com/osintph/falconeye</a>
+                <p class="text-gray-600 text-xs mt-1">AGPL-3.0. Pull requests welcome.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gray-900 border border-gray-800 rounded p-5 mt-4">
+            <h3 class="text-xs text-gray-500 uppercase tracking-widest mb-3">What we want to hear</h3>
+            <ul class="space-y-2 text-xs text-gray-300">
+              <li class="flex items-start gap-2"><span class="text-amber-400 font-bold">→</span><span>Bugs in any tab, especially with reproducible steps</span></li>
+              <li class="flex items-start gap-2"><span class="text-amber-400 font-bold">→</span><span>Detection false positives or missed scams in the email analyzer</span></li>
+              <li class="flex items-start gap-2"><span class="text-amber-400 font-bold">→</span><span>Ideas for new tabs that solve real OSINT problems</span></li>
+              <li class="flex items-start gap-2"><span class="text-amber-400 font-bold">→</span><span>Data sources you'd like integrated</span></li>
+              <li class="flex items-start gap-2"><span class="text-amber-400 font-bold">→</span><span>Partnership inquiries (vendors, content collabs)</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- News Tab -->

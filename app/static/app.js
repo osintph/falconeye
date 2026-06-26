@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'dorks', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'dorks', 'decoder', 'contact', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -2273,6 +2273,251 @@ async function handleEmailFile(file) {
   } finally {
     if (emailFileInput) emailFileInput.value = '';
   }
+}
+
+
+// ---- Script Decoder ----
+
+document.getElementById('decoder-clear-btn')?.addEventListener('click', () => {
+  document.getElementById('decoder-code').value = '';
+  const hintEl = document.getElementById('decoder-hint');
+  if (hintEl) hintEl.value = '';
+  const resultEl = document.getElementById('decoder-result');
+  resultEl.classList.add('hidden');
+  resultEl.innerHTML = '';
+});
+
+document.getElementById('decoder-btn')?.addEventListener('click', async () => {
+  const codeEl = document.getElementById('decoder-code');
+  const hintEl = document.getElementById('decoder-hint');
+  const resultEl = document.getElementById('decoder-result');
+  const btn = document.getElementById('decoder-btn');
+
+  const code = (codeEl.value || '').trim();
+  const hint = hintEl ? (hintEl.value || '').trim() : '';
+
+  if (!code) {
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Paste some code first.</p>';
+    return;
+  }
+  if (code.length < 20) {
+    resultEl.classList.remove('hidden');
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Code too short (minimum 20 characters).</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Decoding...';
+  resultEl.classList.remove('hidden');
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Calling Claude Haiku 4.5 to deobfuscate and analyze...</p>';
+
+  try {
+    const res = await fetch('/api/script-decoder/decode', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({code: code, hint: hint || null}),
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({detail: `HTTP ${res.status}`}));
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">${escapeHtml(err.detail || `Request failed (${res.status})`)}</p>`;
+      return;
+    }
+
+    const data = await res.json();
+    resultEl.innerHTML = renderDecoderResult(data);
+  } catch (e) {
+    console.error('decoder exception:', e);
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Network error: ${escapeHtml(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Decode & Analyze';
+  }
+});
+
+
+function renderDecoderResult(d) {
+  const severityColor = {
+    'critical': 'red',
+    'high': 'red',
+    'medium': 'amber',
+    'low': 'yellow',
+    'info': 'green',
+  }[d.severity] || 'gray';
+
+  const intentLabel = {
+    'download_and_execute': 'Download & Execute',
+    'credential_theft': 'Credential Theft',
+    'persistence': 'Persistence',
+    'lateral_movement': 'Lateral Movement',
+    'ransomware': 'Ransomware',
+    'reconnaissance': 'Reconnaissance',
+    'defense_evasion': 'Defense Evasion',
+    'command_and_control': 'Command & Control',
+    'data_exfiltration': 'Data Exfiltration',
+    'dropper': 'Dropper',
+    'legitimate': 'Legitimate',
+    'unclear': 'Unclear',
+  }[d.intent] || (d.intent || 'unknown');
+
+  let html = `
+    <div class="bg-gray-900 border-l-4 border-${severityColor}-500 rounded p-5 mb-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs text-gray-500 uppercase tracking-widest">Verdict</h3>
+        <span class="text-xs font-bold px-2 py-1 rounded bg-${severityColor}-900 text-${severityColor}-300 uppercase">${escapeHtml(d.severity || 'unknown')}</span>
+      </div>
+      <p class="text-lg font-bold text-${severityColor}-300 mb-2">${escapeHtml(intentLabel)}${d.malware_family ? ' &middot; ' + escapeHtml(d.malware_family) : ''}</p>
+      <p class="text-sm text-gray-300 mb-3">${escapeHtml(d.summary || '')}</p>
+      <p class="text-sm text-gray-400 leading-relaxed">${escapeHtml(d.explanation || '')}</p>
+    </div>
+  `;
+
+  if (d.encoding_layers && d.encoding_layers.length > 0) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Encoding Layers</h3>
+        <ol class="space-y-1 text-xs">
+          ${d.encoding_layers.map((layer, i) => `
+            <li class="flex gap-2">
+              <span class="text-amber-400 font-bold">${i + 1}.</span>
+              <span class="text-gray-300">${escapeHtml(layer)}</span>
+            </li>
+          `).join('')}
+        </ol>
+      </div>
+    `;
+  }
+
+  if (d.deobfuscated_code) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider">Deobfuscated Code</h3>
+          <button onclick="copyDecoderCode(this)" class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-0.5 rounded transition">Copy</button>
+        </div>
+        <pre class="bg-black border border-gray-800 rounded p-3 text-xs text-green-300 overflow-x-auto whitespace-pre-wrap break-words" id="decoder-deob-code">${escapeHtml(d.deobfuscated_code)}</pre>
+      </div>
+    `;
+  }
+
+  if (d.intermediate_stages && d.intermediate_stages.length > 0) {
+    html += `
+      <details class="bg-gray-900 border border-gray-800 rounded mb-4">
+        <summary class="cursor-pointer px-5 py-3 text-sm font-bold text-gray-300 hover:text-amber-400 transition select-none">
+          Intermediate Decoding Stages (${d.intermediate_stages.length})
+        </summary>
+        <div class="px-5 pb-5 space-y-3">
+          ${d.intermediate_stages.map((stage, i) => `
+            <div>
+              <p class="text-xs text-gray-500 uppercase mb-1">Stage ${i + 1}: ${escapeHtml(stage.stage)}</p>
+              <pre class="bg-black border border-gray-800 rounded p-3 text-xs text-amber-200 overflow-x-auto whitespace-pre-wrap break-words">${escapeHtml(stage.code)}</pre>
+            </div>
+          `).join('')}
+        </div>
+      </details>
+    `;
+  }
+
+  const iocs = d.iocs || {};
+  const iocCategories = [
+    {key: 'urls', label: 'URLs', pivot: 'scanner'},
+    {key: 'ips', label: 'IPs', pivot: 'ip'},
+    {key: 'domains', label: 'Domains', pivot: 'domain'},
+    {key: 'hashes', label: 'File hashes', pivot: 'sandbox'},
+    {key: 'file_paths', label: 'File paths', pivot: null},
+    {key: 'registry_keys', label: 'Registry keys', pivot: null},
+    {key: 'commands', label: 'Commands', pivot: null},
+  ];
+  const hasIocs = iocCategories.some(cat => iocs[cat.key] && iocs[cat.key].length > 0);
+  if (hasIocs) {
+    html += '<div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4"><h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Extracted IOCs</h3>';
+    iocCategories.forEach(cat => {
+      const items = iocs[cat.key] || [];
+      if (!items.length) return;
+      html += `<div class="mb-3"><p class="text-xs text-gray-500 uppercase mb-2">${escapeHtml(cat.label)} (${items.length})</p><div class="flex flex-wrap gap-2">`;
+      items.forEach(item => {
+        const display = item.length > 70 ? item.slice(0, 70) + '...' : item;
+        if (cat.pivot === 'scanner') {
+          html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToScanner('${escapeAttr(item)}')">${escapeHtml(display)}</button>`;
+        } else if (cat.pivot === 'ip') {
+          html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToIp('${escapeAttr(item)}')">${escapeHtml(item)}</button>`;
+        } else if (cat.pivot === 'domain') {
+          html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToDomain('${escapeAttr(item)}')">${escapeHtml(item)}</button>`;
+        } else if (cat.pivot === 'sandbox') {
+          html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToSandbox('${escapeAttr(item)}')">${escapeHtml(item.slice(0, 16) + '...')}</button>`;
+        } else {
+          html += `<span class="bg-gray-800 text-gray-300 text-xs font-mono px-2 py-1 rounded">${escapeHtml(display)}</span>`;
+        }
+      });
+      html += '</div></div>';
+    });
+    html += '</div>';
+  }
+
+  if (d.mitre_techniques && d.mitre_techniques.length > 0) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">MITRE ATT&amp;CK Techniques</h3>
+        <div class="flex flex-wrap gap-2">
+          ${d.mitre_techniques.map(t => `
+            <a href="https://attack.mitre.org/techniques/${escapeAttr(t.replace('.', '/'))}/" target="_blank" rel="noopener noreferrer"
+               class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-3 py-1 rounded transition">${escapeHtml(t)}</a>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  if (d.detection_suggestion) {
+    html += `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wider mb-3">Detection Suggestion</h3>
+        <p class="text-sm text-gray-300 leading-relaxed">${escapeHtml(d.detection_suggestion)}</p>
+      </div>
+    `;
+  }
+
+  if (d._usage) {
+    const u = d._usage;
+    html += `
+      <p class="text-xs text-gray-700 mb-6 text-right font-mono">
+        ${escapeHtml(u.model || 'LLM')}: ${u.input_tokens || 0} in + ${u.output_tokens || 0} out tokens
+        ${u.cache_read_input_tokens ? `(${u.cache_read_input_tokens} cached)` : ''}
+        ${d.cache_hit ? ' &middot; result from cache' : ''}
+      </p>
+    `;
+  }
+
+  return html;
+}
+
+
+function copyDecoderCode(btn) {
+  const codeEl = document.getElementById('decoder-deob-code');
+  if (!codeEl) return;
+  navigator.clipboard.writeText(codeEl.textContent).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.classList.add('bg-green-500', 'text-gray-950');
+    setTimeout(() => {
+      btn.textContent = orig;
+      btn.classList.remove('bg-green-500', 'text-gray-950');
+    }, 1500);
+  });
+}
+
+
+function pivotToDomain(domain) {
+  window.location.hash = '#domain';
+  setTimeout(() => {
+    const input = document.getElementById('domain-input');
+    const btn = document.getElementById('domain-btn');
+    if (input && btn) {
+      input.value = domain;
+      btn.click();
+    }
+  }, 200);
 }
 
 

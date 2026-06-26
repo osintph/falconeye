@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /stats/
+
+Sitemap: https://falconeye.osintph.info/sitemap.xml
