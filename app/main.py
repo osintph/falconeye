@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -8,7 +9,15 @@ from app.routers import crypto, scanner, news, domain_intel, telegram_inspector,
 
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="FalconEye", version="3.0.0", docs_url="/api/docs", redoc_url=None)
+_show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
+
+app = FastAPI(
+    title="FalconEye",
+    version="3.0.0",
+    openapi_url="/openapi.json" if _show_docs else None,
+    docs_url="/api/docs" if _show_docs else None,
+    redoc_url=None,
+)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
