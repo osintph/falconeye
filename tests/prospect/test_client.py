@@ -48,7 +48,7 @@ def _make_mock_client(responses: list[_MockResponse]):
 # ---------------------------------------------------------------------------
 
 def test_correct_auth_header():
-    """Authorization: Bearer header must be sent on every request."""
+    """Authorization: Bearer header must be sent using SEARCHAPI_KEY from env."""
     captured = {}
 
     async def _run():
@@ -56,7 +56,9 @@ def test_correct_auth_header():
             captured["headers"] = headers
             return _MockResponse(200, {"ok": True})
 
-        with patch("httpx.AsyncClient") as MockCls:
+        # Force a known key value regardless of what's set in the environment
+        with patch("httpx.AsyncClient") as MockCls, \
+             patch.dict(os.environ, {"SEARCHAPI_KEY": "test-key-do-not-use"}):
             ctx = MagicMock()
             inner = MagicMock()
             inner.get = mock_get
