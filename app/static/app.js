@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'dorks', 'decoder', 'contact', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -2518,6 +2518,185 @@ function pivotToDomain(domain) {
       btn.click();
     }
   }, 200);
+}
+
+
+// ---- Prospect Tab ----
+
+document.getElementById('prospect-btn').addEventListener('click', runProspectLookup);
+document.getElementById('prospect-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runProspectLookup();
+});
+
+async function runProspectLookup() {
+  const raw = document.getElementById('prospect-input').value.trim();
+  const resultEl = document.getElementById('prospect-result');
+  if (!raw) return;
+
+  resultEl.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5 animate-pulse space-y-3">
+      <div class="h-4 bg-gray-800 rounded w-1/3"></div>
+      <div class="h-3 bg-gray-800 rounded w-2/3"></div>
+      <div class="h-3 bg-gray-800 rounded w-1/2"></div>
+    </div>
+    <div class="bg-gray-900 border border-gray-800 rounded p-5 animate-pulse space-y-3">
+      <div class="h-4 bg-gray-800 rounded w-1/4"></div>
+      <div class="h-3 bg-gray-800 rounded w-3/4"></div>
+      <div class="h-16 bg-gray-800 rounded w-full"></div>
+    </div>`;
+  resultEl.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/prospect/${encodeURIComponent(raw)}`);
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHtml(data.detail || 'Unknown error')}</p>`;
+      return;
+    }
+    renderProspectResult(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function renderProspectResult(el, data) {
+  const cacheBadge = data.cached
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-4 flex items-center justify-between">
+      <span class="brand-badge text-sm px-3 py-1">${escapeHtml(data.domain)}</span>
+      ${cacheBadge}
+    </div>
+    ${renderAboutDomainCard(data.sections && data.sections.about_domain, data.errors || [])}
+    ${renderAdsTransparencyCard(data.sections && data.sections.ads_transparency, data.errors || [])}
+  `;
+}
+
+function renderAboutDomainCard(section, errors) {
+  const err = errors.find(e => e.section === 'about_domain');
+  const errNote = err
+    ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  if (!section) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Domain Identity</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No identity data available for this domain.</p>
+      </div>`;
+  }
+
+  const kg = section.knowledge_graph || {};
+  const rows = [];
+
+  if (kg.title) rows.push({ label: 'Name', value: kg.title });
+  if (kg.subtitle) rows.push({ label: 'Type', value: kg.subtitle });
+  if (kg.description) rows.push({ label: 'Description', value: kg.description, wide: true });
+  if (kg.source && kg.source.name) {
+    rows.push({ label: 'Source', value: kg.source.name, link: kg.source.link });
+  }
+
+  // Fields that may appear in some responses
+  if (section.displayed_link) rows.push({ label: 'URL', value: section.displayed_link });
+  if (section.date) rows.push({ label: 'First indexed', value: section.date });
+
+  // Trustpilot info in knowledge_graph.ratings or extensions
+  const ratings = kg.ratings || [];
+  const tp = ratings.find(r => r.source && r.source.toLowerCase().includes('trustpilot'));
+  if (tp) {
+    const tpStr = `${tp.rating}${tp.count ? ` (${tp.count.toLocaleString()} reviews)` : ''}`;
+    rows.push({ label: 'Trustpilot', value: tpStr });
+  }
+
+  const rowsHtml = rows.length
+    ? `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${rows.map(r => `
+        <div class="${r.wide ? 'md:col-span-2' : ''}">
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">${escapeHtml(r.label)}</p>
+          ${r.link
+            ? `<a href="${escapeAttr(r.link)}" target="_blank" rel="noopener noreferrer" class="text-sm text-amber-400 hover:text-amber-300">${escapeHtml(r.value)}</a>`
+            : `<p class="text-sm text-gray-300">${escapeHtml(r.value)}</p>`}
+        </div>`).join('')}</div>`
+    : '<p class="text-sm text-gray-500">No structured identity data returned.</p>';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Domain Identity</h3>
+      ${errNote}
+      ${rowsHtml}
+    </div>`;
+}
+
+function renderAdsTransparencyCard(section, errors) {
+  const err = errors.find(e => e.section === 'ads_transparency');
+  const errNote = err
+    ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  if (!section) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Google Ads Activity</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No ad activity data available.</p>
+      </div>`;
+  }
+
+  const creatives = section.ad_creatives || [];
+  const total = section.search_information && section.search_information.total_results;
+
+  if (!creatives.length) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Google Ads Activity</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No Google Ads activity detected in the last 30 days.</p>
+      </div>`;
+  }
+
+  const advertiser = creatives[0].advertiser || {};
+  const allFirstDates = creatives.map(c => c.first_shown_datetime).filter(Boolean).sort();
+  const allLastDates = creatives.map(c => c.last_shown_datetime).filter(Boolean).sort();
+  const firstShown = allFirstDates[0];
+  const lastShown = allLastDates[allLastDates.length - 1];
+
+  const meta = [];
+  if (total) meta.push({ label: 'Total ads', value: total.toLocaleString() });
+  if (advertiser.name) meta.push({ label: 'Advertiser', value: advertiser.name });
+  if (advertiser.id) meta.push({ label: 'Advertiser ID', value: advertiser.id });
+  if (firstShown) meta.push({ label: 'First shown', value: fmtPHT(firstShown) });
+  if (lastShown) meta.push({ label: 'Last shown', value: fmtPHT(lastShown) });
+
+  const metaHtml = meta.length
+    ? `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">${meta.map(m => `
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">${escapeHtml(m.label)}</p>
+          <p class="text-sm text-gray-300 font-mono">${escapeHtml(String(m.value))}</p>
+        </div>`).join('')}</div>`
+    : '';
+
+  const thumbCreatives = creatives.filter(c => c.image && c.image.link).slice(0, 12);
+  const thumbsHtml = thumbCreatives.length
+    ? `<div class="mb-2">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Sample creatives (${thumbCreatives.length})</p>
+        <div class="flex flex-wrap gap-2">${thumbCreatives.map(c => `
+          <div class="prospect-thumb-wrap">
+            <img class="prospect-thumb rounded" src="${escapeAttr(c.image.link)}"
+                 style="width:80px;height:50px;object-fit:cover;" loading="lazy"
+                 alt="Ad creative" />
+          </div>`).join('')}</div>
+      </div>`
+    : '';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Google Ads Activity</h3>
+      ${errNote}
+      ${metaHtml}
+      ${thumbsHtml}
+    </div>`;
 }
 
 

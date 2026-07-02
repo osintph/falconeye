@@ -1,0 +1,776 @@
+{
+  "search_metadata": {
+    "id": "search_dXG2jzvrlqTLxojm6eYoaOb8",
+    "status": "Success",
+    "created_at": "2026-07-02T11:11:20Z",
+    "request_time_taken": 0.85,
+    "parsing_time_taken": 0.02,
+    "total_time_taken": 0.87,
+    "request_url": "https://adstransparency.google.com?domain=stripe.com&region=ANYWHERE&preset-date=Last+30+days",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_dXG2jzvrlqTLxojm6eYoaOb8.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_dXG2jzvrlqTLxojm6eYoaOb8"
+  },
+  "search_parameters": {
+    "engine": "google_ads_transparency_center",
+    "domain": "stripe.com",
+    "time_period": "last_30_days",
+    "num": 40,
+    "region": "ANYWHERE"
+  },
+  "search_information": {
+    "total_results": 5000
+  },
+  "ad_creatives": [
+    {
+      "position": 1,
+      "id": "CR11101032662360391681",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-02-05T11:15:04Z",
+      "last_shown_datetime": "2026-07-02T10:24:39Z",
+      "total_days_shown": 512,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/10281922067911001721",
+        "height": 199,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR11101032662360391681?region=ANYWHERE"
+    },
+    {
+      "position": 2,
+      "id": "CR11655666932031422465",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-06-25T03:14:58Z",
+      "last_shown_datetime": "2026-07-02T10:23:06Z",
+      "total_days_shown": 8,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR11655666932031422465?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=2382382405&creativeId=813904033862&uiFeatures=12,54&adGroupId=203250782091&sig=ACiVB_zJ4s-G4xvv1EOa0CJqp6QxkAuMXQ&htmlParentId=fletch-render-6538815565274207101&responseCallback=fletchCallback6538815565274207101"
+    },
+    {
+      "position": 3,
+      "id": "CR04973151462491160577",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-01-04T17:40:34Z",
+      "last_shown_datetime": "2026-07-02T10:18:30Z",
+      "total_days_shown": 910,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/2739476607843012244",
+        "height": 464,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR04973151462491160577?region=ANYWHERE"
+    },
+    {
+      "position": 4,
+      "id": "CR09416889450597711873",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2022-08-23T21:26:21Z",
+      "last_shown_datetime": "2026-07-02T10:18:08Z",
+      "total_days_shown": 1409,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/321465237064879977",
+        "height": 484,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR09416889450597711873?region=ANYWHERE"
+    },
+    {
+      "position": 5,
+      "id": "CR17753320487078854657",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-08-07T12:52:47Z",
+      "last_shown_datetime": "2026-07-02T10:15:14Z",
+      "total_days_shown": 329,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/9006927034683468284",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR17753320487078854657?region=ANYWHERE"
+    },
+    {
+      "position": 6,
+      "id": "CR05703629621770059777",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-08-07T13:58:50Z",
+      "last_shown_datetime": "2026-07-02T10:14:40Z",
+      "total_days_shown": 329,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/432513618154155655",
+        "height": 411,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR05703629621770059777?region=ANYWHERE"
+    },
+    {
+      "position": 7,
+      "id": "CR13612977494113124353",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2023-11-07T15:07:04Z",
+      "last_shown_datetime": "2026-07-02T10:14:39Z",
+      "total_days_shown": 968,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1936019885708086519",
+        "height": 272,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR13612977494113124353?region=ANYWHERE"
+    },
+    {
+      "position": 8,
+      "id": "CR03246233967052980225",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-02-29T12:56:31Z",
+      "last_shown_datetime": "2026-07-02T10:14:02Z",
+      "total_days_shown": 854,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/470755852705866261",
+        "height": 199,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR03246233967052980225?region=ANYWHERE"
+    },
+    {
+      "position": 9,
+      "id": "CR02403050471448117249",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-07-11T15:29:55Z",
+      "last_shown_datetime": "2026-07-02T10:10:49Z",
+      "total_days_shown": 356,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/2489075308656442604",
+        "height": 199,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR02403050471448117249?region=ANYWHERE"
+    },
+    {
+      "position": 10,
+      "id": "CR01597363629475233793",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-02-27T11:06:36Z",
+      "last_shown_datetime": "2026-07-02T10:10:49Z",
+      "total_days_shown": 125,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/15996590695128903252",
+        "height": 424,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR01597363629475233793?region=ANYWHERE"
+    },
+    {
+      "position": 11,
+      "id": "CR04551401453733806081",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-21T00:15:43Z",
+      "last_shown_datetime": "2026-07-02T10:09:18Z",
+      "total_days_shown": 163,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7313825585894145522",
+        "height": 443,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR04551401453733806081?region=ANYWHERE"
+    },
+    {
+      "position": 12,
+      "id": "CR13883904005375000577",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-03-11T04:52:30Z",
+      "last_shown_datetime": "2026-07-02T10:08:25Z",
+      "total_days_shown": 114,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/11200675195809621188",
+        "height": 160,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR13883904005375000577?region=ANYWHERE"
+    },
+    {
+      "position": 13,
+      "id": "CR03024762269037756417",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-12T11:51:14Z",
+      "last_shown_datetime": "2026-07-02T10:06:51Z",
+      "total_days_shown": 171,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/3175989414459234781",
+        "height": 133,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR03024762269037756417?region=ANYWHERE"
+    },
+    {
+      "position": 14,
+      "id": "CR07273791256264704001",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-07-14T11:21:22Z",
+      "last_shown_datetime": "2026-07-02T10:06:23Z",
+      "total_days_shown": 353,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7973929397634264299",
+        "height": 240,
+        "width": 381
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR07273791256264704001?region=ANYWHERE"
+    },
+    {
+      "position": 15,
+      "id": "CR09288692940329189377",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-09-03T15:06:33Z",
+      "last_shown_datetime": "2026-07-02T10:06:11Z",
+      "total_days_shown": 667,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/3242467023304440782",
+        "height": 325,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR09288692940329189377?region=ANYWHERE"
+    },
+    {
+      "position": 16,
+      "id": "CR03787875419487731713",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2022-01-20T15:12:40Z",
+      "last_shown_datetime": "2026-07-02T10:05:44Z",
+      "total_days_shown": 1624,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/9361092101889415202",
+        "height": 464,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR03787875419487731713?region=ANYWHERE"
+    },
+    {
+      "position": 17,
+      "id": "CR04003346936521293825",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-03-10T11:36:09Z",
+      "last_shown_datetime": "2026-07-02T10:05:40Z",
+      "total_days_shown": 479,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/8435937273464663100",
+        "height": 239,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR04003346936521293825?region=ANYWHERE"
+    },
+    {
+      "position": 18,
+      "id": "CR03989070800236838913",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-14T12:08:36Z",
+      "last_shown_datetime": "2026-07-02T10:03:48Z",
+      "total_days_shown": 169,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/11460948596638927335",
+        "height": 159,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR03989070800236838913?region=ANYWHERE"
+    },
+    {
+      "position": 19,
+      "id": "CR00683074356124844033",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-12T12:15:54Z",
+      "last_shown_datetime": "2026-07-02T10:03:48Z",
+      "total_days_shown": 171,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/17992204203150767682",
+        "height": 159,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR00683074356124844033?region=ANYWHERE"
+    },
+    {
+      "position": 20,
+      "id": "CR00435377338692141057",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-14T18:06:06Z",
+      "last_shown_datetime": "2026-07-02T10:03:29Z",
+      "total_days_shown": 169,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/4880301684396301287",
+        "height": 134,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR00435377338692141057?region=ANYWHERE"
+    },
+    {
+      "position": 21,
+      "id": "CR14241836409341083649",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-14T09:29:37Z",
+      "last_shown_datetime": "2026-07-02T10:03:20Z",
+      "total_days_shown": 170,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/3243871744668565585",
+        "height": 133,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR14241836409341083649?region=ANYWHERE"
+    },
+    {
+      "position": 22,
+      "id": "CR07616327576864161793",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-02-05T13:33:26Z",
+      "last_shown_datetime": "2026-07-02T10:03:13Z",
+      "total_days_shown": 512,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/6268349647674428092",
+        "height": 200,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR07616327576864161793?region=ANYWHERE"
+    },
+    {
+      "position": 23,
+      "id": "CR15596086739330924545",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-10-18T13:13:28Z",
+      "last_shown_datetime": "2026-07-02T10:02:51Z",
+      "total_days_shown": 257,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/16681329738506322601",
+        "height": 133,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR15596086739330924545?region=ANYWHERE"
+    },
+    {
+      "position": 24,
+      "id": "CR09438971707122515969",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-02-20T13:51:35Z",
+      "last_shown_datetime": "2026-07-02T10:02:14Z",
+      "total_days_shown": 132,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/638944497562614915",
+        "height": 398,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR09438971707122515969?region=ANYWHERE"
+    },
+    {
+      "position": 25,
+      "id": "CR14061352675153281025",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-01-22T18:19:57Z",
+      "last_shown_datetime": "2026-07-02T10:01:39Z",
+      "total_days_shown": 161,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/4671797428973019610",
+        "height": 133,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR14061352675153281025?region=ANYWHERE"
+    },
+    {
+      "position": 26,
+      "id": "CR12432646178238103553",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-03-10T12:07:58Z",
+      "last_shown_datetime": "2026-07-02T10:01:16Z",
+      "total_days_shown": 479,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1687307775507630260",
+        "height": 199,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR12432646178238103553?region=ANYWHERE"
+    },
+    {
+      "position": 27,
+      "id": "CR08675391298590474241",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-07-14T15:25:02Z",
+      "last_shown_datetime": "2026-07-02T10:01:15Z",
+      "total_days_shown": 353,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/17730318357830193322",
+        "height": 240,
+        "width": 381
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR08675391298590474241?region=ANYWHERE"
+    },
+    {
+      "position": 28,
+      "id": "CR11182441001497133057",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-04-04T15:42:25Z",
+      "last_shown_datetime": "2026-07-02T10:01:04Z",
+      "total_days_shown": 819,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/18374466566299907983",
+        "height": 200,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR11182441001497133057?region=ANYWHERE"
+    },
+    {
+      "position": 29,
+      "id": "CR13019500098562818049",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-03-19T05:42:27Z",
+      "last_shown_datetime": "2026-07-02T09:58:40Z",
+      "total_days_shown": 471,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/6445322776145036769",
+        "height": 199,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR13019500098562818049?region=ANYWHERE"
+    },
+    {
+      "position": 30,
+      "id": "CR15716917200298180609",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-08-06T16:04:23Z",
+      "last_shown_datetime": "2026-07-02T09:57:56Z",
+      "total_days_shown": 330,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/4057463886114693681",
+        "height": 199,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR15716917200298180609?region=ANYWHERE"
+    },
+    {
+      "position": 31,
+      "id": "CR05790203518073700353",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-07-11T13:10:37Z",
+      "last_shown_datetime": "2026-07-02T09:56:41Z",
+      "total_days_shown": 356,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1639333178148945675",
+        "height": 312,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR05790203518073700353?region=ANYWHERE"
+    },
+    {
+      "position": 32,
+      "id": "CR17599718266001948673",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-10-01T14:50:51Z",
+      "last_shown_datetime": "2026-07-02T09:55:56Z",
+      "total_days_shown": 639,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7810234970038247732",
+        "height": 200,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR17599718266001948673?region=ANYWHERE"
+    },
+    {
+      "position": 33,
+      "id": "CR12777690854227705857",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-03-11T23:16:11Z",
+      "last_shown_datetime": "2026-07-02T09:55:47Z",
+      "total_days_shown": 113,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/13922240912462608779",
+        "height": 180,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR12777690854227705857?region=ANYWHERE"
+    },
+    {
+      "position": 34,
+      "id": "CR07604524800576323585",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-02-09T14:07:04Z",
+      "last_shown_datetime": "2026-07-02T09:53:54Z",
+      "total_days_shown": 874,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/17327753714582506321",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR07604524800576323585?region=ANYWHERE"
+    },
+    {
+      "position": 35,
+      "id": "CR10674445163218075649",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-06-25T03:14:46Z",
+      "last_shown_datetime": "2026-07-02T09:52:30Z",
+      "total_days_shown": 8,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR10674445163218075649?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=2382382405&creativeId=813831073126&uiFeatures=12,54&adGroupId=203250782091&versionId=1&sig=ACiVB_yWIOg0fFJsDXrjcxCwKehTydoYPQ&htmlParentId=fletch-render-14891764942188234678&responseCallback=fletchCallback14891764942188234678"
+    },
+    {
+      "position": 36,
+      "id": "CR02407113673718890497",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-03-06T16:51:44Z",
+      "last_shown_datetime": "2026-07-02T09:52:01Z",
+      "total_days_shown": 118,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/13338611972354403223",
+        "height": 160,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR02407113673718890497?region=ANYWHERE"
+    },
+    {
+      "position": 37,
+      "id": "CR17516634631921729537",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-02-05T11:32:45Z",
+      "last_shown_datetime": "2026-07-02T09:51:05Z",
+      "total_days_shown": 512,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/14897325558162388706",
+        "height": 249,
+        "width": 381
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR17516634631921729537?region=ANYWHERE"
+    },
+    {
+      "position": 38,
+      "id": "CR00765963033049563137",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2026-06-25T03:14:47Z",
+      "last_shown_datetime": "2026-07-02T09:50:28Z",
+      "total_days_shown": 8,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR00765963033049563137?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=2382382405&creativeId=813906510656&uiFeatures=12,54&adGroupId=203250782091&versionId=1&sig=ACiVB_wuG4VSph1t4gkj6132Vn5xkhxDfg&htmlParentId=fletch-render-15806356798457692127&responseCallback=fletchCallback15806356798457692127"
+    },
+    {
+      "position": 39,
+      "id": "CR01710350208849674241",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2025-03-10T11:45:43Z",
+      "last_shown_datetime": "2026-07-02T09:49:57Z",
+      "total_days_shown": 479,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/18282359412673723624",
+        "height": 288,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR01710350208849674241?region=ANYWHERE"
+    },
+    {
+      "position": 40,
+      "id": "CR08299398505605103617",
+      "target_domain": "stripe.com",
+      "advertiser": {
+        "id": "AR16951989901585285121",
+        "name": "Stripe, Inc."
+      },
+      "first_shown_datetime": "2024-05-13T12:17:29Z",
+      "last_shown_datetime": "2026-07-02T09:49:04Z",
+      "total_days_shown": 780,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/9413321754052689878",
+        "height": 431,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR16951989901585285121/creative/CR08299398505605103617?region=ANYWHERE"
+    }
+  ],
+  "pagination": {
+    "next_page_token": "Q2dvQVA3em1xWWtnV044ckVoQk43WjhDbnVIaXJDd2FLNDRBQUFBQUdnbjgrSEZWK0QrQ0lyST0="
+  }
+}

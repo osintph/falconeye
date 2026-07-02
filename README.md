@@ -1,6 +1,6 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Twelve modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, and a curated cyber news aggregator with a Philippines-focused threat pulse.
+**Free, self-hosted OSINT investigator's toolkit.** Thirteen modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, commercial prospect dossiers, and a curated cyber news aggregator with a Philippines-focused threat pulse.
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -12,7 +12,7 @@ License: AGPL-3.0
 
 FalconEye is the workbench an OSINT investigator opens when a new lead lands on the desk. Each tab is a focused tool that does one thing well and connects to the others via one-click pivots, so you can move from "I have a wallet address" to "here are the related domains, the email infrastructure, the Telegram channel, and the script the phishing kit runs" without switching applications.
 
-### The twelve tabs
+### The thirteen tabs
 
 | Tab | What it does |
 |---|---|
@@ -26,6 +26,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead lands on 
 | **Email Header** | Authentication checks (SPF/DKIM/DMARC), hop analysis, scam pattern detection in body. LLM-powered classification of advance fee fraud, BEC, romance scams, crypto scams, credential phishing. Supports .eml and .msg file upload. |
 | **Dork Generator** | LLM-powered Google search query generator with eleven preset categories (exposed files, admin panels, credential leaks, cloud buckets, VPN portals, etc) and free-form natural-language input |
 | **Script Decoder** | LLM-powered deobfuscation of suspicious PowerShell, JavaScript, VBA, Base64 blobs, and packed scripts. Returns deobfuscated code, IOCs, MITRE ATT&CK techniques, and detection suggestions |
+| **Prospect** | Commercial intelligence dossier for any domain — Google About This Domain identity (knowledge graph, company info) and Google Ads Transparency Center (ad count, advertiser ID, creative thumbnails, date range). Requires a SearchAPI.io key. Results cached 6 hours in Redis. |
 | **Contact** | Feedback form for bug reports, feature requests, and new tab suggestions |
 | **News** | Cyber news RSS aggregator with PH-specific feeds (Rappler, Inquirer, GMA, Philstar, Manila Times) and global outlets |
 
@@ -62,7 +63,7 @@ When you use the LLM-powered tabs, your input is sent to Anthropic's API. See [A
 ## Stack
 
 - **Backend**: Python 3.11+, FastAPI, Uvicorn, Gunicorn
-- **Database**: SQLite with WAL mode (for caching and rate limits only, no user data)
+- **Database**: SQLite with WAL mode (for caching and rate limits only, no user data); Redis for Prospect tab response cache
 - **Frontend**: Tailwind CSS via CDN, vanilla JavaScript, D3.js for graph visualizations
 - **Web server**: nginx with Cloudflare Origin Certificate
 - **CDN / DDoS**: Cloudflare (Free tier, with Cache Rules for static assets)

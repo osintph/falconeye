@@ -6,7 +6,7 @@
 
   <!-- Primary SEO -->
   <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
-  <meta name="description" content="Free self-hosted OSINT toolkit with 12 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram channel inspector, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, and more. AGPL-3.0 open source." />
+  <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram channel inspector, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
   <meta name="keywords" content="OSINT toolkit, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, OSINT-PH" />
   <meta name="author" content="OSINT-PH" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -16,7 +16,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://falconeye.osintph.info/" />
   <meta property="og:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
-  <meta property="og:description" content="12 OSINT modules in one self-hosted interface: crypto tracing, phishing fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email BEC analysis, Google dorks, script deobfuscation. AGPL-3.0." />
+  <meta property="og:description" content="13 OSINT modules in one self-hosted interface: crypto tracing, phishing fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email BEC analysis, Google dorks, script deobfuscation, commercial prospect dossier. AGPL-3.0." />
   <meta property="og:image" content="https://falconeye.osintph.info/static/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -27,7 +27,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://falconeye.osintph.info/" />
   <meta name="twitter:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
-  <meta name="twitter:description" content="12-module OSINT workbench: crypto tracing, phishing scanner, domain intel, email BEC analyzer, Google dorks, script decoder. Free, open source, AGPL-3.0." />
+  <meta name="twitter:description" content="13-module OSINT workbench: crypto tracing, phishing scanner, domain intel, email BEC analyzer, Google dorks, script decoder, commercial prospect dossier. Free, open source, AGPL-3.0." />
   <meta name="twitter:image" content="https://falconeye.osintph.info/static/og-image.png" />
 
   <!-- Favicons -->
@@ -46,7 +46,7 @@
     "name": "FalconEye",
     "alternateName": "FalconEye OSINT Toolkit",
     "url": "https://falconeye.osintph.info/",
-    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram channel inspection, IP reputation, email header analysis with BEC detection, Google dork generation, and suspicious script deobfuscation into a single interface.",
+    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram channel inspection, IP reputation, email header analysis with BEC detection, Google dork generation, suspicious script deobfuscation, and commercial prospect dossiers into a single interface.",
     "applicationCategory": "SecurityApplication",
     "applicationSubCategory": "OSINT Tool",
     "operatingSystem": "Any (web-based)",
@@ -54,7 +54,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.0",
+    "softwareVersion": "3.2",
     "featureList": [
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
@@ -65,6 +65,7 @@
       "Email header analyzer with BEC and scam detection",
       "Google dork generator (LLM-powered)",
       "Suspicious script decoder (LLM-powered)",
+      "Commercial prospect dossier (Google identity + Ads Transparency)",
       "Cyber news aggregator"
     ]
   }
@@ -152,6 +153,10 @@
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="decoder">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
       Script Decoder
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="prospect">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+      Prospect
     </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="contact">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -722,6 +727,28 @@
       </div>
     </div>
 
+    <!-- PROSPECT TAB -->
+    <div id="tab-prospect" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Prospect</h2>
+      <p class="text-gray-400 text-sm mb-6">Commercial intelligence dossier for any domain — Google identity index and Google Ads Transparency Center. Results cached for 6 hours.</p>
+
+      <div class="flex gap-3 mb-3">
+        <input id="prospect-input" type="text" placeholder="stripe.com"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="prospect-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Investigate
+        </button>
+      </div>
+      <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-6"
+              data-sample="stripe.com"
+              data-target="prospect-input"
+              data-trigger="prospect-btn">
+        ↳ Try sample (stripe.com)
+      </button>
+
+      <div id="prospect-result" class="hidden space-y-4"></div>
+    </div>
+
     <!-- News Tab -->
     <div id="tab-news" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Cyber News</h2>
@@ -877,10 +904,15 @@
                   <td class="py-2 font-mono">goal + target</td>
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
                 </tr>
-                <tr>
+                <tr class="border-b border-gray-800">
                   <td class="py-2">Script Decoder</td>
                   <td class="py-2 font-mono">code snippet</td>
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
+                </tr>
+                <tr>
+                  <td class="py-2">Prospect</td>
+                  <td class="py-2 font-mono">domain</td>
+                  <td class="py-2">SearchAPI.io (Google About This Domain + Ads Transparency Center)</td>
                 </tr>
               </tbody>
             </table>

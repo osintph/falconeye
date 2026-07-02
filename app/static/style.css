@@ -139,3 +139,24 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 #threat-pulse [data-stat] {
   font-variant-numeric: tabular-nums;
 }
+
+/* Prospect tab — ad creative thumbnails with hover-to-enlarge */
+.prospect-thumb-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.prospect-thumb {
+  display: block;
+  cursor: zoom-in;
+  transition: transform 0.2s ease, z-index 0s;
+  position: relative;
+  z-index: 1;
+}
+
+.prospect-thumb:hover {
+  transform: scale(3);
+  z-index: 50;
+  border-radius: 2px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.8);
+}
