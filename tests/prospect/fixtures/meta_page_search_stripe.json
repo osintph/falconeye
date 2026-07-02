@@ -1,0 +1,184 @@
+{
+  "search_metadata": {
+    "id": "search_p1LMWreyyWIdpWjQ7eZYDKaP",
+    "status": "Success",
+    "created_at": "2026-07-02T11:36:50Z",
+    "request_time_taken": 1.55,
+    "parsing_time_taken": 0.0,
+    "total_time_taken": 1.55,
+    "request_url": "https://www.facebook.com/ads/library",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_p1LMWreyyWIdpWjQ7eZYDKaP.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_p1LMWreyyWIdpWjQ7eZYDKaP"
+  },
+  "search_parameters": {
+    "engine": "meta_ad_library_page_search",
+    "q": "stripe",
+    "country": "ALL",
+    "ad_type": "all"
+  },
+  "page_results": [
+    {
+      "page_id": "175383762511776",
+      "category": "Business Service",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/554100502_1204859681668357_2802242038623721592_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=1&ccb=1-7&_nc_sid=418b77&_nc_ohc=Oxn5WLv2SmcQ7kNvwFSNqS-&_nc_oc=AdrdUl0XEjsGuZtaMd2u7bOhIyLWhRyCAi61cEo3l_leZf4XhMFeKkcGizNPtnfP_Ho&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQBTRx30RRw3VAm758IZK0vH2xd1WiNGiz2v30MMopCEnQ&oe=6A4C32B6",
+      "likes": 65855,
+      "verification": "BLUE_VERIFIED",
+      "name": "Stripe",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "stripehq",
+      "ig_followers": 44421,
+      "ig_verification": true,
+      "page_alias": "StripeHQ"
+    },
+    {
+      "page_id": "430512174010441",
+      "category": "Lingerie & Underwear Store",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/565657123_1323864079750541_823945495333960425_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=107&ccb=1-7&_nc_sid=418b77&_nc_ohc=zIjhdfGTZtoQ7kNvwHxdOF5&_nc_oc=AdqIPbMwpkERAcp_9UtX0pcZDKG3RViEExDeiFast8bd5KuMxHInbSSsYLnsVqHyQP0&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQAsp_1r9X3nUd3ByqrWGvUjTbbJJ0wRARIFC2VGIG_m_w&oe=6A4C059B",
+      "likes": 20508,
+      "verification": "NOT_VERIFIED",
+      "name": "Stripe & Stare",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "stripeandstare",
+      "ig_followers": 158332,
+      "ig_verification": true,
+      "page_alias": "stripeandstare"
+    },
+    {
+      "page_id": "102404912538315",
+      "category": "Business Service",
+      "image_uri": "https://scontent.fhnl3-2.fna.fbcdn.net/v/t39.30808-1/515500603_718426054268509_918055514207031057_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=108&ccb=1-7&_nc_sid=418b77&_nc_ohc=B5wCv2uyRvQQ7kNvwHsg9LF&_nc_oc=Adp_63vprCQoLRg8XjMHr4Cb0faD8TH4xKESdOcc9pek7DUOpvvGU0CrhFe-UNdAxiA&_nc_zt=24&_nc_ht=scontent.fhnl3-2.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQCPpC1cBLYlN1nJnFsIRtsJ5zgygLRhbblwVAePZt2iEA&oe=6A4C39F8",
+      "likes": 258,
+      "verification": "NOT_VERIFIED",
+      "name": "Stripe Flow",
+      "entity_type": "PERSON_PROFILE"
+    },
+    {
+      "page_id": "696935303502105",
+      "category": "Women's clothing store",
+      "image_uri": "https://scontent.fhnl3-2.fna.fbcdn.net/v/t39.30808-1/506794064_122098878938925520_7974137560491981294_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=110&ccb=1-7&_nc_sid=418b77&_nc_ohc=lbdxgCMRtWIQ7kNvwEiMUxG&_nc_oc=AdoyR1Hq8EFNWXJeOeP1UVN-2__r0hhdZftC3LGm-sP2-Jpy0YWBi1ODbXskPgzhWPc&_nc_zt=24&_nc_ht=scontent.fhnl3-2.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQCoREJxF5ncfQ8yDPx1GWrehPx63j9HSmTUQwGYDvKVSA&oe=6A4C32A7",
+      "likes": 59,
+      "verification": "NOT_VERIFIED",
+      "name": "2stripes",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "2stripes.pl",
+      "ig_followers": 289
+    },
+    {
+      "page_id": "312523052155747",
+      "category": "Clothing (Brand)",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/428657514_720843910210796_990196299259904036_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=101&ccb=1-7&_nc_sid=418b77&_nc_ohc=2za1VeMYazUQ7kNvwFE36Mh&_nc_oc=AdpS87a7fW6sRxYqVoK8KqZGoSUwEgtdppUp8lI2bjWUbBMk2KUXlQ1Ixp1afIoLdks&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQAejYvL1q4Di9rJTN-7huUdnH8jXTg7csH4FWV1XaR_jw&oe=6A4C08F5",
+      "likes": 24024,
+      "verification": "NOT_VERIFIED",
+      "name": "Solid and Striped",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "solidandstriped",
+      "ig_followers": 350759,
+      "ig_verification": true,
+      "page_alias": "SolidandStriped"
+    },
+    {
+      "page_id": "156380797559146",
+      "category": "Retail Company",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/451338372_122154964508099766_3022895039302294313_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=105&ccb=1-7&_nc_sid=418b77&_nc_ohc=3X6X-9tqhN0Q7kNvwHiguaB&_nc_oc=AdoPO7ryPkuBM0hmcZZMmnooY7Q8Al7zJbxZLSF4nqOTxFxskYJ3RlCXK4j6lQxw8xE&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQCIUyl2jfDFvvXdPzrQwVWKYJq36QA0DlO-MwyJMAPrjg&oe=6A4C1BF7",
+      "likes": 27018,
+      "verification": "NOT_VERIFIED",
+      "name": "Striped Circle Artwork",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "stripedcircle",
+      "ig_followers": 12261
+    },
+    {
+      "page_id": "383897895041",
+      "category": "Musician/band",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/495368392_1253546012799806_5424021195353232087_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=101&ccb=1-7&_nc_sid=418b77&_nc_ohc=FVN7VxENSM0Q7kNvwEPb3Oi&_nc_oc=AdpdT-6rQvJ3dbMHG58OF13dntP_70pLMwkZErSyw8aoT6Y9I4-ZKWYmfvWVDYuNS1Q&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQBsTSddApVz26PYdTK2Gep9mUGABtR0K9U9kfZlYWfvZQ&oe=6A4C2D8B",
+      "likes": 3111149,
+      "verification": "BLUE_VERIFIED",
+      "name": "The White Stripes",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "thewhitestripes",
+      "ig_followers": 326656,
+      "ig_verification": true,
+      "page_alias": "thewhitestripes"
+    },
+    {
+      "page_id": "221040261094545",
+      "category": "Public Service",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t1.30497-1/453178253_471506465671661_2781666950760530985_n.png?stp=dst-png_s200x200&_nc_cat=1&ccb=1-7&_nc_sid=7565cd&_nc_ohc=ysO1ZV-VvVsQ7kNvwEIjvxz&_nc_oc=AdrTlN0VusBFmxinFpVPtYNi2a_P0VqXrq7nOGw04HRdUk4HQkrS0JbCcRFaraYIh94&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_ss=7f180&oh=00_AQCdIXOrIWZ9lSIyCpojzSoe-WETsIKr52BAY0_TFRhxgA&oe=6A6DB43A",
+      "likes": 1625,
+      "verification": "NOT_VERIFIED",
+      "name": "Stars and Stripes Supply",
+      "entity_type": "PERSON_PROFILE"
+    },
+    {
+      "page_id": "323433334943318",
+      "category": "E-commerce website",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/541622808_1352199513578010_1317320074674581259_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=105&ccb=1-7&_nc_sid=418b77&_nc_ohc=W_9K4Dy10-0Q7kNvwFY48sH&_nc_oc=AdpHxOcwccemdm0nPf-cmnWkTUTXWKj7j0zC85cbvlWVPbF0JZz88dB1VTxaYKELXYw&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQCtPNmAl-h7e1vYQ6kvuttf6BSS3MR6Nt6iC-lTcEFETw&oe=6A4C16C6",
+      "likes": 8702,
+      "verification": "NOT_VERIFIED",
+      "name": "Spots & Stripes",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "spotsandstripes",
+      "ig_followers": 19720,
+      "page_alias": "SpotsandStripesProducts"
+    },
+    {
+      "page_id": "110481962143466",
+      "category": "Business Service",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/726660285_122271705542018215_4339252889522967921_n.jpg?stp=dst-jpg_p200x200_tt6&_nc_cat=101&ccb=1-7&_nc_sid=418b77&_nc_ohc=_MyEb6huyOgQ7kNvwGlSk_N&_nc_oc=AdqGVgcHwOHdoCLHisKDm6TbV7cXvnVXDAuIhOffOt-N21hOGhgoDYB6eAUdx_ldNYQ&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQC16fP-C1j5Gf-ZFw_A8Dg46YOAgMVneQZBVX42CCpDWw&oe=6A4C090F",
+      "likes": 157,
+      "verification": "NOT_VERIFIED",
+      "name": "Stripe Innovation",
+      "entity_type": "PERSON_PROFILE"
+    },
+    {
+      "page_id": "109571898901906",
+      "category": "Business Service",
+      "image_uri": "https://scontent.fhnl3-2.fna.fbcdn.net/v/t39.30808-1/727221511_122354703890000569_8339712418846035584_n.jpg?stp=dst-jpg_p200x200_tt6&_nc_cat=111&ccb=1-7&_nc_sid=418b77&_nc_aid=0&_nc_ohc=_d7P_Z4Mnn8Q7kNvwF9PRC-&_nc_oc=AdrL4M8I1KtR79d0orfZJy5YPecW04pwt8Xl3zYz-TDf4KzfRjL5Z64bg9m7pHMk7pw&_nc_zt=24&_nc_ht=scontent.fhnl3-2.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQBrUxkyQsrV0d4MFG6JKSar8zh39-DoXR5T79HFhTjeUg&oe=6A4C07BA",
+      "likes": 124,
+      "verification": "NOT_VERIFIED",
+      "name": "Stripe Frontier",
+      "entity_type": "PERSON_PROFILE"
+    },
+    {
+      "page_id": "1088845087644027",
+      "category": "Crafts",
+      "image_uri": "https://scontent.fhnl3-2.fna.fbcdn.net/v/t39.30808-1/718953260_122101701818510810_7828463693978843064_n.jpg?stp=dst-jpg_p200x200_tt6&_nc_cat=104&ccb=1-7&_nc_sid=418b77&_nc_ohc=uX5QM_k9UPEQ7kNvwEeNqJV&_nc_oc=Adpn1ckOmiqCO6dSgDBfybb5DEE0R7iEC8hwW8ek0-X5bkgeoAnacGMSF7DhxYRsGpM&_nc_zt=24&_nc_ht=scontent.fhnl3-2.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQDBt2T_-rgIaxR5Q29z420rTNsOALeMtYrqlLsj9Q1DoQ&oe=6A4C2010",
+      "likes": 6,
+      "verification": "NOT_VERIFIED",
+      "name": "Stars & Stripes Heritage",
+      "entity_type": "PERSON_PROFILE"
+    },
+    {
+      "page_id": "110852818772311",
+      "category": "Business Service",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/728745157_122321789960010772_8496070169016837570_n.jpg?stp=dst-jpg_p200x200_tt6&_nc_cat=103&ccb=1-7&_nc_sid=418b77&_nc_ohc=WLplhnY91CIQ7kNvwHk3iXv&_nc_oc=AdpldXKuGGKz589shkIUyzCV8stwzi4JBskfDZbA6nKD_jxv0feeruCs-qCY5kfBV08&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQD1nRMQJJ4LGSBi-QNOeUD-axiQ-eyBAsluXUYg4UszfA&oe=6A4C38B1",
+      "likes": 145,
+      "verification": "NOT_VERIFIED",
+      "name": "Stripe One",
+      "entity_type": "PERSON_PROFILE"
+    },
+    {
+      "page_id": "260550433816637",
+      "category": "Health/beauty",
+      "image_uri": "https://scontent.fhnl3-2.fna.fbcdn.net/v/t39.30808-1/437121637_122182199276027979_8583604609608416202_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=108&ccb=1-7&_nc_sid=418b77&_nc_ohc=EMuBzWfoAWYQ7kNvwExzGDJ&_nc_oc=Ado8dFvHR3zax4FiRWYH2ZUmaXFwfUpbpzivxe9fcCQRVsqglAaoESLREpISoRO9mR4&_nc_zt=24&_nc_ht=scontent.fhnl3-2.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQAaKIX2JiB3mZwIJ15bz8fgI7iitEWaR9Z1zv8mMvVvCQ&oe=6A4C09D2",
+      "likes": 7,
+      "verification": "NOT_VERIFIED",
+      "name": "Wild Stripes",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "wildstripes_official",
+      "ig_followers": 16979
+    },
+    {
+      "page_id": "155610747793738",
+      "category": "American Restaurant",
+      "image_uri": "https://scontent.fhnl3-1.fna.fbcdn.net/v/t39.30808-1/348420670_5892327077561104_451535315551286743_n.jpg?stp=dst-jpg_s200x200_tt6&_nc_cat=106&ccb=1-7&_nc_sid=418b77&_nc_ohc=Xus5cemYxP8Q7kNvwGIBpxh&_nc_oc=AdoLagvCOz8TG0hIJU7umaC6rF5QH2MOFiK0CXA2rdEIrmzLZ9IKXF4y7Qawv-E9ViU&_nc_zt=24&_nc_ht=scontent.fhnl3-1.fna&_nc_gid=UDiW2Lwe4gGBNV7mrfXjXQ&_nc_ss=7f180&oh=00_AQAoNIK-fF4Svhl8lfXf6l-muYCgf9QMLCqwDPOcNeIGzA&oe=6A4C3085",
+      "likes": 11177,
+      "verification": "NOT_VERIFIED",
+      "name": "Stars and Stripes - American Bar & Restaurant",
+      "entity_type": "PERSON_PROFILE",
+      "ig_username": "starsandstripes.ch",
+      "ig_followers": 5496,
+      "page_alias": "starsandstripes.ch"
+    }
+  ]
+}

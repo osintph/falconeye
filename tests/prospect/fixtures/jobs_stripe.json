@@ -1,0 +1,863 @@
+{
+  "search_metadata": {
+    "id": "search_mMjwVJvBznTKZyAYyvynp5OY",
+    "status": "Success",
+    "created_at": "2026-07-02T11:36:57Z",
+    "request_time_taken": 2.14,
+    "parsing_time_taken": 0.12,
+    "total_time_taken": 2.26,
+    "request_url": "https://www.google.com/search?q=Stripe&oq=Stripe&gl=us&hl=en&udm=8&jbr=sep:0",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_mMjwVJvBznTKZyAYyvynp5OY.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_mMjwVJvBznTKZyAYyvynp5OY"
+  },
+  "search_parameters": {
+    "engine": "google_jobs",
+    "q": "Stripe",
+    "hl": "en",
+    "gl": "us"
+  },
+  "search_information": {
+    "query_displayed": "Stripe",
+    "time_taken_displayed": 0.26,
+    "detected_location": "Alta Mesa, Santa Barbara, CA",
+    "has_no_results_for": false
+  },
+  "jobs": [
+    {
+      "position": 1,
+      "title": "Data Analyst, Macro Analytics",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>Data Science at Stripe is a vibrant community where data analysts, data scientists, and engineers learn and grow together. You'll work with some of Stripe's most fundamental and exciting data, and use that data to help drive company-wide initiatives. We have a variety of Data Analytics roles and teams across Stripe and will seek to align you to the most relevant team based on your background.<br><br>What you'll do<br><br>In this role, you'll partner deeply with teams across Stripe to ensure that our users, our products, and our business have the models, data products, and insights needed to make decisions and grow responsibly. You'll work closely with partners to extract insights from the rich and complex data at Stripe. You'll also work with leaders to translate business needs into data problems. You'll build metrics, scalable data pipelines, dashboards, and reports to inform and run the business. You'll deliver actionable business insights through analyses and data storytelling.<br><br><strong>Responsibilities<br><br></strong><ul><li>Work with Treasury Finance, Finance & Strategy, Risk and Engineering to build out analytics and observability framework for Stripe's financial position</li><li>Investigate macro signals and build analytical frameworks that inform financial planning and strategic decisions</li><li>Develop targeted observability and performance analytics for both standard and event-driven environments, providing key insights to senior leadership on Stripe’s business position as macro/market conditions shift </li><li>Understand and leverage Stripe's data assets to analyze financial performance and develop scalable data foundations for existing and emerging analytical needs</li><li>Work with heterogeneous and unstructured data to develop insights and recommendations</li><li>Collaborate with data scientists and engineers to build data pipelines, models, and infrastructure that serve business needs</li><li>Support ongoing reporting, stakeholder communications, and information requests across Treasury Finance and Finance & Strategy<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>Must be located in New York or willing to relocate as this role is hybrid</li><li>3–6 years of experience in Data Research & Analysis, Risk Modeling & Analysis roles, Business Intelligence and Data Engineering, building data pipelines and analyzing large datasets to solve problems</li><li>Proficiency in SQL and Python</li><li>Strong statistical knowledge and business intuition</li><li>Ability to clearly communicate results and drive impact</li><li>Experience in analytics in FinTech, banking, investment management, corporate finance, treasury, or financial services </li><li>Expertise in visualization and using data insights to make recommendations and achieve goals</li><li>Proven ability to manage and deliver on multiple concurrent projects with strong attention to detail</li><li>Comfortable collaborating across functions to identify data analytics problems and execute solutions with technical rigor and data-driven insights</li><li>Proficiency with AI tools to accelerate model development, analysis, and coding<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Master's degree in Mathematics, Statistics, Economics, Engineering, or a related technical field</li><li>Prior experience at a growth-stage internet or FinTech company</li><li>Prior experience in macro analytics, corporate finance, financial planning, and portfolio management</li><li>Familiarity with financial and accounting data, time-series data, macroeconomic analysis or economic indicator development</li><li>Experience with distributed data frameworks like Hadoop and Spark to write and debug data pipelines</li><li>Good understanding of development processes and best practices like engineering standards, code reviews, and testing<br><br><br></li></ul>In-office expectations<br><br>Office-assigned Stripes in most of our locations are currently expected to spend at least 50% of the time in a given month in their local office or with users. This expectation may vary depending on role, team and location. For example, Stripes in Stripe Delivery Center roles in Mexico City, Mexico, Bengaluru, India, and Dublin, Ireland work 100% from the office. Also, some teams have greater in-office attendance requirements, to appropriately support our users and workflows, which the hiring manager will discuss. This approach helps strike a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility when possible.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $134,000 - $242,400. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "Must be located in New York or willing to relocate as this role is hybrid",
+            "3–6 years of experience in Data Research & Analysis, Risk Modeling & Analysis roles, Business Intelligence and Data Engineering, building data pipelines and analyzing large datasets to solve problems",
+            "Proficiency in SQL and Python",
+            "Strong statistical knowledge and business intuition",
+            "Ability to clearly communicate results and drive impact",
+            "Experience in analytics in FinTech, banking, investment management, corporate finance, treasury, or financial services",
+            "Expertise in visualization and using data insights to make recommendations and achieve goals",
+            "Proven ability to manage and deliver on multiple concurrent projects with strong attention to detail",
+            "Comfortable collaborating across functions to identify data analytics problems and execute solutions with technical rigor and data-driven insights",
+            "Proficiency with AI tools to accelerate model development, analysis, and coding",
+            "This approach helps strike a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility when possible",
+            "9 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "Pay and benefits",
+            "The annual US base salary range for this role is $134,000 - $242,400",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "2 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "You'll work with some of Stripe's most fundamental and exciting data, and use that data to help drive company-wide initiatives",
+            "In this role, you'll partner deeply with teams across Stripe to ensure that our users, our products, and our business have the models, data products, and insights needed to make decisions and grow responsibly",
+            "You'll work closely with partners to extract insights from the rich and complex data at Stripe",
+            "You'll also work with leaders to translate business needs into data problems",
+            "You'll build metrics, scalable data pipelines, dashboards, and reports to inform and run the business",
+            "You'll deliver actionable business insights through analyses and data storytelling",
+            "Work with Treasury Finance, Finance & Strategy, Risk and Engineering to build out analytics and observability framework for Stripe's financial position",
+            "Investigate macro signals and build analytical frameworks that inform financial planning and strategic decisions",
+            "Develop targeted observability and performance analytics for both standard and event-driven environments, providing key insights to senior leadership on Stripe’s business position as macro/market conditions shift",
+            "Understand and leverage Stripe's data assets to analyze financial performance and develop scalable data foundations for existing and emerging analytical needs",
+            "Work with heterogeneous and unstructured data to develop insights and recommendations",
+            "Collaborate with data scientists and engineers to build data pipelines, models, and infrastructure that serve business needs",
+            "Support ongoing reporting, stakeholder communications, and information requests across Treasury Finance and Finance & Strategy",
+            "For example, Stripes in Stripe Delivery Center roles in Mexico City, Mexico, Bengaluru, India, and Dublin, Ireland work 100% from the office",
+            "Also, some teams have greater in-office attendance requirements, to appropriately support our users and workflows, which the hiring manager will discuss",
+            "12 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "6 days ago",
+        "Full-time",
+        "Health insurance",
+        "Dental insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "6 days ago",
+        "schedule": "Full-time",
+        "health_insurance": true,
+        "dental_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/data-analyst-macro-analytics-at-stripe-4434024682",
+      "apply_links": [
+        {
+          "link": "https://bebee.com/us/jobs/data-analyst-macro-analytics-stripe-san-francisco--techmap_us_4434024682?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "bebee.com"
+        },
+        {
+          "link": "https://us.jobrapido.com/jobpreview/8562963037047226368?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobrapido.com"
+        },
+        {
+          "link": "https://www.learn4good.com/jobs/san-francisco/california/info_technology/5238107214/e/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "learn4good.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=q22sRsm2TjwD-NTXAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_yXKsQrCMBCAYVz7CLrcLDUR0UWnoigITn2AcgkhTYl3IXdDfQsfWcXlhw_-5r1o9hdUhI4wv0RbeKCv_KcmL7CBOzuQgNWPwAQ35pjD8jSqFjlaK5JNFMXvbDw_LVNwPNuJnfwyyIg1lIwaht1hO5tCcb3qtaYSIBH0SHCtSD6J5xbO3QfZEI5tkwAAAA&shmds=v1_ARwrE23opSPd2MHBD9-_e8lmrp-JPlpW9U-P3rJJ5lV60vXOIw&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=q22sRsm2TjwD-NTXAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 2,
+      "title": "Payments Performance Strategist, Card Authorization",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world’s largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone’s reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>The Global Payments Performance Team identifies payment optimization opportunities for Stripe’s merchants. The Global Payments Performance team serves a critical role both in demonstrating thought leadership on challenging payment topics, and also partnering with our high-potential merchants to set them up for long term success. We want a partnership with Stripe to be a competitive advantage for our customers, large and small, by providing them with best-in-class technology in concert with insightful and specific advice on how to harness this technology to achieve their business goals.<br><br>What you’ll do<br><br>The Global Payments Performance team will be responsible for leading data-driven discussions with existing and prospective merchants on optimisation strategies across a variety of areas including, card network costs, acceptance, fraud, and cross-border flows to start. You will be instrumental in building our optimisation narratives/tools and delivering on our merchant engagement model. You will also collaborate with Sales, deploying your knowledge to differentiate Stripe to win deals, and partner with our Customer Success organization to ensure that merchants are successful working with Stripe.<br><br><strong>Responsibilities<br><br></strong><ul><li>Lead discussions with existing and prospective merchants, and provide the Sales team with tools and training to lead discussions with merchants and prospects.</li><li>Serve as both an internal and merchant-facing expert on payment optimisation strategies.</li><li>Gather and build on Stripe’s wide-ranging payments expertise to create optimisation narratives/tools supported by rigorous analysis.</li><li>Use existing tools to deploy sophisticated optimisation playbooks and analyses across Stripe’s customer portfolio.</li><li>Synthesise and relay customer feedback and our findings to inform Stripe’s product roadmap.</li><li>Provide feedback on our tools and playbooks to help continuously improve our self serve offerings<br><br><br></li></ul>Who you are<br><br><strong>Minimum Requirements<br><br></strong><ul><li>5+ years of experience in payments or operations at a leading technology company, or consultancy in the payments industry</li><li>Expertise is diagnosing root cause of card authorization rate underperformance, and suggesting actionable steps to address root cause issues identified</li><li>Deep understanding of how to improve merchant, card authorization rates (e.g. ISO message optimization, retry logic, issuer level analysis etc.)</li><li>Ability to partner with merchants to structure and deliver a/b tests that compare card authorization rate performance across PSPs</li><li>Experience helping merchants onboard to a new PSP such that their authorization rate performance is optimal from day one<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Experience with SQL, dashboard building, modeling, or reporting</li><li>Understanding of card network rules and regulations, local payment methods, and the regulatory environment (PSD2/PSD3)</li><li>Experience presenting to senior business leaders</li><li>Ability to advise merchants on how to manage fraud, primarily on card transactions but ideally on alternative payment methods as well</li><li>An understanding of how to reduce merchant level interchange and scheme fees<br><br><br></li></ul>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $172,200 - $258,400. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.<br><br>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "5+ years of experience in payments or operations at a leading technology company, or consultancy in the payments industry",
+            "Expertise is diagnosing root cause of card authorization rate underperformance, and suggesting actionable steps to address root cause issues identified",
+            "Deep understanding of how to improve merchant, card authorization rates (e.g. ISO message optimization, retry logic, issuer level analysis etc.)",
+            "Ability to partner with merchants to structure and deliver a/b tests that compare card authorization rate performance across PSPs",
+            "Experience helping merchants onboard to a new PSP such that their authorization rate performance is optimal from day one",
+            "2 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "The annual US base salary range for this role is $172,200 - $258,400",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "9 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "The Global Payments Performance team will be responsible for leading data-driven discussions with existing and prospective merchants on optimisation strategies across a variety of areas including, card network costs, acceptance, fraud, and cross-border flows to start",
+            "You will be instrumental in building our optimisation narratives/tools and delivering on our merchant engagement model",
+            "You will also collaborate with Sales, deploying your knowledge to differentiate Stripe to win deals, and partner with our Customer Success organization to ensure that merchants are successful working with Stripe",
+            "Lead discussions with existing and prospective merchants, and provide the Sales team with tools and training to lead discussions with merchants and prospects",
+            "Serve as both an internal and merchant-facing expert on payment optimisation strategies",
+            "Gather and build on Stripe’s wide-ranging payments expertise to create optimisation narratives/tools supported by rigorous analysis",
+            "Use existing tools to deploy sophisticated optimisation playbooks and analyses across Stripe’s customer portfolio",
+            "Synthesise and relay customer feedback and our findings to inform Stripe’s product roadmap",
+            "Provide feedback on our tools and playbooks to help continuously improve our self serve offerings",
+            "Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users",
+            "7 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "19 days ago",
+        "Full-time",
+        "No degree mentioned",
+        "Dental insurance",
+        "Health insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "19 days ago",
+        "schedule": "Full-time",
+        "no_degree_mentioned": true,
+        "dental_insurance": true,
+        "health_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/payments-performance-strategist-card-authorization-at-stripe-4428379668",
+      "apply_links": [
+        {
+          "link": "https://www.ziprecruiter.com/c/Stripe/Job/Payments-Performance-Strategist,-Card-Authorization/-in-San-Francisco,CA?jid=09a96654d85aacdd&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "ziprecruiter.com"
+        },
+        {
+          "link": "https://us.trabajo.org/job-5632-6feda58bde254dbc91e3fde76003a4d0?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "trabajo.org"
+        },
+        {
+          "link": "https://toplisters.xyz/job/cmqcshtua0jyk0uqqqzhi11l6/payments-performance-strategist-card-authorization?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "toplisters.xyz"
+        },
+        {
+          "link": "https://www.jobilize.com/job/us-ca-san-francisco-payments-performance-strategist-card-authorization?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobilize.com"
+        },
+        {
+          "link": "https://us.jobrapido.com/jobpreview/2422461900412420096?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobrapido.com"
+        },
+        {
+          "link": "https://www.learn4good.com/jobs/san-francisco/california/info_technology/5206380753/e/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "learn4good.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=bpYPZQCK-oef5dIFAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xWOQQrCMBBFcdsj6GbWoo0IbnRVBIWuCh6gTOOYRNpMyIxQPZDnNG4-PPjwXvVdVG2H74miCnSUH5wnjJbgphmVXBDdwBnzHZqXes7hgxo4whZaHkAIs_VQ-MrsRlqevGqSozEiY-1Ey9nWlifDkQaezZMH-U8vHjOlsSj6_WE31ym69ao4QyIIEW4Y4ZJLSBDLJaD5ARwONKKpAAAA&shmds=v1_ARwrE21Dm6D8QY7GSao5GOs0up4nqfV5aNvjBjI-Wk3eRQJiMA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=bpYPZQCK-oef5dIFAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 3,
+      "title": "Product Manager, Treasury for Platforms",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world’s largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone’s reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>Treasury for Platforms sits at the center of Stripe's evolution from a payments processor to a complete financial infrastructure provider. Our mission is to increase the GDP of the internet—and Treasury extends that by enabling marketplaces, SaaS platforms, and fintechs to embed fully featured financial services directly into their own products.<br><br>By handling bank partnerships, compliance, and regulatory requirements, we allow platforms to launch quickly while focusing on the core parts of their business. We pair this with embedded UIs, managed support, and rich treasury features so our users can build great financial experiences.<br><br>Today, our platforms serve a highly diverse set of use cases—from payout cards for on-demand workers and operational accounts for in-field purchases, to financial accounts for small businesses. We proudly power industry-leading products like Shopify Balance and Ambrook Wallet, serving a rapidly growing roster of users across the US.<br><br>What you’ll do<br><br>We are seeking a Product Manager to own and drive key Treasury for Platforms features – including rewards, check and cash deposits, and check sending — taking these products from alpha through general availability, across consumer and commercial Treasury. You will work directly with platforms — joining sales calls, running product demos, and shaping integration paths. You will be the most technically fluent person in the room with the user, and the most user-fluent person in the room with engineering. Ultimately, you’ll turn every platform into a financial hub for their users.<br><br><strong>Responsibilities<br><br></strong><ul><li>Deeply understand the financial management needs of our diverse user base and how they can benefit from robust treasury features</li><li>Develop and communicate a clear product strategy and roadmap that aligns with Stripe’s broader vision and market demands</li><li>Drive product development processes from ideation to launch, ensuring the delivery of high-value experiences for our users</li><li>Work closely with engineering, design, legal, and other teams to ensure cohesive execution and alignment across all phases of product development and launch</li><li>Advocate for the Treasury for Platforms vision internally and externally, ensuring key stakeholders are informed and engaged<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>6+ years of product management with a strong track record of launching impactful products</li><li>Ownership mindset — works on whatever it takes to solve problems and delight consumers</li><li>Ability to navigate and prioritize in a fast-paced and dynamic environment, juggling multiple projects and deadlines</li><li>Strong written and verbal communication, with a talent for distilling user problems into precise, actionable framing</li><li>Rigorous with data — comfortable digging into metrics, writing SQL when needed, and thinking from first principles to deliver the right result<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Experience in treasury services, financial account management</li><li>Experience building platforms with multiparty transaction capabilities</li><li>Experience managing high-stakes external partnerships</li><li>Understanding of international payments, FX, and compliance<br><br><br></li></ul>In-office expectations<br><br>Office-assigned Stripes in most of our locations are currently expected to spend at least 50% of the time in a given month in their local office or with users. This expectation may vary depending on role, team and location. For example, Stripes in Stripe Delivery Center roles in Mexico City, Mexico, Bengaluru, India, and Dublin, Ireland work 100% from the office. Also, some teams have greater in-office attendance requirements, to appropriately support our users and workflows, which the hiring manager will discuss. This approach helps strike a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility when possible.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $178,600 - $268,000. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "6+ years of product management with a strong track record of launching impactful products",
+            "Ownership mindset — works on whatever it takes to solve problems and delight consumers",
+            "Ability to navigate and prioritize in a fast-paced and dynamic environment, juggling multiple projects and deadlines",
+            "Strong written and verbal communication, with a talent for distilling user problems into precise, actionable framing",
+            "Rigorous with data — comfortable digging into metrics, writing SQL when needed, and thinking from first principles to deliver the right result",
+            "This approach helps strike a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility when possible",
+            "4 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "Pay and benefits",
+            "The annual US base salary range for this role is $178,600 - $268,000",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "2 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "Our mission is to increase the GDP of the internet—and Treasury extends that by enabling marketplaces, SaaS platforms, and fintechs to embed fully featured financial services directly into their own products",
+            "We are seeking a Product Manager to own and drive key Treasury for Platforms features – including rewards, check and cash deposits, and check sending — taking these products from alpha through general availability, across consumer and commercial Treasury",
+            "You will work directly with platforms — joining sales calls, running product demos, and shaping integration paths",
+            "You will be the most technically fluent person in the room with the user, and the most user-fluent person in the room with engineering",
+            "Ultimately, you’ll turn every platform into a financial hub for their users",
+            "Deeply understand the financial management needs of our diverse user base and how they can benefit from robust treasury features",
+            "Develop and communicate a clear product strategy and roadmap that aligns with Stripe’s broader vision and market demands",
+            "Drive product development processes from ideation to launch, ensuring the delivery of high-value experiences for our users",
+            "Work closely with engineering, design, legal, and other teams to ensure cohesive execution and alignment across all phases of product development and launch",
+            "Advocate for the Treasury for Platforms vision internally and externally, ensuring key stakeholders are informed and engaged",
+            "For example, Stripes in Stripe Delivery Center roles in Mexico City, Mexico, Bengaluru, India, and Dublin, Ireland work 100% from the office",
+            "Also, some teams have greater in-office attendance requirements, to appropriately support our users and workflows, which the hiring manager will discuss",
+            "9 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "6 days ago",
+        "Full-time",
+        "Dental insurance",
+        "Health insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "6 days ago",
+        "schedule": "Full-time",
+        "dental_insurance": true,
+        "health_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/product-manager-treasury-for-platforms-at-stripe-4433558424",
+      "apply_links": [
+        {
+          "link": "https://www.simplyhired.com/job/_ddW4oUSRdh3OFPJMArxi1UqYX8aD_MFwR1RAXuq9jqhH5KBVv4xQg?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "simplyhired.com"
+        },
+        {
+          "link": "https://www.jobzmall.com/wells-fargo/job/product-manager-foundation-hosting-platforms-1?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobzmall.com"
+        },
+        {
+          "link": "https://www.glassdoor.com/job-listing/manager-product-design-streaming-ad-platforms-disney-entertainment-and-espn-product-and-technology-JV_IC1147401_KO0,45_KE46,98.htm?jl=1010180574018&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "glassdoor.com"
+        },
+        {
+          "link": "https://talents.vaia.com/companies/gap-inc/manager-digital-product-creation-banana-republic-27350661/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "vaia.com"
+        },
+        {
+          "link": "https://www.jobleads.com/us/job/manager-product-design-streaming-ad-platforms--san-francisco--e5bc56673147077da292dc4d98f8a1224?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobleads.com"
+        },
+        {
+          "link": "https://www.employbl.com/jobs/product-manager-workers-for-platforms-cloudflare-1417523?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "employbl.com"
+        },
+        {
+          "link": "https://www.jobilize.com/job/us-ca-san-francisco-manager-product-design-streaming-ad-platforms-pyr0n0l?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobilize.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=WFYrO-Y-bllNqcSHAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xXMsQrCMBCAYVz7CLrcLLURwUVBEEFBEAp1L9d4TSNtLtylUF_Fp7Uu_7f92XeRnUrh12gTPDCgI8nhKYQ6ygdaFih7TLODwgbu3IASiu2AA9yYXU_LY5dS1IMxqn3hNGHytrA8GA7U8GTe3Og_tXYoFOcd1bv9dipicOtVlcRHAh-gwgBXwWC9Ws7hcv4BGpYXlJ0AAAA&shmds=v1_ARwrE23oBNZ7CT8SJhhV1XEXQq54hUh5igEWlQETnK2HjEIvYg&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=WFYrO-Y-bllNqcSHAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 4,
+      "title": "Product Marketing Manager, Market Intelligence",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>Our Product Marketing team's mission is to generate customer insights that inform Stripe's product strategy, and lead go-to-market for our suite of products. Product Marketing is a highly cross-functional role at Stripe, partnering closely with Product and Engineering, Sales, Partnerships, Demand Generation, and Campaigns, to name a few. Different from many other Product Marketing teams, our team works across the entire product lifecycle, from helping shape the product, to driving launch and commercialization, to growing product adoption post-launch.<br><br>We are looking for experienced product marketers to shape the roadmap, drive launches, and grow adoption for critical products such as Payments Intelligence, Payouts, Tax, Billing, and Link, and develop our go-to-market strategy for key user segments such as Enterprises and Startups.<br><br>What you'll do<br><br>In this role, you'll develop differentiated messaging and positioning for products like Payments Intelligence, Payouts, Tax, Billing, and Link—translating complex technical capabilities into clear value propositions for enterprise and technical buyers. You'll produce high-quality content, including executive briefings, analyst presentations, and sales playbooks, that scales your insights across the organization and ties directly to pipeline and revenue outcomes.<br><br>You'll work across a highly cross-functional set of teams—Product, Sales, Demand Generation, and Campaigns—managing multiple interdependent workstreams simultaneously. You'll lead ongoing market research and competitive analysis, keeping stakeholders across the business informed, and build the enablement assets that help sales teams differentiate Stripe and win.<br><br><strong>Responsibilities<br><br></strong><ul><li>Contribute to product decision-making and roadmap prioritization by partnering with product operations and product management</li><li>Engage in ongoing market research and analysis of industry players' go-to-markets and messaging and keep different constituents (executives, sales, product, etc.) updated</li><li>Enable sales teams to understand the value of our products and competitive solutions through creating differentiated messaging and assets</li><li>Develop differentiated messaging and positioning that translates complex technical capabilities into clear value propositions for both technical and business audiences across web, sales collateral, and customer-facing materials</li><li>Produce high-quality content — executive briefings, analyst presentations, sales playbooks — that scales your insights across the organization and ties directly to pipeline and revenue outcomes<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>7+ years of relevant work experience such as sales enablement, competitive intelligence, product marketing, and consulting</li><li>Excellent verbal and written communication skills, with experience translating technical features into benefits for a technical audience</li><li>Experience managing competitive projects, such as market analysis, collateral creation, and internal enablement sessions</li><li>Experience working with B2B sales teams, preferably in technology, infrastructure, or platform companies<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Experience in fintech, payments, financial infrastructure, or developer-facing platform companies, with a strong grasp of how payment and revenue management products are bought and sold</li><li>Demonstrated track record building and scaling a competitive intelligence program, including tools, processes, and regular executive-level reporting</li><li>Familiarity engaging with industry analysts (Gartner, Forrester, IDC) and incorporating third-party research into go-to-market strategy</li><li>Experience marketing to enterprise buyers or technical decision-makers, with an understanding of complex, multi-stakeholder sales cycles</li><li>MBA or advanced degree in business, marketing, or a related field, or equivalent experience at a top-tier consulting, strategy, or technology firm<br><br><br></li></ul>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $159,500 - $239,300. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.<br><br>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "7+ years of relevant work experience such as sales enablement, competitive intelligence, product marketing, and consulting",
+            "Excellent verbal and written communication skills, with experience translating technical features into benefits for a technical audience",
+            "Experience managing competitive projects, such as market analysis, collateral creation, and internal enablement sessions",
+            "Experience working with B2B sales teams, preferably in technology, infrastructure, or platform companies",
+            "2 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "The annual US base salary range for this role is $159,500 - $239,300",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "8 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "Our Product Marketing team's mission is to generate customer insights that inform Stripe's product strategy, and lead go-to-market for our suite of products",
+            "Product Marketing is a highly cross-functional role at Stripe, partnering closely with Product and Engineering, Sales, Partnerships, Demand Generation, and Campaigns, to name a few",
+            "We are looking for experienced product marketers to shape the roadmap, drive launches, and grow adoption for critical products such as Payments Intelligence, Payouts, Tax, Billing, and Link, and develop our go-to-market strategy for key user segments such as Enterprises and Startups",
+            "In this role, you'll develop differentiated messaging and positioning for products like Payments Intelligence, Payouts, Tax, Billing, and Link—translating complex technical capabilities into clear value propositions for enterprise and technical buyers",
+            "You'll produce high-quality content, including executive briefings, analyst presentations, and sales playbooks, that scales your insights across the organization and ties directly to pipeline and revenue outcomes",
+            "You'll work across a highly cross-functional set of teams—Product, Sales, Demand Generation, and Campaigns—managing multiple interdependent workstreams simultaneously",
+            "You'll lead ongoing market research and competitive analysis, keeping stakeholders across the business informed, and build the enablement assets that help sales teams differentiate Stripe and win",
+            "Contribute to product decision-making and roadmap prioritization by partnering with product operations and product management",
+            "Engage in ongoing market research and analysis of industry players' go-to-markets and messaging and keep different constituents (executives, sales, product, etc.) updated",
+            "Enable sales teams to understand the value of our products and competitive solutions through creating differentiated messaging and assets",
+            "Develop differentiated messaging and positioning that translates complex technical capabilities into clear value propositions for both technical and business audiences across web, sales collateral, and customer-facing materials",
+            "Produce high-quality content — executive briefings, analyst presentations, sales playbooks — that scales your insights across the organization and ties directly to pipeline and revenue outcomes",
+            "Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users",
+            "10 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "9 days ago",
+        "Full-time",
+        "Health insurance",
+        "Dental insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "9 days ago",
+        "schedule": "Full-time",
+        "health_insurance": true,
+        "dental_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/product-marketing-manager-market-intelligence-at-stripe-4432438786",
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=ZlcS5ridT4E-eGLqAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_y3IQQrCMBBAUdz2CLqZtdRGBDe6ElFREAQPUKZxSKNxJmRG6HW8qQpuPo9fvUfV7lLk9vIGZywPssjhK8ZApf4vOLJRSjEQe4IZnKQDJSy-B2E4iIRE43VvlnXlnGpqghpa9I2XpxOmTgZ3l05_abXHQjmhUbtYzocmc5hOrlZiJogMV2TYF2Qf1UsN280H4rI2hKQAAAA&shmds=v1_ARwrE22c41Q2ApYHPotErPfpPN8H08sYxFANBcUVYTYjwi9qsA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=ZlcS5ridT4E-eGLqAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 5,
+      "title": "Executive Journey Strategy Manager",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies - from the world’s largest enterprises to the most ambitious startups - use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>What you’ll do<br><br>Stripe is evolving from a set of strong but fragmented executive touchpoints into a coordinated executive engagement engine. As the Executive Journey Strategy Manager, you will own the orchestration layer that connects executive programs, leadership engagement, and account priorities into cohesive, measurable journeys.<br><br>You will be the single-threaded owner responsible for designing how executives progress through engagement with Stripe, building and continuously refining the data, tracking, and measurement systems that make this visible and actionable, and enabling cross-functional teams to operate inside a shared model. This role sits at the intersection of strategy, operations, and executive-level experience design, and is critical to delivering Stripe’s 2026 executive engagement goals.<br><br><strong>Responsibilities<br><br></strong><ul><li>Own the end-to-end executive journey framework for Stripe’s priority accounts, ensuring executive engagements are sequenced, purposeful, and connected rather than one-off touchpoints</li><li>Own the executive journey system of record, defining what data matters, how it’s tracked, and how visibility is shared across Marketing, Sales, and Leadership — and evolving the tooling over time as the motion scales</li><li>Define and operationalize account prioritization and executive mapping processes, in close collaboration with Sales leadership and regional teams</li><li>Establish a measurement framework linking executive engagement to business outcomes such as pipeline velocity, deal progression, and relationship depth</li><li>Analyze engagement data to generate insights, identify patterns, and inform strategic recommendations to improve journey effectiveness and business impact</li><li>Partner with executive program owners (EBCs, CAB, Summits, WEF, regional events) to ensure each program fits into the broader journey model</li><li>Influence and align senior cross-functional stakeholders (Sales, Marketing, Partnerships, and executive offices) to adopt shared processes, prioritize accounts, and operate within a unified journey framework<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>7+ years of experience in strategy, operations, program management, or go-to-market roles within B2B or enterprise environments</li><li>Proven experience building cross-functional operating models that span marketing, sales, and leadership stakeholders</li><li>Strong systems thinker with experience designing tracking frameworks, dashboards, or operational processes that scale</li><li>Strong analytical and data proficiency, including experience working with datasets, building models or dashboards, and translating data into actionable insights</li><li>Exceptional stakeholder management skills, including comfort working with senior executives</li><li>Demonstrated ability to influence and drive alignment across cross-functional stakeholders without direct authority</li><li>Ability to translate strategic goals into clear processes, tools, and execution plans<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Experience with executive engagement, ABM, enterprise marketing, or complex B2B sales motions</li><li>Familiarity with Salesforce, spreadsheet-based modeling, and evolving systems from manual to automated</li><li>Experience defining metrics, data schemas, or instrumentation for go-to-market or customer engagement workflows</li><li>Experience operating as a DRI for company-level OKRs or metrics</li><li>Strong written communication skills, including the ability to synthesize complex ideas into clear frameworks and recommendations<br><br><br></li></ul>In-office expectations<br><br>Office-assigned Stripes in most of our locations are currently expected to spend at least 50% of the time in a given month in their local office or with users. This expectation may vary depending on role, team and location. For example, Stripes in Stripe Delivery Center roles in Mexico City, Mexico, Bengaluru, India, and Dublin, Ireland work 100% from the office. Also, some teams have greater in-office attendance requirements, to appropriately support our users and workflows, which the hiring manager will discuss. This approach helps strike a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility when possible.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $191,400 - $287,200. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "7+ years of experience in strategy, operations, program management, or go-to-market roles within B2B or enterprise environments",
+            "Proven experience building cross-functional operating models that span marketing, sales, and leadership stakeholders",
+            "Strong systems thinker with experience designing tracking frameworks, dashboards, or operational processes that scale",
+            "Strong analytical and data proficiency, including experience working with datasets, building models or dashboards, and translating data into actionable insights",
+            "Exceptional stakeholder management skills, including comfort working with senior executives",
+            "Demonstrated ability to influence and drive alignment across cross-functional stakeholders without direct authority",
+            "Ability to translate strategic goals into clear processes, tools, and execution plans",
+            "This approach helps strike a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility when possible",
+            "6 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "Pay and benefits",
+            "The annual US base salary range for this role is $191,400 - $287,200",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "2 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "As the Executive Journey Strategy Manager, you will own the orchestration layer that connects executive programs, leadership engagement, and account priorities into cohesive, measurable journeys",
+            "You will be the single-threaded owner responsible for designing how executives progress through engagement with Stripe, building and continuously refining the data, tracking, and measurement systems that make this visible and actionable, and enabling cross-functional teams to operate inside a shared model",
+            "This role sits at the intersection of strategy, operations, and executive-level experience design, and is critical to delivering Stripe’s 2026 executive engagement goals",
+            "Own the end-to-end executive journey framework for Stripe’s priority accounts, ensuring executive engagements are sequenced, purposeful, and connected rather than one-off touchpoints",
+            "Own the executive journey system of record, defining what data matters, how it’s tracked, and how visibility is shared across Marketing, Sales, and Leadership — and evolving the tooling over time as the motion scales",
+            "Define and operationalize account prioritization and executive mapping processes, in close collaboration with Sales leadership and regional teams",
+            "Establish a measurement framework linking executive engagement to business outcomes such as pipeline velocity, deal progression, and relationship depth",
+            "Analyze engagement data to generate insights, identify patterns, and inform strategic recommendations to improve journey effectiveness and business impact",
+            "Partner with executive program owners (EBCs, CAB, Summits, WEF, regional events) to ensure each program fits into the broader journey model",
+            "Influence and align senior cross-functional stakeholders (Sales, Marketing, Partnerships, and executive offices) to adopt shared processes, prioritize accounts, and operate within a unified journey framework",
+            "For example, Stripes in Stripe Delivery Center roles in Mexico City, Mexico, Bengaluru, India, and Dublin, Ireland work 100% from the office",
+            "Also, some teams have greater in-office attendance requirements, to appropriately support our users and workflows, which the hiring manager will discuss",
+            "9 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "8 days ago",
+        "Full-time",
+        "No degree mentioned",
+        "Dental insurance",
+        "Health insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "8 days ago",
+        "schedule": "Full-time",
+        "no_degree_mentioned": true,
+        "dental_insurance": true,
+        "health_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/executive-journey-strategy-manager-at-stripe-4432511405?refId=BLblfNdlR10XWIEZrLL1yg%3D%3D&trackingId=FeAyRXhcrPNXx61nssLiXQ%3D%3D",
+      "apply_links": [
+        {
+          "link": "https://www.ziprecruiter.com/c/Stripe/Job/Executive-Journey-Strategy-Manager/-in-San-Francisco,CA?jid=38d3356bb49f1a85&utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "ziprecruiter.com"
+        },
+        {
+          "link": "https://us.experteer.com/career/view-jobs/executive-journey-strategy-manager-san-francisco-ca-usa-57939884?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "experteer.com"
+        },
+        {
+          "link": "https://www.tealhq.com/job/executive-journey-strategy-manager_7ea1a53d243616e4d434437ad5b436b7c6a28?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "tealhq.com"
+        },
+        {
+          "link": "https://www.jobleads.com/us/job/executive-journey-strategy-manager--san-francisco--ed6fefe3721e2566cb6e157d3d5c0dcb0?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobleads.com"
+        },
+        {
+          "link": "https://www.metaintro.com/job/executive-journey-strategy-manager-at-stripe-2c92ed56-434a-55ad-999a-0f32fcabd85c?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "metaintro.com"
+        },
+        {
+          "link": "https://www.sonicjobs.com/us/jobs/san-francisco/commercial-strategy-director/executive-journey-strategy-manager-can6a27da3ea797042c423d7615?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "sonicjobs.com"
+        },
+        {
+          "link": "https://us.trabajo.org/job-4023-c1e6bf85907024054238c1d5efaaa494?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "trabajo.org"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=El_y7BC2dOfHbnoGAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xWNMQrCQBAAsc0TtNlaNCeChVqJqCBY5QFhcyyXC3H3uN1I8hD_a2ymGZgpvovieBvJDxY_BE8ZMtMElWU0ChO8kDFQhu2sGlDC7FsQhodI6Gl5bs2SnpxT7cughhZ96eXthKmR0XXS6B-1tpgp9XO03h92Y5k4rFfzJSaCyFAhwz0j-6heNnC9_ADkF_6HmAAAAA&shmds=v1_ARwrE22fdQqfO4icinR0AatVmfcbRXYkLKeI9CoqUkNIhguqxw&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=El_y7BC2dOfHbnoGAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 6,
+      "title": "Manager, Global Sanctions",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies - from the world’s largest enterprises to the most ambitious startups - use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>The Financial Crimes team plays a critical role in ensuring a healthy financial ecosystem and maintaining trust in Stripe's platform. We ensure that prohibited parties cannot utilize our services and identify bad actors engaging in money laundering, terrorist financing, or other financial crimes. As Stripe's user base and global footprint grow dramatically, this team is essential for mitigating risk and upholding regulatory compliance, directly contributing to Stripe's mission of increasing the GDP of the internet safely and responsibly.<br><br>What you’ll do<br><br>As the Manager, Global Sanctions, you will own and evolve an established sanctions function across geographies. You will be responsible for leading regional teams, driving the next phase of sanctions transformation, and partnering with Engineering and Product to modernize how sanctions operations work at Stripe.<br><br><strong>Responsibilities<br><br></strong><ul><li>Lead and develop sanctions managers and analysts across regions, ensuring investigative quality, consistency, and throughput at scale</li><li>Own the strategic direction of Stripe's global sanctions program, screening coverage, alert logic, escalation frameworks, and quality assurance</li><li>Drive the sanctions transformation roadmap, identify where manual workflows and vendor tooling are limiting scale, and lead the shift toward automation and smarter detection</li><li>Partner with Engineering and Product as a genuine co-designer, translate sanctions requirements into tooling inputs, challenge screening logic, and lead operational readiness for new capabilities</li><li>Ensure every process and system change is built with audit trails, explainability, and examiner-readiness by design; lead the function through regulatory exams and supervisory inquiries</li><li>Serve as the senior escalation point for complex casework</li><li>Maintain deep awareness of evolving sanctions regulations globally (OFAC, EU, HMT, UN, and others) and translate changes into program requirements ahead of deadlines</li><li>Report on sanctions program health, emerging typologies, and team performance to senior leadership<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>At least 10 years of experience in sanctions compliance or financial crimes, with senior leadership experience managing cross-regional teams</li><li>Deep expertise in major global sanctions regimes (OFAC, EU, HMT, UN) and sanctions screening methodologies</li><li>Proven track record of improving sanctions program operations</li><li>Experience evaluating or transitioning sanctions tooling, including vendor platforms and in-house or automated solutions</li><li>Ability to partner credibly with Engineering and Product on tooling design, screening logic, and workflow automation</li><li>Effective communicator across audiences, regulators, senior leadership, and engineering teams</li><li>Experience with sanctions screening platforms and familiarity with AI-assisted screening tools<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>CAMS or equivalent certification</li><li>Background handling regulatory examinations or voluntary self-disclosure processes</li><li>Experience at a global payments platform or fintech at scale<br><br><br></li></ul>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $173,600 - $260,400. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.<br><br>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "At least 10 years of experience in sanctions compliance or financial crimes, with senior leadership experience managing cross-regional teams",
+            "Deep expertise in major global sanctions regimes (OFAC, EU, HMT, UN) and sanctions screening methodologies",
+            "Proven track record of improving sanctions program operations",
+            "Experience evaluating or transitioning sanctions tooling, including vendor platforms and in-house or automated solutions",
+            "Ability to partner credibly with Engineering and Product on tooling design, screening logic, and workflow automation",
+            "Effective communicator across audiences, regulators, senior leadership, and engineering teams",
+            "Experience with sanctions screening platforms and familiarity with AI-assisted screening tools",
+            "5 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "The annual US base salary range for this role is $173,600 - $260,400",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "8 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "As the Manager, Global Sanctions, you will own and evolve an established sanctions function across geographies",
+            "You will be responsible for leading regional teams, driving the next phase of sanctions transformation, and partnering with Engineering and Product to modernize how sanctions operations work at Stripe",
+            "Lead and develop sanctions managers and analysts across regions, ensuring investigative quality, consistency, and throughput at scale",
+            "Own the strategic direction of Stripe's global sanctions program, screening coverage, alert logic, escalation frameworks, and quality assurance",
+            "Drive the sanctions transformation roadmap, identify where manual workflows and vendor tooling are limiting scale, and lead the shift toward automation and smarter detection",
+            "Partner with Engineering and Product as a genuine co-designer, translate sanctions requirements into tooling inputs, challenge screening logic, and lead operational readiness for new capabilities",
+            "Ensure every process and system change is built with audit trails, explainability, and examiner-readiness by design; lead the function through regulatory exams and supervisory inquiries",
+            "Serve as the senior escalation point for complex casework",
+            "Maintain deep awareness of evolving sanctions regulations globally (OFAC, EU, HMT, UN, and others) and translate changes into program requirements ahead of deadlines",
+            "Report on sanctions program health, emerging typologies, and team performance to senior leadership",
+            "Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users",
+            "8 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "14 days ago",
+        "Full-time",
+        "No degree mentioned",
+        "Dental insurance",
+        "Health insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "14 days ago",
+        "schedule": "Full-time",
+        "no_degree_mentioned": true,
+        "dental_insurance": true,
+        "health_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/manager-global-sanctions-at-stripe-4430471835",
+      "apply_links": [
+        {
+          "link": "https://www.employbl.com/jobs/senior-manager-global-mobility-immigrati-armada-1476184?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "employbl.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=xJttEpj5GeE7C8SyAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xXNsQrCMBAAUFz7CbrcLLUpgotOIlgQnPoB5RKONJLehdwN_Qg_Wru89TXfXdO_kTFSbWHI4jHDiBwsCSuc4CUelLCGGYRhEImZ9rfZrOjVOdXcRTW0FLogixMmL6v7iNeNSWesVDIaTedLv3aF4_EwWk2FIPEWwbP-t6RBWnjcfzakQbaPAAAA&shmds=v1_ARwrE22gdiYxuRluUdDzZl9TRP1j8KrOw63ZJfrvgawPx-kLPA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=xJttEpj5GeE7C8SyAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 7,
+      "title": "Finance & Strategy Partner, Central Engineering",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>The Infrastructure Finance and Strategy team is an integral thought partner to Stripe's engineering leadership. We bring understanding and predictability to Stripe's R&D investments and operating expenses. We work cross-functionally across many surfaces at Stripe and help ensure the durability of our long-term financial performance.<br><br>What you'll do<br><br>We're looking for a Finance and Strategy Partner to join our growing team. You'll help us with the forecasting, budgeting, and reporting for AI investments, including token spend, engineering headcount, and management tools. You'll collaborate with data science, engineering, and finance teams to deliver improvements in our integrated financial systems and metrics, and help drive our strategies for productivity improvement and cost efficiency.<br><br><strong>Responsibilities<br><br></strong><ul><li> Leverage your financial background to support and influence key strategic and business decisions</li><li> Be your business teams' financial partner for analysis and evaluation of strategic projects and initiatives (e.g. foundational investments or business model shifts)</li><li> Design and provide analytical rigor to measure efficiency and ROI of investments in headcount and non-headcount expenses</li><li> Drive reporting, process, and discipline for finance routines to shape and influence decision-making (e.g. budget, forecast, monthly reviews, long-range plans)</li><li> Build and own models for in-depth analyses, as well as ensure their quality, timeliness, and accuracy</li><li> Partner with cross-functional teams, such as Finance Systems, Data Science, and Infrastructure Engineering, to develop reporting dashboards</li><li> Drive continuous process improvement, standardization, simplification, and reporting enhancements<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li> 7–9 years of relevant experience in strategic finance or FP&A</li><li> Demonstrated experience driving and executing on finance processes (e.g. budget and forecast creation, contract negotiations, headcount envelope management)</li><li> Demonstrated experience using AI tools (coding agents, skills, forecasting tools) to develop data visualizations and explore datasets and developing expertise in new tools quickly</li><li> Fluency in AI cost drivers and metrics, including token caching, reads, and writes, model selection principles, and billing frameworks</li><li> Deep understanding of expense accounting principles including accruals, amortization, and capitalization<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li> Experience working in corporate finance at a high-growth technology company</li><li> Experience managing headcount and operating expenses</li><li> Experience supporting engineering teams</li><li> Experience with Oracle, Anaplan, or similar financial management applications</li><li> Experience with Claude Code, Codex, Cursor, or similar coding agents</li><li> Experience in data visualization and dashboarding</li><li> Background in investment banking, private equity, corporate development, or consulting</li><li> Strong knowledge of G Suite tools and extracting, analyzing, and evaluating information from large data sets using SQL and large language models<br><br><br></li></ul>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $133,800 - $200,800. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.<br><br>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "7–9 years of relevant experience in strategic finance or FP&A",
+            "Demonstrated experience driving and executing on finance processes (e.g. budget and forecast creation, contract negotiations, headcount envelope management)",
+            "Demonstrated experience using AI tools (coding agents, skills, forecasting tools) to develop data visualizations and explore datasets and developing expertise in new tools quickly",
+            "Fluency in AI cost drivers and metrics, including token caching, reads, and writes, model selection principles, and billing frameworks",
+            "Deep understanding of expense accounting principles including accruals, amortization, and capitalization",
+            "3 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "The annual US base salary range for this role is $133,800 - $200,800",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "8 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "You'll help us with the forecasting, budgeting, and reporting for AI investments, including token spend, engineering headcount, and management tools",
+            "You'll collaborate with data science, engineering, and finance teams to deliver improvements in our integrated financial systems and metrics, and help drive our strategies for productivity improvement and cost efficiency",
+            "Leverage your financial background to support and influence key strategic and business decisions",
+            "Be your business teams' financial partner for analysis and evaluation of strategic projects and initiatives (e.g. foundational investments or business model shifts)",
+            "Design and provide analytical rigor to measure efficiency and ROI of investments in headcount and non-headcount expenses",
+            "Drive reporting, process, and discipline for finance routines to shape and influence decision-making (e.g. budget, forecast, monthly reviews, long-range plans)",
+            "Build and own models for in-depth analyses, as well as ensure their quality, timeliness, and accuracy",
+            "Partner with cross-functional teams, such as Finance Systems, Data Science, and Infrastructure Engineering, to develop reporting dashboards",
+            "Drive continuous process improvement, standardization, simplification, and reporting enhancements",
+            "6 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "5 days ago",
+        "Full-time",
+        "Dental insurance",
+        "Health insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "5 days ago",
+        "schedule": "Full-time",
+        "dental_insurance": true,
+        "health_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/finance-strategy-partner-central-engineering-at-stripe-4424965253",
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=rxfIwuvFxx72InTJAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xWOMQoCMRAAsb0naLOVhehFBButRDzBSrgHHLmw5CJxN-xucX7HlxqbKaaZab6LpusSeQoIa-hNvGH8wNOLEcoWrkjVZbhRTIQoiSLs4MEjKHoJEzDBnTlmXJ4ns6In51RzG9W8pdAGfjsmHHl2Lx71j0EnL1hyLQ2H435uC8XNqqZTQUgEvSfopB4lDVwPLj_mljVFpQAAAA&shmds=v1_ARwrE23kL4hoQALMH4Dj0kCtGQpQAUYBJbLjEF3fi_2WVjNKNA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=rxfIwuvFxx72InTJAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 8,
+      "title": "Credit Risk Analyst Commercial Underwriter, West Coast",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>The Credit team protects Stripe by managing the end-to-end risk of our largest and most complex users. We leverage deep underwriting expertise and data-driven stress heuristics to make informed decisions at every stage of the user lifecycle—from onboarding to loss recovery. Our goal is to enable Stripe's growth by making confident, calibrated decisions on our highest-exposure users.<br><br>What you’ll do<br><br>Stripe handles billions of dollars every year for businesses around the world, and the Risk team plays a critical role in the company's financial and partnership success. As a Credit Risk Analyst Commercial Underwriter on the North America Strategy Risk team, you'll underwrite and manage a portfolio of our largest and fastest-growing businesses to facilitate growth objectives while minimizing credit risk. This is a high-impact role that involves strong cross-functional partnership with Sales, Legal, Treasury, and Finance.<br><br>This role is assigned to West Coast hours, with a high preference for candidates in the Pacific time zone.<br><br><strong>Responsibilities<br><br></strong><ul><li>Work directly with our top merchants, from successful venture-backed startups to well-established institutions, to evaluate their business models and financial statements </li><li>Provide tailored credit risk recommendations that mitigate Stripe exposure, while facilitating partner company growth </li><li>Help manage the portfolio by developing a deep understanding of risk across industries, geographies, and operating models </li><li>Deliver insights to support senior management decisions, ranging from onboarding strategies to merchant pricing analysis </li><li>Support the refinement of tools and processes to help the team deliver on key performance indicators, such as credit loss targets or portfolio coverage metrics </li><li>Work with internal and external partners to support merchants around the world<br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>5+ years of relevant experience with knowledge of commercial credit underwriting, financial risk modeling, and cash flow forecasting </li><li>Bachelor's degree in Finance, Economics, Statistics, or other related fields </li><li>Strong knowledge of accounting principles and comfort evaluating financial statements and business models across a range of industries </li><li>Ability to transform business and financial data into cohesive narratives that outline potential credit risks and present dynamic mitigation strategies </li><li>Strong written, verbal, and problem-solving skills </li><li>Attention to detail while managing priorities in a fast-paced environment </li><li>Ability to comfortably interact with the CFOs and CEOs of our top merchants </li><li>Deep empathy for entrepreneurs running a business, and motivation to solve problems to empower them<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Strong technical expertise, including demonstrated experience with SQL </li><li>Strong data visualization skills and a passion for data and analysis </li><li>Experience working in tech, or other fast-paced, high-growth environments<br><br><br></li></ul>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $121,600 - $220,600. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.<br><br>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "5+ years of relevant experience with knowledge of commercial credit underwriting, financial risk modeling, and cash flow forecasting",
+            "Bachelor's degree in Finance, Economics, Statistics, or other related fields",
+            "Strong knowledge of accounting principles and comfort evaluating financial statements and business models across a range of industries",
+            "Ability to transform business and financial data into cohesive narratives that outline potential credit risks and present dynamic mitigation strategies",
+            "Strong written, verbal, and problem-solving skills",
+            "Attention to detail while managing priorities in a fast-paced environment",
+            "Ability to comfortably interact with the CFOs and CEOs of our top merchants",
+            "Deep empathy for entrepreneurs running a business, and motivation to solve problems to empower them",
+            "6 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "The annual US base salary range for this role is $121,600 - $220,600",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "8 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "This role is assigned to West Coast hours, with a high preference for candidates in the Pacific time zone",
+            "Work directly with our top merchants, from successful venture-backed startups to well-established institutions, to evaluate their business models and financial statements",
+            "Provide tailored credit risk recommendations that mitigate Stripe exposure, while facilitating partner company growth",
+            "Help manage the portfolio by developing a deep understanding of risk across industries, geographies, and operating models",
+            "Deliver insights to support senior management decisions, ranging from onboarding strategies to merchant pricing analysis",
+            "Support the refinement of tools and processes to help the team deliver on key performance indicators, such as credit loss targets or portfolio coverage metrics",
+            "Work with internal and external partners to support merchants around the world",
+            "Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users",
+            "5 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "8 days ago",
+        "Full-time",
+        "Health insurance",
+        "Dental insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "8 days ago",
+        "schedule": "Full-time",
+        "health_insurance": true,
+        "dental_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/credit-risk-analyst-commercial-underwriter-west-coast-at-stripe-4431893765",
+      "apply_links": [
+        {
+          "link": "https://us.jobrapido.com/jobpreview/117485581239320576?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "jobrapido.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=_6puOrl6gpGvRmSHAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_x3JvQrCQAwAYFz7CLpkltqK4KJTKSgILhZxLOk1tKfXS0kC1kfyLf1ZvuVL3rPkXAq13uDi9QFFxPBSg5KHgcR5DHCNLclTvJGkcKN_4tcVnLgBJRTXA0c4MneB5vvebNRdnquGrFND8y5zPOQcqeEpv3OjP2rtUWgMaFRvtuspG2O3XFQmfiTwESqMcBCMzqvjFMriA5tACOCsAAAA&shmds=v1_ARwrE23C5aOtBdgFabbBnn9OvI0VwwOS1L6Ybh0BtrRMNraCxA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=_6puOrl6gpGvRmSHAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 9,
+      "title": "Product Designer, Connect Risk",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via LinkedIn",
+      "description": "Who we are<br><br><strong>About Stripe<br><br></strong>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. Our mission is to increase the GDP of the internet, and we have a staggering amount of work ahead. That means you have an unprecedented opportunity to put the global economy within everyone's reach while doing the most important work of your career.<br><br><strong>About The Team<br><br></strong>As a part of the Connect Design team, you'll lead product development for the largest complex users on Stripe—marketplaces such as Doordash and Lyft, and platforms such as Shopify and Woo. You'll drive the vision for how these marketplaces and platforms manage risk and compliance for their business and their users in the US and internationally. You'll work with other designers on the team to define the future of the experience for all Connect users on the dashboard.<br><br>You'll utilize a broad set of product design skills including user interface design, user experience and interaction design, and prototyping. In this role, you'll be responsible for deeply understanding our users and product strategy to design and advocate for the highest quality product experience.<br><br>What you'll do<br><br>As a part of the Connect Design team, you’ll lead product development for Stripe’s largest complex users Marketplaces such as Doordash and Lyft, and Platforms such as Shopify and Woo. You’ll drive the vision for how these marketplaces and platforms manage risk and compliance for their business and their users in the US and internationally. You’ll work with other designers on the team to define the future of the experience for all Connect users on the dashboard.<br><br>You'll utilize a broad set of product design skills including user interface design, user experience and interaction design, and prototyping. In this role, you will be responsible for deeply understanding our users and product strategy to design and advocate for the highest quality product experience.<br><br><strong>Responsibilities<br><br></strong><ul><li>Own the end-to-end product design process from discovery through delivery</li><li>Ship meaningful, high-quality experiences that balance business needs with usability</li><li>Collaborate with engineering, product, and other stakeholders to shape the team's roadmap and goals from an impactful and measurable customer outcomes perspective</li><li>Leverage insights from our UXR team to identify opportunity areas, and to validate potential solutions to pain points</li><li>Partner with content design to craft compelling experiences that deliver the right information at the right time to the right user</li><li>Work closely with other product designers to drive holistic solutions for our marketplaces and platforms and their users <br><br><br></li></ul>Who you are<br><br>We're looking for someone who meets the minimum requirements to be considered for the role. If you meet these requirements, you are encouraged to apply. The preferred qualifications are a bonus, not a requirement.<br><br><strong>Minimum Requirements<br><br></strong><ul><li>Has 6+ years relevant design experience at a tech, product-driven company</li><li>Has experience working in a complex problem space such as B2B or SaaS interfaces</li><li>A portfolio that demonstrates strong design fundamentals and polished UI craft</li><li>Experience partnering closely with cross-functional teams to shape product direction and proven ability to influence teams</li><li>Ability to balance user needs, business goals, and multiple stakeholder inputs</li><li>Experience working horizontally across product areas on ambiguous and complex problems </li><li>Confident presenting work to company leadership and skilled at communicating design decisions through a clear and compelling story<br><br><br></li></ul><strong>Preferred Qualifications<br><br></strong><ul><li>Are skilled in explaining your work, process, and decisions to cross-functional stakeholders and crave feedback to help you produce your best work</li><li>Care about details and are excited to keep pushing your work until it is pixel-perfect</li><li>Value working with a diverse group of people with different perspectives and expertise</li><li>Love working with other designers to help them learn and grow—and have them help you learn and grow</li><li>Are committed to building a sustainable and scalable business by balancing user and business needs<br><br><br></li></ul>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.<br><br>Pay and benefits<br><br>The annual US base salary range for this role is $175,200 - $262,800. For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role. This salary range may be inclusive of several career levels at Stripe and will be narrowed during the interview process based on a number of factors, including the candidate’s experience, qualifications, and location. Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process.<br><br>Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends.<br><br>Hybrid work at Stripe<br><br>This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office).<br><br>In-office expectations<br><br>Office-assigned Stripes spend at least 50% of the time in a given month in their local office or with users. This hits a balance between bringing people together for in-person collaboration and learning from each other, while supporting flexibility about how to do this in a way that makes sense for individuals and their teams.<br><br>Working remotely at Stripe<br><br>A remote location is defined as being 35 miles (56 kilometers) or more from one of our offices. While you would be welcome to come into the office for team/business meetings, on-sites, meet-ups, and events, our expectation is you would regularly work from home rather than a Stripe office. Stripe does not cover the cost of relocating to a remote location. We encourage you to apply for roles that match the location where you currently live or plan to live.",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "We're looking for someone who meets the minimum requirements to be considered for the role",
+            "Has 6+ years relevant design experience at a tech, product-driven company",
+            "Has experience working in a complex problem space such as B2B or SaaS interfaces",
+            "A portfolio that demonstrates strong design fundamentals and polished UI craft",
+            "Experience partnering closely with cross-functional teams to shape product direction and proven ability to influence teams",
+            "Ability to balance user needs, business goals, and multiple stakeholder inputs",
+            "Experience working horizontally across product areas on ambiguous and complex problems",
+            "Confident presenting work to company leadership and skilled at communicating design decisions through a clear and compelling story",
+            "5 more items(s)"
+          ]
+        },
+        {
+          "title": "Benefits",
+          "items": [
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "The annual US base salary range for this role is $175,200 - $262,800",
+            "For sales roles, the range provided is the role’s On Target Earnings (\"OTE\") range, meaning that the range includes both the sales commissions/sales bonuses target and annual base salary for the role",
+            "Applicants interested in this role and who are not located in the US may request the annual salary range for their location during the interview process",
+            "Additional benefits for this role may include: equity, company bonus or sales commissions/bonuses; 401(k) plan; medical, dental, and vision benefits; and wellness stipends",
+            "Hybrid work at Stripe",
+            "This role is available either in an office or a remote location (35+ miles or 56+ km from a Stripe office)",
+            "Working remotely at Stripe",
+            "Stripe does not cover the cost of relocating to a remote location",
+            "8 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "You'll drive the vision for how these marketplaces and platforms manage risk and compliance for their business and their users in the US and internationally",
+            "You'll work with other designers on the team to define the future of the experience for all Connect users on the dashboard",
+            "You'll utilize a broad set of product design skills including user interface design, user experience and interaction design, and prototyping",
+            "In this role, you'll be responsible for deeply understanding our users and product strategy to design and advocate for the highest quality product experience",
+            "As a part of the Connect Design team, you’ll lead product development for Stripe’s largest complex users Marketplaces such as Doordash and Lyft, and Platforms such as Shopify and Woo",
+            "You’ll drive the vision for how these marketplaces and platforms manage risk and compliance for their business and their users in the US and internationally",
+            "You’ll work with other designers on the team to define the future of the experience for all Connect users on the dashboard",
+            "You'll utilize a broad set of product design skills including user interface design, user experience and interaction design, and prototyping",
+            "In this role, you will be responsible for deeply understanding our users and product strategy to design and advocate for the highest quality product experience",
+            "Own the end-to-end product design process from discovery through delivery",
+            "Ship meaningful, high-quality experiences that balance business needs with usability",
+            "Collaborate with engineering, product, and other stakeholders to shape the team's roadmap and goals from an impactful and measurable customer outcomes perspective",
+            "Leverage insights from our UXR team to identify opportunity areas, and to validate potential solutions to pain points",
+            "Partner with content design to craft compelling experiences that deliver the right information at the right time to the right user",
+            "Work closely with other product designers to drive holistic solutions for our marketplaces and platforms and their users",
+            "12 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "15 days ago",
+        "Full-time",
+        "No degree mentioned",
+        "Dental insurance",
+        "Health insurance"
+      ],
+      "detected_extensions": {
+        "posted_at": "15 days ago",
+        "schedule": "Full-time",
+        "no_degree_mentioned": true,
+        "dental_insurance": true,
+        "health_insurance": true
+      },
+      "apply_link": "https://www.linkedin.com/jobs/view/product-designer-connect-risk-at-stripe-4430123328",
+      "apply_links": [
+        {
+          "link": "https://talents.vaia.com/companies/plaid/san-francisco/product-designer-fraud-risk-73282078/?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "vaia.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=vuw3zf0j4mreLx3XAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xXNMQoCMRBAUWz3CNpMLZqIsI1WoihYiXuAJYlDNhpnQmaEvYY3dm1-8ZrffGdNe6v8-ASFE0qKhHUFRybCSe5JXrCGK3sQdDUMwAQX5phxvh9Ui-ysFckmijpNwQR-Wyb0PNone_mnl8FVLNkp9tt2M5pCcbnotKaCkAg6R3CujkKSwNP68AOWPYUzlAAAAA&shmds=v1_ARwrE210IwOS0PsThi5TeXBw3h8eX4F9zB3ca1DDLG4cyfBSnA&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=vuw3zf0j4mreLx3XAAAAAA%3D%3D",
+      "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3Nzc3N//AABEIADgAOAMBEQACEQEDEQH/xAAbAAEAAgMBAQAAAAAAAAAAAAAABQcDBAYCAf/EACkQAAEEAQEGBgMAAAAAAAAAAAIAAQMEEQUGEjE2QXQHE1GRobFCUqL/xAAbAQEBAAMBAQEAAAAAAAAAAAAAAQIEBgMHBf/EACURAQACAQIFBQEBAAAAAAAAAAABAgMFEQQhMjRxgZGhsfATMf/aAAwDAQACEQMRAD8A5tfSmIgICAgICAgICAqM1WrZuFu0681gvSGNzf4Xnky48Ub3tEeZHmxBLWmOCxGUcoPgwJsOL+jq0vW9YtWd4kY1kCDc0ii+p6pVojI0b2JGDfcc7ueuOq8eJzfww2ybb7Ks2j4XaXFh7ty1YduIjiMX+3+Vy+TX+It0ViPn97GzoKOyGz9HDw6VXIm4FM3mP7llaGTUeLy9WSfTl9KmgAIxYYxYRbgwthmWlPP/AEULtlzXqvcku903tMfhEMt1BBM7G816V3IrS1LtMnhV+LglEBBQe2XNWq9yS73Te0x+EQy3UEEzsbzXpXcitLUu0yeFXzJIEQOcpiAtxInwzLg4iZnaFQt7bHZ6lnzdVgMm/GF3lf8AnK3MencXk6cc+vL7HP3fFHTIstSpWrDtwI8Ri/2/wv0MegcRbrtEfP73TdWer3n1PVLV4o2iexI57jFndz0z1XT8Ph/hirj332GmvZBBkgmlrzBNXkKOUHyJg+HF/VnWN6VvWa2jeJH2zYntnv255Zz/AGmNzf3dSmOmPlSsR45KxLNBAQEBAQEBAQEBB//Z"
+    },
+    {
+      "position": 10,
+      "title": "Account Executive, Funded Startups - Core Grower",
+      "company_name": "Stripe",
+      "location": "San Francisco, CA",
+      "via": "via Teal",
+      "description": "<p>About the position</p><p>Stripe is a financial infrastructure platform for businesses. Millions of companies—from the world's largest enterprises to the most ambitious startups—use Stripe to accept payments, grow their revenue, and accelerate new business opportunities. The Startups - Core Grower team is a consultative sales team that is responsible for the growth and retention of the largest and fastest-growing Startup customers at Stripe. As an Account Executive, you'll identify new opportunities for our clients to get the most out of Stripe by understanding our clients' needs, execute scaled sales strategies to close upsells and renewals with existing Stripe customers, and drive end-to-end campaigns to increase adoption of Stripe products.</p><p>Responsibilities</p><ul><li>Own contract renewals and lead commercial negotiations to increase and retain existing customer revenue and Stripe market share</li><li>Develop and implement full sales cycle strategies for driving product adoption, net new product sales, and client retention at scale among existing Stripe customers</li><li>Solve complex client needs and work across product, sales, risk, and operations teams to improve our product</li><li>Own the full sales cycle from lead to close for startups and small and medium businesses</li><li>Generate your own leads through cold calling, blitzing, research, networking, and driving your territory</li><li>Make every potential Stripe user happy with every interaction, regardless of deal size</li><li>Identify and understand users' pain points to propose Stripe solutions</li><li>Make sure that internal teams are set up for users' success by coordinating with other Stripe teams</li></ul><p>Requirements</p><ul><li>5+ years of experience in a client-facing sales role</li><li>Ability to understand complex technical ecosystems and build great relationships with technical customers</li><li>Ability to drive and close upsell opportunities for additional Stripe products in long-term, consultative engagements</li><li>Problem-solving ability to manage complex pricing and cost considerations</li><li>Experience managing projects with input from cross-functional teams</li><li>A knack for working well with a wide range of stakeholders, both internally and externally</li><li>Ability and motivation to operate in an ambiguous and fast-paced environment</li><li>Superior verbal and written communication skills</li></ul><p>Nice-to-haves</p><ul><li>Prior experience in a sales and customer-facing role at a high-growth technology company</li><li>Experience with Excel and SQL, or a willingness to learn</li></ul>",
+      "job_highlights": [
+        {
+          "title": "Qualifications",
+          "items": [
+            "5+ years of experience in a client-facing sales role",
+            "Ability to understand complex technical ecosystems and build great relationships with technical customers",
+            "Ability to drive and close upsell opportunities for additional Stripe products in long-term, consultative engagements",
+            "Problem-solving ability to manage complex pricing and cost considerations",
+            "Experience managing projects with input from cross-functional teams",
+            "A knack for working well with a wide range of stakeholders, both internally and externally",
+            "Ability and motivation to operate in an ambiguous and fast-paced environment",
+            "Superior verbal and written communication skills",
+            "Prior experience in a sales and customer-facing role at a high-growth technology company",
+            "Experience with Excel and SQL, or a willingness to learn",
+            "7 more items(s)"
+          ]
+        },
+        {
+          "title": "Responsibilities",
+          "items": [
+            "As an Account Executive, you'll identify new opportunities for our clients to get the most out of Stripe by understanding our clients' needs, execute scaled sales strategies to close upsells and renewals with existing Stripe customers, and drive end-to-end campaigns to increase adoption of Stripe products",
+            "Own contract renewals and lead commercial negotiations to increase and retain existing customer revenue and Stripe market share",
+            "Develop and implement full sales cycle strategies for driving product adoption, net new product sales, and client retention at scale among existing Stripe customers",
+            "Solve complex client needs and work across product, sales, risk, and operations teams to improve our product",
+            "Own the full sales cycle from lead to close for startups and small and medium businesses",
+            "Generate your own leads through cold calling, blitzing, research, networking, and driving your territory",
+            "Make every potential Stripe user happy with every interaction, regardless of deal size",
+            "Identify and understand users' pain points to propose Stripe solutions",
+            "Make sure that internal teams are set up for users' success by coordinating with other Stripe teams",
+            "6 more items(s)"
+          ]
+        }
+      ],
+      "extensions": [
+        "6 days ago",
+        "Full-time",
+        "No degree mentioned"
+      ],
+      "detected_extensions": {
+        "posted_at": "6 days ago",
+        "schedule": "Full-time",
+        "no_degree_mentioned": true
+      },
+      "apply_link": "https://www.tealhq.com/job/account-executive-funded-startups-core-grower_7ea1aa8486e7e76a946c92a6995135fe23e91",
+      "apply_links": [
+        {
+          "link": "https://builtin.com/job/account-executive-funded-startups-core-grower/9959556?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "builtin.com"
+        },
+        {
+          "link": "https://tryremotely.com/job/account-executive-funded-startups-core-grower-8024368?utm_campaign=google_jobs_apply&utm_source=google_jobs_apply&utm_medium=organic",
+          "source": "tryremotely.com"
+        }
+      ],
+      "sharing_link": "https://www.google.com/search?ibp=htl;jobs&q=Stripe&htidocid=JAAiuN4BuM0Xph3gAAAAAA%3D%3D&hl=en-US&shem=epsd1,rimspwouoe&shndl=37&shmd=H4sIAAAAAAAA_xXHwQqCQBAAULr6CXWZc5hG0KVOIil09QNkHQfdsJ1lZrb8n360ujx42WeTtRUip2BwWwmT-Rfl0KQw0gidObEUFQ5QsxC0wm-S3-48gJITnIEDtMzTQtvrbBb1UpaqSzGpOfNYID9LDjTwWj540D-9zk4oLs6oP52PaxHDtN91Jj4S-ACdC9CIC-gVOYe6-gIu8uf3pgAAAA&shmds=v1_ARwrE20ffrF-lKyZIJRsj-ghrBBQb4O5JADb2w25zHwWjZKbcg&source=sh/x/job/li/m1/1#fpstate=tldetail&htivrt=jobs&htiq=Stripe&htidocid=JAAiuN4BuM0Xph3gAAAAAA%3D%3D",
+      "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADgAAAAWCAMAAACi/q9qAAAAaVBMVEX///9ncuVfa+RmceVeauRkb+VcaORaZuPMz/Vveebv8Py6vvJWY+OHj+m9wfJqdeWTmuv09f3f4fnq6/tOXOL5+f51f+ewtPCfpe1SYOPR1PbCxvOrsO+Ql+uaoe2nrO+Ciul7hOjX2ves18xlAAABuElEQVQ4jZ2Ui5KrIAyGgRCCiuKl3qttff+HPAntme3sbHt6Ns4wSP5PkhBU6rU1x5i/cb+0YrZz95GyK2pqnkBnTp+BRcDwDF7H5V9In/c8VkbTz/6mf5J+LY8xUMBaQIgxU0MEX57OK0STe4zDEkMYjiT1WSDaH58pHWh+goAaIKoMAdGMqwXKvQOwwOuzZ+klAKA2kMiFtGaJmxPoglUZC004rxx57i3PiVAD9WoJGuPVadwEPBvtuHjtLqDrmkZAM7Zd9QDNqNTG+xRqACx5J6eDJDoajXvKWJQSRJb8qniAruUXq7Hsg7Yyj2Al7m4GjTSsd7B5AW4IWeu4FskkCKUOdJLC7S24I8SD88Vk7nKvqy+5QK5a34BXhEF2LGuxbZXDFbTjUtVvwIbYzzma6uv4q1i0OUeBO4M4dcd3ELe2HUDbVd2Qx6bP/STg6owjjp58GzgHMt9BjU5aBPnIZj5yInK3BAYE7odQc+m4TRBUNPYqIOF8bwAWILVJa0Rrh9S1a51hVqeLUAw4XNS071LuZZ/qhkHrdx2n+7XJzzeM5Sf3+29V/9t+D5I9/QpcpvXn38cfwMkZM469IRIAAAAASUVORK5CYII="
+    }
+  ],
+  "pagination": {
+    "next_page_token": "eyJmYyI6IkVyY0VDdmNEUVVwcFZEUjBTbVkwY0hsM09WaHpiRWhmV2xkNFZXVlpPR1JMY25oM05YbDRibFZWUW1kSGFVYzBaVEozV1dVNVRHeGZjVVkxZEZoVFdGZzFVVXBxYzNGdFFsQmhYMkkwWDNGTUxYaGllRmxWTmxsWmIyUjRlakpPUmkxVVpuY3dkUzAxZWxKM2NFWlNTR0ZwV1ZvMU1sOVFSMGxZY0RkeWJEaGZiRlJSVDB4d1Ewd3pjbmxSVVc1WlIwZ3pXRmhUZGxZeFFsVXphV0pDTWpOT04zTkRPRVJzWVhNd1RVZFhZMmgwVTJaVlQxaDRXVjl5T1dWNk5FWnpPRTltUVZadFpYbEplbmswT0RFeGFtNUxWRmh2VW5SbVJucG5hWFZmVVMxS05qY3hNemwyU0ZGSFgyUjZOa2d0Y2s5MU5tTmFXa3BLVm5ZM1QwaHpiRmgzUkVkeU5tUjBNVk5XV0RjMFVsSmxOMjUzU0V4TlpYWlRSRFJmUjNCMk9VaEVWRWxSVTNWMU5YVjZNalJ6Vm1wQ1FWcFhiMHAzY1d0RmMydFhaRlpvTFRKUFZYcGZNbEY1WmtORExWTm5ZMEowZFRRM1UxZG5kbE5XUjFSQ1NWcEZaRE5mYzFwMWIxWlJTak4wY1dOdVZtRnNVV1YxV1dwalRXTjBkVzlmT1dGbGRFaFVjMVUyZUZOTGNrYzVhMmRsWTFNNVFXb3RSM2M0UmtKa2VrVnhUMUpSVjFkNlowNW1jMEp0ZW1wek1DMUpaMHBoY0hCRUxVazFTRGd0UW05WVFWaHBkelZoWlhrMk5XRllWRlpIWVdORVVVTm5lR0ZXVG14alpUSmFhRE5WYWxwRk4xRlBWRE5LYTJSdVpHUmhlVE5sWDFWQmVXWjVlRTBTRjFkck1VZGhiM1pHU25aVVIydFFTVkJ3Y21aVmMwRnZHaUpCUkhOeU9XWlVSVkEzVmtnMVduSjFNMUZmZDJ3dE1VazVibEZMWjNGWWNWbDMiLCJmY3YiOiIzIiwiZWkiOiJXazFHYW92Rkp2VEdrUElQcHJmVXNBbyIsImdsIjoidXMiLCJobCI6ImVuIiwidWRtIjo4LCJhc3luYyI6Il9iYXNlanM6JTJGeGpzJTJGXyUyRmpzJTJGayUzRHhqcy5zLmVuLks5aXB4cGxISHc4LjIwMTkuTyUyRmFtJTNEQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFSQUFFQVJBQUFBUUFBQVFBQUFBQUFBQUFBQUFBQUFBQU1CQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFnUUFJQUFTQUFBQUFBQUFBQ0FBQUFBQUFCQUFBQUFBQUFBQUFBQURBQVFBQUFHRUFBQUFBQlFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUJCQUFBQUFJaEFFQUFBd05fTU53QUFOQUFBQUFBY0FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQWdBUUFBQUFBQUFBQUFBRmdBQUFBZ0dBQUFJQUFDQWlBQUFBQUFBQUFBQUFBQUFBQUFBQUFFQUFBQUFBQUFBQUFBQUFBQUFDQUFBQUFBQUNnQUFBQUFBQUlBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFFQUFBQUFBQUFBQUFBQUFBQUFBQWdBQUFBb0FBQUFBQUFBQWNBQUFBQUFBQUFJQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBUXdBQUFBQUFBQUFBQUFLQUFqNEFVQUFCQUFBQUFBQUNBQUFBQUFBSUNBQUFBQUFBQUNBQUFJQkFBWUFBQUFBT1FBZUQ4QWhnZ0lBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBUUFBVXdEaVFfSUFBQ0FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQklFWjRDQUFBQUFBQ3dOUUFnJTJGZGclM0QwJTJGYnIlM0QxJTJGaWNoYyUzRDElMkZycyUzREFDVDkwb0ZzRHdkT0hFcFd4TGx5WVN2bXFRZlRreFVaa1ElMkZjYiUzRGxvYWRlZF9oXzAlM0ZjYiUzRDEyMTUwOTM3OCxfYmFzZWNzczolMkZ4anMlMkZfJTJGc3MlMkZrJTNEeGpzLnMuZVJSc1liSkNYTnMuTC5CMS5PJTJGYW0lM0RBQUFRQUFBQUFBUUFBQUFBQUFBQUFBQUFCQUFnQWdBQUFBQUFBQUFBQUFBQUFBQUFBQWdBQWdBQUVBQUFBQUFBQUFBQUFBQUlBQUFBQUlBQUFBQUFBQUVBQU1nQUFBQUFBQUFBQlFBQUFBQUEwSUFJQUVBQUFBQUFBQUFBZ0VJLUFBQmdBQUFBQUFBQUR3QUFRQkFBQUFBQUFBQUFBQUFBQUFBRUFBQVNBQUFBQUFBQUFDQUFBQUFBQUFBQUFBQ0FBQUFBQUFBQUFBUUFBQUVVQUFBQUFBRUtBQUFnQUFBQVFBQUFBQUFBQUFBQUFCQkFBQUFBQUFBQUVBQUFBQUFBQUFBQU9BQUFBQUFBQUFBQUFBQUFDQUFBQUFBQUFBQUFBUUFBQUdBQUVBMEFBQUFBQUFCQUdBQUFBQUFBQUFBQUlBQUFBZ0FBQUFBQUFBQUFFQW1BQUFBSUFBQUFBQUFEQUFBQUFBQUFBQ0FBZ0NBVUFnQWdBQ2dBQVFFQUFBQUFCd0FDQUFBQUFBQUFBQWdJQUFBQUFBQUFBQUJBQUFDQ0FJUUFBZ0FBQUFBZ0FBQUFBQUFFQUFBQUlBY0FBQUFBQUFCQUFBR0FBQVFBR0VFR0FDQlJFQUFpQUlBQUFBZ0FBQUJFQUFBQUFBQUtRRUFBQUFBQUFBQUFBQUFBaUFBQUFBQUFBQUFBQUFBQUN3Q3dCQUlCQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQWdBSUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFRJTJGYnIlM0QxJTJGY2IlM0Rsb2FkZWRfaF8wJTJGcnMlM0RBQ1Q5MG9HNkdVb2JjTjVyMzJUQW9hbnVYNktHUmg1V09nJTNGY2IlM0QxMjE1MDkzNzgsX2Jhc2Vjb21iOiUyRnhqcyUyRl8lMkZqcyUyRmslM0R4anMucy5lbi5LOWlweHBsSEh3OC4yMDE5Lk8lMkZjayUzRHhqcy5zLmVSUnNZYkpDWE5zLkwuQjEuTyUyRmFtJTNEQUFBUUFBQUFBQVFBQUFBQUFBQUFBQUFBQkFBZ0FnQUFBQUFBQUFBQUFBQUFBQUFBQUFnQUFnQUFFQUFBQUFBQUFBQUFBQUFJQUFBQUFJQUFBQUFBQUFFQUFNZ0FBQUFSQUFFQVJRQUFBUUFBMFlBSUFFQUFBQUFBQUFBQWdFSS1CQUJnQUFBQUFBQUFEd0FBUUJBQUFBQUFBQUFBQUFBQUFnUUVJQUFTQUFBQUFBQUFBQ0FBQUFBQUFCQUFBQUNBQUFBQUFBQURBQVFBQUFHVUFBQUFBQlVLQUFBZ0FBQUFRQUFBQUFBQUFBQUFBQkJCQUFBQUFJaEFFQUFBd05fTU53QUFQQUFBQUFBY0FBQUFBQUFBQ0FBQUFBQUFBQUFBQVFBQUFHQWdFUTBBQUFBQUFBQkFHRmdBQUFBZ0dBQUFJQUFDQWlBQUFBQUFBQUFBRUFtQUFBQUlBQUFFQUFBREFBQUFBQUFBQUNBQWdDQVVBZ0FnQUNnQUFRRUFBQUlBQndBQ0FBQUFBQUFBQUFnSUFBQUFBQUFFQUFCQUFBQ0NBSVFBQWdBQUFBQWdBQUFBb0FBRUFBQUFJQWNBQUFBQUFBQkFJQUdBQUFRQUdFRUdBQ0JSRUFBaUFJQUFBUXdBQUFCRUFBQUFBQUFLUUVqNEFVQUFCQUFBQUFBQWlBQUFBQUFBSUNBQUFBQUFDd0N3QkFJQkFBWUFBQUFBT1FBZUQ4QWhnZ0lBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBUUFBVXdEaVFfSUlBQ0FBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQklFWjRDQUFBQUFBQ3dOUUFnJTJGZCUzRDElMkZlZCUzRDElMkZkZyUzRDAlMkZiciUzRDElMkZ1amclM0QxJTJGaWNoYyUzRDElMkZycyUzREFDVDkwb0Z6WHR6eHYyNXNaOVNvM251TWhoUHNqbWJvSXclMkZjYiUzRGxvYWRlZF9oXzAlM0ZjYiUzRDEyMTUwOTM3OCxfZm10OnByb2csX2lkOmZjX1drMUdhb3ZGSnZUR2tQSVBwcmZVc0FvXzIifQ=="
+  }
+}

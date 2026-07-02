@@ -4,7 +4,7 @@ Uses FastAPI TestClient (synchronous). Redis is mocked as an AsyncMock.
 """
 import json
 import os
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -33,9 +33,15 @@ def _build_app():
 _DOSSIER = {
     "domain": "stripe.com",
     "generated_at": "2026-01-01T00:00:00+00:00",
+    "derived": {"company_name": "Stripe, Inc."},
     "sections": {
         "about_domain": {"knowledge_graph": {"title": "Stripe, Inc."}},
         "ads_transparency": None,
+        "ads_transparency_historical": None,
+        "meta_page_search": None,
+        "meta_ads": None,
+        "google_news": None,
+        "google_jobs": None,
     },
     "errors": [],
 }
@@ -86,6 +92,23 @@ def test_cache_hit_returns_cached_true():
     mock_redis.get.assert_awaited_once_with("prospect:stripe.com")
 
 
+def test_cache_hit_does_not_write_investigation():
+    """On a cache hit, write_investigation must NOT be called."""
+    mock_redis = AsyncMock()
+    mock_redis.get = AsyncMock(return_value=json.dumps(_DOSSIER))
+
+    client = _build_app()
+    with patch.object(_routes_module, "_redis", mock_redis), \
+         patch("app.prospect.routes.write_investigation") as mock_write:
+        client.get("/api/prospect/stripe.com")
+
+    mock_write.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Cache miss path
+# ---------------------------------------------------------------------------
+
 def test_cache_miss_calls_service_and_sets_cache():
     mock_redis = AsyncMock()
     mock_redis.get = AsyncMock(return_value=None)
@@ -96,7 +119,8 @@ def test_cache_miss_calls_service_and_sets_cache():
 
     client = _build_app()
     with patch.object(_routes_module, "_redis", mock_redis), \
-         patch("app.prospect.routes.build_dossier", mock_build):
+         patch("app.prospect.routes.build_dossier", mock_build), \
+         patch("app.prospect.routes.write_investigation"):
         resp = client.get("/api/prospect/stripe.com")
 
     assert resp.status_code == 200
@@ -105,7 +129,30 @@ def test_cache_miss_calls_service_and_sets_cache():
     mock_redis.setex.assert_awaited_once()
     args = mock_redis.setex.call_args[0]
     assert args[0] == "prospect:stripe.com"
-    assert args[1] == 6 * 3600  # TTL
+    assert args[1] == 6 * 3600
+
+
+def test_cache_miss_writes_investigation():
+    """On a cache miss, write_investigation must be called exactly once."""
+    mock_redis = AsyncMock()
+    mock_redis.get = AsyncMock(return_value=None)
+    mock_redis.setex = AsyncMock()
+
+    async def mock_build(domain):
+        return dict(_DOSSIER, domain=domain)
+
+    client = _build_app()
+    with patch.object(_routes_module, "_redis", mock_redis), \
+         patch("app.prospect.routes.build_dossier", mock_build), \
+         patch("app.prospect.routes.write_investigation") as mock_write:
+        resp = client.get("/api/prospect/stripe.com")
+
+    assert resp.status_code == 200
+    mock_write.assert_called_once()
+    call_kwargs = mock_write.call_args[1]
+    assert call_kwargs["domain"] == "stripe.com"
+    assert call_kwargs["generated_at"] == _DOSSIER["generated_at"]
+    assert "client_ip" in call_kwargs
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +171,8 @@ def test_rate_limit_enforced():
     client = _build_app()
     statuses = []
     with patch.object(_routes_module, "_redis", mock_redis), \
-         patch("app.prospect.routes.build_dossier", mock_build):
+         patch("app.prospect.routes.build_dossier", mock_build), \
+         patch("app.prospect.routes.write_investigation"):
         for _ in range(21):
             resp = client.get("/api/prospect/stripe.com")
             statuses.append(resp.status_code)

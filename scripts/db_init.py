@@ -77,6 +77,17 @@ CREATE TABLE IF NOT EXISTS threat_pulse_cache (
     response_json TEXT,
     fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS prospect_investigations (
+    investigation_id  TEXT PRIMARY KEY,
+    domain            TEXT NOT NULL,
+    generated_at      TEXT NOT NULL,
+    dossier_json_path TEXT NOT NULL,
+    ip_hash           TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_prospect_domain ON prospect_investigations(domain);
+CREATE INDEX IF NOT EXISTS idx_prospect_generated ON prospect_investigations(generated_at);
 """)
 
 conn.commit()

@@ -1,0 +1,2677 @@
+{
+  "search_metadata": {
+    "id": "search_b65xNDvgndHYXKQ8Z48d73q0",
+    "status": "Success",
+    "created_at": "2026-07-02T11:36:51Z",
+    "request_time_taken": 3.05,
+    "parsing_time_taken": 0.01,
+    "total_time_taken": 3.06,
+    "request_url": "https://www.facebook.com/ads/library/?ad_type=all&active_status=active&country=ALL&media_type=all&is_targeted_country=false&search_type=page&view_all_page_id=175383762511776&sort_data[mode]=total_impressions&sort_data[direction]=desc",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_b65xNDvgndHYXKQ8Z48d73q0.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_b65xNDvgndHYXKQ8Z48d73q0"
+  },
+  "search_parameters": {
+    "engine": "meta_ad_library",
+    "page_id": "175383762511776",
+    "ad_type": "all",
+    "country": "ALL",
+    "media_type": "all",
+    "sort_by": "impressions_high_to_low"
+  },
+  "search_information": {
+    "total_results": 711,
+    "ad_library_page_info": {
+      "related_pages": [],
+      "has_blank_ads": false,
+      "hidden_ads": 0,
+      "page_is_deleted": false
+    },
+    "page": {
+      "name": "Stripe",
+      "id": "175383762511776"
+    }
+  },
+  "ads": [
+    {
+      "ad_archive_id": "866112479787857",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/647148425_1261693546110788_693288097997817865_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=vPHy8zATqkYQ7kNvwErxv-D&_nc_oc=AdqDosT1Unui8mKm6IvuffOnSif6WT58wfXkdNVhW7zgRLqe47-OBtYmld-W8msZ2FojbtxRgsrGmBhlfKfUS7vm&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCUhkGA2fPot7aqN4TCx4Ul0YcYAr9Q4JQZI1p_iiLBEw&oe=6A4C230D",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Comme plus de 100 000 fondateurs, créez votre société avec Stripe Atlas pour commencer à générer des revenus en seulement quelques jours"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "Avec notre plateforme Stripe Atlas, constituez votre start-up aux États-Unis en quelques clics, sans la moindre charge administrative.",
+        "link_url": "https://stripe.com/fr/atlas",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/649649857_2019924975231019_2132539574742334615_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=d8l7NNFPMikQ7kNvwFZR9im&_nc_oc=AdqoIRkd3BcmQKGJAYH1gkm79tQ3ocQRkWfsNdomKsQlCLxrSCpLI7cEJxyK9PBWuwLs7YJJH13yg738nLea1uwN&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCibEBA10L5ed_emt2FPmto7qYNX1nDAZP8DWI7jCIWHw&oe=6A4C35C1",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/649650538_1488161409644582_5527647234255588190_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=LJDzXidRTb8Q7kNvwFh9tnN&_nc_oc=AdpOkbAnTxmnJCoGueZr5EdxP1grG-OxaT19Vt3EpLiQohBH2OQzE_-9af3ir4C4k17rtSaY7EeNq2s7vAIPeEw6&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBfOuKLYZ8pkgPk6ikLZ0vwzHOu85QYnvfv-xu0XgTPig&oe=6A4C06F4",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Se lancer",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": true,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiODY2MTEyNDc5Nzg3ODU3IiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "1847348355962269",
+      "collation_count": 3,
+      "collation_id": "26341974812152727",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/669587659_939625448784155_3167619324296609808_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=6k8MI28rYv8Q7kNvwFzJu3K&_nc_oc=AdosppYiC-WqYVfOUju70_K9vxdlmF22LHBfTPsmsyXHgRzShlIq0vskoHHSARFBoPYIA5BB1WVSCRpcVyS1rF4C&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBxu1cuwe7V_xmpT3gG2kBoSPcb-a5uP-x6u0vicgE48g&oe=6A4C1FFD",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Easily configure pricing models like fixed fee with overage, pay as you go, and credit burndown.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe Billing",
+            "cta_text": "Sign Up",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/669507604_1789768062002967_5627937420245525679_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=fC99Rv7srRgQ7kNvwGehrwX&_nc_oc=AdqFjgWASKmPmLjn-uxIHP2wmo9FGYrRisb33a0MUwxABOcqHbsc-qtbl39n2Y3EYGDVYCgETg3N7Q6bK0dKLON1&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAWqKycGXv6tryi9kkKWUOtRAfvgiNvJf5i9jTSVs_NjQ&oe=6A4C33D0",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/669239216_1995378628026276_6185028904861995720_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=swnU8FuynS8Q7kNvwHGHqq5&_nc_oc=AdoMyabmZrwEZx_78rkm9Rw4yIODQ5YdrgTEQXfxwsQCQe1yUpo4L_zEVkM5sjB0GGsY2lr1iJ-cOyUtrLQCT17E&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBkBxW2dG6zxBI_u2nue6GGLsrNLrLvoP1dHlMudXM4WA&oe=6A4C312D",
+            "watermarked_resized_image_url": ""
+          },
+          {
+            "body": "Easily configure pricing models like fixed fee with overage, pay as you go, and credit burndown.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe Billing",
+            "cta_text": "Sign Up",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/669945931_919382667656705_2097796491843334608_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=nJKp4FKU4XwQ7kNvwHKKEl3&_nc_oc=AdpxI4zDu_QC2xXWM4mswpLFRBDOtnkvbyZYa484f5CKlYOQOu_6vq0cAqC7WvOn_nF1-0su3hdHlQny5V1mPOZZ&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCicpy-LdOwg3XSIrPFh0EVd-Js8fh3Xdf1FKRzW49JjA&oe=6A4C3681",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/671537601_1304902871844871_3073091956458679309_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=HkgC5bkgGNYQ7kNvwGjKjqM&_nc_oc=AdpRnwtu7yFWFcozIRM11h8YcqZVd5dewoogcE3LV6qGi15_3H2ulnwcqSAhE7bNZeK90XCicyO6iB2IKXKfKcxn&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDr8_94tuJ166qFLu3QqlNaumec_T7rpi7hlTajDlRxgA&oe=6A4C1268",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-10T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTg0NzM0ODM1NTk2MjI2OSIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1462078635298711",
+      "collation_id": "26341974812152727",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/669390190_1380538947433678_436323981832847740_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=2j8W8cMhQR0Q7kNvwHx08cg&_nc_oc=AdqRb7Csa77zJpfcyG-Al7_co-XI1ltO2YR5bQtWD9QuJZZUEgo-Ydqc2j-XyV9XuDnhQgEjvGvnOPU8NN_oNnIp&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD7gJWDfEbsvhlLDTpTUGA7-zyjQIIuY0IfYjXSoWQ6xg&oe=6A4C0FCC",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Easily configure pricing models like fixed fee with overage, pay as you go, and credit burndown.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe Billing",
+            "cta_text": "Sign Up",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/669780867_1347516350519694_3567961050929564836_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=KdhbWeZg_-gQ7kNvwFYgwgs&_nc_oc=AdoCxDwtShqV3UFGWu8NK-Dfkq0_TPS0prXRpaiXhMDAiTgp7IF5YbLJMu82jaNPS76kMYAMPCuwAOsIpHqbhb51&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDKFliZB-OaYM31G7LZL-3TIGdQDv2yFqFpRJKMyXi3Rw&oe=6A4C2985",
+            "resized_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/670771091_1307367754592071_8010711567332332453_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=Kope4U0pvxMQ7kNvwFoa1Is&_nc_oc=AdpwFkoE3ksv3erw_DEjCkl0W6CNt9QkroextC1SqwRICnLr0yxOdU2Xzjgqsia1NFXdGbnqn10G7_Zw6dgpDbiw&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQB_mUF7usDTfBYQo1dpHyR-DoCa8VyAERPJ7X25LrMeOQ&oe=6A4C05E6",
+            "watermarked_resized_image_url": ""
+          },
+          {
+            "body": "Easily configure pricing models like fixed fee with overage, pay as you go, and credit burndown.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe Billing",
+            "cta_text": "Sign Up",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/670730357_1395819322570825_269254744435671700_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=zjySa-BCNMYQ7kNvwEFCqQp&_nc_oc=AdqAvrkPQKMVtLpoGUdWLPWAlukplgDzIHFQz2Vj0mfCAqx6CDmNCexlxzc_ipLDTqzu4zJ-PlvRUm3M5R4Qp5N9&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC0-DgFmRgj__sW0h2G79-JeQB46WasznC3X1pK5T4u2Q&oe=6A4C0EC7",
+            "resized_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/669565427_1466791771563501_3583353632411423933_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=gpRlboMO6zIQ7kNvwGtIqa3&_nc_oc=AdpNOv7w3is9GlWFfi724z5dzGtLj204xcKbc5zc7qQnC4F2zuUA3KO9W0PqTQ6o91Frxy6fMjmkqvSJNuc6TXfQ&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDhlPWmoLMskE9RjgAX1y2YBgjrrrbFI6UO0YRl_bSI1g&oe=6A4C10C1",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-10T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTQ2MjA3ODYzNTI5ODcxMSIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "930488769493092",
+      "collation_count": 1,
+      "collation_id": "1596535391502768",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/648766686_1263738092568883_2708276523078469560_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=_u0sIotMcnYQ7kNvwFwFxZ-&_nc_oc=Adr1pnuyu6VcBlCN05xB8Ox3RWcU6oQ8vm_S4nOdjycqH0NOpd35aR3T2sATEcthCW4iLNDdvs07YtKthPMv5SHj&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCz0uPhbqRoSzPFMLMQ9w-NpNGc7iks7ugQtuIqOMO3AA&oe=6A4C047D",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Stripe’s AI models use 100+ signals to dynamically surface the best payment method at every checkout session."
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "VIDEO",
+        "link_url": "https://stripe.com/payments/ai",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Get started today",
+        "videos": [
+          {
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQOPc-QZSRwbx8Fqy1fl9YQVbf3IAVswdLtLEeKoSug09CSJ-hpMB9UtqGTYIhoB0EvjzUOqVn8EWI-lYIGMdJTMrK29YLAcfkzFtwGKlEsjZA.mp4?_nc_cat=110&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=uxHqzG0C3vEQ7kNvwE725rI&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjExODQwMzU4NTA0NDU4MDIsImFzc2V0X2FnZV9kYXlzIjoyNDYsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo3LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=3aa2905b522bb99f&_nc_vs=HBkcFQIYRWZiX2VwaGVtZXJhbC9DQjRCQTI3MkYyNTJFRDIxRjEzNTNBNkM4NTU0OTQ5Ql9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbUj6PE-reaBBUCKAJDMywXQB-7ZFocrAgYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCGsUbABiu1CwfNrQej2dKrABoHuClQc6NVtMMseSuD1Q&oe=6A4C382E",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/651062401_4284471865151351_1000622657119228637_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=m5mDm6T1pLkQ7kNvwHV1pZc&_nc_oc=AdrNlxrPVxSReFLDbUGTIZGN_ZLc0Vf3QksOQcTSZHIxXh3nFweZWMZoKRcbbSv2y2cz4hYFbJNI7j2nlO_3vVaj&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDZuUHrVFikW-YpjzsSSEPWKy1QZamlYj7F82KYZXjQgg&oe=6A4C1401",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQMCZykSdr8aYqQBdU-w3bcx8I4U2TH7eoO2KhJwQZh2LouwJvHkGe_kSXbaX1U6o4gh9B4J59yekiLmxdvJ43PRCl3cLnjqPh6K8Ad_5w.mp4?_nc_cat=101&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=c2NDdlsyx58Q7kNvwEdHqc5&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTE4NDAzNTg1MDQ0NTgwMiwiYXNzZXRfYWdlX2RheXMiOjI0NiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjcsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCtsW8WpQTXbBpGrUJavL2Iu14nl07JnRGBSQb3JVwcTw&oe=6A4C3699"
+          }
+        ],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTMwNDg4NzY5NDkzMDkyIiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "2076857796208664",
+      "collation_count": 2,
+      "collation_id": "410345718793206",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/649193306_1261069709306709_7380266947489718800_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=uOtN4xoa52oQ7kNvwEc7lYU&_nc_oc=AdrBnYWVRrIoBPcVskLkDjJF5FQ0cgg7XZRgp26i12feLserjyXKLAIIHB5868Xwjs8POfHPM_yEXAzjbvbp3FHx&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCiu2ZWozDKBt5PqaipL8oa9uyGpkz1C6P3hUAVFDEw4A&oe=6A4C23F8",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Acceptez des paiements en ligne rapidement, même sans site Web, grâce aux liens de paiement.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/fr/lp/start-now",
+            "title": "Lancez-vous dès aujourd'hui",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQOxsaE2scH6A9b1CUFUxg2Ocw_PaPDPr90WX9tTz9TCoK93WI4WeK2d-vLPBvB3e3W4FYrfzCMyJ5nxWJCHq3PQoPgZbHNYoF_DBNVYHv6yUg.mp4?_nc_cat=104&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=SAX4LXrxsAkQ7kNvwHAxAEP&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjEyNDA4MDYzMzM4MzAxMDMsImFzc2V0X2FnZV9kYXlzIjo2MTYsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjoxOCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=4fc3141bc3ce20a5&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9CMjRDNTYxREM0QjAzMjAyMThGRjM5ODkwRkZERDI4Q19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dCV2hyeHROVC16cGN0SURBQXlnaTNkM3oteERidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACauz5rMt6C0BBUCKAJDMywXQDIAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAaqxmPdGHbWWnUkg0pEk5LU59sYBuyHF9K-pi2_3zIZQ&oe=6A4C2400",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/650197454_777793501642392_5439864903799931094_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=posdxf66kP4Q7kNvwEe061E&_nc_oc=AdpQe7YlmHUW4hoMuKDP2XAiMQWUgUL8NFnDtbKDZlKUTPB0j2OSMM4E-ZqN_tA2dkPUO2M05Eyu5J_yFZZuwRJA&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDYbDfGBG4lNeUx4bq5XX0sEE7_pxV_PvyL4JC_Uc4Z7A&oe=6A4C13B4",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m69/AQP27D2iPym-j8CpBBVwy4_oiPxgoCe7JcN3VlJ2pEsB9jxsij6K_hm-1UjF2VTe9qDcBegWNXg7n7375hAzTdP9.mp4?strext=1&_nc_cat=107&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=H3RViIeeH7IQ7kNvwEpeZMT&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTI0MDgwNjMzMzgzMDEwMywiYXNzZXRfYWdlX2RheXMiOjYxNiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAe0VMK-uwkd2W1ru0YJ9NaEr29hIAbiVKp5T-cRrL0dw&oe=6A4C12AF",
+            "image_crops": []
+          },
+          {
+            "body": "Acceptez des paiements en ligne rapidement, même sans site Web, grâce aux liens de paiement.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/fr/lp/start-now",
+            "title": "Lancez-vous dès aujourd'hui",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMhQZkcN8C1FIYc-qDytOXMt7jXj6gaQy2LVY5bJudJE-_A3BHj_SSWB2si_BHEg_W5MJ1sZX-FXL_BUQ7i2LC1Qa9xScE3f5rr7mcSqYUFTg.mp4?_nc_cat=108&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=TLiWjUKD_1wQ7kNvwH7WAn_&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE1MTQ0MDIzODkxOTY2MjksImFzc2V0X2FnZV9kYXlzIjo2MTYsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjoxNywidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=89bc6a4af7302e40&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9BQjQxREM3N0Q2OEI5MTEwMzgwMjZGOEQ0RENFRkU4NF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dQOFZyUnNWX093enduY0VBSENfYk5LVGdCZHpidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaq_aOH6dWwBRUCKAJDMywXQDEAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQA5qokrFzFHAPr-qWv0VKVaZzwu1R7h8H81fX4lA0M5ig&oe=6A4C3A0C",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/649193306_1980685012878064_5951121077998170562_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=UtyVBl9xdwUQ7kNvwFkmvst&_nc_oc=AdrTPyDOlz9N7qDXJQuNNSG8GfcEjw51sxcG-XLkIGXas88sC_NwOCULNIGDvOjbx-EpDjxEXYF9Gy_EgdbOwJnG&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAqTEyq6iS5j6qEFdzAw1nroVY9VwsjnJQP5XsuHLOZDQ&oe=6A4C0E84",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m69/AQN94D0uoBfiOYuP_L6LY6yPsdD0tgZgTwyhh624fyXGPOWNhqqFPHhnoLS_ppwc8XmGP_p3mKyRv7T8pNl-lCQy.mp4?strext=1&_nc_cat=101&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=dI2ISF5UsQwQ7kNvwFxvpzS&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTUxNDQwMjM4OTE5NjYyOSwiYXNzZXRfYWdlX2RheXMiOjYxNiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE3LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBtpN_YdtgVjr5jyXUSyYrtqoBb8q30N_k47nF9CGUuJA&oe=6A4C24D5",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/fr/lp/start-now",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": true,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMjA3Njg1Nzc5NjIwODY2NCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1260307472863489",
+      "collation_count": 4,
+      "collation_id": "848836360158374",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/646349015_1087141370244157_1497323244704691888_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=aoV6UO8KjVAQ7kNvwGkDB8S&_nc_oc=AdqeLQww7Mn1jV38-btJbtZoK61LdSpGH7yaI_bkkePq4N80Q3rxgrvSzYF6wUIi1qzqujRsXb8NYjGhWKjqIB4_&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQB4CESCdwkjWWvrvpfBTbbG3DwsysVEWYd7zGdpq6ROwg&oe=6A4C16C0",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Quickly accept payments with payment links, no website required.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_description": " ",
+            "link_url": "https://stripe.com/lp/start-now",
+            "title": "Get started now",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMZBbaY5akIAA0A5pKyAFJ1uaOVjY6tNM79T26Zb6i8UsYQeXtnkE1hy9agAHN6mq4vsX2ZT5Gxua-7tqCnPOqQoX50CIDma4DBDEwQhiNGrw.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=r5hEDCnB9zUQ7kNvwGhI803&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjExNjcxMDIxMDQ2ODcxMTcsImFzc2V0X2FnZV9kYXlzIjo3MDEsInZpX3VzZWNhc2VfaWQiOjEwMTM5LCJkdXJhdGlvbl9zIjoxOCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=24d73d728d15c9a5&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GNDRCMDZCRjJFRjVGRDcyNDU3QTVGNjA4NDc3ODBBM19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfZXBoZW1lcmFsLzQ4NEU3RERCNEU3OUNCQjRGQkJBRUNFOTE0OERFQzkxX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaayO6lpN6SBBUCKAJDMywXQDIAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZbaeAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDP2NiPGbqmyq6MtUJhwEUlpA6d5sRN1lK8jnUIO3f_jg&oe=6A4C04C6",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/648364745_1562255941553794_7339589573156870140_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=k3ZCPEVVEakQ7kNvwGnr4Mc&_nc_oc=Adq2yblXHb8263I_VP3GnF9GR1ycJyUV0IAaFnG7hsdyLLJgY705LnkqU1RvZi6fhbokhfsEtp6vF9cQ70EJRNYY&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBAylzeztTMwcvzZ21yECcgod8wZZy6lg83xRN9cuNg0w&oe=6A4C2C1B",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQMFyBQVBO8EAjEkUjLSkstZ3_fNY8CBz_q8AZlOVx6iLI47_OCViDoCavhM4jVlVc8yslMsk8wir6livdERBn8K.mp4?_nc_cat=102&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=_zIkzanSXZkQ7kNvwG5SZ_k&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTE2NzEwMjEwNDY4NzExNywiYXNzZXRfYWdlX2RheXMiOjcwMSwidmlfdXNlY2FzZV9pZCI6MTAxMzksImR1cmF0aW9uX3MiOjE4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQA25NdFcPJbqPmvs_e4dg7uJtdAuTcP_inQL1mHVhRRtg&oe=6A4C22AB",
+            "image_crops": []
+          },
+          {
+            "body": "Quickly accept payments with payment links, no website required.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_description": " ",
+            "link_url": "https://stripe.com/lp/start-now",
+            "title": "Get started now",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQNA1o_-1L_3QvGsPa0RC4l_6VTCo9HSi8WZtp-u-st3gIPNgk6LEhED2jGoAyZjO10aXYv-cRc2q8e_TzMSu1sKO-qbPtyEsPk34HJEFSgv1A.mp4?_nc_cat=102&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=ZTWua0QCIA8Q7kNvwFLOeSD&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE3NTg5NjE2NzEzMDEyMjEsImFzc2V0X2FnZV9kYXlzIjo3MDEsInZpX3VzZWNhc2VfaWQiOjEwMTM5LCJkdXJhdGlvbl9zIjoxNywidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=e4c5b68bbdaf56a4&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC82NTRDOEI3M0Y0RkExQjEwMjhGMjJFQkE2MUU0NTJCMV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfZXBoZW1lcmFsLzIwNDUyMTRDOEMxMDcwNjgxMjEwMjI4RUQ4RkQxRTlGX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbKobvZhfGfBhUCKAJDMywXQDEAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZbaeAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDzgF-WuOPcRY0-7qRLV89FCvCawi2DN4f4bgfF5FJWLQ&oe=6A4C1E6E",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/647384528_2096785184513644_8651443760256469244_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=9UpfIpA9BH4Q7kNvwHUwYXL&_nc_oc=AdoC3OHC7Ip4V3wbo1_9QLu9-7e5bteE7NNrZw7q9necB5u4s9D-hn46gevPOp7s_PPg9Zk0SU17ZANYt5rLHKd-&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDT7kFe2KuL83-bmBFZdF5aOTQX9cgHFYeU1blIIMc67Q&oe=6A4C288A",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQO4wxoicWOkIlx1As_osOy8TyE1SBVw8swyzyB2TULlk2wVYbcJDkq0--rc1e6LM44TZZd5eY8g8vvEGpDAj7c.mp4?_nc_cat=109&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=QTqFpifrmYUQ7kNvwHyzWgN&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTc1ODk2MTY3MTMwMTIyMSwiYXNzZXRfYWdlX2RheXMiOjcwMSwidmlfdXNlY2FzZV9pZCI6MTAxMzksImR1cmF0aW9uX3MiOjE3LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBYg5i-ezFTEllb0e6KAtrwo6X8NXoiVGswI9fm47VQCg&oe=6A4C2201",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/lp/start-now",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-03-05T08:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTI2MDMwNzQ3Mjg2MzQ4OSIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1247650400680049",
+      "collation_count": 1,
+      "collation_id": "1213618063691229",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "branded_content": {
+          "page_id": "175383762511776",
+          "page_is_deleted": false,
+          "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+          "page_name": "Stripe"
+        },
+        "page_id": "820162254981466",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/100041528515135/",
+        "page_name": "Sonny Sangha",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/649598980_1833481834010291_7006173685118314725_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=L3GpBhHGTf8Q7kNvwH1b2DJ&_nc_oc=AdpJG6CzG_SAYMHf7Zj2YWz89i99yyMkf62s2tswxzHF5JVzFUwU407ElsP6DI2OnWhBlCeSbNiyL7oaOixD5fBs&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDQ3FO_OOJlPNsdWIyanacAvHSutEO7LiaB1CHNMWt6xA&oe=6A4C199E",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Stripe Connect offers seamless onboarding, embedded components, global payouts, and more.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQNkqZ2z2C_4Vd523pkGM56MReTOEdK92i136mRvZPI3LIP4m_iyJre2YEcZux0NXlBImyb9wWvHP74WMp9zH3J3XrDa0B_d978u2ta17WD2pw.mp4?_nc_cat=110&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=1OSaYuMVjE0Q7kNvwFSLHkl&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjc0Njc5MDEzMTQ1NDY2NSwiYXNzZXRfYWdlX2RheXMiOjE1MiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjU2LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=bcc57662b349a689&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9DNzRGMTk5OTlEMDIwRTNBNjZCN0VGMDk2OTdCNDM4RF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0ZDNEZCOUIxMkQzOUE1Qjg1NTdFRDA2NkZEQUJENkJFX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaSy46I9MzTAhUCKAJDMywXQExd0vGp--cYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAK9WqTTWcWgbsbfU2LtMyPwP807Q_q91RoRBYPeQMNiw&oe=6A4C0F72",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/650888815_1592531692049745_4911996435287133263_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=go4zq08FSBAQ7kNvwFLqm9h&_nc_oc=Adr8pU2-E8n_R6tkxIHO2V8r1TFguIUStux1-XH9ZouOUC8ShwwsTc8r_PQiBo2gujcGvpaQO6xtgHRlhe31LcrZ&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDNSP1Cym_5lTsFrlr7yFntWPiKa9XcmWGpwz-cQAugJA&oe=6A4C1018",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQMMYinTiKGPbEu-OEf5W1pnwvC370EREKWNgXPpVkGwXePQg2hXc1FiY4_XLFgZBEgS3zxaxlrpMSzzF_79zgVCrJR0odyQxJ5iYQQGyg.mp4?_nc_cat=105&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=jiAjmcQrSUcQ7kNvwFk1D-G&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NzQ2NzkwMTMxNDU0NjY1LCJhc3NldF9hZ2VfZGF5cyI6MTUyLCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6NTYsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDLW5ewPffnpnyxLYidTpyOhS4QxvK248hMVMbFQ88rJw&oe=6A4C3985",
+            "image_crops": []
+          },
+          {
+            "body": "Stripe Connect offers seamless onboarding, embedded components, global payouts, and more.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMh6uaMfDx9Cr5J6ggAWroCwYfYhUPcE6ZHUHJHuIn0MwOL3_pbks-Du3GDABozKzhlPk4Pn3GP4rnVKAem3nR8S_Se1IUqvgEAIRnG0sxIUg.mp4?_nc_cat=111&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=2pJ6cbbNjRYQ7kNvwHOBOus&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIzMTYwOTUyMDU1NTQ2MzcsImFzc2V0X2FnZV9kYXlzIjoyNTQsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo1NiwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=4f22bd8ded4c5df8&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9BMjQ2RUY4MDJGQ0I2QkQ5MkUyMTBCOTk5ODI3OTY5NV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzQwNDg4NjBGMUY0QUFCOURGRkNENDlBMDNDOTg0RkIwX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaa5_H_vZ6dCBUCKAJDMywXQExd0vGp--cYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDNtelPbCaiSvLrpwyqNselVXFIHwSDLnfeFvLG6Wc7PA&oe=6A4C1545",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/649689000_1417914666329630_5362741312570250717_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=ml1meQMQCSoQ7kNvwEbBUM0&_nc_oc=AdpzgY8Mq_8lzhJzC8T03mMaCKXK0tUM6eCoQaS-J5v2FYSqpOE0c9QnJe9OjSoSdpFzo7qezXudQWTvA30IVBCI&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD-otzarjorq0xS3Rlh_Rsjt7PB7QcjATY5fkwtrHGmiQ&oe=6A4C20A4",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQP-6jgvaMJbMEGCKeWZngTsTRsxhYPc04Ae4nvkO1hxf0s40rmQGnDFS3SYh9M95q07TtObCRk80rb6ALSzYl9UZ80tXcR6tnNs9H2kVg.mp4?_nc_cat=103&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=54C3lLn7irgQ7kNvwFy_BQp&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MjMxNjA5NTIwNTU1NDYzNywiYXNzZXRfYWdlX2RheXMiOjI1NCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjU2LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQATDV5vO5MBWo-xQ6Sr6WD95k6TCaLNYj7w_gk87XVPdQ&oe=6A4C1CBF",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Personal blog"
+        ],
+        "page_like_count": 784,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTI0NzY1MDQwMDY4MDA0OSIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1650907775786397",
+      "collation_count": 2,
+      "collation_id": "3547937095361652",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/669714451_1466465248594198_9054153690311607513_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=QYcgym7yUP8Q7kNvwHYan_s&_nc_oc=AdpaNZdOMzYGgaSY6EUJCjDk_7AI-f1mKmMjFUKTlhR6zTnTACNmZng2r2yGu-eVXxVymp9C-BBV2gbkVrorQMMc&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCw0TD4CkclKNVYShJ2cjuwdiJVWdIuUI6jE392hQAbbQ&oe=6A4C1C7D",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Easily configure pricing models like fixed fee with overage, pay as you go, and credit burndown."
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "Capture more revenue with a complete payments solution that eliminates the need for one-off integrations with a separate merchant account, gateway, and processor.",
+        "link_url": "https://stripe.com/lp/payments/payments-platform",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/669747702_2283314832195406_701501626338802502_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=iRoyFqbY4sEQ7kNvwGbL-nM&_nc_oc=AdofnddCDcSYHSl98F_uiS-gKf-TkUBOPNXXvvYuwSPxsouIyoAhcXKu-vg0BKT5q41mc8fbSPmbDHmzgQmQA4rY&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCGSYfqfqE2sC5IdTcNKfL0GAz8HobtgU8vfD4CLQ2EuQ&oe=6A4C349B",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/670446438_1488455502674991_6777880316014323603_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=LZtRIAdhI5oQ7kNvwGIv1El&_nc_oc=Ado4lofbzqgWXvYMDY5zv4zhPu-fgVH2-eo3BMVp1WtA01bQI3UqXEw6Q-ykvN0Wgbja8YcPuIT5Ad71bVXG3KuS&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDX2Hr6DRDvZO0vrLk-iPD8NLLvakrBS5qhclpbVUAPaA&oe=6A4C2727",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Get started with Stripe Billing",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-06-28T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-13T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTY1MDkwNzc3NTc4NjM5NyIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1844937432834570",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/650093742_1875808649802938_3023984829895295491_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=yajd7dRhZ-EQ7kNvwELxMem&_nc_oc=AdrMU20udSEv6g2gbd13yTvChnhl4fx--d06FGleu5ALTf3PxxfRLEhT6ATP0JqqGP4bCg8-Z3_qbCApA0IyHSIv&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD-YUyKnb25QIvxdetD923xFvfLU0ACHD7-Ovjb-eHR8Q&oe=6A4C2ACD",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Il y a 92 % de chances que la carte utilisée par votre client ait déjà servi sur le réseau Stripe"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "Combattez la fraude et protégez votre entreprise contre les contestations de paiement avec Stripe Radar, notre solution de prévention de la fraude no-code, fondée sur l'apprentissage automatique.",
+        "link_url": "https://stripe.com/fr/radar",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/649473192_1770846757207581_6535723011037458222_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=eDvh-1Gl2-0Q7kNvwHd0ODP&_nc_oc=AdrRHA2suI0CrIyTm5ulHmEJW7wjoRYN2NxjKjDrmK0a_evKtcLhu0WyKTuSilJ831fvWo7t-O_vbScsofBmEcZV&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC-Ich-BEDgulU8tVke3kxCoUwQ4Nd0ZVYHvRdILl8sXw&oe=6A4C1D76",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/650226012_1245901121014055_578294863560574407_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=109&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=w2x4iYHMdG8Q7kNvwGqotWS&_nc_oc=Adoh3pGs-XBw2Yz-NOrkfWCSIPEtfRCV41fGWVFCkROLdzmf7SaH4EyX00rGqHwnpjhG0IkjXxnAIDx_6Gu-1wZI&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAA8XIib0KFB1fzT2q5fM6Hd3pxBH4yyselgYWVglGRig&oe=6A4C33B2",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Se lancer",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": true,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTg0NDkzNzQzMjgzNDU3MCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "961186919735176",
+      "collation_count": 2,
+      "collation_id": "2697433530615004",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "branded_content": {
+          "page_id": "175383762511776",
+          "page_is_deleted": false,
+          "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+          "page_name": "Stripe"
+        },
+        "page_id": "820162254981466",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/100041528515135/",
+        "page_name": "Sonny Sangha",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/650464791_4298291533759397_4026912035710303124_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=1uqh3vOhOh8Q7kNvwGR8Ebz&_nc_oc=AdqHwP4zsLQo9FwUuvs40BV5oZoCFmdQd9_aK6sXw_Vk2OH7DsdVZiT8kjh8maNZB1JCO_yOZkeSUYVcLk_E1s9H&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAMXV7FUwtNUj7O0xmJyomyJSnapOLIl_d_pqllkxANnA&oe=6A4C2878",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Stripe Connect offers seamless onboarding, embedded components, global payouts, and more."
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "VIDEO",
+        "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Personal blog"
+        ],
+        "page_like_count": 784,
+        "title": "Get started with Stripe",
+        "videos": [
+          {
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMh6uaMfDx9Cr5J6ggAWroCwYfYhUPcE6ZHUHJHuIn0MwOL3_pbks-Du3GDABozKzhlPk4Pn3GP4rnVKAem3nR8S_Se1IUqvgEAIRnG0sxIUg.mp4?_nc_cat=111&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=2pJ6cbbNjRYQ7kNvwHOBOus&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIzMTYwOTUyMDU1NTQ2MzcsImFzc2V0X2FnZV9kYXlzIjoyNTQsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo1NiwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=4f22bd8ded4c5df8&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9BMjQ2RUY4MDJGQ0I2QkQ5MkUyMTBCOTk5ODI3OTY5NV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzQwNDg4NjBGMUY0QUFCOURGRkNENDlBMDNDOTg0RkIwX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaa5_H_vZ6dCBUCKAJDMywXQExd0vGp--cYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDNtelPbCaiSvLrpwyqNselVXFIHwSDLnfeFvLG6Wc7PA&oe=6A4C1545",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650497918_1606834027219572_7798023140800832719_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=UOCCH2Kz2yAQ7kNvwEVvW5N&_nc_oc=Adq16uN6MqYYNjecTxXjLX8XgUfpp3gzpS78aWPTtE3xArGe-9onYsEToV6A-vzGhT1HhXHn6Vsfdu9A3OgeURST&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCs5NntcTHPYWd98_QfXjg0gHEjPqa05HOjl1_wzIO_Ew&oe=6A4C1F6B",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQP-6jgvaMJbMEGCKeWZngTsTRsxhYPc04Ae4nvkO1hxf0s40rmQGnDFS3SYh9M95q07TtObCRk80rb6ALSzYl9UZ80tXcR6tnNs9H2kVg.mp4?_nc_cat=103&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=54C3lLn7irgQ7kNvwFy_BQp&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MjMxNjA5NTIwNTU1NDYzNywiYXNzZXRfYWdlX2RheXMiOjI1NCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjU2LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQATDV5vO5MBWo-xQ6Sr6WD95k6TCaLNYj7w_gk87XVPdQ&oe=6A4C1CBF"
+          }
+        ],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-01T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-13T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTYxMTg2OTE5NzM1MTc2IiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "936632165621839",
+      "collation_count": 2,
+      "collation_id": "1566106387789569",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/649780000_2059782261245779_2239159828794988102_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=7cN3tC0Qw94Q7kNvwFt2xwH&_nc_oc=AdrRwmHwuXavmhURsMKxgNnCHtggK8NdA9KJqZDJoM_ydjsMS4CVphVKWvuGFUhS2xqYWJ0w3tV3SrjwMaXDEMFj&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDwEfZL7QQFzoYl23UWXJ8uMg7RBlrS4FyiuQY34ggNeQ&oe=6A4C05A4",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Acceptez des paiements en ligne rapidement, même sans site Web, grâce aux liens de paiement."
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "VIDEO",
+        "link_url": "https://stripe.com/fr/lp/start-now",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Lancez-vous dès aujourd'hui",
+        "videos": [
+          {
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMhQZkcN8C1FIYc-qDytOXMt7jXj6gaQy2LVY5bJudJE-_A3BHj_SSWB2si_BHEg_W5MJ1sZX-FXL_BUQ7i2LC1Qa9xScE3f5rr7mcSqYUFTg.mp4?_nc_cat=108&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=TLiWjUKD_1wQ7kNvwH7WAn_&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE1MTQ0MDIzODkxOTY2MjksImFzc2V0X2FnZV9kYXlzIjo2MTYsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjoxNywidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=89bc6a4af7302e40&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9BQjQxREM3N0Q2OEI5MTEwMzgwMjZGOEQ0RENFRkU4NF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dQOFZyUnNWX093enduY0VBSENfYk5LVGdCZHpidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaq_aOH6dWwBRUCKAJDMywXQDEAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQA5qokrFzFHAPr-qWv0VKVaZzwu1R7h8H81fX4lA0M5ig&oe=6A4C3A0C",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/651189992_1959776937999506_4648571514798606819_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=afWyPKNqA9UQ7kNvwFH5yNj&_nc_oc=AdqNnOxzVoHELEKkKMLrl4A0O9yHH1coQsYdDg3yyblO9Ve4kR_yjdbIK2-QQUacHGJXM_cX-K49uV6jB5TtDoxe&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD82ommE2sjpGxswslrhuTYU0FRwnPW9nxxAotRrRqHDQ&oe=6A4C32CF",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m69/AQN94D0uoBfiOYuP_L6LY6yPsdD0tgZgTwyhh624fyXGPOWNhqqFPHhnoLS_ppwc8XmGP_p3mKyRv7T8pNl-lCQy.mp4?strext=1&_nc_cat=101&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=dI2ISF5UsQwQ7kNvwFxvpzS&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTUxNDQwMjM4OTE5NjYyOSwiYXNzZXRfYWdlX2RheXMiOjYxNiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE3LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBtpN_YdtgVjr5jyXUSyYrtqoBb8q30N_k47nF9CGUuJA&oe=6A4C24D5"
+          }
+        ],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-06-30T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-15T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTM2NjMyMTY1NjIxODM5IiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "26934650802808750",
+      "collation_count": 1,
+      "collation_id": "2092388867967198",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "branded_content": {
+          "page_id": "175383762511776",
+          "page_is_deleted": false,
+          "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+          "page_name": "Stripe"
+        },
+        "page_id": "820162254981466",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/100041528515135/",
+        "page_name": "Sonny Sangha",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650464710_1166600108746980_5542016594237748809_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=Xpn08PB7MAMQ7kNvwG-xFCL&_nc_oc=AdrzJ2g21rTx4MyaiGkKvSB8K2-pb9Z18Rxm6MqJLJKMsExhlHwexTIwh8k_6j8rrYwhn3l2d63UfuAzm6VSgr6S&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD693NXUC-OWfnHNZm2-gmFi9hGOxzp8C2HQjurYUjddA&oe=6A4C1B79",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Price everything in a single stack with Stripe Billing — tokens, API calls, or even full workflows.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQMDHBFOw34DDl3Dc2KqudGSWm2dsQ76Lyy0a2xWS-eqooOJEcu5yubokiXGmzT1rCHma--gFzzBME09Fpk0naq_UdHdmre8on1C_cuKVrTgkQ.mp4?_nc_cat=110&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=QAMQfG4K78kQ7kNvwHLqoji&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjg4MTAwNTIzODE4ODcyNSwiYXNzZXRfYWdlX2RheXMiOjE1MiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjU5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=bca4f1e5ad2f57e3&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GMzQ2RjY1NjhDNzBDMEE0MUUzM0Q2QzExM0Q0QzY4MF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0ZENDQwMEYwRUJDRTJFMTk4NThENzM0NTNEQTlEMkI1X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbq6qPEoNGQAxUCKAJDMywXQE37peNT988YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQC2D_rFrxIwgMVzR8XsdoByszFScqo6cMN6tS-AYsEedg&oe=6A4C10F2",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/649752623_953363320554974_4939699403110942921_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=g04kfH8c0lwQ7kNvwGgu6lm&_nc_oc=AdoRxx-pbjyIJWrxIah7G-x0SGXRfgi1lsuIoWrVqxNbA0lAufA-5g1ps7uRIcl7Hlx-iZAQwM3pneQviQZB6kTB&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD-rOOTO_OKRHKfDg8mDSP5WclBcEVWnyiPBCm2KKa4UQ&oe=6A4C298B",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQPpv7VlmhOx3HrDW3YPy5F2AExHCXPmBRuHeWp20J8Lkp4F-IACHPsi0HRFe6DsSYOLyv-i326Zu_pK_nHBU-9cbEbeTYNVE4jS6PsviA.mp4?_nc_cat=101&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=X1Gq3kcyENUQ7kNvwHverBk&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6ODgxMDA1MjM4MTg4NzI1LCJhc3NldF9hZ2VfZGF5cyI6MTUyLCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6NTksInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAVQukId6Ogif_gjsrKNlgMoMyLgJPU8jttyiT1dxU5BA&oe=6A4C3AA9",
+            "image_crops": []
+          },
+          {
+            "body": "Price everything in a single stack with Stripe Billing — tokens, API calls, or even full workflows.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMrr7mVDsVIUbuXK7TwqFqMczJIeeQdSnZtQud20wl5JkR3bLBhvB6ad_acFe2VfL-HGlWcPERB4afa4QsqnYYf3bmLXYK_N9BtX1dxZAa5-w.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=Z2SpSuB2tpoQ7kNvwFOgjGQ&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjEzNDE3MTY0MTQ0MDkxMTYsImFzc2V0X2FnZV9kYXlzIjoyNTQsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo1OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=13b732c3dc1b35c5&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9EQTQyMTAyREFDMjRENzMxMDREQkJGQTc4RTk0QURCRF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzVCNDI4ODM5ODU0RjEwNDIxRjkyOTA4RkI2MkMzRjk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACa4pqmklpLiBBUCKAJDMywXQE37peNT988YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAIRyfrAhToNWox6cDWugbCZQ5XDP1YAdSxQ2FuNHkPgQ&oe=6A4C22BE",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/651249368_1553789612357421_5506411385395886837_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=4s5LdtFsHdgQ7kNvwHBpfgq&_nc_oc=AdqHDMtv55NeQFhIZQ8_g2PvArsq9XLLDOuiOQaXk8m_TZf9GuxU47QHeDwC0eLn6H_XBPzZO5eYNb4ZNKDErKgb&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBBnsWVRfnWc5bhWbmpqau-GluPg0oDXj_jvZnjyEcSKg&oe=6A4C252F",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQPVgAxOX2002sfOdO1gATen-hOFl0VsLUoQlLvs__gkiuOPWDHYVKY3h2cYJHhW-GcwePLZhlml8Mm7vudRAr3ABpOO-FLOGr_MGJt6Jg.mp4?_nc_cat=109&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=y3Xvl-nbUAcQ7kNvwGvpYFr&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTM0MTcxNjQxNDQwOTExNiwiYXNzZXRfYWdlX2RheXMiOjI1NCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjU5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBr_nD93rnipndRstzebcux8K15qPAXmQPXGt8YJkpHDA&oe=6A4C07B1",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Personal blog"
+        ],
+        "page_like_count": 784,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMjY5MzQ2NTA4MDI4MDg3NTAiLCJwYWdlX2lkIjoiMTc1MzgzNzYyNTExNzc2IiwiY291bnRyeSI6IkFMTCIsImlzX3BvbGl0aWNhbCI6ImZhbHNlIn0"
+    },
+    {
+      "ad_archive_id": "1413708070515372",
+      "collation_count": 2,
+      "collation_id": "1229509938556105",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "branded_content": {
+          "page_id": "175383762511776",
+          "page_is_deleted": false,
+          "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+          "page_name": "Stripe"
+        },
+        "page_id": "820162254981466",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/100041528515135/",
+        "page_name": "Sonny Sangha",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/649840056_2346867875832394_2828797602326966928_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=d4h4XW0eoqAQ7kNvwFW84NB&_nc_oc=AdpW5HSaS-ZlJjKi5v0mkw2YgwzvDeOH6I2usKT0CB0UH5Omi5ICUYjM87guZ-OinWnemvAXpd_-R5-HOaTETlhF&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDsq3jsMR3-XS13TymtWsWYIJKWuuWQtz4lsNOE6-249A&oe=6A4C27AD",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Price everything in a single stack with Stripe Billing — tokens, API calls, or even full workflows."
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "VIDEO",
+        "link_url": "https://stripe.com/gb/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Personal blog"
+        ],
+        "page_like_count": 784,
+        "title": "Get started with Stripe",
+        "videos": [
+          {
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQMrr7mVDsVIUbuXK7TwqFqMczJIeeQdSnZtQud20wl5JkR3bLBhvB6ad_acFe2VfL-HGlWcPERB4afa4QsqnYYf3bmLXYK_N9BtX1dxZAa5-w.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=Z2SpSuB2tpoQ7kNvwFOgjGQ&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjEzNDE3MTY0MTQ0MDkxMTYsImFzc2V0X2FnZV9kYXlzIjoyNTQsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo1OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=13b732c3dc1b35c5&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9EQTQyMTAyREFDMjRENzMxMDREQkJGQTc4RTk0QURCRF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzVCNDI4ODM5ODU0RjEwNDIxRjkyOTA4RkI2MkMzRjk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACa4pqmklpLiBBUCKAJDMywXQE37peNT988YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAIRyfrAhToNWox6cDWugbCZQ5XDP1YAdSxQ2FuNHkPgQ&oe=6A4C22BE",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/651150889_927775783548297_435780649946870413_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=36mfTV6La94Q7kNvwEUPeNx&_nc_oc=AdpHcoBbl6buH5ylEKv5cXEpB0fd80xqgfoMAeW4JCe2Z4x2oa57OpTOcFhJj1QuqZvgxFtzxQQJAJ6V-yXnrFax&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCCIs3Mf9h8FVowMjblmv2wcMPPvf5GSBSmPwXonXU4LQ&oe=6A4C166E",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQPVgAxOX2002sfOdO1gATen-hOFl0VsLUoQlLvs__gkiuOPWDHYVKY3h2cYJHhW-GcwePLZhlml8Mm7vudRAr3ABpOO-FLOGr_MGJt6Jg.mp4?_nc_cat=109&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=y3Xvl-nbUAcQ7kNvwGvpYFr&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTM0MTcxNjQxNDQwOTExNiwiYXNzZXRfYWdlX2RheXMiOjI1NCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjU5LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBr_nD93rnipndRstzebcux8K15qPAXmQPXGt8YJkpHDA&oe=6A4C07B1"
+          }
+        ],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-06-30T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-09T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTQxMzcwODA3MDUxNTM3MiIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "967876648948049",
+      "collation_count": 3,
+      "collation_id": "995851353392940",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/682529625_1690038631994424_8348108664806938088_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=104&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=D-SMqSL1WpkQ7kNvwF0v_QP&_nc_oc=AdrUcqYDEENvL73nkAwJFJrVuSZ1fbFrcyM-Nkbx1HOB9tfuXW4cwmpNEe-1AX-YQuTHsljc1VddszjnXf_ywKcX&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDZySivzEu5P2kA1EXFNqmeRvtf8cihTtmTPSjFmbI5UQ&oe=6A4C07C0",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Unlock scalable billing for your AI product with Stripe today",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/billing/usage-based-billing",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQMxhVs8cIymIY79AYY_K1uCQrW3q7eMqJY2aHqAS5aI-yTb11oE69Gf6yXigeap-3GZcoVufF0Y_3Ip6alHEyx4UogywQGp3W8UIpViJOqkNw.mp4?_nc_cat=107&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=Fpe89BaNGiwQ7kNvwEcCvQ1&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjk3MDM2NzUzODgzNzE2NywiYXNzZXRfYWdlX2RheXMiOjY1LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MTgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=532336048de98544&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC8zQTQ0QTEwQThEM0M0RkNEQkI5ODkxMEY4Nzc5MDY5M19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzRBNEYwMkEyMjc5RTU4Q0VGQ0IyRTQ5MDhCMDBDNjhGX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbe2qHH6aK5AxUCKAJDMywXQDIIcrAgxJwYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQD_3lzSnA1gh-WLU9cykm87x9x7LIwHFEyIK2OfzVz-rQ&oe=6A4C1615",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/681219529_1134856155467778_2779028471793940505_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=HyZKppCcKdkQ7kNvwGCAQN6&_nc_oc=AdozJSdOeCTosgbw-xQbQqgZLtZwuQZroOmPNDcUrHOaTA5gWeZDnTs0E29-kz0FVi3Yzzyjl6E8JI1YfgCd-RSI&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDQFjc87ZkML9FCiBcADMBDgY5hd1WxWXNgKVtn1aFNdg&oe=6A4C225F",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQPSX1HxHhGH-iKskjtHLB320hZk-u-Ao1h-pvUMB8Ir7AwOgGbzpauZbbDFseQ3UlKijuDjoHTC9P8RX4E4DGgEahM9Djjx2GLo19xU-w.mp4?_nc_cat=111&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=-Ha169YS_yoQ7kNvwHJEKpP&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6OTcwMzY3NTM4ODM3MTY3LCJhc3NldF9hZ2VfZGF5cyI6NjUsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjoxOCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQA7MCRpuGXJsS6Lx2wHg3j4UB7fOpSwmhiKsrk5HN3eag&oe=6A4C0F57",
+            "image_crops": []
+          },
+          {
+            "body": "Unlock scalable billing for your AI product with Stripe today",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/billing/usage-based-billing",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQPHcPuqu9_jUgVIFBGOq3aaqfoJmtmg9-g1fd925BZTwqD0dbvwVbEoGix691EN9DOQ9BxJ5bS0IAgfRdr1Dptmjnx83mrgI11Es_e4iERd2w.mp4?_nc_cat=105&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=7fq0BxL93sgQ7kNvwGINb0A&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMTI4MC5kYXNoX2gyNjQtYmFzaWMtZ2VuMl83MjBwIiwieHB2X2Fzc2V0X2lkIjo0MTE0OTg5MjEyMTQ2MTEwLCJhc3NldF9hZ2VfZGF5cyI6MTc0LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MzAsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=3de09cc6295e3264&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC85MDQ4QkNCMzg2NTVDQkMyOUU5MEQ2MjI5RjZGN0NBRl9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0YxNDczM0NGNDU3QjIyQkI4RDI1RDUxNjBBN0YwRUExX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACb85vTj8qPPDhUCKAJDMywXQD7UeuFHrhQYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBuy4ByngGTYxBKu54XtEtPl9gwbivAKrIkF8FHsOuiRQ&oe=6A4C1437",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/683114810_942130308611631_7062557043587028631_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=HoOuOCNqZM4Q7kNvwEFmcQE&_nc_oc=AdpM0-OILhySLL7pO-bqzOLRN2J_JAlYCArwWV8m80C7S989-2JT2l8PvDstaI677y5u6Ut0Vl7D57-CEkFteRcM&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAX7IwX4-uBoKnPCJtNukob7_eAx9DKjvRBDNJGCVwbXg&oe=6A4C3B24",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQOERXDm1X4TGQMAM_Nn3sD6JGNM7zHwPGk6E6XNHxuvtInDgz9w4Ei3z834MDjBQnOn96HrwOLltCwoQ5S-D6W5b4kg3K8iYzBP11OrHQ.mp4?_nc_cat=105&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=hJ3SShkliXoQ7kNvwE53gYT&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNjQwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NDExNDk4OTIxMjE0NjExMCwiYXNzZXRfYWdlX2RheXMiOjE3NCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjMwLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCoNd47Nn0mcT5ROjiHY2ZT8tNCm9c-8jBFDUTgWn14Zg&oe=6A4C3359",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/billing/usage-based-billing",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-27T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTY3ODc2NjQ4OTQ4MDQ5IiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "1308857344681094",
+      "collation_count": 2,
+      "collation_id": "1281847803552331",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672683275_947774887973170_1457034387107009674_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=0JmuOa1OMzoQ7kNvwENw-fz&_nc_oc=AdoQSoFJ64A5b4wuqnGW3hEgXoTyg5H0UTXQuipmKFm2fvrV0e2efdlf3C7_ic2UD353SspktB8SRmkJDEQmf6iI&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAPMu_k3xE-CfnN91h8GE_PAhnAzqfjA8k4OiC0sql7Hg&oe=6A4C2E4B",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "เพิ่มอัตราคอนเวอร์ชันด้วยการเสนอวิธีการชำระเงินกว่า 100 วิธีทั่วโลก",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/payments",
+            "title": "รับชำระเงินได้เลยตอนนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQPYXD7K4wFncTvWSy1hHZ4jjLD58jz8I-EBPoz1G4Fs3FfrX7DSJbEbrqlhP_cOETWCHyWV32zf9OUDLm04wz-baCDZV6xS1G10YmmbcBusRA.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=KgSfOw6f51cQ7kNvwHq0eG_&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjM3MDc3OTQxMTkzNjgxNDUsImFzc2V0X2FnZV9kYXlzIjo3OCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=6d95ac1fcc804945&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GQzRFNDM3QzVGMTkwM0ZERTcxNDFEQTY0NUFFRkU5Ml9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50Lzc1NDcxMjU2N0E4NTc1NUYxM0Y1REEzMkFBQkExQjk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACai95T2go6WDRUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCPXCT54mh9OzDdCDCN6ofbz_4_Eu4I9gcr2wWNq23Lsg&oe=6A4C24F2",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672677312_3142607849275624_191886439450239700_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=TAcSLC7VGBUQ7kNvwGvbtau&_nc_oc=AdpQILQAahoN2h-PvJE6UFGlrE93zDH1wN-fSb780_AQ-pXvnfqmh12-Da2llLcPQSx7cMYBCyZaUnDmXUdptjYs&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBJ9js_lXt0KN-G9JHTZFxBJbyu-0c-oy71Mx7ULOyRnA&oe=6A4C1747",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQNFDOmQy3_8loq6MCZyiNpKPvGWDTIKsJSCGeuWxYX0mTTujg_U49NdIJz9E_USs0oU5-PZMUHwmWvfafARoqq-LMP8EOLb3-LsvmxaXg.mp4?_nc_cat=100&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=mEGeDTlF1OYQ7kNvwGCVOmL&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MzcwNzc5NDExOTM2ODE0NSwiYXNzZXRfYWdlX2RheXMiOjc4LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBQD604Kc_h2HQ7KeSIOxlqKOCH5o_J95NIx2rdBXL6mg&oe=6A4C28DE",
+            "image_crops": []
+          },
+          {
+            "body": "เพิ่มอัตราคอนเวอร์ชันด้วยการเสนอวิธีการชำระเงินกว่า 100 วิธีทั่วโลก",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/payments",
+            "title": "รับชำระเงินได้เลยตอนนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQPYXD7K4wFncTvWSy1hHZ4jjLD58jz8I-EBPoz1G4Fs3FfrX7DSJbEbrqlhP_cOETWCHyWV32zf9OUDLm04wz-baCDZV6xS1G10YmmbcBusRA.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=KgSfOw6f51cQ7kNvwHq0eG_&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjM3MDc3OTQxMTkzNjgxNDUsImFzc2V0X2FnZV9kYXlzIjo3OCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=6d95ac1fcc804945&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GQzRFNDM3QzVGMTkwM0ZERTcxNDFEQTY0NUFFRkU5Ml9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50Lzc1NDcxMjU2N0E4NTc1NUYxM0Y1REEzMkFBQkExQjk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACai95T2go6WDRUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCPXCT54mh9OzDdCDCN6ofbz_4_Eu4I9gcr2wWNq23Lsg&oe=6A4C24F2",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672677312_3142607849275624_191886439450239700_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=TAcSLC7VGBUQ7kNvwGvbtau&_nc_oc=AdpQILQAahoN2h-PvJE6UFGlrE93zDH1wN-fSb780_AQ-pXvnfqmh12-Da2llLcPQSx7cMYBCyZaUnDmXUdptjYs&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBJ9js_lXt0KN-G9JHTZFxBJbyu-0c-oy71Mx7ULOyRnA&oe=6A4C1747",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQNFDOmQy3_8loq6MCZyiNpKPvGWDTIKsJSCGeuWxYX0mTTujg_U49NdIJz9E_USs0oU5-PZMUHwmWvfafARoqq-LMP8EOLb3-LsvmxaXg.mp4?_nc_cat=100&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=mEGeDTlF1OYQ7kNvwGCVOmL&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MzcwNzc5NDExOTM2ODE0NSwiYXNzZXRfYWdlX2RheXMiOjc4LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBQD604Kc_h2HQ7KeSIOxlqKOCH5o_J95NIx2rdBXL6mg&oe=6A4C28DE",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/672342790_4151171335144806_2347672334365129340_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=WbmnD6yoqt0Q7kNvwE1V05h&_nc_oc=AdpIyyrnr2aR2fmyL8tJW3fqxCZ_hmZsZ9Y-S-hn6L3i2zBzSrEt6lf3oLGR3dZoEpFZT1w9cU0mKM1kzVuqLVcs&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBTx-r8OXooSMwJMeDZyZFlNub5zcCFah-xkUd8vsCFgA&oe=6A4C341A",
+            "resized_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/672675376_1063239513545142_2053710581079019941_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=104&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=uyAZTg5k5PoQ7kNvwGxgcvU&_nc_oc=AdpJtiaZhuLCVxzGF-cfPtMqgXxHqm_iwq5iRYvFdMFiMNx3cFnLIensYCOpmcn_1sOrnbTWhE6LxFhMvHOtUtAd&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQARXatc8lKWr-A6Kzi-NI-uXxuHsRL2XJ2h7H3QynEISQ&oe=6A4C2A51",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/th/payments",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-15T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTMwODg1NzM0NDY4MTA5NCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "2421813038245297",
+      "collation_id": "1281847803552331",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672063900_26698528556447593_4018244758994191642_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=QZiBlejUSZ8Q7kNvwFc1AQp&_nc_oc=Adr-C_iWtnd68WM8orvO2l1GrB5YVs2_Kd8ZtD0q2AZnw3izVkrDcCSRIqIxhju3BMgMflwAeQ59V_BRBaIFij4t&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDJEw4BxntMrrA3EnTTQEs2necSGKLTCvJ4raseR-fPbQ&oe=6A4C0E79",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "เพิ่มอัตราคอนเวอร์ชันด้วยการเสนอวิธีการชำระเงินกว่า 100 วิธีทั่วโลก",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/payments",
+            "title": "รับชำระเงินได้เลยตอนนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQPYXD7K4wFncTvWSy1hHZ4jjLD58jz8I-EBPoz1G4Fs3FfrX7DSJbEbrqlhP_cOETWCHyWV32zf9OUDLm04wz-baCDZV6xS1G10YmmbcBusRA.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=KgSfOw6f51cQ7kNvwHq0eG_&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjM3MDc3OTQxMTkzNjgxNDUsImFzc2V0X2FnZV9kYXlzIjo3OCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=6d95ac1fcc804945&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GQzRFNDM3QzVGMTkwM0ZERTcxNDFEQTY0NUFFRkU5Ml9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50Lzc1NDcxMjU2N0E4NTc1NUYxM0Y1REEzMkFBQkExQjk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACai95T2go6WDRUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCPXCT54mh9OzDdCDCN6ofbz_4_Eu4I9gcr2wWNq23Lsg&oe=6A4C24F2",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672078323_834468886372770_6776551194497562624_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=af0izQFHBIoQ7kNvwEPW6TH&_nc_oc=AdpCR7RQtDt6QwOPJ6Ukk_U3_GXCcOEel_TpjhBoaGbGkyZM8VSAQsJtGJNsSRXHBa-MZMvxjE5wLuGjWiiNeAFW&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDyjR8QQde9JxVA48HwaqDat2sXrOv3DqJpYjNXfSdXBQ&oe=6A4C31F6",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQNFDOmQy3_8loq6MCZyiNpKPvGWDTIKsJSCGeuWxYX0mTTujg_U49NdIJz9E_USs0oU5-PZMUHwmWvfafARoqq-LMP8EOLb3-LsvmxaXg.mp4?_nc_cat=100&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=mEGeDTlF1OYQ7kNvwGCVOmL&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MzcwNzc5NDExOTM2ODE0NSwiYXNzZXRfYWdlX2RheXMiOjc4LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBQD604Kc_h2HQ7KeSIOxlqKOCH5o_J95NIx2rdBXL6mg&oe=6A4C28DE",
+            "image_crops": []
+          },
+          {
+            "body": "เพิ่มอัตราคอนเวอร์ชันด้วยการเสนอวิธีการชำระเงินกว่า 100 วิธีทั่วโลก",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/payments",
+            "title": "รับชำระเงินได้เลยตอนนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQPYXD7K4wFncTvWSy1hHZ4jjLD58jz8I-EBPoz1G4Fs3FfrX7DSJbEbrqlhP_cOETWCHyWV32zf9OUDLm04wz-baCDZV6xS1G10YmmbcBusRA.mp4?_nc_cat=106&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=KgSfOw6f51cQ7kNvwHq0eG_&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjM3MDc3OTQxMTkzNjgxNDUsImFzc2V0X2FnZV9kYXlzIjo3OCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=6d95ac1fcc804945&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GQzRFNDM3QzVGMTkwM0ZERTcxNDFEQTY0NUFFRkU5Ml9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50Lzc1NDcxMjU2N0E4NTc1NUYxM0Y1REEzMkFBQkExQjk2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACai95T2go6WDRUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCPXCT54mh9OzDdCDCN6ofbz_4_Eu4I9gcr2wWNq23Lsg&oe=6A4C24F2",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672078323_834468886372770_6776551194497562624_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=af0izQFHBIoQ7kNvwEPW6TH&_nc_oc=AdpCR7RQtDt6QwOPJ6Ukk_U3_GXCcOEel_TpjhBoaGbGkyZM8VSAQsJtGJNsSRXHBa-MZMvxjE5wLuGjWiiNeAFW&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDyjR8QQde9JxVA48HwaqDat2sXrOv3DqJpYjNXfSdXBQ&oe=6A4C31F6",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQNFDOmQy3_8loq6MCZyiNpKPvGWDTIKsJSCGeuWxYX0mTTujg_U49NdIJz9E_USs0oU5-PZMUHwmWvfafARoqq-LMP8EOLb3-LsvmxaXg.mp4?_nc_cat=100&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=mEGeDTlF1OYQ7kNvwGCVOmL&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MzcwNzc5NDExOTM2ODE0NSwiYXNzZXRfYWdlX2RheXMiOjc4LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBQD604Kc_h2HQ7KeSIOxlqKOCH5o_J95NIx2rdBXL6mg&oe=6A4C28DE",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/671801576_1796542231513334_5873317015125730968_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=kFU0KzU4-0AQ7kNvwHS86Ln&_nc_oc=AdpvTih1lbqzqKnRAn4f7w8O5pBMq4MucZdpxHNXaOdLOoyiJaPZZ9BJElIFDpURE3hsd2w8-fppteCnWQnzl0Zt&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD0RFFdeKbmtMtW5kcqljrsxMoC91Vr0sh5vMhsLeEeQQ&oe=6A4C3294",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/671560726_1272246694436434_5579389342374937713_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=109&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=Otdm-yR-TRcQ7kNvwFClyJE&_nc_oc=Adodl_3Y90VbJ5hPrSSAzgSSuegYSp2MmEdy4LecrQQhBy86NyzLLZY7lQBBX3RkmFPOIn9d3T-nBgwr-O5iIs7l&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDtZhApQgsvDF9H5XbZXk-f94tJHeRBpZfzaiqA2DYGQw&oe=6A4C1BBF",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/th/payments",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-15T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMjQyMTgxMzAzODI0NTI5NyIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "991691493428950",
+      "collation_count": 2,
+      "collation_id": "1213905803956139",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/678525654_3832560747038574_7499593693873819757_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=naBBIMZ3c2YQ7kNvwFMBr1d&_nc_oc=AdqPt9Q_dmgaywA7Ma4tpq4F7tfehArLwbbYiKLdW_NpC7yRTBhMZMb1YH5HVrLyI815YZy4P5LPB_zYCNSD3yEN&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD6kgHvq2nP4BvBeuCBpxNaRcnbV1oIzZP23Uum4naS-A&oe=6A4C3080",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "เพิ่มอัตราคอนเวอร์ชันด้วยการเสนอวิธีการชำระเงินกว่า 100 วิธีทั่วโลก"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "รับชำระเงินออนไลน์ด้วยการรวมระบบไว้ในที่เดียวสำหรับไทย เหมาะสำหรับทุกธุรกิจตั้งแต่สตาร์ทอัพที่กำลังเ.....",
+        "link_url": "https://stripe.com/th/payments",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/677913990_1689418269158224_2630250314488327154_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=QFTvyxKA5tUQ7kNvwHNCX0x&_nc_oc=Adoo_SDv7OOUjggH4SziprY0KxICV7sV8WaTWgVGRhEsnaLTjvrePowR3BLHoMeEHMpMvUeJAPkTPcIl3UUIcFfM&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAfnn72QreASXQlxuyUSURN4wdsGpkBlFzPYgKDjkkZew&oe=6A4C2E25",
+            "resized_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/678525654_1500399471713674_9012239303776138964_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=GZX7yCuUSqYQ7kNvwFaq2KT&_nc_oc=AdoZgZ5lvOxXzWlQ_4z__fC5YZ-BJW7fnjEdDPtCU0h-fdhqn-O8exerrMCcqlt6-slPZXnpixKF3VOAgx5AXRHQ&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCnTSDaRBskzZ_RaZgJct8lJQnpsm8IJk8PRWv07NW-AA&oe=6A4C28A1",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "รับชำระเงินได้เลยตอนนี้",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-01T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-20T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTkxNjkxNDkzNDI4OTUwIiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "4365919337030680",
+      "collation_id": "1213905803956139",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/674980426_803339222497113_2144391253364818684_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=RaoP99uOrXAQ7kNvwGeMX2_&_nc_oc=AdpzXCgwu4Dw7IYh3tR6sEZtraTfGD9jg63HslEYvp-qI7vngc6bapnmhxZ-Q9oBrY4JE7JecCQp99kdulaFzbza&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBXVR7w4oycoVJkVMGWT057B23rYcmzoX2hdH-iFiie0g&oe=6A4C27E5",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "เพิ่มอัตราคอนเวอร์ชันด้วยการเสนอวิธีการชำระเงินกว่า 100 วิธีทั่วโลก"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "รับชำระเงินออนไลน์ด้วยการรวมระบบไว้ในที่เดียวสำหรับไทย เหมาะสำหรับทุกธุรกิจตั้งแต่สตาร์ทอัพที่กำลังเ.....",
+        "link_url": "https://stripe.com/th/payments",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/674192306_1309195811133216_6777428531832963077_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=P4HXUvhx6MUQ7kNvwFF56On&_nc_oc=AdrtyX3Rzrnc2xTsO0yfmwKzW9Y3zBaBythYF8kev8qLdlZorvN8_JH66V4diCvIFLxxqj0yQUji6Uzn5olYECGv&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCsOxZ2LI527CEkWhyLoBgrMDSpeR7em7icLcuD_m2zAQ&oe=6A4C30E0",
+            "resized_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/676021858_3380014782158931_9048655938265400353_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=pBUu4ONjcrUQ7kNvwGD3Emt&_nc_oc=AdojQrEq09MqfUaBbyee9z1stajnkH3ty6KrAz8Gayq-Ke4gneTVipcGhuC5JyZvlQRu3uYcJQ6LDJn1Xi1fuNsh&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQB41TlUD0XTuebTm445sSNtXe55zfFA8HDEbjFiZS_v8g&oe=6A4C1397",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "รับชำระเงินได้เลยตอนนี้",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-06-30T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-22T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiNDM2NTkxOTMzNzAzMDY4MCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1275300737457247",
+      "collation_count": 1,
+      "collation_id": "1285456372946853",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/671757805_2417572948759096_6573702257061593435_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=FTjdZEo6osUQ7kNvwGgoy3H&_nc_oc=Adr2Cukj584RinMVLDbjHkzelUsp8i5JVi2bqazHKVka5XOf6QnNd0SeWdG-Ay8PWiIFISQFdIZfpiRoyCQS0Q2x&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCkaFlh8N8gGaI3pPz-D8MzAzJP2EWHWvQCA6ACnl9ojg&oe=6A4C315E",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "จัดการการชำระเงิน การเรียกเก็บเงิน และการแจ้งหนี้ให้เป็นเรื่องง่าย\nด้วยโซลูชันแบบครบวงจรจาก Stripe",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+            "title": "เริ่มใช้งานเลยวันนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQNC7iHVPyIbfNQh4Xbph05fcUf_gawjGiFRWAemaGHjRzfgxfWu0dpeIPgEE6HsT5UWXYKi3kUHjY5r1cfiL-AfqCYlwdW0ErIH1-wg6_E_Vw.mp4?_nc_cat=102&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=AtF15TZOYSAQ7kNvwEbRzWx&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjk2MzQwMDI2NjI0MDE5OSwiYXNzZXRfYWdlX2RheXMiOjc5LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=c8539201d8c58cc6&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GQjQ1RTNFMTVBMUIzNzQ2OEVCQjJGN0M5NUMzRTI4M19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzY1NDBGRDU4RkNBQ0QyOUUzNTc4MjQyMDJBMUI2RUE3X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaOw6qqo422AxUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQC1QfInUR48Q0Rxu7u8J0DnjJ-1Oi7_6ki01FB3u3-jFw&oe=6A4C21CE",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/673133705_26035326716146259_8318833560596964079_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=SZPgwa7tDwcQ7kNvwEsF9qV&_nc_oc=AdrqpSrb6uaVnljVnNDMyBPwIHRGgeqxh59agZeIW1iMdfj7ju3hvYQxh4pNTrOMMOG9a73gHwRmv78ces0mLAdv&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC21P8axrQc2Yp4GfbbrlXueXgTQQ6lTqICrJZN32meDw&oe=6A4C2FB6",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQNjT4W1Sr398kDhTPy9SBdTRW4_b7p2lYeJ9-TjiDFTKgp5OSu-fsCwDV-1RZNt920YDh9NlyRvk-m2E4j2toeGgRl-5UqsCXhVyQYX4Q.mp4?_nc_cat=106&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=mQtJ9Bac5ScQ7kNvwFyT5cP&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6OTYzNDAwMjY2MjQwMTk5LCJhc3NldF9hZ2VfZGF5cyI6NzksInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDuFdYjKwsXre8XIaFF702eoVvXHjFXkVLWJToIRMhHWw&oe=6A4C387C",
+            "image_crops": []
+          },
+          {
+            "body": "จัดการการชำระเงิน การเรียกเก็บเงิน และการแจ้งหนี้ให้เป็นเรื่องง่าย\nด้วยโซลูชันแบบครบวงจรจาก Stripe",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+            "title": "เริ่มใช้งานเลยวันนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQNC7iHVPyIbfNQh4Xbph05fcUf_gawjGiFRWAemaGHjRzfgxfWu0dpeIPgEE6HsT5UWXYKi3kUHjY5r1cfiL-AfqCYlwdW0ErIH1-wg6_E_Vw.mp4?_nc_cat=102&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=AtF15TZOYSAQ7kNvwEbRzWx&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjk2MzQwMDI2NjI0MDE5OSwiYXNzZXRfYWdlX2RheXMiOjc5LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=c8539201d8c58cc6&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9GQjQ1RTNFMTVBMUIzNzQ2OEVCQjJGN0M5NUMzRTI4M19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzY1NDBGRDU4RkNBQ0QyOUUzNTc4MjQyMDJBMUI2RUE3X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaOw6qqo422AxUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQC1QfInUR48Q0Rxu7u8J0DnjJ-1Oi7_6ki01FB3u3-jFw&oe=6A4C21CE",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/673133705_26035326716146259_8318833560596964079_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=SZPgwa7tDwcQ7kNvwEsF9qV&_nc_oc=AdrqpSrb6uaVnljVnNDMyBPwIHRGgeqxh59agZeIW1iMdfj7ju3hvYQxh4pNTrOMMOG9a73gHwRmv78ces0mLAdv&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC21P8axrQc2Yp4GfbbrlXueXgTQQ6lTqICrJZN32meDw&oe=6A4C2FB6",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQNjT4W1Sr398kDhTPy9SBdTRW4_b7p2lYeJ9-TjiDFTKgp5OSu-fsCwDV-1RZNt920YDh9NlyRvk-m2E4j2toeGgRl-5UqsCXhVyQYX4Q.mp4?_nc_cat=106&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=mQtJ9Bac5ScQ7kNvwFyT5cP&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6OTYzNDAwMjY2MjQwMTk5LCJhc3NldF9hZ2VfZGF5cyI6NzksInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDuFdYjKwsXre8XIaFF702eoVvXHjFXkVLWJToIRMhHWw&oe=6A4C387C",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/672047501_1591887258542029_3185863548984423296_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=AE1DAMrKA94Q7kNvwFeuMSW&_nc_oc=AdpRFfwkBnrK1V4z-gNYd9m2t_jHL70BYgTeQxoZo_-LSjBrFLHhYmGqS1xRUA-WQPqWrAXkOyBKN0kl80qyRfyV&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCGKY0TRxFcCmzjDMO2btd66iWtkQ6slPyVk1c1gi9Hew&oe=6A4C2E83",
+            "resized_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/671281246_1793322562120078_947374103669538286_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=103&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=v2c7F6sY_uEQ7kNvwFmueUo&_nc_oc=AdrYA2OlJss5C7mmz3Sr56pEbXfQ234kp_19juun0JACqKeKNuetU4Aa9vQdM9bYZLWT5n939UFOzY_fmZMdbPNo&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDm70Wwoik4flW89FO2-x5iBa7EBV-yCFcTBzfl_eT8wA&oe=6A4C2938",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-15T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTI3NTMwMDczNzQ1NzI0NyIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "745208905194716",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/652114331_1253428342951508_5216556926585435230_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=Mj5EjV7kP_8Q7kNvwFNLgs_&_nc_oc=AdplKAWHzdqLCZVDokXmesphuAc6Y9cSN1dFYggWadJeLZkqQhTXiMu0KEP-_QJUZEOAYRG2xIe4EBdrsJw0aptE&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCY3N5NwuR7RHKFIglgAV6m7JsNGclUYhGR-AT9oOLJFw&oe=6A4C11DD",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Stripe permet à votre start-up d’IA de booster ses revenus grâce à des outils avancés de paiement, de relance et de lutte contre la fraude."
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "Avec Stripe Payments, nos solutions flexibles de paiement, gérez vos transactions, optimisez vos revenus et développez votre activité sereinement.",
+        "link_url": "https://stripe.com/fr/payments",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/651318879_1519741846825819_160770247374184973_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=3NwhZ6pgGmgQ7kNvwF2PHdy&_nc_oc=AdouJRBj3lsSxutUNT1D3FZ_CDEExGjJE3gopSHnD5v8vlp3LshCYZIdVzbcyyTW-pMyPXnpu4ny60un2e9aRvrh&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCSV-15MnZQxGBRpqKBO7Ve8DWuzfdpi2oU3d94IIHU7A&oe=6A4C20A4",
+            "resized_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/651368497_1919452848674462_8679594982712329054_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=PYM2OvliVgsQ7kNvwH--ZHD&_nc_oc=AdprGo3xkIonn_momGqBAAq1M1DUAC5XDe0PuuD0zTitbZzcaONoU6lS7cElMkzyiZeQJK_JUWLjZyALl3uk-ecB&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAIRI7PWTBN9N23fpP3OoNj3eUzi3oaekp_wSns0xLHEg&oe=6A4C304A",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Lancez-vous avec Stripe",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": true,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER"
+      ],
+      "start_date": "2026-03-18T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiNzQ1MjA4OTA1MTk0NzE2IiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "779725881860633",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650282093_2717786811952972_5572000976040938517_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=ML78UTSxFqkQ7kNvwFYMU5n&_nc_oc=Ado9Mht-UI5_kmKW_gxNxwhNYXDcuOi6kQe-whRsNv8CegyJ-leVEI8jCtPjKPkrmWB7bkNY8gf5EUxpgBgMHSp_&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC_cGaaSrLxb5AoT05Huz-8n3keHcrHp5Spca-g7BNA_Q&oe=6A4C0413",
+        "caption": "fb.me",
+        "cta_text": "Download",
+        "cards": [],
+        "body": {
+          "text": "Founders and investors from Stride.vc, a16z, and Theory Ventures share how to create a successful pricing model."
+        },
+        "cta_type": "DOWNLOAD",
+        "display_format": "IMAGE",
+        "link_url": "http://fb.me/",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650251085_872437168717177_2219202168015117616_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=lwTOyH-t9DEQ7kNvwFIiERc&_nc_oc=AdqKi2HKX7bwA0yMvHFBoOJVx8kCM-1_n8lvVeLLVjoqQX6BOwgddr7Si0ZRDBYU-G3GXU5AGh63vUsmL0mvjAY2&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAS8x5chduRkkmvKRmmJbA3JMT0w3Ewuds1sixavJCpHg&oe=6A4C2F39",
+            "resized_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650218860_2323497061490008_4701375109301444480_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=111&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=MU8IolTCeAIQ7kNvwFN6Hr-&_nc_oc=Adpky0grDPATJmgpGC9vdkX0t0M0r5OzudrrSgKoACraVvav_rN9FfWK9CnIx55ruSxXhCVzRfaeAnxOU4yAmTT-&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAIt-bubQav55Px4HKa--RDpET9hoUnH-Lq7i1UFDZ5lg&oe=6A4C159D",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Get our pricing guide",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [
+          "https://stripe.com/privacy"
+        ],
+        "extra_texts": [
+          {
+            "text": "Build an effective pricing strategy with our guide"
+          },
+          {
+            "text": "Read interviews with leading software founders and investors to discover their approach to building an effective pricing strategy"
+          },
+          {
+            "text": "Please provide your contact information below"
+          },
+          {
+            "text": "Work email"
+          },
+          {
+            "text": "First name"
+          },
+          {
+            "text": "Last name"
+          },
+          {
+            "text": "Job title"
+          },
+          {
+            "text": "Company name"
+          },
+          {
+            "text": "Country"
+          },
+          {
+            "text": "Terms and Conditions for Stripe"
+          },
+          {
+            "text": "View Stripe's Privacy Policy."
+          },
+          {
+            "text": "Thanks, you're all set."
+          },
+          {
+            "text": "Access the guide here or with the link in your inbox."
+          }
+        ],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiNzc5NzI1ODgxODYwNjMzIiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "2543822616011570",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/650104191_1413637463850666_3695359994304017949_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=fgDNPlhjW3kQ7kNvwF1VCps&_nc_oc=AdpWcEvQnCJx-icmu39xnZkURWwcIBj99F4rXZK1Sl2BHLrpiSGVPT-KjbOntab0DrCKl8aRz1tPW22ZS9pc6_ng&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAmLrB6YJAWeRDSey_Me75xh4Kcv0v_kxkPrU7_TvtC1A&oe=6A4C106F",
+        "caption": "fb.me",
+        "cta_text": "Download",
+        "cards": [],
+        "body": {
+          "text": "Founders and investors from Stride.vc, a16z, and Theory Ventures share how to create a successful pricing model."
+        },
+        "cta_type": "DOWNLOAD",
+        "display_format": "IMAGE",
+        "link_url": "http://fb.me/",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/649936994_1204466154829128_3352060326510053925_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=NiqNCMma2UkQ7kNvwHpxncL&_nc_oc=AdokOAPAqW5Iy-bbPUmdPfnfHUYcxwM6rMBcEPE72NkpckPs9rPvY9SQBvw8ecyIeFfInXJKsLOqAShR9HJ8ukZY&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDhXf--mY4N4-ZLgUKiAo4gb7mDtqUJ5M261gpr_qkKSQ&oe=6A4C112C",
+            "resized_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/649535077_1631677324525531_8497994312155051424_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=109&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=tTLxS-d0_9MQ7kNvwFzaTBJ&_nc_oc=AdrJ6xyTtbLe3FjHF2VgfdEqX-9tas1Rnf6lW2LjfPCVdsSopeFIS37cXbKzVWWpzq_H7oC4o1o31PsISV9bIOOC&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCnCHFpuOisQ-NRhhYx8KYZ_zrDqUaE2cshM645uEFbNQ&oe=6A4C15E1",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Get our pricing guide",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [
+          "https://stripe.com/privacy"
+        ],
+        "extra_texts": [
+          {
+            "text": "Build an effective pricing strategy with our guide"
+          },
+          {
+            "text": "Read interviews with leading software founders and investors to discover their approach to building an effective pricing strategy"
+          },
+          {
+            "text": "Please share your name and work email below"
+          },
+          {
+            "text": "Work email"
+          },
+          {
+            "text": "First name"
+          },
+          {
+            "text": "Last name"
+          },
+          {
+            "text": "Country"
+          },
+          {
+            "text": "Job title"
+          },
+          {
+            "text": "Company name"
+          },
+          {
+            "text": "Sign up to hear more from Stripe"
+          },
+          {
+            "text": "By clicking below, you agree to receive marketing communications from Stripe."
+          },
+          {
+            "text": "Get the guide in your inbox. You can also receive product updates, industry news, and events from Stripe. Unsubscribe at any time. Contact us at privacy@stripe.com."
+          },
+          {
+            "text": "Thanks! You’re all set."
+          },
+          {
+            "text": "Access the guide here or with the link in your inbox."
+          }
+        ],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": true,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-11T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMjU0MzgyMjYxNjAxMTU3MCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "951367304266313",
+      "collation_count": 4,
+      "collation_id": "1460038242137662",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/680374873_1216713430347481_6176756202714794189_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=ayPGFYu7BmwQ7kNvwEQvvHy&_nc_oc=AdpyJNo3Z8K2_tpo-VFK7-p7E9N0UD-GhfkPJWj_fD5ET9M-zyVeqzjEfVPkxkr5x-z3K26jUm7SJagjoNts5YWR&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQB1CmNFpJvSDbRJMneJrun_AonGZtdQPigdZUI8kKn-OQ&oe=6A4C15B9",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "Unlock scalable billing for your AI product with Stripe today"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "VIDEO",
+        "link_url": "https://stripe.com/billing/usage-based-billing",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "Get started with Stripe",
+        "videos": [
+          {
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQPHcPuqu9_jUgVIFBGOq3aaqfoJmtmg9-g1fd925BZTwqD0dbvwVbEoGix691EN9DOQ9BxJ5bS0IAgfRdr1Dptmjnx83mrgI11Es_e4iERd2w.mp4?_nc_cat=105&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=7fq0BxL93sgQ7kNvwGINb0A&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMTI4MC5kYXNoX2gyNjQtYmFzaWMtZ2VuMl83MjBwIiwieHB2X2Fzc2V0X2lkIjo0MTE0OTg5MjEyMTQ2MTEwLCJhc3NldF9hZ2VfZGF5cyI6MTc0LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MzAsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=3de09cc6295e3264&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC85MDQ4QkNCMzg2NTVDQkMyOUU5MEQ2MjI5RjZGN0NBRl9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0YxNDczM0NGNDU3QjIyQkI4RDI1RDUxNjBBN0YwRUExX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACb85vTj8qPPDhUCKAJDMywXQD7UeuFHrhQYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBuy4ByngGTYxBKu54XtEtPl9gwbivAKrIkF8FHsOuiRQ&oe=6A4C1437",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/682693112_1715682632782252_3724520400653268093_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=ZVa8vVrTMKMQ7kNvwFkBp2R&_nc_oc=Adpm9bNQ-u_ARgfSHF6x0jY8H15qdiEMTXjLKKi5xv8uqUAkYRqw0qL6T41hIUDv8gHnalT5b-NNLV5DgMimd4kF&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCq10frU8xc30WFPdlk2PQ9K9Dv6VYUTcGBUPONunSkdw&oe=6A4C03E5",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQOERXDm1X4TGQMAM_Nn3sD6JGNM7zHwPGk6E6XNHxuvtInDgz9w4Ei3z834MDjBQnOn96HrwOLltCwoQ5S-D6W5b4kg3K8iYzBP11OrHQ.mp4?_nc_cat=105&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=hJ3SShkliXoQ7kNvwE53gYT&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNjQwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NDExNDk4OTIxMjE0NjExMCwiYXNzZXRfYWdlX2RheXMiOjE3NCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjMwLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQCoNd47Nn0mcT5ROjiHY2ZT8tNCm9c-8jBFDUTgWn14Zg&oe=6A4C3359"
+          }
+        ],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-06-30T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-29T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTUxMzY3MzA0MjY2MzEzIiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "1484984436604148",
+      "collation_count": 2,
+      "collation_id": "713029185188400",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "branded_content": {
+          "page_id": "175383762511776",
+          "page_is_deleted": false,
+          "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+          "page_name": "Stripe"
+        },
+        "page_id": "474962772377207",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.instagram.com/_u/nick_saraev",
+        "page_name": "nick_saraev",
+        "page_profile_picture_url": "https://scontent-ord5-3.cdninstagram.com/v/t51.2885-19/474740916_1843193596487436_7809450024972527192_n.jpg?stp=dst-jpg_s206x206_tt6&_nc_cat=107&ccb=7-5&_nc_sid=525117&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=dH2drvevInAQ7kNvwElxnwu&_nc_oc=AdoHp0PROp4gWUN7FoUt5mOcyIHBpH8lLbps2fp1L_2DT15q0_g6GsAB9hSjckQs33ovTfZpNexaSIU7tdxaaQ6T&_nc_zt=24&_nc_ht=scontent-ord5-3.cdninstagram.com&_nc_ss=7f100&oh=00_AQBAyGBJ3jPvFCtCY2f_AH6C6nv2OWld1GXBK0hxlJkvpQ&oe=6A4C1436",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Get paid faster with Stripe Invoicing—create and customize professional invoices, no code required.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQOnVnPcBF03yR1eOXnGnDwYUwUIQ88vBKVYQzea6bGEPXIyt1R5FgkkSSBO7oDy88DGBzMmH6ejJu7uVkquU15usts34FedWqJW-JVPkPCBjw.mp4?_nc_cat=107&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=PhydfMYEWYsQ7kNvwHFwmqu&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE2ODM0NTA3ODkyODAwMTUsImFzc2V0X2FnZV9kYXlzIjoyMDgsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjozOCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=652cf1e2bbd6f664&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9BRjQ1NUE1RTUwNUUyNTlERDlBMTY0NEYzOEZGMkE5OF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0JDNDNCQTMwQTI5RUNDMjk5M0Q5MTVEQUQ3OEQxMjkyX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACae5NXk3cX9BRUCKAJDMywXQEM_fO2RaHMYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBmarzE8aDXypnpyD_BO07bWVUFroDQL7G8KB4ChivNCw&oe=6A4C2069",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/650657391_2162765134556565_6742477621486335224_n.jpg?_nc_cat=110&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=bqLhmCOUY4MQ7kNvwEU9-1e&_nc_oc=AdpddtyM5TD81ErkZy74Kbn0-PhgufoSTDzxre6aUr3pm6TmyaI9-ymYVY6YR7MLJrdTJWmlmPSeVX1Q3m2D40Dd&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAJ7tFfQeiiGGKSsagEeif8dEcL4DiB5KzzQs1eTsvUhA&oe=6A4C0F82",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQOJEfS0wEIhJCdgyEYu8IL7jWJ1jPkLxxQsI2EnuSweyjEQ5y1Oxfbqfm_BxegmsjEt2B2jZAm5ZLQD8IE05_QeNrZNsX_k7cke38wxvg.mp4?_nc_cat=110&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=XMoGy63Rv_4Q7kNvwGo9YXF&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTY4MzQ1MDc4OTI4MDAxNSwiYXNzZXRfYWdlX2RheXMiOjIwOCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjM4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAyzuV7JxZVKtQPchffpNL_SxxLt_aMKx6rhDhLoy40Sw&oe=6A4C0460",
+            "image_crops": []
+          },
+          {
+            "body": "Get paid faster with Stripe Invoicing—create and customize professional invoices, no code required.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQPDcCJgrobGiJ19mL69cH0gSz-0YMDE9kjCXcChxFFttgc2Zi3vccteKY2928QCCNFkROVMK99qOnugabrg5fU4w1GZ8O3c0uYFjKtK4Jn6jQ.mp4?_nc_cat=102&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=4ZboyME3_1IQ7kNvwHOLVPq&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMTI4MC5kYXNoX2gyNjQtYmFzaWMtZ2VuMl83MjBwIiwieHB2X2Fzc2V0X2lkIjoxOTI3MjAxNjUxNDc0NTY0LCJhc3NldF9hZ2VfZGF5cyI6MjA4LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MzgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=437bde104c681eef&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC8zMjQ1QjZEQTU4M0I0NUFFNDI3N0FCMTk3QTNENEVCOF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0Q3NEYwMDdFNDVFMDcxMzcxQUVBODBEQzg2OTVEOTg5X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaIgsad87HsBhUCKAJDMywXQEM_fO2RaHMYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDf6B22aPhJxd3I_oiiBs-UyDp2kH4VCuH-FGQGCDMb9g&oe=6A4C29FA",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/651204921_2677862989244108_6383798854264901623_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=lGJJAKldDWIQ7kNvwHIDTH3&_nc_oc=AdqKA5ZUEanCKrkZ374R6qyQCLqVAVppU9WS99cluZboMaMrWDM-e5RR3NEXzKX7_sgF6BAKHEaLtpd8qMHqTeeF&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDNv29D33cHIthQGwdjtZwWJVxUyLnWn98uyS88F4LC_w&oe=6A4C27D7",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m412/AQNLNyLdbESF5bKaeStYLzVmtCmtheUeW-9XPcH-PRbqatCBK9tzzR3ZKuUdK73che6rlV1KASLm2p6NE8K7XLGYg71gkzMGmp7sFXhAPw.mp4?_nc_cat=107&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=Gyw8YA7XHe8Q7kNvwGKOJCl&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNjQwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTkyNzIwMTY1MTQ3NDU2NCwiYXNzZXRfYWdlX2RheXMiOjIwOCwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjM4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDnQfnfkB_foWIK8WzXpD-qHXKE7vvKQ551IKqxbrz--Q&oe=6A4C368B",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_url": "https://stripe.com/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Profile"
+        ],
+        "page_like_count": 0,
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-05-08T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTQ4NDk4NDQzNjYwNDE0OCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "903659455982418",
+      "collation_count": 1,
+      "collation_id": "2244323559307657",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/674187250_944311978488300_195831413444522326_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=wAZfLtTYfdkQ7kNvwFvagsY&_nc_oc=AdqQveRpTTfKNCXhMf9jQdyIRYVGfY4_RPaeK97LC8gVAu5hzhdGST3mUYkBrc6bPQw5comVxl71DtQfJf9Oykls&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCIhEUH3GxBTvCp1ys2_2TcXkabbg69zOzuOh0PFv0jug&oe=6A4C07DC",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Airpaz รุกตลาดนอกเอเชียตะวันออกเฉียงใต้ด้วย Apple Pay\nและวิธีการชำระเงินในท้องถิ่นบน Stripe",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+            "title": "เริ่มใช้งานเลยวันนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQM2AnijXdnT7SIsHBtMrVUaW-AZWGjkCJLBvZi9cwoRPIykpSEP-y5cnv7frXRxDPIRgSHC5RlNP8Izt8l2BhUqeAq6amcccjyUySaKRaEKtw.mp4?_nc_cat=104&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=TcwCMFhSsIEQ7kNvwH_hqrn&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE0MzkyMjUyODEwMDk4NjYsImFzc2V0X2FnZV9kYXlzIjo3OSwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=453cef41fffdcc31&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC81ODQ0QTZGOUZGODU3ODBFRjY1NjY3NjRCMjE4OEQ4OV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzJENDBBNTY5NEM2MkMwMjlGMUU4NDgyRDdCMEI5QUJGX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaU44L6972OBRUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDSVqXfVj9oPQfQPsprKTNU3Ensb4nPIOALzfdL_oIdKA&oe=6A4C0FDC",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/672864630_1644545906866320_7642784462724258639_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=gEE-FH2ONF8Q7kNvwFqhY6I&_nc_oc=Adpw50Hz9b6xb1YMAA9nywYRpO_y9TAoZVFCNCLs6p_HBkSNUfSEOX6i9psBX1snzmVPE_UFdRmgKz8Qm2JWYgYk&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC_oRMhDvQNSwxlV7CNt6Nv7NvTaBQEyIvB52lVTgVk6w&oe=6A4C2444",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQM2TaMbxfr0U7-Vz0QNcQ-I72Rm8hOYiBjM12gqHOiFEM29ooM0CWFUCJLUD7L85CQNoW1atajiKgMe7B2U3ALloHZm7-t8_gWSTI70mg.mp4?_nc_cat=106&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=w0iAH1-E5fsQ7kNvwGnkzZk&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTQzOTIyNTI4MTAwOTg2NiwiYXNzZXRfYWdlX2RheXMiOjc5LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQADIIXjtOCNtBqpPWS_0GlNh59SDZU1alCJXRiKNeIZSg&oe=6A4C3A38",
+            "image_crops": []
+          },
+          {
+            "body": "Airpaz รุกตลาดนอกเอเชียตะวันออกเฉียงใต้ด้วย Apple Pay\nและวิธีการชำระเงินในท้องถิ่นบน Stripe",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+            "title": "เริ่มใช้งานเลยวันนี้",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQM2AnijXdnT7SIsHBtMrVUaW-AZWGjkCJLBvZi9cwoRPIykpSEP-y5cnv7frXRxDPIRgSHC5RlNP8Izt8l2BhUqeAq6amcccjyUySaKRaEKtw.mp4?_nc_cat=104&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=TcwCMFhSsIEQ7kNvwH_hqrn&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE0MzkyMjUyODEwMDk4NjYsImFzc2V0X2FnZV9kYXlzIjo3OSwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&vs=453cef41fffdcc31&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC81ODQ0QTZGOUZGODU3ODBFRjY1NjY3NjRCMjE4OEQ4OV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzJENDBBNTY5NEM2MkMwMjlGMUU4NDgyRDdCMEI5QUJGX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaU44L6972OBRUCKAJDMywXQCAAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDSVqXfVj9oPQfQPsprKTNU3Ensb4nPIOALzfdL_oIdKA&oe=6A4C0FDC",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/672864630_1644545906866320_7642784462724258639_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=gEE-FH2ONF8Q7kNvwFqhY6I&_nc_oc=Adpw50Hz9b6xb1YMAA9nywYRpO_y9TAoZVFCNCLs6p_HBkSNUfSEOX6i9psBX1snzmVPE_UFdRmgKz8Qm2JWYgYk&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC_oRMhDvQNSwxlV7CNt6Nv7NvTaBQEyIvB52lVTgVk6w&oe=6A4C2444",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQM2TaMbxfr0U7-Vz0QNcQ-I72Rm8hOYiBjM12gqHOiFEM29ooM0CWFUCJLUD7L85CQNoW1atajiKgMe7B2U3ALloHZm7-t8_gWSTI70mg.mp4?_nc_cat=106&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=w0iAH1-E5fsQ7kNvwGnkzZk&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTQzOTIyNTI4MTAwOTg2NiwiYXNzZXRfYWdlX2RheXMiOjc5LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6OCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQADIIXjtOCNtBqpPWS_0GlNh59SDZU1alCJXRiKNeIZSg&oe=6A4C3A38",
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/672652101_3214720418733503_4761985174065835533_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=mtfuegVtVJsQ7kNvwFEdMDZ&_nc_oc=AdqOBk6TlFch0NvbJ9aP-rA75xL8mZpDxyS7Krmls5gA24FZgIF9awUfxa6-SN6eJz3YGEDtjHQTpXWGFDw0Tand&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQANDOquSERpBb4lkkyse8bfjPc4nk64TkTssnPN-QcCfQ&oe=6A4C3BDC",
+            "resized_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/673076726_803188529527279_3736737414178057256_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=101&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=D7nPJ2_e_M8Q7kNvwFONUh5&_nc_oc=AdqhePlMVTZPXy4rSUTUUMFZS1J64aEQn6DZITiN6gYcpI0J8qUFzEf6qu_M30Dk6Kv-nuKby-6L8zHEx1FpD5eN&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAJeRVwCqt0T-ZkmZCCi9LfOm89V25v99SGd2lU9BodbA&oe=6A4C31CF",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-15T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiOTAzNjU5NDU1OTgyNDE4IiwicGFnZV9pZCI6IjE3NTM4Mzc2MjUxMTc3NiIsImNvdW50cnkiOiJBTEwiLCJpc19wb2xpdGljYWwiOiJmYWxzZSJ9"
+    },
+    {
+      "ad_archive_id": "1410750990255130",
+      "collation_count": 1,
+      "collation_id": "1182488810659810",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "branded_content": {
+          "page_id": "175383762511776",
+          "page_is_deleted": false,
+          "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+          "page_name": "Stripe"
+        },
+        "page_id": "794984187021017",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.instagram.com/_u/we_are_mensoi",
+        "page_name": "we_are_mensoi",
+        "page_profile_picture_url": "https://scontent-ord5-2.cdninstagram.com/v/t51.75761-19/509646407_17843232936518356_3331627628532081126_n.jpg?stp=dst-jpg_s206x206_tt6&_nc_cat=102&ccb=7-5&_nc_sid=525117&efg=eyJ2ZW5jb2RlX3RhZyI6InByb2ZpbGVfcGljLnd3dy4xMDgwLkMzIn0%3D&_nc_ohc=gBI__e2yUFIQ7kNvwGnI7hV&_nc_oc=AdqnQSDdr2sFsH1uWOu4g8WWGZYSpsNNrCaEZ0Hv7Oc7ePUa3JpjotM1dRGvMiAaGWZeRmpUT_4JldtM-ithstxR&_nc_zt=24&_nc_ht=scontent-ord5-2.cdninstagram.com&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDb7ZGW9TjvhISzrSCx0ahFYzJWlcGrIuYBPNpWhZV3lA&oe=6A4C23A4",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Reduce friction and optimize for conversions with Stripe Checkout.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQPzEt-IewBYY6dlJSbsEPujgM6ig4Gdgdr_V-2KkSq3yEYn36I1HRJ-CUC65GIj5ZoBzixAyCA--vRTuZMC94DC7Rjg4pjYQhSwKcglt3ug1A.mp4?_nc_cat=109&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=5BT6BBrWHWoQ7kNvwGZSBJa&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjY3MTE4NTk3MjY1NjY0NCwiYXNzZXRfYWdlX2RheXMiOjE2NywidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjQ2LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=91b28c4b4111ed31&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9DQjQzN0ZFQzQxMEY0RThBMTJFRTlCMzRGMTJCNDVCM19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0QwNDk3RjBFNEI2MjIwQTQyODc4M0FDRkMxMDkwRDkzX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaI6NOXlZyxAhUCKAJDMywXQEdMzMzMzM0YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAbYagGWt35BZLGyLT9MNVSlzvIinbgxWrBzfX0k5KVTg&oe=6A4C3133",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/646376464_899288899381194_6757931625390846195_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=CoY1Z94ww-IQ7kNvwH37svh&_nc_oc=Adogw9ensJtyfOKzalvPCD7E0EkGYYDXTUPrgwAeAdhwNk14qlXGcrfzBwQIOtkONtX9ZEVonXq9aM2qBUGZtZhW&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQD3bBZd17dYtF4g2QBjIOz5OlKPY2Kepk8RANR3ex7vYQ&oe=6A4C35BE",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m412/AQNWgh1CxqphlmG1iwnNgQIy_Vy32tUemXomzGvdCpOR8bge6oG3_xhiPMHvHFOklTsZOPuPXmr3HUB24dWsgQnv2s3zL1w-SOruFCJxWA.mp4?_nc_cat=111&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=6k_LCaYsCoEQ7kNvwFpWghB&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NjcxMTg1OTcyNjU2NjQ0LCJhc3NldF9hZ2VfZGF5cyI6MTY3LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6NDYsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQALUhValxgWh9iDv8CdtmL-hAFWkM9uNnxRiWxBsYeFBw&oe=6A4C36DF",
+            "image_crops": []
+          },
+          {
+            "body": "Reduce friction and optimize for conversions with Stripe Checkout.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/payments/payments-platform",
+            "title": "Get started with Stripe",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m366/AQMj15Xv54p2R-jFovNJRrVyDBes_cfBQkdczMRr1tRZCenmU_-YW_QPRVNH1yftV6KRX7F2KwpoiGBfzgIMRWeKdRwbTZ3hgqIXfK8tyzAa8A.mp4?_nc_cat=102&_nc_sid=b66105&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=eQdAVFIa_isQ7kNvwFj4yF7&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMTI4MC5kYXNoX2gyNjQtYmFzaWMtZ2VuMl83MjBwIiwieHB2X2Fzc2V0X2lkIjoyNTc5Njk3OTQ5MzI1NDQ0MCwiYXNzZXRfYWdlX2RheXMiOjE2NywidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjQ2LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=a6eb87815b8ba113&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC82QjRBODI3RUZBOTEzOTFDNDEzRUVBRkNDRjY3QkRCOF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0U2NEE4MkVGMjE4NTcwN0NENUY0OUE0MDRDOTFBODhBX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbQ1Mnv6o3TWxUCKAJDMywXQEdMzMzMzM0YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBZm0kFHFIEURcb3hzjFJAjBc3ShzCAhak3WGCvi0wtRA&oe=6A4C2B02",
+            "video_preview_image_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/646393879_1278298694239736_6586808701515616934_n.jpg?_nc_cat=102&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=SBj2U1H-9b0Q7kNvwER2a5d&_nc_oc=AdqJTfZEPff41_4-1zadKkVujKTmVz-POIst3N31T00cbmnlHwLLYsKthws4jKJet6klV3iAUK21SobefQUuapU8&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQChtRMnnbfV4B4Pal_31h6FhoMoqWGDkc2v6IZYR4U82A&oe=6A4C0604",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m412/AQPrwGHjbWcQQQkM8qst_kVDvGoZZ1NDMBTPPb0EK6TbxzONrUHxbAEeOleG9wWbLJ1kHNED7El4lq7NrJZW3C5m5JM9-Z5yhe44jkRJbQ.mp4?_nc_cat=105&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=W56x3Pz7GckQ7kNvwEw528z&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNjQwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MjU3OTY5Nzk0OTMyNTQ0NDAsImFzc2V0X2FnZV9kYXlzIjoxNjcsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjo0NiwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAPMvNEGNVXpI9Pg7008NQh_ApSpg9jGbvMuFnbaTSlyw&oe=6A4C29D5",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_url": "https://stripe.com/lp/payments/payments-platform",
+        "images": [],
+        "page_categories": [
+          "Profile"
+        ],
+        "page_like_count": 0,
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-14T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTQxMDc1MDk5MDI1NTEzMCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "1812813703009519",
+      "collation_count": 1,
+      "collation_id": "1061696015221429",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/649843170_963627452760872_2967449260476775939_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=100&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=zBTmkQ-ZXuUQ7kNvwGHtxio&_nc_oc=AdpaaxJEugj4FJh0__mhLzQIH-djp5BHQdTFke5EF7YCnY4faALjVZWMO6sOwAHVBFSCFwe-7bm6H7DqH6m8hVrR&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCLBaNKgs7F6qN74tvPnkHKDEdU0SHx7n6zAvVKUoQ0DA&oe=6A4C360B",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Quickly accept payments with payment links, no website required.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/start-now",
+            "title": "Get started now",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQNrjw-L_EgEhxzvGeZui-WHr_2eK6m34IC7jdPe26ZE0OWSQ7_kP6SOCKbG0-s46lwprHkABJGBOi1cd2qdzC4Gy-UnXCPQhXx3uTz7xYVcCQ.mp4?_nc_cat=100&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=XJipnMk8UhoQ7kNvwH4izlO&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjUwNzY3NDQ3ODc3MDgwMiwiYXNzZXRfYWdlX2RheXMiOjYxNiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=c0286b26e98d3bd7&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9ERjRGMkRGRTk2RDMwMTc0NEVDM0RDRkQ4OUUyNjQ5RF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dDZUhyaHNDMlFWV2M4OERBS3BjcDMzZk1nUXhidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbk6b_Pxe7mARUCKAJDMywXQDIAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAt-GDH4rXbsPcjaec4zitvo5Q8l2VbxveS214kxptBCA&oe=6A4C2FD8",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/650464661_936048435624974_3840310007002152652_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=cOionzsfImQQ7kNvwFltfk0&_nc_oc=AdrY19et6Z7cNkxonlPe4MRLIM4Z-wuaspXURLjv3E1lexv0E5WFqkK4MQ_1Vb9F0eSMFYi8lbjvozje8IxUSm7E&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQAkME8eie-johFHQG8zaGvT-yG9k6Ma5pBkCByiuBv84w&oe=6A4C1513",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m69/AQPPgwUFvZn_KXcIY8YEUXlXoi2xY8feZ6vPnFWUu_LjLqlPzlzNlVUTRVsDljEPsMSdGuXtqhbHbKVYCtdfCn1p.mp4?strext=1&_nc_cat=101&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=EX4L9bfb8ToQ7kNvwGwebFj&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NTA3Njc0NDc4NzcwODAyLCJhc3NldF9hZ2VfZGF5cyI6NjE2LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MTgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDRYGCrFaYiy1u4jmJfDgqrLJz2g_uXJgulX86ntjDjiQ&oe=6A4C2961",
+            "image_crops": []
+          },
+          {
+            "body": "Quickly accept payments with payment links, no website required.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/lp/start-now",
+            "title": "Get started now",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQOjLulNXPDyIBNSz2cRXIqk1WoaEAvSA7J5V09N2xb8d4pHAifGjutG5oVH8DUon1ZRl9zftFL3RO0OxV3GvkhVId8COwqVeW4VaBsOjok2oQ.mp4?_nc_cat=110&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=paNpzS7qOp4Q7kNvwFk4w4L&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjEyMTQxODY5MjMxNjc1MDksImFzc2V0X2FnZV9kYXlzIjo2MTYsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjoxNywidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=f033b08a1c04edbe&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC8yMTRGM0FCQjY5MzBDNERCNTAyNkJDNDQxNDY5NjhCMV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dPQmVyUnUzMTg3MERmY0JBSXlhQzVaMnJKNEtidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACaqvPjD_ZKoBBUCKAJDMywXQDEAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBUboqB2TnBF0H43ZWVmrWtkoRSGbtX6sTNNZHj68gdwA&oe=6A4C0AFA",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650021143_1257998726428023_7181441274896868682_n.jpg?_nc_cat=108&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=iR5EI0z3B68Q7kNvwGUteOg&_nc_oc=Adq2CpB_15nv9O3PGrexxRRrCzuFUgquk0XzvhXAbY-az7YEMj2C7YgyyRfnbN5UxgR0Y9w319aeaA0dLE9Jqoj_&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQBq6_tB5kqvrRGGpnUlMp879qzkFGeHXa-OmABWqZ3exQ&oe=6A4C1330",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m69/AQO7qQCMt2IkbMEsiX4NDbnFTseaOkF81QZ0mEB1RCyEptJKn7bv5iRmKUEJd_PxVd3hpFERTdRZU-ppGi9iHY2H.mp4?strext=1&_nc_cat=102&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=EvIRirDhxR8Q7kNvwFlG1fM&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTIxNDE4NjkyMzE2NzUwOSwiYXNzZXRfYWdlX2RheXMiOjYxNiwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE3LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQB_ncBUkwoMFyfui6fd9T7hBjjPUV4FWILzkvPNYT3ayg&oe=6A4C093C",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/lp/start-now",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-03-12T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMTgxMjgxMzcwMzAwOTUxOSIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "4007473792878008",
+      "collation_count": 1,
+      "collation_id": "1797935177669650",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/651152964_890877876912763_2723916686084428799_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=101&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=rg4F3Bl7y8gQ7kNvwFXOZVe&_nc_oc=AdobEntxivceeMeReE6o63EZ6BzI4qMUt0ZTnxIRRjBzFYhExZtEWeMs806YYQ6dX8eN9Yvw0UH_r90b4KH5be1P&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQCWbW7nuIN8SxLdwCYSLEpkhYAvgG17lC-j7QL2jW9Rgw&oe=6A4C2A8A",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [
+          {
+            "body": "Créez des abonnements facilement et suivez vos revenus de manière centralisée grâce aux outils no-code de Stripe.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/fr/lp/start-now",
+            "title": "Lancez-vous dès aujourd'hui",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m366/AQMJAEwgPIGM047BruU93kbj1qF9aQ_wvryRHjgd8_piyi9wOWIlLW1Li2R6R1xGSnAqADcTjGjXQGXZ2mVsF9zjdFrcdYFsQVh3M9vWG_yCVA.mp4?_nc_cat=110&_nc_sid=b66105&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=HD7LJzfj-5gQ7kNvwGZdo79&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjE2ODc0ODA2MTIxOTAyNTAsImFzc2V0X2FnZV9kYXlzIjo0OTUsInZpX3VzZWNhc2VfaWQiOjEwNzk5LCJkdXJhdGlvbl9zIjoxOCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=3221aa68f3d1f0f4&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC81NTQ2OEUyODc5RjY0N0IxOEM3QjNGQkMxOTREMERBRV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dLUHVxUnk0bk9XcWswd0NBSEdEbHR1REhNWl9idjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbU4KOnprD_BRUCKAJDMywXQDIAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQAWm1BiZyfQwfU80bsPQS_L1K0TRAqLvvLlcJQw0WCADQ&oe=6A4C2B8E",
+            "video_preview_image_url": "https://scontent-ord5-3.xx.fbcdn.net/v/t39.35426-6/651170515_1311776454094939_9180406490382640424_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=4hmoHs8OQ5gQ7kNvwFbgocP&_nc_oc=AdpMRgG6kzFIHzUKs_Gs4PVqwuicD57wCCF4r_kPsCD1B3a6gtqxdMFhSXWX3HKtdU2zxTLHcYohKJxFKoXoXHbY&_nc_zt=14&_nc_ht=scontent-ord5-3.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQC9C5Et9mDy3QJtGRe_kRrYKVmYwDgURORjnbPdwz_AAw&oe=6A4C1E10",
+            "video_sd_url": "https://video-ord5-2.xx.fbcdn.net/o1/v/t2/f2/m69/AQNKZg7xlHnwGUYN3GeBxTc-toBN-2lIrbUseHbSymlgjp-ZH35ZeuuTDEw9ynwe6KQa6JyZMmWxJeE3QIHBQV7h.mp4?strext=1&_nc_cat=102&_nc_sid=ef5aa3&_nc_ht=video-ord5-2.xx.fbcdn.net&_nc_ohc=KPuXkQdb7hgQ7kNvwHeC75R&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTY4NzQ4MDYxMjE5MDI1MCwiYXNzZXRfYWdlX2RheXMiOjQ5NSwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBgkfCtiU9QJtWXAHTK8KbN3bpn6ZjITzzv2L-L0cPd0A&oe=6A4C1D38",
+            "image_crops": []
+          },
+          {
+            "body": "Créez des abonnements facilement et suivez vos revenus de manière centralisée grâce aux outils no-code de Stripe.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/fr/lp/start-now",
+            "title": "Lancez-vous dès aujourd'hui",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQPkXsdb_IndT8Q-Mdvo56D5tWZP4TV11YpWSb6WQqwuDv_7phLW9FQJ1RiJeNBd7glEgSwOezN2RPJV8vYjha3IN59Xyj2jdgUv0uPhJAKvBQ.mp4?_nc_cat=101&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=-3ddFRTE5YwQ7kNvwEy4C0G&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjY0MTgyMTMyODM0NjQ3NywiYXNzZXRfYWdlX2RheXMiOjQ5NSwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE3LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=90a9f300afaf1f65&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC80QTRBQUU0RUJFNUFBREEzQkJGNEI1RTI5RTJBMzQ5QV9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dJajNzQnpzQy14NURqMEVBUHk1bVpwa3VNOWpidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbatcjE9e6jAhUCKAJDMywXQDEAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBlKQuyFXsvE5SH7sMVmFtyACrRYf-sqnZzXRioc14Mjg&oe=6A4C17BF",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/650622524_939846035604794_5695274428697131493_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=lN1STEV-24cQ7kNvwGv68Dq&_nc_oc=Adq57bnSI05Oh8G3QtZE0pWOIkIn4pYahsYOgW6kwF8qC3q6vb9ukIDRaoXVpcQs_UwbHiF_YBedywFuLOT6usVS&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDyw2-sw9SyXJCPNRlmQTnqe8PZmeH0rMvg4RMDQ4PHEA&oe=6A4C3BB5",
+            "video_sd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m69/AQOE7boq_XgToyI1n1hrbr9EtjF8qTIYaxSByooOAIrW-oBcotQJBxvagGYbA05y2q62QLfPHymg8G1dEDfF5isF.mp4?strext=1&_nc_cat=111&_nc_sid=ef5aa3&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=nLVYpKF5fyIQ7kNvwFVEqJM&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NjQxODIxMzI4MzQ2NDc3LCJhc3NldF9hZ2VfZGF5cyI6NDk1LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MTcsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQBXul62IaWKRWCix2MEJMJ67olmyk1Iqd5DvTF4R3Yd6Q&oe=6A4C27C7",
+            "image_crops": []
+          },
+          {
+            "body": "Créez des abonnements facilement et suivez vos revenus de manière centralisée grâce aux outils no-code de Stripe.",
+            "cta_type": "SIGN_UP",
+            "caption": "",
+            "link_url": "https://stripe.com/fr/lp/start-now",
+            "title": "Lancez-vous dès aujourd'hui",
+            "cta_text": "Sign Up",
+            "video_hd_url": "https://video-ord5-1.xx.fbcdn.net/o1/v/t2/f2/m366/AQPgxZAbkmlx1AeGNj-cDPFS3oMbpcT1ZelweVKFdXzYbA76OuTLRGFgwfm13kGVYvGpSVQ8JWXrL70ZJMk1bz-h963BsxKyQ0RrI76vO36qPQ.mp4?_nc_cat=101&_nc_sid=b66105&_nc_ht=video-ord5-1.xx.fbcdn.net&_nc_ohc=yJEv0Sr_zlYQ7kNvwFmfolf&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjUyOTAzNTE4OTY5OTMxNiwiYXNzZXRfYWdlX2RheXMiOjQ5NSwidmlfdXNlY2FzZV9pZCI6MTA3OTksImR1cmF0aW9uX3MiOjE4LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=4c9f2a862cd435a&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC84NDQyQzg5REZBQTRGQzJCNzgzN0MzRTZBQzZCQjY5M19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhg6cGFzc3Rocm91Z2hfZXZlcnN0b3JlL0dESzBxaHphUG04UHZKQUhBQlFPZ3NGVXphVVJidjRHQUFBRhUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACboi_Ko88nwARUCKAJDMywXQDIAAAAAAAAYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUAZd6oAQA&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQD4X2uDIDBIQsWFgUPwUn-AajK1oM0twD8DquDRPhXJ-A&oe=6A4C3817",
+            "video_preview_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/649779996_2154221651984584_5177870944262015510_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=hPMLY6fUAx0Q7kNvwFzcGau&_nc_oc=AdrZiYmHdZOo8XiXtwTzGyK-LNafDl3ZqRNS8mUIfsLNcLyqa6h0G7pmkHW-My90JNgDxFwpM-HtXcmuteuM0_Vv&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQB7MBMsbYSwk6D1U7fajwHpmJ-3Rm00b1PNX7DXfQe1gQ&oe=6A4C299A",
+            "video_sd_url": "https://video-ord5-3.xx.fbcdn.net/o1/v/t2/f2/m69/AQNy85QrtScx1MtNUALTaf31EwM0V33rJPa6dMWr2EZDvMQiC9CQWSJfP-DYy6ejVe6RAl-9bdy8SOBjCYM-hyuQ.mp4?strext=1&_nc_cat=110&_nc_sid=ef5aa3&_nc_ht=video-ord5-3.xx.fbcdn.net&_nc_ohc=mQoM3WjvAq4Q7kNvwGkiZGn&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5WSV9VU0VDQVNFX1BST0RVQ1RfVFlQRS4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6NTI5MDM1MTg5Njk5MzE2LCJhc3NldF9hZ2VfZGF5cyI6NDk1LCJ2aV91c2VjYXNlX2lkIjoxMDc5OSwiZHVyYXRpb25fcyI6MTgsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&_nc_zt=28&oh=00_AQDgZ6wbUd0y2Uskp1pxkU18KYc8g3u31w6ribVzsT5uqQ&oe=6A4C048C",
+            "image_crops": []
+          }
+        ],
+        "body": {
+          "text": "{{product.brand}}"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "DCO",
+        "link_description": "{{product.description}}",
+        "link_url": "https://stripe.com/fr/lp/start-now",
+        "images": [],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "{{product.name}}",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": true,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-02T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM"
+      ],
+      "start_date": "2026-04-23T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiNDAwNzQ3Mzc5Mjg3ODAwOCIsInBhZ2VfaWQiOiIxNzUzODM3NjI1MTE3NzYiLCJjb3VudHJ5IjoiQUxMIiwiaXNfcG9saXRpY2FsIjoiZmFsc2UifQ"
+    },
+    {
+      "ad_archive_id": "26247565838271898",
+      "collation_count": 1,
+      "collation_id": "1636578184344646",
+      "is_active": true,
+      "page_id": "175383762511776",
+      "page_is_deleted": false,
+      "snapshot": {
+        "page_id": "175383762511776",
+        "page_is_deleted": false,
+        "page_profile_uri": "https://www.facebook.com/StripeHQ/",
+        "page_name": "Stripe",
+        "page_profile_picture_url": "https://scontent-ord5-2.xx.fbcdn.net/v/t39.35426-6/680450821_975033964918278_7705952251536508480_n.jpg?stp=dst-jpg_s60x60_tt6&_nc_cat=104&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=hUxegQS4N78Q7kNvwEw0Tbl&_nc_oc=AdrX29FlpYM3nvl_egVlEEIZsRfiCp0VYQgioHF5XiLsrLS5Fy9LMAFDjp8hr529hkowWbxjd5wmghEKodbH1JsZ&_nc_zt=14&_nc_ht=scontent-ord5-2.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQA7N3uphMD5aMmnHm_92ZB4_QWxm94MVutxrBX5lXKHkA&oe=6A4C1264",
+        "caption": "stripe.com",
+        "cta_text": "Sign up",
+        "cards": [],
+        "body": {
+          "text": "จัดการการชำระเงิน การเรียกเก็บเงิน และการแจ้งหนี้ให้เป็นเรื่องง่าย\nด้วยโซลูชันแบบครบวงจรจาก Stripe"
+        },
+        "cta_type": "SIGN_UP",
+        "display_format": "IMAGE",
+        "link_description": "สร้างรายได้มากขึ้นด้วยโซลูชันการชำระเงินอันครบครัน ซึ่งลดความยุ่งยากในการผสานการทำงานที่ใช้เพียงครั้.....",
+        "link_url": "https://stripe.com/th/lp/payments/payments-platform",
+        "images": [
+          {
+            "image_crops": [],
+            "original_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/680444465_968798125606593_5042374246897449431_n.jpg?_nc_cat=101&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=ckIGr9j3psoQ7kNvwGBnMYH&_nc_oc=Adoi41wOI2kIkKYkpOqt--Ktc4Lo2puvSIhCfTZwsWSDkrNur7EQdNO3KC8FYf7vsS1IvO2Y_q5tTlza-146V-xb&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDKa2scKGeVohcSR9NeoJ9JOfGOYff8OVl57IEF31Jpqg&oe=6A4C05E3",
+            "resized_image_url": "https://scontent-ord5-1.xx.fbcdn.net/v/t39.35426-6/684151275_2037302033665409_4075308660642021681_n.jpg?stp=dst-jpg_s600x600_tt6&_nc_cat=101&ccb=1-7&_nc_sid=c53f8f&_nc_ohc=b6xKl1_Z69UQ7kNvwE1xxD6&_nc_oc=AdrN_jp-QvBgwN_UrPRzvLzeDT4FJeZ-6Ym_TbLi6JnaRfSIDy4-cAQV1rh2G_fkWUVv7e376XL5er7vWU2fYQu1&_nc_zt=14&_nc_ht=scontent-ord5-1.xx&_nc_gid=qWy8T6XvAMRovQ-wuLb8Zw&_nc_ss=7f100&oh=00_AQDTQTUcaoBR7oyIqQTpbmA9yRTfvt-JnpRB0JRhdStuVg&oe=6A4C0ACD",
+            "watermarked_resized_image_url": ""
+          }
+        ],
+        "page_categories": [
+          "Business"
+        ],
+        "page_like_count": 65855,
+        "title": "เริ่มใช้งานเลยวันนี้",
+        "videos": [],
+        "is_reshared": false,
+        "extra_links": [],
+        "extra_texts": [],
+        "extra_images": [],
+        "extra_videos": [],
+        "ec_certificates": []
+      },
+      "has_user_reported": false,
+      "menu_items": [],
+      "page_name": "Stripe",
+      "impressions_with_index": {
+        "impressions_index": -1
+      },
+      "gated_type": "ELIGIBLE",
+      "categories": [
+        "UNKNOWN"
+      ],
+      "is_aaa_eligible": false,
+      "contains_digital_created_media": false,
+      "currency": "",
+      "end_date": "2026-07-01T07:00:00Z",
+      "publisher_platform": [
+        "FACEBOOK",
+        "INSTAGRAM",
+        "MESSENGER",
+        "THREADS"
+      ],
+      "start_date": "2026-04-27T07:00:00Z",
+      "contains_sensitive_content": false,
+      "regional_regulation_data": {
+        "finserv": {
+          "is_deemed_finserv": false,
+          "is_limited_delivery": false
+        },
+        "tw_anti_scam": {
+          "is_limited_delivery": false
+        }
+      },
+      "hide_data_status": "NONE",
+      "targeted_or_reached_countries": [],
+      "ad_details_token": "eyJhZF9hcmNoaXZlX2lkIjoiMjYyNDc1NjU4MzgyNzE4OTgiLCJwYWdlX2lkIjoiMTc1MzgzNzYyNTExNzc2IiwiY291bnRyeSI6IkFMTCIsImlzX3BvbGl0aWNhbCI6ImZhbHNlIn0"
+    }
+  ],
+  "pagination": {
+    "next_page_token": "AQHSBohWHSDxuMOIKRDJOC-EybJy05Kn7FEz1CHmuBJWYdUYe5dRpZvmC-Op3OzUfAsRGu2bhSVNIcslK4phlfZZgw"
+  }
+}

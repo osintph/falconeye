@@ -54,7 +54,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.2",
+    "softwareVersion": "3.3",
     "featureList": [
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
@@ -65,7 +65,7 @@
       "Email header analyzer with BEC and scam detection",
       "Google dork generator (LLM-powered)",
       "Suspicious script decoder (LLM-powered)",
-      "Commercial prospect dossier (Google identity + Ads Transparency)",
+      "Company dossier (Google identity, Ads Transparency, Meta Ad Library, hiring signals, recent news)",
       "Cyber news aggregator"
     ]
   }
@@ -156,7 +156,7 @@
     </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="prospect">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-      Prospect
+      Company
     </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="contact">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
@@ -727,10 +727,10 @@
       </div>
     </div>
 
-    <!-- PROSPECT TAB -->
+    <!-- COMPANY TAB -->
     <div id="tab-prospect" class="tab-content hidden">
-      <h2 class="text-lg font-bold mb-1">Prospect</h2>
-      <p class="text-gray-400 text-sm mb-6">Commercial intelligence dossier for any domain — Google identity index and Google Ads Transparency Center. Results cached for 6 hours.</p>
+      <h2 class="text-lg font-bold mb-1">Company</h2>
+      <p class="text-gray-400 text-sm mb-6">Six-card commercial intelligence dossier for any domain: Google identity, Google Ads (30-day and historical), Meta Ad Library, hiring signals, recent news, and a unified activity timeline. Results cached for 6 hours.</p>
 
       <div class="flex gap-3 mb-3">
         <input id="prospect-input" type="text" placeholder="stripe.com"
@@ -910,9 +910,9 @@
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
                 </tr>
                 <tr>
-                  <td class="py-2">Prospect</td>
+                  <td class="py-2">Company</td>
                   <td class="py-2 font-mono">domain</td>
-                  <td class="py-2">SearchAPI.io (Google About This Domain + Ads Transparency Center)</td>
+                  <td class="py-2">SearchAPI.io (Google About This Domain, Ads Transparency Center, Meta Ad Library, Google News, Google Jobs)</td>
                 </tr>
               </tbody>
             </table>

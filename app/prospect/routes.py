@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+from app.prospect.investigations import write_investigation
 from app.prospect.service import build_dossier
 from app.utils.domain import normalize_domain
 
@@ -53,6 +54,14 @@ async def get_prospect(request: Request, domain: str):
             log.warning("Redis get error for %s: %s", normalized, e)
 
     dossier = await build_dossier(normalized)
+
+    client_ip = request.client.host if request.client else "unknown"
+    write_investigation(
+        domain=normalized,
+        generated_at=dossier.get("generated_at", ""),
+        dossier=dossier,
+        client_ip=client_ip,
+    )
 
     if _redis is not None:
         try:

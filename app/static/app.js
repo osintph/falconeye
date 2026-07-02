@@ -2560,6 +2560,10 @@ async function runProspectLookup() {
 }
 
 function renderProspectResult(el, data) {
+  const s = data.sections || {};
+  const errors = data.errors || [];
+  const derived = data.derived || {};
+
   const cacheBadge = data.cached
     ? '<span class="text-xs text-gray-500">cached</span>'
     : '<span class="text-xs text-green-400">fresh</span>';
@@ -2569,8 +2573,12 @@ function renderProspectResult(el, data) {
       <span class="brand-badge text-sm px-3 py-1">${escapeHtml(data.domain)}</span>
       ${cacheBadge}
     </div>
-    ${renderAboutDomainCard(data.sections && data.sections.about_domain, data.errors || [])}
-    ${renderAdsTransparencyCard(data.sections && data.sections.ads_transparency, data.errors || [])}
+    ${renderAboutDomainCard(s.about_domain, errors)}
+    ${renderAdsTransparencyCard(s.ads_transparency, s.ads_transparency_historical, errors)}
+    ${renderMetaAdPresenceCard(s.meta_page_search, s.meta_ads, errors)}
+    ${renderHiringSignalsCard(s.google_jobs, derived.company_name, errors)}
+    ${renderRecentNewsCard(s.google_news, errors)}
+    ${renderTimelineCard(s, errors)}
   `;
 }
 
@@ -2629,7 +2637,7 @@ function renderAboutDomainCard(section, errors) {
     </div>`;
 }
 
-function renderAdsTransparencyCard(section, errors) {
+function renderAdsTransparencyCard(section, historical, errors) {
   const err = errors.find(e => e.section === 'ads_transparency');
   const errNote = err
     ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
@@ -2645,7 +2653,7 @@ function renderAdsTransparencyCard(section, errors) {
   }
 
   const creatives = section.ad_creatives || [];
-  const total = section.search_information && section.search_information.total_results;
+  const total30d = section.search_information && section.search_information.total_results;
 
   if (!creatives.length) {
     return `
@@ -2662,12 +2670,20 @@ function renderAdsTransparencyCard(section, errors) {
   const firstShown = allFirstDates[0];
   const lastShown = allLastDates[allLastDates.length - 1];
 
+  const histInfo = historical && historical.search_information;
+  const histTotal = histInfo && histInfo.total_results;
+  const legalName = histInfo && histInfo.legal_name;
+  const basedIn = histInfo && histInfo.based_in;
+
   const meta = [];
-  if (total) meta.push({ label: 'Total ads', value: total.toLocaleString() });
+  if (total30d) meta.push({ label: 'Last 30 days', value: total30d.toLocaleString() + ' ads' });
+  if (histTotal) meta.push({ label: 'Historical total', value: histTotal.toLocaleString() + ' ads (all time)' });
   if (advertiser.name) meta.push({ label: 'Advertiser', value: advertiser.name });
+  if (legalName && legalName !== advertiser.name) meta.push({ label: 'Legal name', value: legalName });
+  if (basedIn) meta.push({ label: 'Based in', value: basedIn });
   if (advertiser.id) meta.push({ label: 'Advertiser ID', value: advertiser.id });
-  if (firstShown) meta.push({ label: 'First shown', value: fmtPHT(firstShown) });
-  if (lastShown) meta.push({ label: 'Last shown', value: fmtPHT(lastShown) });
+  if (firstShown) meta.push({ label: 'First shown (30d)', value: fmtPHT(firstShown) });
+  if (lastShown) meta.push({ label: 'Last shown (30d)', value: fmtPHT(lastShown) });
 
   const metaHtml = meta.length
     ? `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">${meta.map(m => `
@@ -2696,6 +2712,258 @@ function renderAdsTransparencyCard(section, errors) {
       ${errNote}
       ${metaHtml}
       ${thumbsHtml}
+    </div>`;
+}
+
+function renderMetaAdPresenceCard(pageSearch, metaAds, errors) {
+  const err1 = errors.find(e => e.section === 'meta_page_search');
+  const err2 = errors.find(e => e.section === 'meta_ads');
+  const errNote = [err1, err2].filter(Boolean).map(e =>
+    `<p class="text-xs text-gray-500 mb-2 italic">${escapeHtml(e.message)}</p>`
+  ).join('');
+
+  const pages = (pageSearch && pageSearch.page_results) || [];
+  const ads = (metaAds && metaAds.ads) || [];
+
+  if (!pages.length && !ads.length) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Meta Ad Presence</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No Meta advertising presence detected.</p>
+      </div>`;
+  }
+
+  const totalMetaAds = (metaAds && metaAds.search_information && metaAds.search_information.total_results) || ads.length;
+  const activeAds = ads.filter(a => a.is_active).length;
+
+  // Top pages sorted by likes
+  const sortedPages = [...pages].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 5);
+
+  const verifiedBadge = v => v === 'BLUE_VERIFIED'
+    ? '<span class="text-xs text-blue-400 ml-1">verified</span>'
+    : '';
+
+  const pagesHtml = sortedPages.length
+    ? `<div class="mb-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Facebook pages</p>
+        <div class="space-y-2">${sortedPages.map(p => `
+          <div class="flex items-center gap-3">
+            ${p.image_uri ? `<img src="${escapeAttr(p.image_uri)}" class="w-8 h-8 rounded-full flex-shrink-0 bg-gray-800" loading="lazy" alt="" onerror="this.style.display='none'">` : '<div class="w-8 h-8 rounded-full bg-gray-800 flex-shrink-0"></div>'}
+            <div class="min-w-0">
+              <p class="text-sm text-gray-200 truncate">${escapeHtml(p.name || '')}${verifiedBadge(p.verification)}</p>
+              <p class="text-xs text-gray-500">${p.category ? escapeHtml(p.category) + ' · ' : ''}${p.likes ? p.likes.toLocaleString() + ' likes' : ''}${p.ig_followers ? ' · ' + p.ig_followers.toLocaleString() + ' IG followers' : ''}</p>
+            </div>
+          </div>`).join('')}</div>
+      </div>`
+    : '';
+
+  const adsSummaryHtml = (totalMetaAds || activeAds)
+    ? `<div class="grid grid-cols-2 gap-4 mb-4">
+        ${totalMetaAds ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Total ads (library)</p><p class="text-sm text-gray-300 font-mono">${totalMetaAds.toLocaleString()}</p></div>` : ''}
+        ${activeAds ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Active (snapshot)</p><p class="text-sm text-gray-300 font-mono">${activeAds}</p></div>` : ''}
+      </div>`
+    : '';
+
+  const thumbUrls = ads.flatMap(a => {
+    const snap = a.snapshot || {};
+    return (snap.images || []).map(img => img.original_image_url).filter(Boolean);
+  }).slice(0, 6);
+
+  const thumbsHtml = thumbUrls.length
+    ? `<div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Sample Meta creatives (${thumbUrls.length})</p>
+        <div class="flex flex-wrap gap-2">${thumbUrls.map(url => `
+          <div class="prospect-thumb-wrap">
+            <img class="prospect-thumb rounded" src="${escapeAttr(url)}"
+                 style="width:80px;height:50px;object-fit:cover;" loading="lazy"
+                 alt="Meta ad creative" onerror="this.parentElement.style.display='none'" />
+          </div>`).join('')}</div>
+      </div>`
+    : '';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Meta Ad Presence</h3>
+      ${errNote}
+      ${pagesHtml}
+      ${adsSummaryHtml}
+      ${thumbsHtml}
+    </div>`;
+}
+
+function renderHiringSignalsCard(jobsSection, companyName, errors) {
+  const err = errors.find(e => e.section === 'google_jobs');
+  const errNote = err
+    ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  const jobs = (jobsSection && jobsSection.jobs) || [];
+
+  if (!jobs.length) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Hiring Signals</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No open roles found.</p>
+      </div>`;
+  }
+
+  const companyLower = (companyName || '').toLowerCase();
+  const matched = companyLower
+    ? jobs.filter(j => {
+        const jn = (j.company_name || '').toLowerCase();
+        return jn.includes(companyLower) || companyLower.includes(jn);
+      })
+    : jobs;
+  const displayJobs = matched.length ? matched : jobs;
+
+  // Location frequency
+  const locMap = {};
+  displayJobs.forEach(j => {
+    const loc = j.location || 'Location unknown';
+    locMap[loc] = (locMap[loc] || 0) + 1;
+  });
+  const locEntries = Object.entries(locMap).sort((a, b) => b[1] - a[1]);
+  const maxLocCount = locEntries.length ? locEntries[0][1] : 1;
+
+  const barsHtml = locEntries.length > 3
+    ? `<div class="mt-3 space-y-1">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Roles by location</p>
+        ${locEntries.slice(0, 8).map(([loc, count]) => `
+          <div class="flex items-center gap-2">
+            <span class="text-xs text-gray-400 w-32 truncate" title="${escapeAttr(loc)}">${escapeHtml(loc)}</span>
+            <div class="flex-1 bg-gray-800 rounded h-2">
+              <div class="bg-amber-400 rounded h-2" style="width:${Math.round(count / maxLocCount * 100)}%"></div>
+            </div>
+            <span class="text-xs text-gray-500 w-4 text-right">${count}</span>
+          </div>`).join('')}
+      </div>`
+    : locEntries.length
+      ? `<p class="text-sm text-gray-300 mt-2">${locEntries.map(([loc, n]) => `${escapeHtml(loc)} (${n})`).join(', ')}</p>`
+      : '';
+
+  const uniqueTitles = [...new Set(displayJobs.map(j => j.title).filter(Boolean))].slice(0, 6);
+  const titlesHtml = uniqueTitles.length
+    ? `<div class="mb-1">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Open roles (sample)</p>
+        <div class="flex flex-wrap gap-2">${uniqueTitles.map(t => `
+          <span class="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded">${escapeHtml(t)}</span>`).join('')}
+        </div>
+      </div>`
+    : '';
+
+  const totalHtml = `<p class="text-sm text-gray-300 mb-3"><span class="font-mono text-amber-400">${displayJobs.length}</span> open role${displayJobs.length !== 1 ? 's' : ''} found</p>`;
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Hiring Signals</h3>
+      ${errNote}
+      ${totalHtml}
+      ${titlesHtml}
+      ${barsHtml}
+    </div>`;
+}
+
+function renderRecentNewsCard(newsSection, errors) {
+  const err = errors.find(e => e.section === 'google_news');
+  const errNote = err
+    ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  const articles = (newsSection && newsSection.organic_results) || [];
+
+  if (!articles.length) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent News</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No recent news articles found.</p>
+      </div>`;
+  }
+
+  const articlesHtml = articles.slice(0, 8).map(a => `
+    <div class="flex items-start gap-3 py-2 border-b border-gray-800 last:border-0">
+      ${a.favicon
+        ? `<img src="${escapeAttr(a.favicon)}" alt="" class="w-4 h-4 mt-0.5 flex-shrink-0" onerror="this.style.display='none'" loading="lazy">`
+        : '<div class="w-4 h-4 flex-shrink-0"></div>'}
+      <div class="min-w-0">
+        <a href="${escapeAttr(a.link)}" target="_blank" rel="noopener noreferrer"
+           class="text-sm text-amber-400 hover:text-amber-300 leading-tight block">${escapeHtml(a.title)}</a>
+        <p class="text-xs text-gray-500 mt-0.5">${escapeHtml(a.source || '')}${a.date ? ' · ' + escapeHtml(a.date) : ''}</p>
+        ${a.snippet ? `<p class="text-xs text-gray-400 mt-1">${escapeHtml(a.snippet.slice(0, 160))}${a.snippet.length > 160 ? '...' : ''}</p>` : ''}
+      </div>
+    </div>`).join('');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent News</h3>
+      ${errNote}
+      ${articlesHtml}
+    </div>`;
+}
+
+function renderTimelineCard(sections, errors) {
+  const events = [];
+
+  const ads30d = sections.ads_transparency;
+  if (ads30d && ads30d.ad_creatives && ads30d.ad_creatives.length) {
+    const firsts = ads30d.ad_creatives.map(c => c.first_shown_datetime).filter(Boolean).sort();
+    const lasts = ads30d.ad_creatives.map(c => c.last_shown_datetime).filter(Boolean).sort();
+    if (firsts[0]) events.push({ date: firsts[0], label: 'First Google Ad (30-day window)', type: 'ads' });
+    const lastLast = lasts[lasts.length - 1];
+    if (lastLast && lastLast !== firsts[0]) events.push({ date: lastLast, label: 'Latest Google Ad (30-day window)', type: 'ads' });
+  }
+
+  const metaAds = sections.meta_ads;
+  if (metaAds && metaAds.ads && metaAds.ads.length) {
+    const starts = metaAds.ads.map(a => a.start_date).filter(Boolean).sort();
+    const ends = metaAds.ads.map(a => a.end_date).filter(Boolean).sort();
+    if (starts[0]) events.push({ date: starts[0], label: 'First Meta Ad (library snapshot)', type: 'meta' });
+    const lastEnd = ends[ends.length - 1];
+    if (lastEnd && lastEnd !== starts[0]) events.push({ date: lastEnd, label: 'Latest Meta Ad end date', type: 'meta' });
+  }
+
+  const news = sections.google_news;
+  if (news && news.organic_results) {
+    news.organic_results.forEach(a => {
+      if (a.iso_date) {
+        events.push({ date: a.iso_date, label: `${a.title} (${a.source || 'news'})`, type: 'news', link: a.link });
+      }
+    });
+  }
+
+  if (!events.length) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Activity Timeline</h3>
+        <p class="text-sm text-gray-500">No dated events to display.</p>
+      </div>`;
+  }
+
+  events.sort((a, b) => b.date.localeCompare(a.date));
+
+  const dotColors = { ads: 'bg-amber-400', meta: 'bg-blue-400', news: 'bg-gray-500' };
+
+  const eventsHtml = events.map(ev => {
+    const dot = dotColors[ev.type] || 'bg-gray-500';
+    const label = ev.link
+      ? `<a href="${escapeAttr(ev.link)}" target="_blank" rel="noopener noreferrer" class="text-sm text-amber-400 hover:text-amber-300">${escapeHtml(ev.label)}</a>`
+      : `<p class="text-sm text-gray-300">${escapeHtml(ev.label)}</p>`;
+    return `
+      <div class="relative pl-5">
+        <div class="absolute left-0 top-1.5 w-2.5 h-2.5 ${dot} rounded-full border-2 border-gray-950 flex-shrink-0"></div>
+        <p class="text-xs text-gray-500 mb-0.5">${escapeHtml(fmtPHT(ev.date))}</p>
+        ${label}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wide">Activity Timeline</h3>
+      <div class="border-l-2 border-gray-700 pl-4 space-y-3">
+        ${eventsHtml}
+      </div>
     </div>`;
 }
 
