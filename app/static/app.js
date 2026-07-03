@@ -2573,7 +2573,7 @@ function renderProspectResult(el, data) {
       <span class="brand-badge text-sm px-3 py-1">${escapeHtml(data.domain)}</span>
       ${cacheBadge}
     </div>
-    ${renderAboutDomainCard(s.about_domain, errors)}
+    ${renderAboutDomainCard(s.about_domain, errors, derived)}
     ${renderAdsTransparencyCard(s.ads_transparency, s.ads_transparency_historical, errors)}
     ${renderMetaAdPresenceCard(s.meta_page_search, s.meta_ads, errors)}
     ${renderHiringSignalsCard(s.google_jobs, derived, errors)}
@@ -2582,13 +2582,13 @@ function renderProspectResult(el, data) {
   `;
 }
 
-function renderAboutDomainCard(section, errors) {
+function renderAboutDomainCard(section, errors, derived) {
   const err = errors.find(e => e.section === 'about_domain');
   const errNote = err
     ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
     : '';
 
-  if (!section) {
+  if (!section && (!derived || derived.confidence === 'low')) {
     return `
       <div class="bg-gray-900 border border-gray-800 rounded p-5">
         <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Domain Identity</h3>
@@ -2597,9 +2597,12 @@ function renderAboutDomainCard(section, errors) {
       </div>`;
   }
 
-  const kg = section.knowledge_graph || {};
   const rows = [];
+  const kg = (section && section.knowledge_graph) || {};
+  const atr = (section && section.about_this_result) || {};
+  const sfi = (section && section.site_first_indexed_by_google) || {};
 
+  // Priority 1: knowledge_graph
   if (kg.title) rows.push({ label: 'Name', value: kg.title });
   if (kg.subtitle) rows.push({ label: 'Type', value: kg.subtitle });
   if (kg.description) rows.push({ label: 'Description', value: kg.description, wide: true });
@@ -2607,16 +2610,37 @@ function renderAboutDomainCard(section, errors) {
     rows.push({ label: 'Source', value: kg.source.name, link: kg.source.link });
   }
 
-  // Fields that may appear in some responses
-  if (section.displayed_link) rows.push({ label: 'URL', value: section.displayed_link });
-  if (section.date) rows.push({ label: 'First indexed', value: section.date });
+  // Priority 2: about_this_result fallback (for domains with no KG)
+  if (!kg.title && atr.title) rows.push({ label: 'Name', value: atr.title });
+  if (atr.source && atr.source.name) rows.push({ label: 'Source', value: atr.source.name });
+  if (atr.displayed_link) rows.push({ label: 'URL', value: atr.displayed_link });
 
-  // Trustpilot info in knowledge_graph.ratings or extensions
+  // Priority 3: site_first_indexed_by_google
+  if (sfi.text) rows.push({ label: 'Indexed', value: sfi.text, wide: true });
+
+  // Fields that may appear at the top level of some responses
+  if (section && section.displayed_link && !atr.displayed_link) {
+    rows.push({ label: 'URL', value: section.displayed_link });
+  }
+  if (section && section.date) rows.push({ label: 'First indexed', value: section.date });
+
+  // Trustpilot ratings
   const ratings = kg.ratings || [];
   const tp = ratings.find(r => r.source && r.source.toLowerCase().includes('trustpilot'));
   if (tp) {
     const tpStr = `${tp.rating}${tp.count ? ` (${tp.count.toLocaleString()} reviews)` : ''}`;
     rows.push({ label: 'Trustpilot', value: tpStr });
+  }
+
+  // Priority 4: resolved identity from resolver (ai_overview or domain fallback)
+  // Used when KG, about_this_result, and site_first_indexed are all absent
+  if (!rows.length && derived && derived.company_name && derived.confidence !== 'low') {
+    rows.push({ label: 'Name', value: derived.company_name });
+    if (derived.canonical_name && derived.canonical_name !== derived.company_name) {
+      rows.push({ label: 'Legal name', value: derived.canonical_name });
+    }
+    const srcLabel = derived.source === 'ai_overview' ? 'AI overview' : 'Knowledge graph';
+    rows.push({ label: 'Source', value: srcLabel });
   }
 
   const rowsHtml = rows.length
@@ -2635,6 +2659,105 @@ function renderAboutDomainCard(section, errors) {
       ${errNote}
       ${rowsHtml}
     </div>`;
+}
+
+function _renderAdsTabPane(advId, advInfo, creatives, historical, total30d) {
+  const advsCreatives = creatives.filter(c => (c.advertiser || {}).id === advId);
+  const allFirstDates = advsCreatives.map(c => c.first_shown_datetime).filter(Boolean).sort();
+  const allLastDates = advsCreatives.map(c => c.last_shown_datetime).filter(Boolean).sort();
+  const firstShown = allFirstDates[0];
+  const lastShown = allLastDates[allLastDates.length - 1];
+
+  // historical is now {adv_id: {search_information: {...}}} dict
+  const histData = (historical && typeof historical === 'object' && !Array.isArray(historical))
+    ? (historical[advId] || null)
+    : null;
+  const histInfo = histData && histData.search_information;
+  const histTotal = histInfo && histInfo.total_results;
+  const legalName = histInfo && histInfo.legal_name;
+  const basedIn = histInfo && histInfo.based_in;
+
+  const meta = [];
+  if (total30d !== undefined && total30d !== null) {
+    meta.push({ label: 'Last 30 days (domain)', value: total30d.toLocaleString() + ' ads' });
+  }
+  if (advsCreatives.length) {
+    meta.push({ label: `${escapeHtml(advInfo.name || advId)} (30d)`, value: advsCreatives.length + ' ads' });
+  }
+  if (histTotal) meta.push({ label: 'Historical total', value: histTotal.toLocaleString() + ' ads (all time)' });
+  if (legalName && legalName !== advInfo.name) meta.push({ label: 'Legal name', value: legalName });
+  if (basedIn || advInfo.location) meta.push({ label: 'Based in', value: basedIn || advInfo.location });
+  if (advId) meta.push({ label: 'Advertiser ID', value: advId });
+  if (firstShown) meta.push({ label: 'First shown (30d)', value: fmtPHT(firstShown) });
+  if (lastShown) meta.push({ label: 'Last shown (30d)', value: fmtPHT(lastShown) });
+
+  const metaHtml = meta.length
+    ? `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">${meta.map(m => `
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">${escapeHtml(m.label)}</p>
+          <p class="text-sm text-gray-300 font-mono">${escapeHtml(String(m.value))}</p>
+        </div>`).join('')}</div>`
+    : '';
+
+  const thumbCreatives = advsCreatives.filter(c => c.image && c.image.link).slice(0, 12);
+  const thumbsHtml = thumbCreatives.length
+    ? `<div class="mb-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Sample creatives (${thumbCreatives.length})</p>
+        <div class="flex flex-wrap gap-2">${thumbCreatives.map(c => `
+          <div class="prospect-thumb-wrap">
+            <img class="prospect-thumb rounded" src="${escapeAttr(c.image.link)}"
+                 style="width:80px;height:50px;object-fit:cover;" loading="lazy"
+                 alt="Ad creative" />
+          </div>`).join('')}</div>
+      </div>`
+    : '';
+
+  // Top ads table (Fix 4)
+  const tableCreatives = [...advsCreatives]
+    .sort((a, b) => (b.total_days_shown || 0) - (a.total_days_shown || 0));
+  const showAll = tableCreatives.length <= 10;
+  const tableRows = tableCreatives.map((c, i) => {
+    const hidden = !showAll && i >= 10 ? ' class="ads-table-extra hidden"' : '';
+    return `<tr${hidden}>
+      <td class="py-1 px-2 text-gray-400">${c.position !== undefined ? c.position : i + 1}</td>
+      <td class="py-1 px-2 text-gray-300 capitalize">${escapeHtml(c.format || '')}</td>
+      <td class="py-1 px-2 text-gray-400 font-mono text-xs">${c.first_shown_datetime ? fmtPHT(c.first_shown_datetime) : ''}</td>
+      <td class="py-1 px-2 text-gray-400 font-mono text-xs">${c.last_shown_datetime ? fmtPHT(c.last_shown_datetime) : ''}</td>
+      <td class="py-1 px-2 text-gray-300 font-mono">${c.total_days_shown !== undefined && c.total_days_shown !== null ? c.total_days_shown : ''}</td>
+      <td class="py-1 px-2 text-gray-400 text-xs truncate max-w-24">${escapeHtml(c.target_domain || '')}</td>
+      <td class="py-1 px-2">${c.details_link ? `<a href="${escapeAttr(c.details_link)}" target="_blank" rel="noopener noreferrer" class="text-xs text-amber-400 hover:text-amber-300">view</a>` : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const expandBtn = (!showAll)
+    ? `<button onclick="this.closest('.ads-table-wrap').querySelectorAll('.ads-table-extra').forEach(r=>r.classList.remove('hidden'));this.remove();"
+               class="mt-2 text-xs text-gray-500 hover:text-gray-300">Show all ${tableCreatives.length} ads</button>`
+    : '';
+
+  const tableHtml = tableCreatives.length
+    ? `<div class="ads-table-wrap mt-4">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Top ads (sorted by days shown)</p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-gray-700">
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">#</th>
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">Format</th>
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">First shown</th>
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">Last shown</th>
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">Days</th>
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">Target</th>
+                <th class="py-1 px-2 text-left text-gray-500 font-normal">Link</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-800">${tableRows}</tbody>
+          </table>
+        </div>
+        ${expandBtn}
+      </div>`
+    : '';
+
+  return metaHtml + thumbsHtml + tableHtml;
 }
 
 function renderAdsTransparencyCard(section, historical, errors) {
@@ -2664,54 +2787,61 @@ function renderAdsTransparencyCard(section, historical, errors) {
       </div>`;
   }
 
-  const advertiser = creatives[0].advertiser || {};
-  const allFirstDates = creatives.map(c => c.first_shown_datetime).filter(Boolean).sort();
-  const allLastDates = creatives.map(c => c.last_shown_datetime).filter(Boolean).sort();
-  const firstShown = allFirstDates[0];
-  const lastShown = allLastDates[allLastDates.length - 1];
+  // Advertisers array added by service enrichment
+  const advertisers = section._advertisers || [];
 
-  const histInfo = historical && historical.search_information;
-  const histTotal = histInfo && histInfo.total_results;
-  const legalName = histInfo && histInfo.legal_name;
-  const basedIn = histInfo && histInfo.based_in;
+  if (advertisers.length <= 1) {
+    // Single advertiser: simple layout
+    const advInfo = advertisers[0] || (creatives[0] && creatives[0].advertiser) || {};
+    const advId = advInfo.id || '';
+    const paneHtml = _renderAdsTabPane(advId, advInfo, creatives, historical, total30d);
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Google Ads Activity</h3>
+        ${errNote}
+        ${paneHtml}
+      </div>`;
+  }
 
-  const meta = [];
-  if (total30d) meta.push({ label: 'Last 30 days', value: total30d.toLocaleString() + ' ads' });
-  if (histTotal) meta.push({ label: 'Historical total', value: histTotal.toLocaleString() + ' ads (all time)' });
-  if (advertiser.name) meta.push({ label: 'Advertiser', value: advertiser.name });
-  if (legalName && legalName !== advertiser.name) meta.push({ label: 'Legal name', value: legalName });
-  if (basedIn) meta.push({ label: 'Based in', value: basedIn });
-  if (advertiser.id) meta.push({ label: 'Advertiser ID', value: advertiser.id });
-  if (firstShown) meta.push({ label: 'First shown (30d)', value: fmtPHT(firstShown) });
-  if (lastShown) meta.push({ label: 'Last shown (30d)', value: fmtPHT(lastShown) });
+  // Multiple advertisers: tab selector
+  const selectorNote = `<p class="text-xs text-gray-500 mb-3">This domain runs ads under ${advertisers.length} advertiser accounts. Select to view each.</p>`;
 
-  const metaHtml = meta.length
-    ? `<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">${meta.map(m => `
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">${escapeHtml(m.label)}</p>
-          <p class="text-sm text-gray-300 font-mono">${escapeHtml(String(m.value))}</p>
-        </div>`).join('')}</div>`
-    : '';
+  const tabBtns = advertisers.map((adv, i) => {
+    const active = i === 0;
+    const cls = active
+      ? 'ads-tab-btn text-xs px-3 py-1 rounded bg-amber-400 text-black font-medium'
+      : 'ads-tab-btn text-xs px-3 py-1 rounded bg-gray-700 text-gray-300 hover:bg-gray-600';
+    const label = escapeHtml((adv.name || adv.id).slice(0, 40));
+    const cnt = `(${adv.count})`;
+    return `<button class="${cls}" data-target="ads-pane-${escapeAttr(adv.id)}"
+      onclick="(function(btn){
+        var cont=btn.closest('.ads-tab-container');
+        cont.querySelectorAll('.ads-tab-pane').forEach(function(p){p.classList.add('hidden')});
+        cont.querySelectorAll('.ads-tab-btn').forEach(function(b){
+          b.classList.remove('bg-amber-400','text-black','font-medium');
+          b.classList.add('bg-gray-700','text-gray-300');
+        });
+        document.getElementById(btn.dataset.target).classList.remove('hidden');
+        btn.classList.remove('bg-gray-700','text-gray-300');
+        btn.classList.add('bg-amber-400','text-black','font-medium');
+      })(this)">${label} ${escapeHtml(cnt)}</button>`;
+  }).join('');
 
-  const thumbCreatives = creatives.filter(c => c.image && c.image.link).slice(0, 12);
-  const thumbsHtml = thumbCreatives.length
-    ? `<div class="mb-2">
-        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Sample creatives (${thumbCreatives.length})</p>
-        <div class="flex flex-wrap gap-2">${thumbCreatives.map(c => `
-          <div class="prospect-thumb-wrap">
-            <img class="prospect-thumb rounded" src="${escapeAttr(c.image.link)}"
-                 style="width:80px;height:50px;object-fit:cover;" loading="lazy"
-                 alt="Ad creative" />
-          </div>`).join('')}</div>
-      </div>`
-    : '';
+  const tabPanes = advertisers.map((adv, i) => {
+    const hidden = i === 0 ? '' : ' hidden';
+    const paneHtml = _renderAdsTabPane(adv.id, adv, creatives, historical, total30d);
+    return `<div id="ads-pane-${escapeAttr(adv.id)}" class="ads-tab-pane${hidden}">${paneHtml}</div>`;
+  }).join('');
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
       <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Google Ads Activity</h3>
       ${errNote}
-      ${metaHtml}
-      ${thumbsHtml}
+      <div class="ads-tab-container">
+        ${selectorNote}
+        <div class="flex flex-wrap gap-2 mb-4">${tabBtns}</div>
+        ${tabPanes}
+      </div>
     </div>`;
 }
 
@@ -2722,26 +2852,41 @@ function renderMetaAdPresenceCard(pageSearch, metaAds, errors) {
     `<p class="text-xs text-gray-500 mb-2 italic">${escapeHtml(e.message)}</p>`
   ).join('');
 
-  const pages = (pageSearch && pageSearch.page_results) || [];
+  const allPages = (pageSearch && pageSearch.page_results) || [];
+  // Use the service-selected page (identity-filtered) when available
+  const selectedPage = pageSearch && pageSearch._selected_page;
+  // Show selected page prominently, then other matching pages
+  const pages = selectedPage
+    ? [selectedPage, ...allPages.filter(p => p.page_id !== selectedPage.page_id)].slice(0, 5)
+    : [...allPages].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 5);
   const ads = (metaAds && metaAds.ads) || [];
 
+  // When service filtered all pages out, show empty state for pages section
+  const pagesFiltered = pageSearch && pageSearch._selected_page === null && allPages.length > 0;
+
   if (!pages.length && !ads.length) {
+    const note = pagesFiltered
+      ? `<p class="text-sm text-gray-500 italic">No Meta pages matched the company identity. ${allPages.length} page(s) were returned but did not match.</p>`
+      : '<p class="text-sm text-gray-500">No Meta advertising presence detected.</p>';
     return `
       <div class="bg-gray-900 border border-gray-800 rounded p-5">
         <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Meta Ad Presence</h3>
         ${errNote}
-        <p class="text-sm text-gray-500">No Meta advertising presence detected.</p>
+        ${note}
       </div>`;
   }
 
   const totalMetaAds = (metaAds && metaAds.search_information && metaAds.search_information.total_results) || ads.length;
   const activeAds = ads.filter(a => a.is_active).length;
 
-  // Top pages sorted by likes
-  const sortedPages = [...pages].sort((a, b) => (b.likes || 0) - (a.likes || 0)).slice(0, 5);
+  const sortedPages = pages;
 
   const verifiedBadge = v => v === 'BLUE_VERIFIED'
     ? '<span class="text-xs text-blue-400 ml-1">verified</span>'
+    : '';
+
+  const filteredNote = pagesFiltered
+    ? `<p class="text-xs text-gray-500 mb-3 italic">No Meta pages matched the company identity after filtering.</p>`
     : '';
 
   const pagesHtml = sortedPages.length
@@ -2756,7 +2901,7 @@ function renderMetaAdPresenceCard(pageSearch, metaAds, errors) {
             </div>
           </div>`).join('')}</div>
       </div>`
-    : '';
+    : filteredNote;
 
   const adsSummaryHtml = (totalMetaAds || activeAds)
     ? `<div class="grid grid-cols-2 gap-4 mb-4">

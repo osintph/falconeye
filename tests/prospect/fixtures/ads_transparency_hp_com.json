@@ -1,0 +1,708 @@
+{
+  "search_metadata": {
+    "id": "search_BZAYNyvAW2i9onPYjeo93VJQ",
+    "status": "Success",
+    "created_at": "2026-07-03T03:36:56Z",
+    "request_time_taken": 0.47,
+    "parsing_time_taken": 0.02,
+    "total_time_taken": 0.49,
+    "request_url": "https://adstransparency.google.com?domain=hp.com&region=ANYWHERE&preset-date=Last+30+days",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_BZAYNyvAW2i9onPYjeo93VJQ.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_BZAYNyvAW2i9onPYjeo93VJQ"
+  },
+  "search_parameters": {
+    "engine": "google_ads_transparency_center",
+    "domain": "hp.com",
+    "time_period": "last_30_days",
+    "num": 40,
+    "region": "ANYWHERE"
+  },
+  "search_information": {
+    "total_results": 20000
+  },
+  "ad_creatives": [
+    {
+      "position": 1,
+      "id": "CR07366653173668249601",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2023-06-25T01:32:21Z",
+      "last_shown_datetime": "2026-07-03T03:08:17Z",
+      "total_days_shown": 1105,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/5624410261905514837",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR07366653173668249601?region=ANYWHERE"
+    },
+    {
+      "position": 2,
+      "id": "CR09907206773989703681",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2026-05-08T00:45:13Z",
+      "last_shown_datetime": "2026-07-03T03:03:55Z",
+      "total_days_shown": 57,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/92917940147146685",
+        "height": 334,
+        "width": 364
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR09907206773989703681?region=ANYWHERE"
+    },
+    {
+      "position": 3,
+      "id": "CR03449426206947016705",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR04586639968180371457",
+        "name": "HP PPS Asia Pacific Pte. Ltd"
+      },
+      "first_shown_datetime": "2025-10-02T09:08:53Z",
+      "last_shown_datetime": "2026-07-03T03:03:42Z",
+      "total_days_shown": 274,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/6742305063629378178",
+        "height": 528,
+        "width": 365
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR04586639968180371457/creative/CR03449426206947016705?region=ANYWHERE"
+    },
+    {
+      "position": 4,
+      "id": "CR04888584698894221313",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR04586639968180371457",
+        "name": "HP PPS Asia Pacific Pte. Ltd"
+      },
+      "first_shown_datetime": "2026-04-30T17:50:11Z",
+      "last_shown_datetime": "2026-07-03T03:03:42Z",
+      "total_days_shown": 64,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR04586639968180371457/creative/CR04888584698894221313?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=3130130546&creativeId=806873410771&uiFeatures=12,54&adGroupId=195642928309&itemIds=15688342537832563107&overlay=%3DH4sIAAAAAAAAAH2Rz08TQRTHd3a3ZRhAlqHCWkCeteoWqaEUDHAwFJr0hzZsuhiNB5O1HcrAstvMrmiJiQc5KEe94EFjIiHxxtGLiSdvamKM0RD8BzQePJjoybRGj16_75P3eS_fmb7xCKHtT1Hi-8rY8089Dw8yr3uDn7w4SLSK72e5X3fshhUI7tYoJuGc59UcVowT3V_26nXu1jLVhaUlJuYFswO-zsYongnjXzJF6D9UqkXdCVMULm6ppL8uvOr1SpCp-mXmVlnTlrUDm35Til-Urff777qfKCQe1bsk6e6sdjqqGhPpBOxsvnn8Yvfth0doBeM2TdIRSOR2zCdDRCu4fmA7DqtCia15okHb0-OQm4NypkQipMOqCMZcsPgGo6HUBHCXDBOSFXydwWKjzmiP5Tm8ClZgBwxaORkg3XkTzD-nwgXuMorzJlyZ87zVFYyxJukySDREFCuXjW4icuvvFC46gbCh5aksQy5lQ8m7xh0Glzyx6gd2wD0XzPlRsLizzgQkITWRbLFGevLM5FmorCUgCQXTgiRkSlkoNzaYC5kClOybYJYXIAn__oMkWFZWk3XdUGIEv9x_9TlioKnwSIzQvAlW4AkGFndrdt0TTLu383Uy2jafOl9Om4vj0yShPQjpe-rsUH7a_Khe3lXs0dxB_MbVH8-EjJGQsSJkrAoZEw3pCLaRsY3GpCnpfrOmc2QGI2ogWVFD4TbcTjo6uw51az20N3K4r18_Eh0YHDo6DMdix-MnTp4yRjp1BM0Fs2gPSZr6G07_dBePAgAA&sig=ACiVB_y54ERts2qvQr3bxtbaKUWHuRNFrw&htmlParentId=fletch-render-14870578456889856169&responseCallback=fletchCallback14870578456889856169"
+    },
+    {
+      "position": 5,
+      "id": "CR08010516436885700609",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2026-02-03T12:45:16Z",
+      "last_shown_datetime": "2026-07-03T03:02:11Z",
+      "total_days_shown": 150,
+      "format": "image",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/2896888878122904018",
+        "height": 418,
+        "width": 711
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR08010516436885700609?region=ANYWHERE"
+    },
+    {
+      "position": 6,
+      "id": "CR17631621437695459329",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2023-09-10T04:48:26Z",
+      "last_shown_datetime": "2026-07-03T03:00:56Z",
+      "total_days_shown": 1027,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR17631621437695459329?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=7896909563&creativeId=673444821751&uiFeatures=12,54&adGroupId=148410159295&itemIds=14706877109448752870&overlay=%3DH4sIAAAAAAAAAEWPMUgCURiA_d_Z9XyVns_MKxoeESHSUEYRQZF6oRiRnRThUmf3sgvz5N0ZKA4tQTQ2NUQQNDU5tUWtQRREW0tDtAdCjVFL2zd8fPDN9MV7CfV9zHmPnvT-h-D1fHv2bee7OztIlC3H0SynWjbqeVdYlRLFRE7bdqnMs8NEdXbsatWqlBLm8vY2FynBDdfa52MUz8j4C1GA7CUikaqwzdqWmzAdnVdM_tvRDNegRyh7iI5fXp8Dj0D8OsJ0F-NOxaMC89AOIq3mtYEC0TM5tlC2XJ60DWGy9LjBFnn9j3Mplqo5rr1nNYximY-yJkssaUyvN3iFTbImmxyPs3SSZTSNNVlqYqyQTKxtLCUVpKpRaQjjg4_7T3lajoUJyuSU9_M7GCD_WnyKxJS2pLal-WDmCnLP0voFGKGV25up27NNgTAIhCWBsFcgTBRQgZ1CtAVFz8nvVIyMYKARQJK3Q-7EPtLV3eMPKEEa6g33RWI-FaKn0IIWKN4fk6NSSIMBAAA&sig=ACiVB_zJlpq_HsGrBPnKfNNcm0i_SESlSQ&htmlParentId=fletch-render-14713084630747326639&responseCallback=fletchCallback14713084630747326639"
+    },
+    {
+      "position": 7,
+      "id": "CR16822895451094122497",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2023-09-13T12:50:18Z",
+      "last_shown_datetime": "2026-07-03T03:00:09Z",
+      "total_days_shown": 1024,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR16822895451094122497?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=1170644974&creativeId=672952309860&uiFeatures=12,54&adGroupId=151574770485&itemIds=9004410914168482510&overlay=%3DH4sIAAAAAAAAALMSMxLhEuI8t2rlPRaJbzWC11_zu2-dpF3sJcMlkFxc7JJZXJCTWBlcUpSZly7EwcXmnp-fnpPqpcIlUZyRX1CQmZfumOKflpZa5FyUmliSWZZqIMRhxcbxnUmIkdVLEacqQyFWK2aOddx4DDICG_SLSYiREY8qY7CqZjYhRjYAIuDSCcsAAAA&sig=ACiVB_xjgAq_9iZfvXRSVPO0PLYrqh3zrQ&htmlParentId=fletch-render-12626690792790687423&responseCallback=fletchCallback12626690792790687423"
+    },
+    {
+      "position": 8,
+      "id": "CR04294894736822501377",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2025-12-16T13:56:21Z",
+      "last_shown_datetime": "2026-07-03T03:00:07Z",
+      "total_days_shown": 199,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/474500709209020879",
+        "height": 225,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR04294894736822501377?region=ANYWHERE"
+    },
+    {
+      "position": 9,
+      "id": "CR09748344841472835585",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2025-12-16T12:59:44Z",
+      "last_shown_datetime": "2026-07-03T02:58:43Z",
+      "total_days_shown": 199,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR09748344841472835585?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=9855975303&creativeId=788577499903&uiFeatures=12,54&adGroupId=193967931727&itemIds=16765543720182645549&sig=ACiVB_z181oxwZ42Erwn40ocoFTpfFZmiA&htmlParentId=fletch-render-6809288189562876358&responseCallback=fletchCallback6809288189562876358"
+    },
+    {
+      "position": 10,
+      "id": "CR12345291611498872833",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2022-11-12T06:03:34Z",
+      "last_shown_datetime": "2026-07-03T02:58:36Z",
+      "total_days_shown": 1329,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/16061865558299815504",
+        "height": 229,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR12345291611498872833?region=ANYWHERE"
+    },
+    {
+      "position": 11,
+      "id": "CR09972946325106327553",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR14443564692452409345",
+        "name": "Global Decibel SL"
+      },
+      "first_shown_datetime": "2024-05-08T07:52:40Z",
+      "last_shown_datetime": "2026-07-03T02:57:14Z",
+      "total_days_shown": 786,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR14443564692452409345/creative/CR09972946325106327553?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=1582696179&creativeId=698991504167&uiFeatures=12,54&adGroupId=163729954682&itemIds=234202696188076312&overlay=%3DH4sIAAAAAAAAAH1SS0wTURTte9OWN698hhFhqHyGYrGygDKlBZoQSoRYm6gNlIS4Ma_T13Zq58ObKY0rFkhM3BjRBQuJccFSYjRxwUYCcW9Q40KjUXZuXZgQE00hGDewu_eec3POubnxVqUFi7z0dGupozHBNX9t27kGDn4mUt1YUG17SrOtMrk96zDNKIg-zF8um1nKSI6kzmPJLpqWpRmFydz1fJ6yS4wSR1ukYRHFvegXFIEn1XMia0j0xDm06UsFT6QoIh-vQ5u8CDl4il7kUO_gUO-bG7dZzMxVVGcyZ89QI0dr1qeIQ8Q37tSO-977T3tNvzncOAORWEKoTnBJQHbhfVBCyHfU7MAP4L-oApDe3tmFgSeg6DiWHR8crFarA4VjeEA19UGbEqYWB6yiNVFx9Ju2WWEqHS-YZqFM-2oTnea0ij6u2vZhq5qGQw1nfFGjVd1kRxyHMn1c0y1GbZMRO6iEi1ZQCS_WKmrZptG3cCoc4uOdQkbKJFDSlZ6ez5A_n5eWxS71gEHEMYjcuKOEEHcUsgSR-wXwoe29-zcEjwxDAAf97Q3443JC-AL9nlAkGr4obz1effX63frywr9TAdGDuem5Gf8EHrlybEa-Wik7Wr5iqNruS0OeonJGMxwiJy15VifMkTPEuCWnyxVbjkWjApSkEBfg0fbGs7kQGPX2Kxgl0_KsYzIqPLr74Dv0y0PhfDYaiQyPjZAYHcrmY0oknwuP5omiUiU7TJQY7hdWsLSCE7HkPkxv8PM_vGQy8DChbK07DCJwnJpBhAUgAXkNhNZA1rVae4ExHEVA7AWQc3u8dYjHvvqGxiahWTzTcra1TWr3n-vo7OqWewK9_fUISLVNi3sOLgjuv0nSURczAwAA&sig=ACiVB_wYjFnnMAbHrqd2_r4cuH_QDk-1_w&htmlParentId=fletch-render-16688635504047456795&responseCallback=fletchCallback16688635504047456795"
+    },
+    {
+      "position": 12,
+      "id": "CR02226749434111197185",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2022-08-17T18:35:19Z",
+      "last_shown_datetime": "2026-07-03T02:56:30Z",
+      "total_days_shown": 1416,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/17431792152890174198",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR02226749434111197185?region=ANYWHERE"
+    },
+    {
+      "position": 13,
+      "id": "CR15479350833895702529",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2026-05-22T14:58:13Z",
+      "last_shown_datetime": "2026-07-03T02:54:40Z",
+      "total_days_shown": 42,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/9072555579478638544",
+        "height": 154,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR15479350833895702529?region=ANYWHERE"
+    },
+    {
+      "position": 14,
+      "id": "CR04146715693640843265",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2024-09-20T02:06:52Z",
+      "last_shown_datetime": "2026-07-03T02:52:56Z",
+      "total_days_shown": 652,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR04146715693640843265?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=2085212959&creativeId=714106157688&uiFeatures=12,54&adGroupId=168188449832&versionId=1&sig=ACiVB_xfevNPXG70U9SAIaLqYKLNKvtVuw&htmlParentId=fletch-render-14800873638887704008&responseCallback=fletchCallback14800873638887704008"
+    },
+    {
+      "position": 15,
+      "id": "CR05870095201179009025",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2025-11-04T11:13:04Z",
+      "last_shown_datetime": "2026-07-03T02:52:33Z",
+      "total_days_shown": 241,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/11756035269953860175",
+        "height": 400,
+        "width": 400
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR05870095201179009025?region=ANYWHERE"
+    },
+    {
+      "position": 16,
+      "id": "CR18260297206927982593",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR04586639968180371457",
+        "name": "HP PPS Asia Pacific Pte. Ltd"
+      },
+      "first_shown_datetime": "2022-10-04T10:12:35Z",
+      "last_shown_datetime": "2026-07-03T02:52:08Z",
+      "total_days_shown": 1368,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7304304110886011276",
+        "height": 441,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR04586639968180371457/creative/CR18260297206927982593?region=ANYWHERE"
+    },
+    {
+      "position": 17,
+      "id": "CR10558472525010960385",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2026-05-19T00:49:13Z",
+      "last_shown_datetime": "2026-07-03T02:51:51Z",
+      "total_days_shown": 46,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR10558472525010960385?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=2085212959&creativeId=809222426607&uiFeatures=12,54&adGroupId=200215259481&itemIds=10216251983134379989,12289770588111839712,4617077215693328119,16404998084752851879,3905347670430036252,539138800006566782,8212449688531333737,9256028261744701274&assets=%3DH4sIAAAAAAAAAONS5OLkOHbk3JOjXAIg5qPXM_Ye5RJg5uLk2AdhMgIAWYFoeCMAAAA&sig=ACiVB_wAMKfAv09HUxCsn0o1EnyduHAdVQ&htmlParentId=fletch-render-14699088250505759570&responseCallback=fletchCallback14699088250505759570"
+    },
+    {
+      "position": 18,
+      "id": "CR14067629031122010113",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2026-04-30T20:56:52Z",
+      "last_shown_datetime": "2026-07-03T02:49:48Z",
+      "total_days_shown": 64,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7795795344124811224",
+        "height": 295,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR14067629031122010113?region=ANYWHERE"
+    },
+    {
+      "position": 19,
+      "id": "CR18337025260072730625",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2026-06-12T09:00:38Z",
+      "last_shown_datetime": "2026-07-03T02:46:51Z",
+      "total_days_shown": 21,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR18337025260072730625?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=1500689599&creativeId=812568916303&uiFeatures=12,54&adGroupId=195202452697&assets=%3DH4sIAAAAAAAAAAEtANL_CisKCQjXiJ2IvwUQBQoICJXMyKM-EAEKCQjLtK_f6AoQAwoJCP3a_MaTARAp0eRUaS0AAAA&sig=ACiVB_xGWl7eTqcdy_3M1myxXzx-hZv4iA&htmlParentId=fletch-render-10069042957172645555&responseCallback=fletchCallback10069042957172645555"
+    },
+    {
+      "position": 20,
+      "id": "CR00867403486201905153",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2022-06-01T07:00:00Z",
+      "last_shown_datetime": "2026-07-03T02:45:51Z",
+      "total_days_shown": 1493,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7745494588232481657",
+        "height": 239,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR00867403486201905153?region=ANYWHERE"
+    },
+    {
+      "position": 21,
+      "id": "CR11990676571552743425",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2022-08-15T20:22:06Z",
+      "last_shown_datetime": "2026-07-03T02:44:45Z",
+      "total_days_shown": 1418,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/766942426218899814",
+        "height": 239,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR11990676571552743425?region=ANYWHERE"
+    },
+    {
+      "position": 22,
+      "id": "CR10567438492579659777",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2026-06-19T14:37:34Z",
+      "last_shown_datetime": "2026-07-03T02:44:25Z",
+      "total_days_shown": 14,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR10567438492579659777?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=6720644721&creativeId=812923572927&uiFeatures=12,54&adGroupId=194469795981&overlay=%3DH4sIAAAAAAAAAEWPsWoVQRSGmQjxMkEMK4oo6MEiheAuwUrhEr0mCFuocIkWVpPZ487g7pzNnLO73FRX8AESG0NAyBNoGsFS0pjCwhfwBfQlZE0g7fk53__9-ZoeOTRF5QMm9_XqBFnglY9YITNsmNg4CshwD15QNTtPJlWLQiQuP1J6qUC20TfiKSSHSn9S61j5DqMPJdhodmZQEhVg2sITvKEIM2oj1MQCvm4oigkClkKHkc1A4RSeOCJGEIfnZcefgSJsTicwODMKiDMCPcW3DFuD-hk8hamjBp6HYVcKLz328Ax7jkR1mt_Wi53nNlbJVX3FNamlOhvmZRsmbrUF51-VvmaKwg8qppqiidY9LtaNmORA3fmo_lzstFzKfr9_tPwuuZE7kYYfZlnf92lJVFb4H8mOmsaHMotGfCg5M9ZSGySrUaK3vLY9Pi1fseOnk5VuvPrg7uLpZV8tHKpbR-r1N1V8V8f7F07UB_VLLRyMburLo_l8vrv35cfPv2oZrkMy0mdf_wD1p751zQEAAA&sig=ACiVB_xvOL6Uqac27Wy93ylKEx-QZbY6Ww&htmlParentId=fletch-render-17710768728456321012&responseCallback=fletchCallback17710768728456321012"
+    },
+    {
+      "position": 23,
+      "id": "CR13257490352467607553",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2025-10-27T10:34:58Z",
+      "last_shown_datetime": "2026-07-03T02:34:21Z",
+      "total_days_shown": 249,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/10194024688229297499",
+        "height": 309,
+        "width": 381
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR13257490352467607553?region=ANYWHERE"
+    },
+    {
+      "position": 24,
+      "id": "CR02485361543991001089",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2022-08-17T17:34:12Z",
+      "last_shown_datetime": "2026-07-03T02:32:49Z",
+      "total_days_shown": 1416,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/13111179051496605217",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR02485361543991001089?region=ANYWHERE"
+    },
+    {
+      "position": 25,
+      "id": "CR11552420908987580417",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2025-09-11T07:00:00Z",
+      "last_shown_datetime": "2026-07-03T02:25:19Z",
+      "total_days_shown": 295,
+      "format": "image",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/10804070925574847036",
+        "height": 1394,
+        "width": 723
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR11552420908987580417?region=ANYWHERE"
+    },
+    {
+      "position": 26,
+      "id": "CR13685607194974748673",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2025-10-31T23:06:59Z",
+      "last_shown_datetime": "2026-07-03T02:24:27Z",
+      "total_days_shown": 245,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/6751337386336345587",
+        "height": 232,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR13685607194974748673?region=ANYWHERE"
+    },
+    {
+      "position": 27,
+      "id": "CR13471723690559275009",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR04586639968180371457",
+        "name": "HP PPS Asia Pacific Pte. Ltd"
+      },
+      "first_shown_datetime": "2026-06-19T12:51:13Z",
+      "last_shown_datetime": "2026-07-03T02:23:28Z",
+      "total_days_shown": 14,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR04586639968180371457/creative/CR13471723690559275009?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=3461496437&creativeId=813437772880&uiFeatures=12,54&adGroupId=201492152550&versionId=1&itemIds=1584039494046492305&overlay=%3DH4sIAAAAAAAAALMSMxLhEuKcuOzKj7bFv0UFl2_tDHPnFnX2kuESSC4udsksLshJrAwuKcrMSxfi4GJzz89Pz0n1UuGSKM7ILyjIzEt3TPFPS0stci5KTSzJLEs1EOKwYuP4xSTEyOjlyiVeUJSfUppc4phSHJSal5IKMsYlsSRRSMtLo-vK7Uv87EKsXMyefkGTQBxRLkEORiEORiZmFlY2dg4t5g2MDAIsAOuwMR6jAAAA&sig=ACiVB_z5Ya8oW3AU_Geo2Xx6--Z8WwlFAA&htmlParentId=fletch-render-5750315397743810728&responseCallback=fletchCallback5750315397743810728"
+    },
+    {
+      "position": 28,
+      "id": "CR15199085843961610241",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2024-08-10T09:01:28Z",
+      "last_shown_datetime": "2026-07-03T02:23:04Z",
+      "total_days_shown": 692,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR15199085843961610241?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=1170644974&creativeId=698153580855&uiFeatures=12,54&adGroupId=163462270202&versionId=5&sig=ACiVB_wIfVpef6PvfPCwMSyQCV3-M_RwgA&htmlParentId=fletch-render-14548216058530082878&responseCallback=fletchCallback14548216058530082878"
+    },
+    {
+      "position": 29,
+      "id": "CR00797406583112859649",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03724335054835417089",
+        "name": "HP Inc."
+      },
+      "first_shown_datetime": "2022-08-15T16:56:08Z",
+      "last_shown_datetime": "2026-07-03T02:21:41Z",
+      "total_days_shown": 1418,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/15652891511043159680",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR03724335054835417089/creative/CR00797406583112859649?region=ANYWHERE"
+    },
+    {
+      "position": 30,
+      "id": "CR10040600349305208833",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2026-06-25T19:23:35Z",
+      "last_shown_datetime": "2026-07-03T02:20:45Z",
+      "total_days_shown": 8,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR10040600349305208833?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=9855975303&creativeId=814161726441&uiFeatures=12,54&adGroupId=198738497478&itemIds=10412753351484545227&overlay=%3DH4sIAAAAAAAAALMSMxLhEuI8PeMfB2NH4wRBWTUp-4n_XXZ4yXAJJBcXu2QWF-QkVgaXFGXmpQtxcLG55-en56QCAFygCg42AAAA&sig=ACiVB_zrUZx_p3WIQVoZqjgDPNkOJZA0MA&htmlParentId=fletch-render-15199516261253885634&responseCallback=fletchCallback15199516261253885634"
+    },
+    {
+      "position": 31,
+      "id": "CR01731391348122058753",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR12485431480924766209",
+        "name": "Nacar Estudio SL"
+      },
+      "first_shown_datetime": "2026-02-09T15:23:36Z",
+      "last_shown_datetime": "2026-07-03T02:20:28Z",
+      "total_days_shown": 144,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/18084366025560551744",
+        "height": 133,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR12485431480924766209/creative/CR01731391348122058753?region=ANYWHERE"
+    },
+    {
+      "position": 32,
+      "id": "CR11489417200498900993",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR04586639968180371457",
+        "name": "HP PPS Asia Pacific Pte. Ltd"
+      },
+      "first_shown_datetime": "2026-05-10T16:12:47Z",
+      "last_shown_datetime": "2026-07-03T02:20:10Z",
+      "total_days_shown": 54,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1656120885610023992",
+        "height": 160,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR04586639968180371457/creative/CR11489417200498900993?region=ANYWHERE"
+    },
+    {
+      "position": 33,
+      "id": "CR00222722375311949825",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2026-06-25T19:24:10Z",
+      "last_shown_datetime": "2026-07-03T02:17:43Z",
+      "total_days_shown": 8,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR00222722375311949825?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=9855975303&creativeId=814161726225&uiFeatures=12,54&adGroupId=200542145169&overlay=%3DH4sIAAAAAAAAABXNsUoDQRCAYbEIYe22sEoxWAa92jZgiBwGAwliO-xMvIG9nXX2NugjpQx5hHuxcM1fffC3r27eMVKUxP7ZLVchcFETLbDBng3ed_AyZYO9pB_4PEoQjLD9btk9EJdgkgfR5L_c4UOIDRMpRARJSU8YZLwm4ATb8fwnQRtY_1bJWoCk8HhB0gIZbfIli6HBUOFYh2oKnf43rXezk5Rq0c_drMtN0L5duEckkumLcc9ooVvRGw7o75_ubt2WTY3TAAAA&sig=ACiVB_yZ5_45gEl-Lpsvlt2zlgGGhnQsbw&htmlParentId=fletch-render-2119394092082135015&responseCallback=fletchCallback2119394092082135015"
+    },
+    {
+      "position": 34,
+      "id": "CR01023546352233086977",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR03270716551950499841",
+        "name": "HP BRASIL INDUSTRIA E COMERCIO DE EQUIPAMENTOS ELETRONICOS LTDA"
+      },
+      "first_shown_datetime": "2025-12-16T13:03:01Z",
+      "last_shown_datetime": "2026-07-03T02:16:59Z",
+      "total_days_shown": 199,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR03270716551950499841/creative/CR01023546352233086977?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=9855975303&creativeId=788577499894&uiFeatures=12,54&adGroupId=193967931527&itemIds=9776191271576456861&overlay=%3DH4sIAAAAAAAAALMSMxLhEuKce26anRbTmnbBzftdDrywfvHbS4ZLILm42CWzuCAnsTK4pCgzL12Ig4vNPT8_PSfVS4VLojgjv6AgMy_dMcU_LS21yLkoNbEksyzVQIjDio3jF5MQI6PXHSYu8YKi_JTS5BLHlOKg1LyUVJA5LokliUIHmLz2MnVduX2J_xMjl7KUOC_X9WYHAQ4pZg0LTYWHbY0Pjt85t-QIYxYHB7sAgwSjAoMQKxezb4SfVAxXiE9iQUl-gYJHgIKhiW5KoZmRoUFOoo6CZ15Jao6Cn25xalFmarGOgoWCu5NCkKOvjoKhEZgd6haso2BooqTg4aKjEJ6Zl5JfXqxgaKjgkZ-bKsAkIaHBrMTFceDn1i5RDUYLNi15Ln6PAIXgkvyiVAXf1IrM5HyBo_M_2kixO1saBQT5OBpZcmkKbOCUaGV3sPZgCNjNEdHKnrhYiCE9zjWgqoiJg7GIiYO5iImDpYiJgwvsiRmMGn1MBgwWDJNAHrfjsuJgFNJgZGJmYWVj5-Dk4ubh5eMXEBQSFhEVE5eQlJKWkZWTV1BUUlZRVVPX0OKRYFRg1JjB6MC4gZFBgAUA2nS7UbsBAAA&sig=ACiVB_z--DIU7lUoI3zVa7ifTN02YTKaQw&htmlParentId=fletch-render-443396866397932084&responseCallback=fletchCallback443396866397932084"
+    },
+    {
+      "position": 35,
+      "id": "CR11194081436611117057",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR04586639968180371457",
+        "name": "HP PPS Asia Pacific Pte. Ltd"
+      },
+      "first_shown_datetime": "2026-03-04T07:49:38Z",
+      "last_shown_datetime": "2026-07-03T02:16:17Z",
+      "total_days_shown": 121,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR04586639968180371457/creative/CR11194081436611117057?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=9873619942&creativeId=799146597989&uiFeatures=12,54&adGroupId=190028640194&assets=%3DH4sIAAAAAAAAAOMy5-LkePx20p-7HALMXJwc766f7d_NKsDIxclx7PHcK2eYBTi4ODmeQRQwcXFyPFzwduNzTgEeALqYdz45AAAA&sig=ACiVB_zj53cQ90aET42hRr47BCafioDaoA&htmlParentId=fletch-render-1453914854109176939&responseCallback=fletchCallback1453914854109176939"
+    },
+    {
+      "position": 36,
+      "id": "CR07797521243376189441",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2026-02-03T12:43:48Z",
+      "last_shown_datetime": "2026-07-03T02:15:20Z",
+      "total_days_shown": 150,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR07797521243376189441?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=6349291329&creativeId=795672023673&uiFeatures=12,54&adGroupId=193121147696&versionId=1&itemIds=6143618532096014732,18307105757487429037,7766671156523746128,3732012552913579958,4657220618708001542,1722500676753158915&sig=ACiVB_yoqXDTcRRLryTpsueDvUo3kd-AKg&htmlParentId=fletch-render-9653268283963126319&responseCallback=fletchCallback9653268283963126319"
+    },
+    {
+      "position": 37,
+      "id": "CR03628238090755112961",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2026-06-22T15:09:00Z",
+      "last_shown_datetime": "2026-07-03T02:13:24Z",
+      "total_days_shown": 11,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR03628238090755112961?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5649949090&creativeId=813741699016&uiFeatures=12,54&adGroupId=190086161189&versionId=1&overlay=%3DH4sIAAAAAAAAAEWOu0oDQRiFmRBiHC-EFYJoM1gEEbKLlSQQvERj2MZFn-B3d9wdnZ0ZZ2Y32OUJRBBErGx8gHSWFhY2gmWwEXsrn0CWiLbnHL7z-Xu4mlCIOBPUaeGNoEuU1BaOOTUk41ZDU1F9InUKwhrSJEHGjAFhCbXkv_Ev8ExETaiZskwK5xQnPWCWGkIFUTwzBHIakgIadEk_IAepYDtSnpE2iSYhE5ZyzmJa_CiZaWI15MA4p3qCSIEz4RbbP0XXdX0HV3JmMs2dKq4kyg1l6o8QrkMUsUIG-BEFHSbb0S5YcG7QyjX6ntJYzfmzl1u11_qSn1irTNvzBoOBG0sZc1pQPJNIpZiIPQ2Widh4EIYyE9ZLqdUsNJvnnclfI-z0Dht5Z7219mtwi0r3aP4RRU_o62H6Be2_ofJddRkvVIfD4dXz-8fnCNXG5cVxeRU5ZVzqBz9_nlJuigEAAA&sig=ACiVB_xVr9snupZrSihLsrTqYZZzfHirxQ&htmlParentId=fletch-render-2788051379728625600&responseCallback=fletchCallback2788051379728625600"
+    },
+    {
+      "position": 38,
+      "id": "CR06616747528689811457",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2026-05-24T09:15:44Z",
+      "last_shown_datetime": "2026-07-03T02:13:20Z",
+      "total_days_shown": 40,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR06616747528689811457?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=8199315260&creativeId=809170740849&uiFeatures=12,54&adGroupId=193850809622&itemIds=13657062266430169050,6597560598046748283,5111469490874131849,13708809756274317335&sig=ACiVB_z1Mg6MiajcUpWCvssj_upY0b9vtw&htmlParentId=fletch-render-2850665757762575151&responseCallback=fletchCallback2850665757762575151"
+    },
+    {
+      "position": 39,
+      "id": "CR10138477225142386689",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR12062302916514414593",
+        "name": "HP PPS Australia Pty Ltd"
+      },
+      "first_shown_datetime": "2026-06-19T13:22:53Z",
+      "last_shown_datetime": "2026-07-03T02:09:41Z",
+      "total_days_shown": 14,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR12062302916514414593/creative/CR10138477225142386689?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5082644975&creativeId=813227617356&uiFeatures=12,54&adGroupId=200086960480&overlay=%3DH4sIAAAAAAAAAGWPzUrDQBRGCRQpYykStZSsrlJEhOYVpD_WGGoNRCkuXNw2V2ZwmgkzE_9WXfgOQt35AOLGB7BP0aX4JJKiILo9fHDOFx6zMidMpEjJbbH9mKsMgsgfqwm0cmM1SoHQhHYupIVLpcFygiGNoAkxF5mBU04woFsLXbzbCy_YakJmrEVmhUrdAesfakILCaE0oFIIIuhwrSY0UurK-DAUlsNRaknOX6CjNH0-PMPOP3ImrUY_rLOVa2FyLd0qqxirNPk8K2LDN4fVMElEoUUZE-oxbyVdtOjOnO1Hx6uyShDBwUnvHGKU5NVZLYhgKFJLekmKuoG62fJqbOP3cvm6Le69TbYeRNDOjUjJGOhjZlVmvnFE2hTmHzwrN5hbnk6nH0-v7_PG2qJUX5R2nb_dX8UkGVmAAQAA&sig=ACiVB_yS5GQnmveAvpxoywCgmGlx03bqFg&htmlParentId=fletch-render-9458100159522197685&responseCallback=fletchCallback9458100159522197685"
+    },
+    {
+      "position": 40,
+      "id": "CR05389992469658075137",
+      "target_domain": "hp.com",
+      "advertiser": {
+        "id": "AR11613436537244483585",
+        "name": "HP International Sàrl"
+      },
+      "first_shown_datetime": "2024-03-21T13:10:00Z",
+      "last_shown_datetime": "2026-07-03T02:08:11Z",
+      "total_days_shown": 834,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11613436537244483585/creative/CR05389992469658075137?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=2167260103&creativeId=694036989505&uiFeatures=12,54&adGroupId=159278948879&assets=%3DH4sIAAAAAAAAAJNi5_jZ92f6ekYpdo4nMMbKl0s3zmKRYud4CxYBAJy1spUkAAAA&sig=ACiVB_x4JLS1UwRH8o4Mbpi8PhKz6n6WZA&htmlParentId=fletch-render-3283195452599580662&responseCallback=fletchCallback3283195452599580662"
+    }
+  ],
+  "pagination": {
+    "next_page_token": "Q2dvQVA3em1xVkpwNkVCZkVoQ05ySk1BdmttYVl0WDNYbGNBQUFBQUdnbjgrSEZGK01QMUdQVT0="
+  }
+}

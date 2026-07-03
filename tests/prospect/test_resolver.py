@@ -152,3 +152,38 @@ def test_low_confidence_uses_site_only_query():
     assert "site:" in news_q
     # No company name in the query (it's just the domain)
     assert '"unknowndomain12345.tld"' not in news_q
+
+
+# ---------------------------------------------------------------------------
+# hp.com: ai_overview only (no KG), parenthetical extraction
+# ---------------------------------------------------------------------------
+
+def test_hp_resolves_from_ai_overview():
+    from app.prospect.resolver import resolve_identity
+    about = _load("about_domain_hp_com.json")
+    identity = resolve_identity("hp.com", about)
+    assert "hewlett" in identity.canonical_name.lower()
+    assert identity.source == "ai_overview"
+    assert identity.confidence == "medium"
+
+
+def test_hp_display_name_is_short_form():
+    from app.prospect.resolver import resolve_identity
+    about = _load("about_domain_hp_com.json")
+    identity = resolve_identity("hp.com", about)
+    assert identity.display_name == "HP"
+
+
+def test_hp_category_hint_empty_when_no_kg():
+    from app.prospect.resolver import resolve_identity
+    about = _load("about_domain_hp_com.json")
+    identity = resolve_identity("hp.com", about)
+    # No KG subtitle available for hp.com fixture
+    assert identity.category_hint == ""
+
+
+def test_bp_category_hint_from_kg_subtitle():
+    from app.prospect.resolver import resolve_identity
+    about = _load("about_domain_bp_com.json")
+    identity = resolve_identity("bp.com", about)
+    assert "oil" in identity.category_hint.lower()

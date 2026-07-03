@@ -4,12 +4,13 @@ Company tab service layer.
 Wave structure:
   Preliminary: about_domain (sequential; drives identity resolution)
   Wave 1:      ads_transparency, meta_page_search, google_news, google_jobs (parallel)
-  Wave 2:      ads_transparency_historical, meta_ads (parallel; chain from wave 1)
+  Wave 2:      ads_transparency_historical (top-3 advertisers), meta_ads (parallel; chain from wave 1)
 
 Query construction and result filtering are driven by the resolved CompanyIdentity.
 """
 import asyncio
 import logging
+import re
 from datetime import datetime, timezone
 
 from app.prospect.client import SearchAPIClient
@@ -30,16 +31,140 @@ try:
     from rapidfuzz.fuzz import partial_ratio as _partial_ratio
     _HAVE_RAPIDFUZZ = True
 except ImportError:
+    def _partial_ratio(a, b): return 0  # noqa: E731
     _HAVE_RAPIDFUZZ = False
-    log.warning("rapidfuzz not installed; jobs validation disabled")
+    log.warning("rapidfuzz not installed; jobs and meta page validation disabled")
 
 
 # ---------------------------------------------------------------------------
-# Validation helpers
+# Category boost mapping for Meta page selection (Fix 1)
+# ---------------------------------------------------------------------------
+
+_CATEGORY_FAMILIES = [
+    (
+        {"oil", "petroleum", "energy", "gas", "fuel"},
+        {"energy", "petroleum", "oil", "gas", "fuel"},
+    ),
+    (
+        {"technology", "tech", "computer", "software", "electronics", "information technology"},
+        {"product/service", "computers", "software", "tech", "electronics"},
+    ),
+    (
+        {"financial", "bank", "insurance", "investment", "payments"},
+        {"bank", "financial", "insurance", "investment", "business service"},
+    ),
+    (
+        {"media", "broadcast", "news", "entertainment", "radio", "television"},
+        {"media", "broadcast", "news", "entertainment", "television", "radio", "streaming"},
+    ),
+]
+
+
+def _category_boost(category_hint: str, page_category: str) -> int:
+    hint_lower = (category_hint or "").lower()
+    cat_lower = (page_category or "").lower()
+    if not hint_lower or not cat_lower:
+        return 0
+    for hint_kws, cat_kws in _CATEGORY_FAMILIES:
+        if any(k in hint_lower for k in hint_kws):
+            if any(k in cat_lower for k in cat_kws):
+                return 20
+    return 0
+
+
+def _select_meta_page(pages: list, identity: CompanyIdentity):
+    """
+    Filter and rank Meta page results by identity match.
+
+    1. Whole-word match of any identity name in page name (eliminates BPI for BP).
+    2. rapidfuzz partial_ratio >= 70 against all identity names.
+    3. Category boost +20 when page category aligns with company's industry.
+    4. Rank by (score, followers) descending.
+    5. Returns None when no pages survive filtering.
+    """
+    if not pages:
+        return None
+
+    # Build whole-word patterns for all identity name tokens
+    names = list({identity.canonical_name, identity.display_name} | set(identity.aliases))
+    patterns = [
+        re.compile(r"\b" + re.escape(n) + r"\b", re.IGNORECASE)
+        for n in names if n
+    ]
+
+    scored = []
+    for page in pages:
+        pname = (page.get("name") or "").strip()
+        if not pname:
+            continue
+
+        # Step 1: whole-word filter
+        if not any(pat.search(pname) for pat in patterns):
+            log.info(
+                "meta.page_drop name=%r reason=no_whole_word_match candidates=%r",
+                pname, [n for n in names if n],
+            )
+            continue
+
+        # Step 2: fuzzy score
+        if _HAVE_RAPIDFUZZ:
+            score = max(_partial_ratio(pname.lower(), n.lower()) for n in names if n)
+        else:
+            score = 75  # allow through when rapidfuzz absent
+
+        if score < 70:
+            log.info("meta.page_drop name=%r reason=low_fuzzy_score score=%d", pname, score)
+            continue
+
+        # Step 3: category boost
+        boost = _category_boost(identity.category_hint, page.get("category") or "")
+        total = score + boost
+        followers = page.get("likes") or 0
+        scored.append((total, followers, page))
+        log.info(
+            "meta.page_keep name=%r score=%d boost=%d followers=%d",
+            pname, score, boost, followers,
+        )
+
+    if not scored:
+        log.info(
+            "meta.page_none domain identity=%r no pages survived filtering",
+            identity.canonical_name,
+        )
+        return None
+
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return scored[0][2]
+
+
+# ---------------------------------------------------------------------------
+# Advertiser extraction (Fix 3)
+# ---------------------------------------------------------------------------
+
+def _extract_advertisers(creatives: list) -> list:
+    """Return list of {id, name, location, count} sorted by count descending."""
+    amap: dict = {}
+    for c in creatives:
+        adv = c.get("advertiser") or {}
+        aid = (adv.get("id") or "").strip()
+        if not aid:
+            continue
+        if aid not in amap:
+            amap[aid] = {
+                "id": aid,
+                "name": (adv.get("name") or "").strip(),
+                "location": (adv.get("location") or "").strip(),
+                "count": 0,
+            }
+        amap[aid]["count"] += 1
+    return sorted(amap.values(), key=lambda x: -x["count"])
+
+
+# ---------------------------------------------------------------------------
+# News validation helpers
 # ---------------------------------------------------------------------------
 
 def _validation_tokens(identity: CompanyIdentity) -> set:
-    """Build a set of lowercase strings used to judge result relevance."""
     tokens = set()
     for word in identity.canonical_name.replace(",", " ").split():
         if len(word) > 3:
@@ -109,8 +234,11 @@ async def _fetch_news(
     return out
 
 
+# ---------------------------------------------------------------------------
+# Jobs validation
+# ---------------------------------------------------------------------------
+
 def _filter_jobs(jobs: list, identity: CompanyIdentity, domain: str) -> list:
-    """Drop jobs whose company_name does not fuzzy-match the resolved identity."""
     if not _HAVE_RAPIDFUZZ:
         return jobs
 
@@ -176,7 +304,6 @@ async def build_dossier(domain: str) -> dict:
         jobs_query = None
         run_jobs = False
 
-    # Prefer the shorter display_name for page-name search on Meta
     meta_query = identity.display_name
 
     # ------------------------------------------------------------------
@@ -196,39 +323,49 @@ async def build_dossier(domain: str) -> dict:
     wave1_raw = await asyncio.gather(*wave1_coros, return_exceptions=True)
     wave1 = dict(zip(wave1_keys, wave1_raw))
 
-    # Validate jobs when call was made
+    # Validate jobs
     jobs_result = wave1.get("google_jobs")
     if run_jobs and not isinstance(jobs_result, Exception) and isinstance(jobs_result, dict):
         raw_jobs = jobs_result.get("jobs") or []
         wave1["google_jobs"] = dict(jobs_result, jobs=_filter_jobs(raw_jobs, identity, domain))
 
     # ------------------------------------------------------------------
-    # Wave 2: ads_historical and meta_ads (dependent on wave 1)
+    # Post-wave-1 enrichment: advertisers and meta page selection
     # ------------------------------------------------------------------
     ads_30d = wave1.get("ads_transparency")
-    meta_search = wave1.get("meta_page_search")
-
-    advertiser_id = None
+    advertisers: list = []
+    top3_ids: list = []
     if not isinstance(ads_30d, Exception) and ads_30d:
         creatives = ads_30d.get("ad_creatives") or []
-        if creatives and (creatives[0].get("advertiser") or {}).get("id"):
-            advertiser_id = creatives[0]["advertiser"]["id"]
+        advertisers = _extract_advertisers(creatives)
+        top3_ids = [a["id"] for a in advertisers[:3] if a["id"]]
+        if advertisers:
+            wave1["ads_transparency"] = dict(ads_30d, _advertisers=advertisers)
 
+    meta_search = wave1.get("meta_page_search")
     page_id = None
     if not isinstance(meta_search, Exception) and meta_search:
         pages = meta_search.get("page_results") or []
-        if pages:
-            page_id = pages[0].get("page_id")
+        best_page = _select_meta_page(pages, identity)
+        if best_page:
+            page_id = best_page.get("page_id")
+            wave1["meta_page_search"] = dict(meta_search, _selected_page=best_page)
+        else:
+            wave1["meta_page_search"] = dict(meta_search, _selected_page=None)
 
-    wave2_coros, wave2_keys = [], []
-    if advertiser_id:
-        wave2_coros.append(ads_transparency_historical(client, advertiser_id))
-        wave2_keys.append("ads_transparency_historical")
+    # ------------------------------------------------------------------
+    # Wave 2: ads_historical (top-3 advertisers) + meta_ads
+    # ------------------------------------------------------------------
+    wave2_coros: list = []
+    wave2_keys: list = []
+    for adv_id in top3_ids:
+        wave2_coros.append(ads_transparency_historical(client, adv_id))
+        wave2_keys.append(f"ads_hist_{adv_id}")
     if page_id:
         wave2_coros.append(meta_ads(client, page_id))
         wave2_keys.append("meta_ads")
 
-    wave2 = {}
+    wave2: dict = {}
     if wave2_coros:
         wave2_raw = await asyncio.gather(*wave2_coros, return_exceptions=True)
         wave2 = dict(zip(wave2_keys, wave2_raw))
@@ -254,12 +391,22 @@ async def build_dossier(domain: str) -> dict:
     else:
         sections["google_jobs"] = None
 
-    _section(
-        sections, errors,
-        "ads_transparency_historical",
-        wave2.get("ads_transparency_historical"),
-        optional=advertiser_id is None,
-    )
+    # ads_transparency_historical: dict keyed by advertiser_id
+    hist_dict: dict = {}
+    for adv_id in top3_ids:
+        key = f"ads_hist_{adv_id}"
+        result = wave2.get(key)
+        if result is None:
+            pass
+        elif isinstance(result, Exception):
+            errors.append({
+                "section": "ads_transparency_historical",
+                "message": str(result),
+            })
+        else:
+            hist_dict[adv_id] = result
+    sections["ads_transparency_historical"] = hist_dict if hist_dict else None
+
     _section(
         sections, errors,
         "meta_ads",
@@ -276,6 +423,7 @@ async def build_dossier(domain: str) -> dict:
             "confidence": identity.confidence,
             "source": identity.source,
             "aliases": identity.aliases,
+            "category_hint": identity.category_hint,
         },
         "sections": sections,
         "errors": errors,

@@ -328,7 +328,7 @@ def test_news_retry_on_high_drop_rate():
 
 def test_jobs_filter_keeps_matching_companies():
     from app.prospect.resolver import CompanyIdentity
-    from app.prospect.service import _filter_jobs
+    from unittest.mock import patch as _patch
 
     identity = CompanyIdentity(
         display_name="Stripe, Inc.",
@@ -345,7 +345,18 @@ def test_jobs_filter_keeps_matching_companies():
         {"title": "Designer", "company_name": ""},
     ]
 
-    kept = _filter_jobs(jobs, identity, "stripe.com")
+    # Patch _HAVE_RAPIDFUZZ True and use real rapidfuzz if available, else a mock ratio
+    try:
+        from rapidfuzz.fuzz import partial_ratio
+        real_ratio = partial_ratio
+    except ImportError:
+        def real_ratio(a, b): return 100 if a == b else (90 if a in b or b in a else 10)
+
+    with _patch("app.prospect.service._HAVE_RAPIDFUZZ", True), \
+         _patch("app.prospect.service._partial_ratio", real_ratio):
+        from app.prospect.service import _filter_jobs
+        kept = _filter_jobs(jobs, identity, "stripe.com")
+
     company_names = [j["company_name"] for j in kept]
     assert "Stripe" in company_names
     assert "Stripe, Inc." in company_names
@@ -354,7 +365,7 @@ def test_jobs_filter_keeps_matching_companies():
 
 def test_jobs_filter_drops_mismatched_companies():
     from app.prospect.resolver import CompanyIdentity
-    from app.prospect.service import _filter_jobs
+    from unittest.mock import patch as _patch
 
     identity = CompanyIdentity(
         display_name="BP",
@@ -366,11 +377,21 @@ def test_jobs_filter_drops_mismatched_companies():
 
     jobs = [
         {"title": "Engineer", "company_name": "BP"},
-        {"title": "Analyst", "company_name": "British Petroleum Services"},  # not BP
+        {"title": "Analyst", "company_name": "British Petroleum Services"},
         {"title": "Dev", "company_name": "Random Tech Co"},
     ]
 
-    kept = _filter_jobs(jobs, identity, "bp.com")
+    try:
+        from rapidfuzz.fuzz import partial_ratio
+        real_ratio = partial_ratio
+    except ImportError:
+        def real_ratio(a, b): return 100 if a == b else (90 if a in b or b in a else 10)
+
+    with _patch("app.prospect.service._HAVE_RAPIDFUZZ", True), \
+         _patch("app.prospect.service._partial_ratio", real_ratio):
+        from app.prospect.service import _filter_jobs
+        kept = _filter_jobs(jobs, identity, "bp.com")
+
     company_names = [j["company_name"] for j in kept]
     assert "BP" in company_names
     assert "Random Tech Co" not in company_names
@@ -460,3 +481,219 @@ def test_all_wave1_engines_fail():
     assert result["sections"]["meta_ads"] is None
     # about_domain succeeded, so no error for it
     assert all(e["section"] != "about_domain" for e in result["errors"])
+
+
+# ---------------------------------------------------------------------------
+# Meta page selection (Fix 1)
+# ---------------------------------------------------------------------------
+
+def test_meta_page_selection_rejects_bpi_for_bp():
+    """BPI must not be selected as the Meta page for bp.com."""
+    from app.prospect.resolver import resolve_identity, CompanyIdentity
+    from app.prospect.service import _select_meta_page
+    from unittest.mock import patch as _patch
+
+    try:
+        from rapidfuzz.fuzz import partial_ratio
+        real_ratio = partial_ratio
+    except ImportError:
+        def real_ratio(a, b):
+            a, b = a.lower(), b.lower()
+            return 100 if a == b else (90 if a in b or b in a else 10)
+
+    identity = resolve_identity("bp.com", _load("about_domain_bp_com.json"))
+
+    pages = _load("meta_page_search_bp.json").get("page_results", [])
+    with _patch("app.prospect.service._HAVE_RAPIDFUZZ", True), \
+         _patch("app.prospect.service._partial_ratio", real_ratio):
+        selected = _select_meta_page(pages, identity)
+
+    assert selected is not None
+    # Must not be BPI (Bank of the Philippine Islands)
+    assert "bpi" not in (selected.get("name") or "").lower()
+    # Must be an energy/oil company page
+    assert "bp" in (selected.get("name") or "").lower()
+
+
+def test_meta_page_selection_hp_picks_hp_not_harry_potter():
+    """HP page must be selected for hp.com, not Harry Potter pages."""
+    from app.prospect.resolver import resolve_identity
+    from app.prospect.service import _select_meta_page
+    from unittest.mock import patch as _patch
+
+    try:
+        from rapidfuzz.fuzz import partial_ratio
+        real_ratio = partial_ratio
+    except ImportError:
+        def real_ratio(a, b):
+            a, b = a.lower(), b.lower()
+            return 100 if a == b else (90 if a in b or b in a else 10)
+
+    identity = resolve_identity("hp.com", _load("about_domain_hp_com.json"))
+
+    pages = _load("meta_page_search_hp.json").get("page_results", [])
+    with _patch("app.prospect.service._HAVE_RAPIDFUZZ", True), \
+         _patch("app.prospect.service._partial_ratio", real_ratio):
+        selected = _select_meta_page(pages, identity)
+
+    assert selected is not None
+    name = (selected.get("name") or "").lower()
+    assert "harry" not in name
+    assert "potter" not in name
+    assert "hp" in name
+
+
+def test_meta_page_selection_returns_none_when_no_match():
+    """When no pages match the identity, return None (no fallback to unfiltered)."""
+    from app.prospect.resolver import CompanyIdentity
+    from app.prospect.service import _select_meta_page
+    from unittest.mock import patch as _patch
+
+    identity = CompanyIdentity(
+        display_name="XYZNONEXISTENTCO",
+        canonical_name="XYZNONEXISTENTCO Inc.",
+        aliases=["XYZNONEXISTENTCO"],
+        confidence="high",
+        source="knowledge_graph",
+    )
+
+    pages = [
+        {"name": "Random Page A", "likes": 500000, "category": "Tech"},
+        {"name": "Another Page B", "likes": 300000, "category": "Retail"},
+    ]
+
+    try:
+        from rapidfuzz.fuzz import partial_ratio
+        real_ratio = partial_ratio
+    except ImportError:
+        def real_ratio(a, b):
+            a, b = a.lower(), b.lower()
+            return 100 if a == b else (90 if a in b or b in a else 10)
+
+    with _patch("app.prospect.service._HAVE_RAPIDFUZZ", True), \
+         _patch("app.prospect.service._partial_ratio", real_ratio):
+        selected = _select_meta_page(pages, identity)
+
+    assert selected is None
+
+
+# ---------------------------------------------------------------------------
+# Multi-advertiser (Fix 3)
+# ---------------------------------------------------------------------------
+
+def test_multi_advertiser_enriches_ads_section():
+    """When ads have multiple advertisers, _advertisers list is added to ads section."""
+    multi_adv_creatives = [
+        {"advertiser": {"id": "ADV001", "name": "HP Inc.", "location": "US"}, "format": "text"},
+        {"advertiser": {"id": "ADV001", "name": "HP Inc.", "location": "US"}, "format": "image"},
+        {"advertiser": {"id": "ADV002", "name": "HP International", "location": "CH"}, "format": "text"},
+    ]
+
+    mocks = _patch_all(
+        ads_transparency=AsyncMock(return_value={"ad_creatives": multi_adv_creatives}),
+        ads_transparency_historical=AsyncMock(return_value={"search_information": {}}),
+    )
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mocks["ads_transparency_historical"]), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    result = asyncio.run(_run())
+    ads_sec = result["sections"]["ads_transparency"]
+    assert ads_sec is not None
+    advertisers = ads_sec.get("_advertisers", [])
+    assert len(advertisers) == 2
+    assert advertisers[0]["id"] == "ADV001"  # most ads first
+    assert advertisers[0]["count"] == 2
+    assert advertisers[1]["id"] == "ADV002"
+
+
+def test_multi_advertiser_calls_historical_for_top3():
+    """ads_historical is called once per unique advertiser (up to 3)."""
+    captured_ids = []
+
+    async def mock_hist(client, advertiser_id):
+        captured_ids.append(advertiser_id)
+        return {}
+
+    creatives = []
+    for i, (adv_id, n) in enumerate([("A1", 10), ("A2", 8), ("A3", 5), ("A4", 2)]):
+        for _ in range(n):
+            creatives.append({"advertiser": {"id": adv_id, "name": f"Adv{i}"}})
+
+    mocks = _patch_all(
+        ads_transparency=AsyncMock(return_value={"ad_creatives": creatives}),
+        ads_transparency_historical=mock_hist,
+    )
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mock_hist), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    asyncio.run(_run())
+    # Only top 3 advertisers get historical calls
+    assert len(captured_ids) == 3
+    assert set(captured_ids) == {"A1", "A2", "A3"}
+
+
+def test_multi_advertiser_historical_stored_as_dict():
+    """ads_transparency_historical section is a dict keyed by advertiser_id."""
+    creatives = [
+        {"advertiser": {"id": "ADV001", "name": "HP Inc."}},
+        {"advertiser": {"id": "ADV002", "name": "HP International"}},
+    ]
+
+    async def mock_hist(client, advertiser_id):
+        return {"search_information": {"total_results": 99, "based_in": "US"}}
+
+    mocks = _patch_all(
+        ads_transparency=AsyncMock(return_value={"ad_creatives": creatives}),
+        ads_transparency_historical=mock_hist,
+    )
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mock_hist), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    result = asyncio.run(_run())
+    hist = result["sections"]["ads_transparency_historical"]
+    assert isinstance(hist, dict)
+    assert "ADV001" in hist
+    assert "ADV002" in hist
+    assert hist["ADV001"]["search_information"]["total_results"] == 99
+
+
+# ---------------------------------------------------------------------------
+# hp.com: ai_overview resolver path
+# ---------------------------------------------------------------------------
+
+def test_hp_resolver_extracts_hewlett_packard():
+    """hp.com with only ai_overview should resolve to Hewlett-Packard (medium confidence)."""
+    from app.prospect.resolver import resolve_identity
+    about = _load("about_domain_hp_com.json")
+    identity = resolve_identity("hp.com", about)
+    assert "hewlett" in identity.canonical_name.lower()
+    assert identity.confidence == "medium"
+    assert identity.source == "ai_overview"
+    assert identity.display_name == "HP"

@@ -30,8 +30,9 @@ class CompanyIdentity:
     display_name: str
     canonical_name: str
     aliases: list
-    confidence: str   # "high" | "medium" | "low"
-    source: str       # "knowledge_graph" | "ai_overview" | "domain_fallback"
+    confidence: str      # "high" | "medium" | "low"
+    source: str          # "knowledge_graph" | "ai_overview" | "domain_fallback"
+    category_hint: str = ""  # e.g. "Oil industry company", "Technology company"
 
 
 def _before_is(text: str):
@@ -94,6 +95,7 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
                     aliases=aliases,
                     confidence="high",
                     source="knowledge_graph",
+                    category_hint=kg_subtitle,
                 )
             # Description confirms the title (e.g. stripe.com: "Stripe, Inc. is an Irish...")
             aliases = [domain_root_cap]
@@ -109,10 +111,12 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
                 aliases=aliases,
                 confidence="high",
                 source="knowledge_graph",
+                category_hint=kg_subtitle,
             )
 
     # ------------------------------------------------------------------
     # Path 2: ai_overview paragraphs (fallback when KG description absent)
+    # Handles both "Name is a..." (ibm.com) and "Name (Acronym), founded..." (hp.com)
     # ------------------------------------------------------------------
     ai_header = None
     for block in (ai.get("text_blocks") or []):
@@ -120,8 +124,14 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
         banswer = (block.get("answer") or "").strip()
         if btype == "header":
             ai_header = banswer
-        elif btype == "paragraph" and " is " in banswer and len(banswer) > 20:
-            extracted = _before_paren(banswer) or _before_is(banswer)
+        elif btype == "paragraph" and len(banswer) > 20:
+            extracted = None
+            # Parenthetical form first: "Legal Name (Acronym), ..."
+            if banswer and banswer[0].isupper():
+                extracted = _before_paren(banswer)
+            # Sentence form fallback: "Name is a type of..."
+            if not extracted and " is " in banswer:
+                extracted = _before_is(banswer)
             if extracted and len(extracted) > 4:
                 display = ai_header or extracted
                 aliases = []
@@ -154,6 +164,7 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
             aliases=aliases,
             confidence="high",
             source="knowledge_graph",
+            category_hint=kg_subtitle,
         )
 
     # ------------------------------------------------------------------
@@ -171,6 +182,7 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
             aliases=[kg_title, domain_root_cap],
             confidence="medium",
             source="knowledge_graph",
+            category_hint=kg_subtitle,
         )
 
     # ------------------------------------------------------------------

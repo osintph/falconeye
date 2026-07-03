@@ -1,0 +1,734 @@
+{
+  "search_metadata": {
+    "id": "search_rpB8WlvR38SqRw5yykXOyEn1",
+    "status": "Success",
+    "created_at": "2026-07-03T03:37:00Z",
+    "request_time_taken": 1.04,
+    "parsing_time_taken": 0.01,
+    "total_time_taken": 1.05,
+    "request_url": "https://adstransparency.google.com?domain=bp.com&region=ANYWHERE&preset-date=Last+30+days",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_rpB8WlvR38SqRw5yykXOyEn1.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_rpB8WlvR38SqRw5yykXOyEn1"
+  },
+  "search_parameters": {
+    "engine": "google_ads_transparency_center",
+    "domain": "bp.com",
+    "time_period": "last_30_days",
+    "num": 40,
+    "region": "ANYWHERE"
+  },
+  "search_information": {
+    "total_results": 900
+  },
+  "ad_creatives": [
+    {
+      "position": 1,
+      "id": "CR06639750196706148353",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-03T02:00:10Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/2626420667595657522",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR06639750196706148353?region=ANYWHERE"
+    },
+    {
+      "position": 2,
+      "id": "CR03417424663322558465",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-03T01:56:54Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR03417424663322558465?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=7245836410&creativeId=573662718361&uiFeatures=12,54&adGroupId=115428700237&versionId=6&allowedVariations=62&overlay=%3DH4sIAAAAAAAAAPM6wcgllpiSklmSmZ-XmBOcmliUnOGY4pJYkii0llFpFeMtpmWMXAJcTEkFBpMO2XgwL2U0Ni52EGph5Gpk5JJLKlBwTyxWCC5JBOkvVvBLTSxSiMwvLVJwLEpNFApwK03NUQgtUHDOyS9OVSjJV_DIz03VU3AKUADLuOenFiuUZKQquGQWlyTmJacqlGeWZCgElibmZJZUggxSSE7MU3BJLUjNS1Hwz9OTYtDiLi8v10sq0EvOz9VX4k5PLI4vhtgOAEnaVo_LAAAA&sig=ACiVB_xshfZh44H2Zyzeb-touFpUh3pPZQ&htmlParentId=fletch-render-12622329557673551793&responseCallback=fletchCallback12622329557673551793"
+    },
+    {
+      "position": 3,
+      "id": "CR01405547082911055873",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-03T01:48:50Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/954066480759135521",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR01405547082911055873?region=ANYWHERE"
+    },
+    {
+      "position": 4,
+      "id": "CR05800215894294528001",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-03T01:35:08Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/17368193808072444327",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR05800215894294528001?region=ANYWHERE"
+    },
+    {
+      "position": 5,
+      "id": "CR16324307403669504001",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15080776365588348929",
+        "name": "BP Europa SE"
+      },
+      "first_shown_datetime": "2024-02-20T18:29:01Z",
+      "last_shown_datetime": "2026-07-03T01:22:48Z",
+      "total_days_shown": 864,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7815168136496964395",
+        "height": 167,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15080776365588348929/creative/CR16324307403669504001?region=ANYWHERE"
+    },
+    {
+      "position": 6,
+      "id": "CR10193767335576207361",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR05750376750194360321",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-04-15T20:52:46Z",
+      "last_shown_datetime": "2026-07-03T00:57:07Z",
+      "total_days_shown": 79,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR05750376750194360321/creative/CR10193767335576207361?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5405611047&creativeId=803685466258&uiFeatures=12,54&adGroupId=194702336803&versionId=4&sig=ACiVB_zEi37GDDlafH70gjzEABoWp9o1BQ&htmlParentId=fletch-render-11303022529759258344&responseCallback=fletchCallback11303022529759258344"
+    },
+    {
+      "position": 7,
+      "id": "CR05792557778627198977",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2025-01-06T01:25:12Z",
+      "last_shown_datetime": "2026-07-03T00:56:37Z",
+      "total_days_shown": 543,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/8549924048823593267",
+        "height": 163,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR05792557778627198977?region=ANYWHERE"
+    },
+    {
+      "position": 8,
+      "id": "CR00928809295057780737",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR10939783647149948929",
+        "name": "BP ENERGÍA ESPAÑA SA"
+      },
+      "first_shown_datetime": "2026-03-20T10:01:40Z",
+      "last_shown_datetime": "2026-07-03T00:51:58Z",
+      "total_days_shown": 105,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR10939783647149948929/creative/CR00928809295057780737?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=6705289791&creativeId=798563368739&uiFeatures=12,54&adGroupId=193779924196&allowedVariations=58&overlay=%3DH4sIAAAAAAAAAC3LMQrCMBQAUCIKEpdSUMTp4yhSr6DiIE5FvcBvEzBik5CmVrduglNXBUEHL6BbHTt6A8_hAVx8-5u9CG0hY8IKJXGz4GjC1YhN0KJ7Jd0L-VROhFJaCfSdnE_7oXsk9EBoc861ii2CKW9aMAVcwth3p8sEtCmfOxEhaDTIEHTCGYeYGxj7HvxfHxiPQ5Qxwh5CJa2QZYFgE9gKXHOvUxsFRpheI01TL9BeqKKBcepZluVF_ngz51ttf6s_iESFf74AAAA&sig=ACiVB_yv_zuxqXZUXzON_DBoIHRYJ2ksUg&htmlParentId=fletch-render-3088010700654516768&responseCallback=fletchCallback3088010700654516768"
+    },
+    {
+      "position": 9,
+      "id": "CR06824603166764433409",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2025-01-03T01:06:57Z",
+      "last_shown_datetime": "2026-07-03T00:50:26Z",
+      "total_days_shown": 546,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1871652396321342526",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR06824603166764433409?region=ANYWHERE"
+    },
+    {
+      "position": 10,
+      "id": "CR16286703324315516929",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR06273373612158222337",
+        "name": "BP ESTACIONES Y SERVICIOS ENERGETICOS"
+      },
+      "first_shown_datetime": "2026-04-14T19:59:08Z",
+      "last_shown_datetime": "2026-07-03T00:27:43Z",
+      "total_days_shown": 80,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR06273373612158222337/creative/CR16286703324315516929?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5979533860&creativeId=805258423619&uiFeatures=12,54&adGroupId=198431148707&versionId=2&allowedVariations=36&overlay=%3DH4sIAAAAAAAAAO2XO6zjWB2Hb-4saHYpdrQgRJkBNlrpbub6FcdZKVrsE7-S2PEjceI01ol94kf8SHzi2Ek1WkGDhNhuEQUaqKZEW0KBBBICqqmQoNiClpYKCtDALAXaZm9Bs_eUR0f_03zn9_vOd749_tvjN74OgyA-xkUOUxvB0o_4YASP8K0_Pf7mHx9_fP3Lxw8_-flPXn_03X_8-cU_X67WO633Ht30qHav1x6QNNHmWIYUnrWi43GP37u9zeAePwmLIkzRE7_InmTNv7fej9Ihwl1t1amyIdmJ0XAxl7pcJ4BBUA6ltwH9Nj9I4-YGVOgE8bs3BE0SxA2IqwAGNwG60f5zpIn94t0bMNJWnRAVfhGgoeSw7rgWg2hKLLtx2iuxvkw9z4rm0skoxM15EoZGPf7tl26hn-7ex3A47cB4OAIRtsU61vrHE4hV5PDNMlMIU1W2J0tf-y4PVAB40RSaAqyVouMXQ7IT-mkcDEFCTICZ1EWZW0IESt5SMT_Te6iRCVi6ktKvgzJbpGrKKa7Xpxl_uZu53ZhXpwYXBSxFGeQsdhpkQlmWMOTzAIn8tPZqX-j4Ly_gRZvlp-EgDRUku-O1vKnZWU-hS8YUd8DEkzW7dySZc0TPDQ9WsM2y7YmviqwhFxtiWoOE0NxtmpyYfaNUF1aI1wslbqZmSYFUgwmjbcRp36WypVDMwMwWFflg8fN8MEHhumtwmrnlUnQynTlkvHRwOO3qE5ZsUSCcUxftfJZrnLnc6ChqLG2QiadqpfQWgKcc3qfmq8JSNymZUeyldixGcQYJkDyyoPY7f0wH9RotdYVajOZ2INtJf3M2Na7sX9SES52Rf8bCAWSyD-QN7s881nPIisW6lfTqVF1nFsBinWvMbk9T5Wp_2vpjILGU4IjhJUtHYd-cs1F31HCa5htECMBUtxc0TawCCQa7PGV2uKxW55Wz0NaVVImMx6xrOzZXkDmzp3g0OOBCFCsmdw89cmzTYmqZ4pYwUiztUM9X1EixzuE6cZdHx1mkwklRV7wPwnM9zw7kChphBSiKEekzEPgK8OyEVgK1oBIqnVByXJzqUZ7YZMRAs-P7aEh1cBwO-dmIZTyiYq0uSuq1tfKCrKkPI3Z6GXG9rjEPOzCoynS4akVXlx9--Y4wT6LPgJn5X5iPr2BuDo6aIGZnVdJmZhYXwhxPUCXRY5ADNzuOLFuk1y7TAzFFH90x3Cug0eVQzU4WDziDU3jzHucvMM50JHtLf0Y6Y2lZK2Y5A3zP8wYj_yx_inMnxXAIBN7krVBQI01lZpdVXcRKamrOfL-qeItkl5doNOHFDoqHCOMKViNFweyhKjmjW26izDS_37pzvo8-T75LqTjZkiHgK5twleUeeQTvG_45Cde9004Xq4QTLKPaqj1Ens96c6FCHkM-cpn7fL_Pd48Ca4XL9Sr160kYUKUusBLURfrobPlXD-LD1vRHrY9ef976XusXra-EEHv4CF8K2q9bv_-vZaUR_UqyKoxKv8iPKD--9K3bcI-7Pu7iW97QzR0v21CYknuTkKV-bo5FJ-wf-pnfx6uLIvMZS3gWEAeUwkvFdNOb9lW-TxgCOwl2nL7WbU_e6EG9JphogieJIPViYwBV0QgnCc0kpS8FtnzZrM_Y5AwmmGLPLDLNXYC5hvZuPUgZ2dGZ45ILh7tuXnTzbj0guhFJcX9oXf299VUblafYj4u29Zuf7uOgaAvGB9eCmPsVyo8lbCN8hH5c5Ai3BaPtF3k7hLhI4xy29yXK4iprn9uo8VGK8iNq41fjnjy_vv74-pO7BoLxf-_IFG5QOtyWCHl77NVog-Mjum_OL3Jz7onCzucxxxwqsdR1SLEjyAqmP1l9GhR_uf7BXS1Qiz5P5S3DmbEJuETfsmNw1untapY3sHsGK1vnN7ODC5DU3zlKRo_P8x2Qdo5gQn43sO8r73L_paHprXuEJbXgYm1pMYORtyfc6WaZklPzMxxQvbsDfvjg6tmDq989uPrZa9eb_fPXrn788GtvvPXw6dOnz371148--NajF29-48Wb77T-BezHsF75EAAA&sig=ACiVB_xPBGybWzpTJ2hyoen0Fax0O076IQ&htmlParentId=fletch-render-15352745644882011510&responseCallback=fletchCallback15352745644882011510"
+    },
+    {
+      "position": 11,
+      "id": "CR03494372885080834049",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-03T00:26:25Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/10092280920728226914",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR03494372885080834049?region=ANYWHERE"
+    },
+    {
+      "position": 12,
+      "id": "CR09418086062846115841",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-03-01T08:00:00Z",
+      "last_shown_datetime": "2026-07-03T00:14:19Z",
+      "total_days_shown": 1585,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/4102470771493739352",
+        "height": 272,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR09418086062846115841?region=ANYWHERE"
+    },
+    {
+      "position": 13,
+      "id": "CR11488682546342920193",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-06-14T04:21:07Z",
+      "last_shown_datetime": "2026-07-03T00:11:54Z",
+      "total_days_shown": 1480,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7388302168107344460",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR11488682546342920193?region=ANYWHERE"
+    },
+    {
+      "position": 14,
+      "id": "CR02812402112212762625",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR11708627701311995905",
+        "name": "OMNIPERFORM SRL",
+        "is_not_verified": true
+      },
+      "first_shown_datetime": "2026-06-04T10:15:36Z",
+      "last_shown_datetime": "2026-07-03T00:11:36Z",
+      "total_days_shown": 29,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR11708627701311995905/creative/CR02812402112212762625?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5293594455&creativeId=811664358920&uiFeatures=12,54&adGroupId=197869456740&sig=ACiVB_xCCQU0ep5-Ys-sLyBdE1E_IhZYrA&htmlParentId=fletch-render-5410443116485866416&responseCallback=fletchCallback5410443116485866416"
+    },
+    {
+      "position": 15,
+      "id": "CR01568900640686473217",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR17250309602591899649",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-07-01T22:40:31Z",
+      "last_shown_datetime": "2026-07-03T00:10:16Z",
+      "total_days_shown": 2,
+      "format": "image",
+      "details_link": "https://adstransparency.google.com/advertiser/AR17250309602591899649/creative/CR01568900640686473217?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=1225496915&creativeId=814967115061&uiFeatures=12,54&adGroupId=196706360534&assets=%3DH4sIAAAAAAAAAONS5OLkuH9o56sprAKMXJwc3-f3vHrCLMDGxckxffblrRc5BVgA86BGhSMAAAA&sig=ACiVB_zOD3BFoghbhK7sTVOk3uA2BgSq9Q&htmlParentId=fletch-render-9850172902619728564&responseCallback=fletchCallback9850172902619728564"
+    },
+    {
+      "position": 16,
+      "id": "CR07584562033102684161",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2025-10-24T20:50:00Z",
+      "last_shown_datetime": "2026-07-03T00:07:42Z",
+      "total_days_shown": 252,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR07584562033102684161?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5272949938&creativeId=725809316141&uiFeatures=12,54&adGroupId=173116832558&versionId=87&allowedVariations=36&overlay=%3DH4sIAAAAAAAAAO2Xv6vz1hnHr-9Ny0uyhFBKh0JNKSZw4_tKsizLAZMc_bAlWbIky5ZtLeZIOpZkSzqyJEuyp5duDWl5l0IphYYuCWQJoXTImKGE_A8tpUs7lPwBXVpu32RoydDeoUvuGc95nmf6PN_v97z9I-X99svfhb4flRFOYWwhmHsh8AVYwtfebf_wJ-2Pr7_4wZPf_eX9v_3j_rRe_dUfP7Reb735CkG3eyzZZmiC4H7eCssyK958-jSBWXEXYBzE6M7Dd-nlXzdvhfEIpZ1TMiI7ERotF-Mu2_Gh7-cjkiVvV_CAdhGK_VurzBEq37hdoFuQ4zduVyiOozQocXrLECTZCRD2sI9GY9e9RDvCl_ThkY9ip8DqhJiytLsQXTE-LDRUbMRa-f23nkIvPrxVwJHagdFI4MPCEuuoqpmIqhTGBs1KXAOWl-aZqlLiBvAyzwPRFDjM-xO54-ER2Qm8OPJH_L6e8mBf99B-zoXAF6MaCIejkV4yW9qqZNflNUmu9mqxHABdXQEaxXGl-Qd9UIVWvNKoZJlFmCA5dkKFmG-0jQkqYcvVYse7nw9EizHVYHhc86GRJ2Duqm4mpNqwIQQ3qx1sSP3BFMCMNlxy6oG9uFHU0PYoPonFi0M2q_GguSz0TYO1pTKwc8VRataJxAoTcoCrZCg6214Rjt2LNNEaZ6_MLcaH-8iXPcVacArVTydhf38WnKDrYubU76-ElJhOfXsN9Ek2yCYLTc6taCcvuzLPrFIaaWS6sN34gpKAYiJTCKHE1_Kep892crlIQ40mp7udYzL0fBbrCdQ5KQFDqtkYsejyB06DB5lvSm_Ga4zoJlx2nhwBKtlL6sOGwpIuTMguLk5J454v5jQ4KGUZ9kC8jCqDZvlYJGdhb7LzcvM0jnar3VQz142jpmxy7M4aGOz0WQ1T7JOEGCkCvbcHET5GKTXGXKEL4UAFzEK1z_NzedxuQrPuZZPuReo6Js06tKa7A-UQJO4Ob6pmzU3kdHgpjsKYWQ_UEyWdqXTlhVSR2ZR68jJorY5xt2oyOfP7ywgQTSzNyO4WI5JmgUkM0j1l4EvH89CI6hRRMAK6wNDb3mo9TywJyXunN9ulOzvpFTNfU6b2MOhA_5THo3UrvLr87NsPhNn8OpiJ_4CZeAHzME6OVX9lKGut6akBKe262Qz6orBe7UNzYOx0t6LpTUP3x7RWThJ96K37HgQncBaBWm9rj3uk-ZtMMxUyC9tWPRZmrj3uc_me0E-m6iTd81c0d-ICjngOmGAecHKoyQSL9mV-RrGp2UN1ikFI8EHA2VMgdlA0YuZgADO94qpFjIulEWCLP4LlO60Hy_s4_O_lvd7aDs-GXajlUZEaBpecRIYqmezQn5pNGMqwArVDSksjColhsGIiRW0wz7rgUd4f5Z3eEiGeXcZnY0Nmi4oNm00TMPYhpCjqVH-5EM9bb_-iVXzQ-tP1J61XAlhsixLex7FPW1eft67-3vr-OEr99gaf8vYMwRwVZdvN2taLoh9fq3yIvEN7EaL2GBbl_fMcn0rUHuP837u-bGmvojK8H6FiD5Y4v2u_mDDD9d3H13946FbZzf_XZ2Looni0yxHaZsW2Rm4RlejRfb7J7kMsT8aWq9gJwRJTbkxzwowZGE02lIqvlu3P1z99aJBa_A-_gkYl7J4R6Cab0BtPsc4-0xwqZC_3GjZOpwFTTPuaQjdjYSOoUa8kLXhvG5llPtrGo23QW9Ix8nUsrbXM2pynKjcDiBP77hgNJPNrcpT88Bz1_ObqvZurz26ufvPStZt98NLVL5985-XXnjx79uy9X__2o7_2X31-873nN6-3_gmQem3rLBAAAA&sig=ACiVB_y9Vg-zPh-RXCrSCNsChK6r_2Jp9A&htmlParentId=fletch-render-4272122122542623744&responseCallback=fletchCallback4272122122542623744"
+    },
+    {
+      "position": 17,
+      "id": "CR18306626237465886721",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR17250309602591899649",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-06-02T21:16:07Z",
+      "last_shown_datetime": "2026-07-02T23:55:22Z",
+      "total_days_shown": 31,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/5293204159179995068",
+        "height": 176,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR17250309602591899649/creative/CR18306626237465886721?region=ANYWHERE"
+    },
+    {
+      "position": 18,
+      "id": "CR05049993418168598529",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2026-02-07T18:52:55Z",
+      "last_shown_datetime": "2026-07-02T23:54:58Z",
+      "total_days_shown": 146,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR05049993418168598529?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=7245836410&creativeId=794670125436&uiFeatures=12,54&adGroupId=195867197721&allowedVariations=58&overlay=%3DH4sIAAAAAAAAAPM6wMgllpiSklmSmZ-XmBOcmliUnOGY4pJYkii0lFFpEeMtpnmMXFxcTEkFSxmNjYsdhPoZuXoYuUTdMvNSFBIVkgoU3BOLFYJLEkEGCLm7p5YouGQWpSaDuMUKJfkKJRmpCs45-cWpxSUKSQV6Cs4Z-fnFqQr-pUUKbqWpOQpp-UUKiQrOOamJealFCq556Zl5qXpSXD6piUV5Crn5Rala3OXl5XpJBXrJ-bn6RYIcDQ0ND35df3b9EaPAfEWJ-YoAX3XTRMMAAAA&sig=ACiVB_woaqQf03unVbwi1wr45d-jIhqWGg&htmlParentId=fletch-render-8757989602851333846&responseCallback=fletchCallback8757989602851333846"
+    },
+    {
+      "position": 19,
+      "id": "CR10938575344000565249",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR17250309602591899649",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-06-06T00:12:06Z",
+      "last_shown_datetime": "2026-07-02T23:54:33Z",
+      "total_days_shown": 27,
+      "format": "video",
+      "details_link": "https://adstransparency.google.com/advertiser/AR17250309602591899649/creative/CR10938575344000565249?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=1225496915&creativeId=811854986120&uiFeatures=12,54&adGroupId=197914861820&sig=ACiVB_yf_EMhdmrer3vRT5oEJRWto17u-A&htmlParentId=fletch-render-6648527757502047649&responseCallback=fletchCallback6648527757502047649"
+    },
+    {
+      "position": 20,
+      "id": "CR10045849770003529729",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2024-12-31T23:24:52Z",
+      "last_shown_datetime": "2026-07-02T23:46:05Z",
+      "total_days_shown": 549,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/15909253654136098915",
+        "height": 167,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR10045849770003529729?region=ANYWHERE"
+    },
+    {
+      "position": 21,
+      "id": "CR00026590915623649281",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR07871145890591801345",
+        "name": "BP PORTUGAL - COMÉRCIO DE COMBUSTÍVEIS E LUBRIFICANTES S.A."
+      },
+      "first_shown_datetime": "2025-05-23T08:13:14Z",
+      "last_shown_datetime": "2026-07-02T23:40:37Z",
+      "total_days_shown": 406,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR07871145890591801345/creative/CR00026590915623649281?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=7848655233&creativeId=752275305039&uiFeatures=12,54&adGroupId=178333378286&versionId=4&allowedVariations=36&overlay=%3DH4sIAAAAAAAAAO1Wy4sjxxkfzexhPSZkMWEJDiG147UwM5ZWUutpEE53q_VoPUaPGamlgEV1d_VDqu7q7qp-jA5h8S05BN_i5JTEkPVCDGb3FkIO0cXklv8gOJccAzkEEoKNZnad3cUHM4ecto_fq-urX_2-3_fDu_LPvnd4G-q6zWziQjxBMNAsXm9ABl_75-tH_3j9-MeHPxgSygjQETAhJdh2IXCgTYEXbB8ntgOPfsSrkDK0fQCBRhxwArgcwDYLCN0lqR44x8x2IEOXboY0l2Bi2hDwGrMjBAKkIRWC0AERxGiXA9n2IeA-f_93d47nh7dE4qghZdtPImRToHpHgN9VFYnjIZdC4CFMKPBDG28fO2j33-M3UMKCnSfQSBDYOqFZMIG2enlCAqAf2neO9cPbV60Jw-c6Ikd3r2L9EGJAgHcZpHrPB2WP7062H5Ero45AsZq7iqQAOWBIAhaaEGePN4ffP3nWuWvv8r4020EuI0dzfhXq0CEZTAAEdnBVERPXRNldkwDuDoioRrAFAQEOwhYJgAcDCKgNEGDQUbcPnSsLARSFwCGMBNlj5fBbvVANbMPWoMsQPXpDJK51idRq-2sAgQgpCwi-A07pk7qIHh_hZ3OeLRuh7SdaiEn20f4fb9_8yR8--_atj377n399sftSb6XeebVQy4MCVwLFXE74ecpizKPv3LvnQI9mTUJMjLIayYbrS8u7Fq4jN9MS0qFTz6dtVD8_a2aqaR3qelCXKAugDk90ctKCAVzB8CRfKL59UssXSplcmTsRoWu_KXJv8hWSNhHRiI7qzdEaVU1J79SGmaXtbrjuqdvpMLPRaBUUJx6Xz3LJKJb_cnAPanj9LoX1Xhra9YZo0YkUr7BZgeNlCU35RFkEjim34WLRiMw5L3ZEkZdGokVEvTBPa6SeT5satvW6uIq7Ir-Kca0yFixhJtkxD2uBqowyXoGZMqqoeJFbrnzFEubjKPSKqh73tKHi9poZzhWMydInlcWS9FSWs4goV9YjPmoshVhKa7v6vDSho7ZZc63NKMNVm-JIt5u0EzrchRQKSbwxaLy0CmapZW7gGfEmy0wHlZRBElmqOSjK7DQscWKraZacjbPp00hlg3zPcBZN2WhTNfLWiUKKybRdaM3ySqldZsXwwq3yY6c89xqNWanS4mWzyhXM8VCeKQvabxY9ZcNqZ17sC7jYHZ8Vku4Cs15fYxE8x614sKp4nDDMDXPhSkaSozerIuy1x4keymKymbpBJJK5T6Nz3bOKpWWtpp1Nh7mCHGtyB5O0pqF6IU1ts86fNsrFZc5wWv08LzVOV3ikDTvdVqgLE2Pqq4aZhnoY4LqSsvY2v7hxTVxl4Wtwzb2Aa-4K16l_3vC5nGuXpl6h1uVHskfitZxIgudelMZO-aw9Fqe4PRbnluUrk01ppLA15H0zkvhevIw14SWwT4DlpGbIVaYr1BRapRKdZMbY4DIVTbSC-AmwaUxhXRT4ET82hY7V79BIjNZGRsGj_nSI0VoQOETNYNjlpTSy61OfcjDosW6lHK718yEXzvwMH_80dW3Sd4RvTno0ajLfK1jGYCkEZJRIA9OfWr2lSVgVhZ1BH4asuZlncnK3ctry1bk78y0iWh3zJelfIH2BtVZtVe_yQusczgZ0VlyE1X5_3TPOn5L-g9T0w9TBx6lH-79PvWpCuqQM7haZP6X2_pza-3fqzgAC1XsbRAQzGIDtQ-CR0IPB__aL9_ffE4lLQ8zQV0L_okDvlJ-EAFEGtw92iq8jQFEQ2dsH5PlN6NJjP900-tCm2Uf7f7_uu5OT_-9QwlBFuG4ECC09uoyRSm2GXo6qp6NqU1ar4sRK2thLcEfo1gQ4K09g1-mPnjzHz_c_vLYAjb_5jDEGAWqbVX3Stoca53TUcFNrWV2jwWlSL5fpnc01pIpzp9-AolFDhmGUUELEi9nLGaO9uFjUJEXTmeP4Wusin1klatPklhe4rUz5r9GfzvX154ODvV8d7H12sPebG_vC8OMbe7-8-Z3D127ev3__r4__9t_HtVufvvLdT195K_Uldb5Fg5MNAAA&sig=ACiVB_yp2mk4NSYFQ49XNcfxnp96YsBGJA&htmlParentId=fletch-render-9479406032541192995&responseCallback=fletchCallback9479406032541192995"
+    },
+    {
+      "position": 22,
+      "id": "CR04693102294663692289",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2025-01-03T00:24:11Z",
+      "last_shown_datetime": "2026-07-02T23:40:19Z",
+      "total_days_shown": 546,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR04693102294663692289?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5272949938&creativeId=725692815306&uiFeatures=12,54&adGroupId=173883525084&versionId=81&allowedVariations=36&overlay=%3DH4sIAAAAAAAAAO2Xz4_jSBXHOzMLGvVeRruwgj1AqWc3WnVPeuw4P-xF0a7txB3nh-PEzg9nD1HZVbErdlyOf8RJTiPEabnMgQNwYeG0NxAgIXFEHFb8AVw4gObEaS-cQEKgTs8gWDhAH7hs1_FV1atXpe9771Pvv9X566PTNyBCJCU0hIGBYex4ImrCFL72_NHZ7x-do9Mv6ziNafAYNAlOcACKoE9jfNZVSIiA6WGgwCTFSQpGNEsxUGgMLJrFQMMwvjYbKbz2DqYk9YAdgR51YErjSyB72PGBRvPLc-P0oaQDPcgSoGQ4cGCMzh6JURTsgUkR3B-9ikDSQfRyDZBhjM7fNGkKAyDT8DrGmzNerDqfnz7UY1waxAjHQKbLJcZnZ9cWerTsr4Ncwi3NYpJi4NEUoJiE_vnZMqZrAMM9yEmAbAxD4MAlBuHxHjlB-PL8g9Ov6nAPljS-Cea4JfXwdVRnb_771PEwGcbnZ1eUInuPQUrBMMMZTkAJKCQISuPo5iXj8w9OX9djijInTUARGDjeEgcnZ187vjgE0c0coDFIbuaOZ5y_RUMM6BLY0fOn30vA-voGdpaQECcJTgAJgTa__Om9P339wW___ONP_3Y9Cg9_8Z2fGe8U3n2VEUC5zgKmzjLSDwtemkbJu0-erGGUXLqUugG-dOhleDha3vOCBg5LqlbM1g22SHBjbColvoggQnGDY5gLE1-oMYlh6JKLZky2-PFFCybphfm2XHmbZ9fQJ48vxMzxAxiiizLDckUXU4ci3FCQze8XDNL4KJFJiKSSQgQm12yzVeGsOJX6HWy5nV9_4Ql0Av-9BDZ6RUgaTdlLjFa-gmFcnq83VxNxN0P2kJfb0yUWw5Ylyqosi61hU6IyulKLDm2wRdcJCGrIq7wri6vcHdRHkid1WyQX55rOV7eBtWmjUd3ftyr9q8PIFSel1BrpEaq6QqzyTuLoe9PXS-WaMuPd-hDvnBGVo1l_KG6bCylvFZ1r_2LLqOY9V0jMPNzvSTO4Uu3OIGxFu7ZOhSxf9ErcYqOmhkYOMVdhOsuwz42FUcyHeqRtZt31etf2WQ_LZWGw6zm-NUAsYyzGLWxXm3tSd9tj6hnMiLR0rKhhJnCLxOtX2FJ7J-ZkT9fTsVvHkec7Ztl1R6u8jFXDIzWjuYr6y43CdHi1g7EjMmZQSVYLaSx0tzvOS112fIiUDMWVDurMq-YWlbyJKklGtZ_RCbecCiY2a0bVLQ-ibFnVFmPdXNUQ3iMBe3ae7a76QWZESb3CiAysDSt6K03Yem3gMG3LHEwUXOYjJmP6UliZZEm3nidCiwvmzWDDDeZUYvuWve17PsqH_CZn56mr0mGgTSNEMkHGM1GblIZXW1nzqVIh67QLp3uBZZwk2BykiX5w9WzsRwrk-e7SXaN0bMmyUcHroCownqjaGjvqtWKPEX3DT8193-kd6vPa8IDrlZLWmcV21x0xPVRuunykp_7BSjoI083qar2pkSZj1y2BJYmmhZFYdBzcKBcT4jbEQbNWWTDtBatZEYlVMuBrUa0XsLKwE-SOUx0WIcrioDEreCeHb3_xllIee_9BysxnpMzcSDmrquGWm2szOlr1rkaz9qCdJup8PXMOjKX6sBeX-ObKQs5OyXD_cHWwUnmQQzHkli2xly9yR7rT8udXy6yO3XRUWiDdbm-aPrNtTX3fGwxoFuYvtFwMEtiQJXEojlxJ9fpqnOzL6_nGC4b9iWVrU3FUXo2HXacrtoqYNOIZz8OsKlWwDTO3tKKV0JWHHxZuXdm13X9f2TcbI5tz_bS02G45Ux1LqVJWW9FSrXAbKd07VPAjMlsYKBhN1zVLbm9NzqNyqPF3lf2usjOK0CSW021zHJyXKi4pxwacSaqhSi-z4Vnh_e8WvlX4uPCHe78svOrCZJHccPCvCie_KZz8pfC6DJMjs-LQJdfgRoLkm_esI-P9Cz_b0T8QugjX0Tc-Q6VqmKQwTIP95ZHLgenBELAM83JTAtQX4Pe72ybWbPf_7TMBtHHQWMYYL6JkkWM7ISm-6z6f3-7DZXWpxs8HWreS1axZ7gWpstiaYdDB7ot8e37vw9ti1PR_-BFQqavw8zKaSkRcplt_PmFaEV4FmwEKx3KztlbZamwaTpYRiAdaaR1I3IjKWjC-6xt3fYOBk6Ff6SkHQYytmVv1scfuMntwELKXP4J_pij11hT17P7JR_dPPrl_8qNX7tnRx6-cfP_Bl05fe_D06dOPfvDzn_yx-vDZ_a88u_9O4e_OKZsWAhIAAA&sig=ACiVB_xKi1TfcD8kYNFhvmk_l6HcuhpXiQ&htmlParentId=fletch-render-16835542989846179195&responseCallback=fletchCallback16835542989846179195"
+    },
+    {
+      "position": 23,
+      "id": "CR07085084085634203649",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-02T23:37:25Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/14673117836650774424",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR07085084085634203649?region=ANYWHERE"
+    },
+    {
+      "position": 24,
+      "id": "CR12868051606016360449",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR13250028259107667969",
+        "name": "Mindshare (U K) Ltd"
+      },
+      "first_shown_datetime": "2026-02-18T04:59:16Z",
+      "last_shown_datetime": "2026-07-02T23:35:24Z",
+      "total_days_shown": 135,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1971114256066244012",
+        "height": 148,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR13250028259107667969/creative/CR12868051606016360449?region=ANYWHERE"
+    },
+    {
+      "position": 25,
+      "id": "CR13325645049594118145",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR17250309602591899649",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-06-02T21:04:26Z",
+      "last_shown_datetime": "2026-07-02T23:33:08Z",
+      "total_days_shown": 31,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/1256872642175342662",
+        "height": 176,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR17250309602591899649/creative/CR13325645049594118145?region=ANYWHERE"
+    },
+    {
+      "position": 26,
+      "id": "CR01017481884180938753",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2026-03-24T08:42:37Z",
+      "last_shown_datetime": "2026-07-02T23:32:12Z",
+      "total_days_shown": 101,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/11382356101214067608",
+        "height": 421,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR01017481884180938753?region=ANYWHERE"
+    },
+    {
+      "position": 27,
+      "id": "CR16548538695481819137",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR10939783647149948929",
+        "name": "BP ENERGÍA ESPAÑA SA"
+      },
+      "first_shown_datetime": "2024-10-25T10:28:31Z",
+      "last_shown_datetime": "2026-07-02T23:31:32Z",
+      "total_days_shown": 616,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR10939783647149948929/creative/CR16548538695481819137?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=6705289791&creativeId=718797789020&uiFeatures=12,54&adGroupId=144061056131&versionId=3&allowedVariations=62&overlay=%3DH4sIAAAAAAAAABXOPWoCQRgG4B3tRgKyhYXVh2WK1QNY-AvBKpgDyDs_6MLOzDr7jYtdziBYCGk9QKr0yS08TfA5wbP5EXIAY0oug0f1YRH1YW5WYORfYnQTj85VyL7sqHpy-Z2-de8iyz5nOcsoX5aIKkV4tqTqfDtPznoGVaBTaUDGEidygUMkHTwt3gtaV6SDU6nhUlWWjskSW4IOrsbfNwhkgjeWTjijKYbZa69t20LVhQ5uPOrt0ewaxjP7D878jAS6AAAA&sig=ACiVB_xlH8Wqe6BOTkZTYceKSaQl6zLApg&htmlParentId=fletch-render-141946909720505228&responseCallback=fletchCallback141946909720505228"
+    },
+    {
+      "position": 28,
+      "id": "CR02705915235696377857",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR17250309602591899649",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-06-04T20:03:35Z",
+      "last_shown_datetime": "2026-07-02T23:27:54Z",
+      "total_days_shown": 29,
+      "format": "image",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/18122238503372824110",
+        "height": 600,
+        "width": 300
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR17250309602591899649/creative/CR02705915235696377857?region=ANYWHERE"
+    },
+    {
+      "position": 29,
+      "id": "CR01703730307036872705",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-02T23:23:28Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/3230663177706760938",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR01703730307036872705?region=ANYWHERE"
+    },
+    {
+      "position": 30,
+      "id": "CR04400541114008862721",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2024-12-31T20:02:56Z",
+      "last_shown_datetime": "2026-07-02T23:19:45Z",
+      "total_days_shown": 549,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/7683678663273901557",
+        "height": 167,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR04400541114008862721?region=ANYWHERE"
+    },
+    {
+      "position": 31,
+      "id": "CR04864311596731596801",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-02T23:16:38Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/18226777770744495506",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR04864311596731596801?region=ANYWHERE"
+    },
+    {
+      "position": 32,
+      "id": "CR13771155693606273025",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2024-12-31T11:10:13Z",
+      "last_shown_datetime": "2026-07-02T23:13:54Z",
+      "total_days_shown": 549,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/11907515521944046761",
+        "height": 167,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR13771155693606273025?region=ANYWHERE"
+    },
+    {
+      "position": 33,
+      "id": "CR12541678759180238849",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR06273373612158222337",
+        "name": "BP ESTACIONES Y SERVICIOS ENERGETICOS"
+      },
+      "first_shown_datetime": "2026-04-14T20:07:17Z",
+      "last_shown_datetime": "2026-07-02T23:12:07Z",
+      "total_days_shown": 80,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR06273373612158222337/creative/CR12541678759180238849?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=5979533860&creativeId=805179232711&uiFeatures=12,54&adGroupId=198262009351&versionId=2&allowedVariations=36&overlay=%3DH4sIAAAAAAAAAO2WTavj1h3Gr-9MYZosMqSlNJABkzYmcKu5kizZUsCkR7L8Iku2ZFu27I04PjqWjt7fbOt6NaR009UsGhpKF6GrrLpIF4VuCt20FArzBUqgdNdvMJuW20xKCF20d1FmMWd5_pyz-v2f5_fD76u_fvTad6DrkoqkCYwWGBbIB24fVvDNjx-989Gjzy6fv_3g6a9-8c2HP_r8L8_-cXsa7zXef3jFs02eb_K8wDa7PMNKv2n4VZWV719fxzArH3tp6kX4MUrjx3H9r6sP_KiHS0q3W4e4x7QI7lnLASW0XOi6RU-G0Rm68GoJ6_yA35Xb70oM_MGVAUucllcu_vqA5lievpLJwYXu7Vi_nQCxJihteThFqYt7gzmw1ZPieqxgUyQsnIEft0-jmb8cVAbq9wftUUCb6p_vX0MUhR-UsKe1IOn1Zb9cKCdSeilltvnDCtSWx-hjZYSjrbHWN0AeyzJQTGmeymi0aaG0x7Q8FBG3JweniQyC0-FgzCUfJAo5AVYlAk7dLVkiW93iI3I1fq1bJbEjEAiWctMms3a-Q8YojqAeATDMyDr19I2UyugsmODYd6ST0kK3_wNlEXiaJ6ZobK3K_bo6c3SYnqGIhe6CBGIsw2n_5lA53W1MZq7UjYfL-d4ZjEXK2uWCnwzmg6DOknZubCOiSpPhmcoU60iZ4iklx7NPq1tppRb1HhJi8QpY8YDbGnwyFbpB35zh7shU1fnGk8cZwBN8TuBwPlf2ksQjiV_sqQV0RNPPpmFhqXG76PARofawKGprCzxznSRQPCa1qG9OEW1V03q_7TDrxXbhUOUoH_CJCHkpYWYoZ-a8XtX-SR3YtNZxVZbKav1mYlSMkFAZa-5PWeg4GrLz44bRgiwVBpkH1f6GW09EsikkB7BjnoqN7WE_m5-nNxvG6Q-1eBXVg74zOxvjoa6p0tLCSgjjCaXXRVEUVW5Juwy182CXh0oLIdxjWyXxemDW73AOvZPLutI4AQyEDE4ZAW60LuQQQX3Qgu6hiHp2w784f_SNOzI1lP4DU_TXmKK_YIqg8UAjozkN7HwOWdNlLeeoDm1GPyB5Fg7BaMXQUxAcXFhk2xFnCr5dhhDkgqgA7eSckPQKqpcAqrZDc6l84pcdmCws27LDlD62w67u2l9C1YpK2JMlYIK5J419fUwjPAqn1C4y9ZUsnWhZYhhJ6iwnQGlh0ssmYx5Wo2jGEY42FEPcBFwMwp807hx28v8QdpGUANlYuzWBu1Q3HHE57s4qho3qbH6TJLlmBCN70x4aK0_sp9ugEo6Zn8qGvHkVdi9R2LF4WupoGcfHXDP90lZu0nrlTWFW5d4LLp825h83nn_r08aPG79tvO7B0ikreOsSv2_84d9CEPntFz5wKHGB0qTCSXWrBtdeVlKopMprYEzNEAzkehLa3AY6KBBBpqFhcKMFy-6uo3HtWM1NbZB2qVjrWFZScrsodLyUSrqH1TDY0UTl3CXPTLIbfYikfNpfl_04PY8Zjj77S6FwmDXeiFW0k7qsD0R1T3nRUfY2qzmPF1MwqlWXpUaOYPdCKkmphDqJNOUzrPCnxsXzxlsyjIgL3SZOmnIa7w5lRXYRbkrGh5cjJUEHnFQFbOKygoikCS6bktFEuECw6eJmRZo3TQQLDzbRVx67uAmjCjbRF38__uzyb3ddz_H8_9sbEdzhqLcvMHay0jnhXUkq_KpNXoKtpWlC2zNNScx9PGM7IQlKbjWjzyxMzRdb-9fLn97VT0bSf18DMdju4rQ4HmIoyO2B2d6ynIOH7DrArJ0lA9SVZbciZ5_CiySAotxW934qe8PyVQ28RDVA28aEsbpjIEzb_ZXKd_K8PEubDmGCL4H6qp6M764nT-9dfHLv4o_3Ln55_3KXfXr_4ucPvv3amw-ePHnyye_-_rMPv_fw2RvfffbGe41_AlaxsFq4DgAA&sig=ACiVB_xW7KERWDcyR4JF48hit4s5Dcg6CA&htmlParentId=fletch-render-6755840554797368471&responseCallback=fletchCallback6755840554797368471"
+    },
+    {
+      "position": 34,
+      "id": "CR12783980335616491521",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2026-03-24T11:59:17Z",
+      "last_shown_datetime": "2026-07-02T23:10:11Z",
+      "total_days_shown": 101,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/5399843338830279318",
+        "height": 491,
+        "width": 348
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR12783980335616491521?region=ANYWHERE"
+    },
+    {
+      "position": 35,
+      "id": "CR13594433921273036801",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-02T23:07:54Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/2476042318990840203",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR13594433921273036801?region=ANYWHERE"
+    },
+    {
+      "position": 36,
+      "id": "CR17826335068549808129",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR15078785493627830273",
+        "name": "BP LIMITED"
+      },
+      "first_shown_datetime": "2025-01-02T10:38:50Z",
+      "last_shown_datetime": "2026-07-02T23:06:51Z",
+      "total_days_shown": 547,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/8847341023109660883",
+        "height": 173,
+        "width": 380
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR15078785493627830273/creative/CR17826335068549808129?region=ANYWHERE"
+    },
+    {
+      "position": 37,
+      "id": "CR09279842481610948609",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR11708627701311995905",
+        "name": "OMNIPERFORM SRL",
+        "is_not_verified": true
+      },
+      "first_shown_datetime": "2026-06-04T22:19:18Z",
+      "last_shown_datetime": "2026-07-02T23:05:28Z",
+      "total_days_shown": 29,
+      "format": "image",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/9935131374352116063",
+        "height": 250,
+        "width": 300
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR11708627701311995905/creative/CR09279842481610948609?region=ANYWHERE"
+    },
+    {
+      "position": 38,
+      "id": "CR04295908065636515841",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR09049563025442340865",
+        "name": "B P Corporation North America Inc"
+      },
+      "first_shown_datetime": "2022-02-24T08:00:00Z",
+      "last_shown_datetime": "2026-07-02T23:02:29Z",
+      "total_days_shown": 1590,
+      "format": "text",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/13134744849733109584",
+        "height": 316,
+        "width": 388
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR09049563025442340865/creative/CR04295908065636515841?region=ANYWHERE"
+    },
+    {
+      "position": 39,
+      "id": "CR11009989998614151169",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR17250309602591899649",
+        "name": "BP INTERNATIONAL LIMITED"
+      },
+      "first_shown_datetime": "2026-06-04T21:20:40Z",
+      "last_shown_datetime": "2026-07-02T23:00:03Z",
+      "total_days_shown": 29,
+      "format": "image",
+      "image": {
+        "link": "https://tpc.googlesyndication.com/archive/simgad/138538189578388349",
+        "height": 600,
+        "width": 300
+      },
+      "details_link": "https://adstransparency.google.com/advertiser/AR17250309602591899649/creative/CR11009989998614151169?region=ANYWHERE"
+    },
+    {
+      "position": 40,
+      "id": "CR03865654476899614721",
+      "target_domain": "bp.com",
+      "advertiser": {
+        "id": "AR10939783647149948929",
+        "name": "BP ENERGÍA ESPAÑA SA"
+      },
+      "first_shown_datetime": "2024-10-25T10:27:49Z",
+      "last_shown_datetime": "2026-07-02T22:57:14Z",
+      "total_days_shown": 616,
+      "format": "text",
+      "details_link": "https://adstransparency.google.com/advertiser/AR10939783647149948929/creative/CR03865654476899614721?region=ANYWHERE",
+      "details_script_link": "https://displayads-formats.googleusercontent.com/ads/preview/content.js?client=ads-integrity-transparency&obfuscatedCustomerId=6705289791&creativeId=718797789023&uiFeatures=12,54&adGroupId=144061056131&versionId=4&allowedVariations=36&overlay=%3DH4sIAAAAAAAAAM2WO4gkRRjHd3YvOE8DOY_DsBEZDvb6dnp653XQnNU1Pe9H9_TO9swgDDVd1Y-Z7qqeru7pmY0OQ0HQTEx8gZzZoSBiIniJGmimhmJgaq6gsuoaiIFsIFdZwfd9wa--_4964fnOVzeu3UQY-4nPKApMgmLbA7iOEnT9wxvPPbzxwf4vz1x949t3n3n6x68f_Prb-cndyt19qiZVhHJJOC4I1Yr6fs5LkojfPToKUcTvuIy5AblD-B_Xe9SJYkXKe4FCeD4NFSnvE2V80hCreYwwjhWIgoAcYnIYoEM9JhzdPjSP6O3DYrUqFw5NRA8bJKaIYnZe1CIUxYTfPuwjHPs47xJmM0yUxiyOEWjjku9057uwNKTrZbhUYf2kURxTZM39rAezznf7R8gOVvc4Unp55Ct16HFTy3xbLNHdau2fgq01t1cabC3oBABjCmAbQqAZYMsglvt5mylS3rUDHytwmXUhWGZlRx6pHog0PwN9BNeWOVv25mA184zNbH08L9GxP5oUreLItJaTcZIObbEblHmVbSpneH7axD1noTIIppkBNvW5mml5-3w-0MxTsV4clrbGwnS9ul6pEBgGUWnsnrQMO3ZbokTKDbM6G45O6c6PrcJ2HbZPQK1ES4VxpQ4lSk2HwM2aretLqzzttNYbdzPd9mFray20SfUsPemsZ2dhsEFMC3l750inAzdv20Qp5rnvKmBYLx_PpSIi5no00yKkWWHSJDIUrVWkRlQ38gincaBMct7e2VsHl8Sr_Rvewj_wFv7Ee7LZph2Y9epqb2J0Ql22VQNqsdGceC6QEmlQmU19uSzrM8svVwyruwwss4qAH55poJfNM1t93PjKlk_WCzrprtM41nmrPipOjnnGmtL6gm8-4EiBKjDAyFXbXr8dlSyzGnVZYPRPs4a5UtVCSdueTrpAyxNf8c0BQCnhPRtGKzzWU7QYp2D8cu7SEVC9_x6BBV4sbVofS2fbgdjq13Ct3Y22ejY7Q76mTuHC5xUIdv0wtNmwE8PTs441YhCr1cc1AvIiiSdkCvmoYNR10e-SJOil25FW7rp_PdGrOf313HsHD3If7X-Se9JFfM4TdK7Wz3Jf_O3IwJP_UmTKSWwzmhCa3LFZeORGXLS5yI-APjBWQGvWYQ0kaolVtGCmL3GXlDbhxou4vdzpuLQaoynaBHBbmBUN0pTBONUbxlAGWzmNa-t2ZTBLVNEwBgW_6wzSVrKbVR1aSdvyskHB2mqeTBoB9iJna4ak267VavG0rlmwNDnuu1WU9ZbHOHQ8Q1mJlIlUzGoF0ZOK1S9zez_nbo4ITm3bf_QhFTAJBMgoT0P20v6Ln32q8eTR21wgVIjTBN0TNGqnhCYxEpJUIDxBF20CJ_HGt30mhOcNNoltRJGwEzBZ_lFsM9sjgs1CJtCUbNgH-z9ddnmb_7NgArQggeLEhMwjPs_IgvsJedx2WooqU98Ttb636My7k5U0oMAZb6uz1fRCOz_sv3lZpzdG_90Xo5bczyTuL5ds3qtGyAWToWGrfZy2TdnBZf0E9jv9blcnmeaBsV7R1FRlUHfaj6svJC1xVjJuDY3hRl7U243KriF6k2FrmoF_UXr78kp_9eDgrYO9zw_2Xr7SuLAMizGJHcbwxXfsXDC2xxgnUcw2Pibxvfg8i2mMaNLGypF7JEmLSsnN4mPnnSv7i-jBlb03rt65dv3q_fv3v__y4Tcft59--MSzD5-4lbv-7LWbqi5oA23UfPQKEDRTB49eA4IJfgdlVFyhUwoAAA&sig=ACiVB_zVJaQ20RzYmgnMeKCCMLHoNQKJbQ&htmlParentId=fletch-render-6441507881508310959&responseCallback=fletchCallback6441507881508310959"
+    }
+  ],
+  "pagination": {
+    "next_page_token": "Q2dvQVA3em1xVjBWWW1aN0VoQWhRMFA1MGQ2bUxVV1JjeVlBQUFBQUdnbjgrSEZJK0NHQ3l2ST0="
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "search_metadata": {
+    "id": "search_Lpb2Z8vDqds9YPZ2jkVgQzRy",
+    "status": "Success",
+    "created_at": "2026-07-03T03:36:55Z",
+    "request_time_taken": 0.45,
+    "parsing_time_taken": 0.0,
+    "total_time_taken": 0.45,
+    "request_url": "https://www.google.com/search/about-this-result?origin=www.google.com&cs=1&req=Cg9odHRwczovL2hwLmNvbS8SCAoAEgAaAggAGiwSAggBGgAiACoAMgYIARICdXM6AEIECAEQAEoAWgoIARIGaHAuY29tcgB6ACICEAFIAVgA&ilrm=zpr&uact=1",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_Lpb2Z8vDqds9YPZ2jkVgQzRy.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_Lpb2Z8vDqds9YPZ2jkVgQzRy"
+  },
+  "search_parameters": {
+    "engine": "google_about_this_domain",
+    "domain": "hp.com"
+  },
+  "ai_overview": {
+    "text_blocks": [
+      {
+        "type": "header",
+        "answer": "HP"
+      },
+      {
+        "type": "paragraph",
+        "answer": "Hewlett-Packard (HP), founded in 1939 by Bill Hewlett and David Packard in Palo Alto, California, was an American multinational information technology company. It initially produced printers, scanners, digital cameras, calculators, and computers, partly expanding through its 2002 merger with Compaq. In 2015, HP split into HP Inc., retaining personal computer and printer businesses, and Hewlett Packard Enterprise, for enterprise products and services. HP maintains backend and IT operations offices in Bucharest, Romania, and Bangalore, India."
+      }
+    ],
+    "reference_links": [
+      {
+        "index": 0,
+        "title": "Hewlett-Packard",
+        "link": "https://en.wikipedia.org/wiki/Hewlett-Packard",
+        "source": "Wikipedia",
+        "snippet": "The Hewlett-Packard Company, commonly shortened to Hewlett-Packard or HP, was an American multinational information technology company.",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAAAAABXZoBIAAAAnklEQVR4AeTNIQiDQABG4b+u17X1aF6PK3YEO9iMJqPVau82y4FgMezS0oVLhqsHtrcqeqzDXv3CEz/6L4yTtZM3dnHmPTtjzXZAXKYVo4agkU2GI2Lloc6JDez1+flswMu1EQZ3xlE7lK8eKDkjtwE+crBMV+wesKmCiisGGepZIfQJpMj9SNb2MYWrChjVkULuCyCfRvsdmBieyQQAsoDk/9ryhFMAAAAASUVORK5CYII="
+      },
+      {
+        "index": 1,
+        "title": "Hewlett-Packard Company",
+        "link": "https://www.britannica.com/money/Hewlett-Packard-Company",
+        "source": "Encyclopedia Britannica",
+        "snippet": "The garage in Palo Alto, California, where William Hewlett and David Packard began building electronic equipment in 1938. Reproduced with permission of the...",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAPFBMVEVHcEwKPmwLQGwLQGwLQGsAOWgcTXZEaIlXdpMyWn+Bma9uiKGVqbypuskALmLM1t/g5+y0w9Dy9fj///8H8PJTAAAABXRSTlMAILD/6JrywKcAAAGISURBVHgBhZPhjishCIVnawEQRBze/10vmTaZuO3N+kc5fJ4QlOP4ebT/rsdP5Z+bBLiFz59ju49IjBvyOG4DEOGuyl0QbovjzhN16UKdjOW2uAHQTtiIAckUvgBNVKyT6qjDNwBIfQa2GcD8DfC+xGa3tWQM/wTEkENphvBJ0gl+AxiGs+tYqtH6KR8OwDZFT6KzF8hwA++KZfA0CKbAHjzoUkHaAUVfQY/eTdSotrArDV3hAMrVi0AzpMQIT4YioYGNFDiaZ57csMCglAhMnkmAyGemVw24MnMOB4ppaoPHONl9zZIXFoAF1uoOqNLgajm4XeLZCnifczYofS5zAJwvrUMBr6hsVmugJb7yJeR4N8qtohE5HfhMBZ85RyHmbwDAKtRIdT6rQM3omWlwtxpWCTSjcQEYk+vC8nYDDbhsJbQA0pDIybA/FrjMJQWkKq6JDp8/ClRQM7URw9c/2aBBzzRvd3oH2tW04Zt0PDdgZM4NeO6j55F5bsDj1/CCO+zD++f4/wPoVR1v3hUTLgAAAABJRU5ErkJggg=="
+      }
+    ],
+    "markdown": "## HP\n\nHewlett-Packard (HP), founded in 1939 by Bill Hewlett and David Packard in Palo Alto, California, was an American multinational information technology company. It initially produced printers, scanners, digital cameras, calculators, and computers, partly expanding through its 2002 merger with Compaq. In 2015, HP split into HP Inc., retaining personal computer and printer businesses, and Hewlett Packard Enterprise, for enterprise products and services. HP maintains backend and IT operations offices in Bucharest, Romania, and Bangalore, India.\n\n[[0] - Hewlett-Packard](https://en.wikipedia.org/wiki/Hewlett-Packard)\n[[1] - Hewlett-Packard Company](https://www.britannica.com/money/Hewlett-Packard-Company)"
+  }
+}
