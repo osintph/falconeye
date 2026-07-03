@@ -1,6 +1,6 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Thirteen modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, commercial prospect dossiers, and a curated cyber news aggregator with a Philippines-focused threat pulse.
+**Free, self-hosted OSINT investigator's toolkit.** Fourteen modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, commercial prospect dossiers, reverse image search (Google Lens + Yandex), and a curated cyber news aggregator with a Philippines-focused threat pulse.
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -12,7 +12,7 @@ License: AGPL-3.0
 
 FalconEye is the workbench an OSINT investigator opens when a new lead lands on the desk. Each tab is a focused tool that does one thing well and connects to the others via one-click pivots, so you can move from "I have a wallet address" to "here are the related domains, the email infrastructure, the Telegram channel, and the script the phishing kit runs" without switching applications.
 
-### The thirteen tabs
+### The fourteen tabs
 
 | Tab | What it does |
 |---|---|
@@ -23,6 +23,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead lands on 
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
 | **IP Reputation** | Shodan InternetDB, GreyNoise Community, RIPEstat, URLhaus, reverse DNS |
 | **Sandbox History** | URLhaus and MalwareBazaar lookup by URL or file hash |
+| **Image** | Reverse image search via Google Lens and Yandex in parallel. Paste a URL or upload a file (JPEG, PNG, WebP, GIF, max 10 MB). Shows visual match grids, Yandex image sizes table sorted by resolution, cross-source domain corroboration, and EXIF data for uploads (camera, datetime, GPS). Requires a SearchAPI.io key. Results cached 24 hours in Redis. |
 | **Email Header** | Authentication checks (SPF/DKIM/DMARC), hop analysis, scam pattern detection in body. LLM-powered classification of advance fee fraud, BEC, romance scams, crypto scams, credential phishing. Supports .eml and .msg file upload. |
 | **Dork Generator** | LLM-powered Google search query generator with eleven preset categories (exposed files, admin panels, credential leaks, cloud buckets, VPN portals, etc) and free-form natural-language input |
 | **Script Decoder** | LLM-powered deobfuscation of suspicious PowerShell, JavaScript, VBA, Base64 blobs, and packed scripts. Returns deobfuscated code, IOCs, MITRE ATT&CK techniques, and detection suggestions |
