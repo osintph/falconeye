@@ -142,6 +142,10 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8L4.5 20.5a2.5 2.5 0 0 0 2 3.5h11a2.5 2.5 0 0 0 2-3.5L14 10V2"/><path d="M8 2h8"/><path d="M7 16h10"/></svg>
       Sandbox
     </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="image">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      Image
+    </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="email">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg>
       Email Header
@@ -450,6 +454,58 @@
       </button>
 
       <div id="sandbox-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- IMAGE REVERSE SEARCH TAB -->
+    <div id="tab-image" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Reverse Image Search</h2>
+      <p class="text-gray-400 text-sm mb-4">Query Google Lens and Yandex Reverse Image Search in parallel. Paste a public image URL or upload a local file. Results cached 24 hours.</p>
+
+      <!-- Input mode toggle -->
+      <div class="flex gap-1 mb-4 bg-gray-900 border border-gray-800 rounded p-1 w-fit">
+        <button id="img-mode-url" class="img-mode-btn px-4 py-1.5 text-sm rounded bg-amber-400 text-gray-950 font-bold transition">Paste URL</button>
+        <button id="img-mode-upload" class="img-mode-btn px-4 py-1.5 text-sm rounded text-gray-400 hover:text-white transition">Upload File</button>
+      </div>
+
+      <!-- URL paste mode -->
+      <div id="img-url-mode" class="mb-4">
+        <div class="flex gap-3">
+          <input id="img-url-input" type="text" placeholder="https://example.com/photo.jpg"
+            class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+          <button id="img-analyze-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+            Analyze
+          </button>
+        </div>
+        <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mt-2"
+                data-sample="https://live.staticflickr.com/7273/7633179468_3e19e45a0c_b.jpg"
+                data-target="img-url-input"
+                data-trigger="img-analyze-btn">
+          Sample (Flickr public domain bird photo)
+        </button>
+      </div>
+
+      <!-- Upload mode -->
+      <div id="img-upload-mode" class="mb-4 hidden">
+        <div id="img-dropzone"
+             class="border-2 border-dashed border-gray-700 rounded-lg p-8 text-center cursor-pointer hover:border-amber-400 transition">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-gray-600 mx-auto mb-3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          <p class="text-gray-400 text-sm">Drag and drop an image here, or click to select</p>
+          <p class="text-gray-600 text-xs mt-1">JPEG, PNG, WebP, GIF. Max 10 MB.</p>
+          <input id="img-file-input" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+        </div>
+        <div id="img-preview-area" class="hidden mt-3 flex gap-4 items-center">
+          <img id="img-preview-thumb" src="" alt="Preview" class="w-24 h-24 object-cover rounded border border-gray-700" />
+          <div>
+            <p id="img-preview-name" class="text-sm text-gray-300 font-medium"></p>
+            <p id="img-preview-size" class="text-xs text-gray-500 mt-0.5"></p>
+            <button id="img-upload-analyze-btn" class="mt-2 bg-amber-400 text-gray-950 font-bold px-5 py-1.5 rounded text-sm hover:bg-amber-300 transition">
+              Analyze
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="image-result" class="hidden space-y-4"></div>
     </div>
 
     <!-- EMAIL HEADER ANALYZER TAB -->

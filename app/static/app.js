@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -3127,6 +3127,412 @@ function renderTimelineCard(sections, errors) {
 // Load both on page ready (they fire in parallel)
 loadThreatPulse();
 loadLandingNews();
+
+// ---- Image Reverse Search Tab ----
+
+(function () {
+  const urlModeBtn = document.getElementById('img-mode-url');
+  const uploadModeBtn = document.getElementById('img-mode-upload');
+  const urlMode = document.getElementById('img-url-mode');
+  const uploadMode = document.getElementById('img-upload-mode');
+  const resultEl = document.getElementById('image-result');
+  const dropzone = document.getElementById('img-dropzone');
+  const fileInput = document.getElementById('img-file-input');
+  const previewArea = document.getElementById('img-preview-area');
+  const previewThumb = document.getElementById('img-preview-thumb');
+  const previewName = document.getElementById('img-preview-name');
+  const previewSize = document.getElementById('img-preview-size');
+  let _selectedFile = null;
+
+  function switchMode(mode) {
+    if (mode === 'url') {
+      urlModeBtn.classList.add('bg-amber-400', 'text-gray-950', 'font-bold');
+      urlModeBtn.classList.remove('text-gray-400');
+      uploadModeBtn.classList.remove('bg-amber-400', 'text-gray-950', 'font-bold');
+      uploadModeBtn.classList.add('text-gray-400');
+      urlMode.classList.remove('hidden');
+      uploadMode.classList.add('hidden');
+    } else {
+      uploadModeBtn.classList.add('bg-amber-400', 'text-gray-950', 'font-bold');
+      uploadModeBtn.classList.remove('text-gray-400');
+      urlModeBtn.classList.remove('bg-amber-400', 'text-gray-950', 'font-bold');
+      urlModeBtn.classList.add('text-gray-400');
+      uploadMode.classList.remove('hidden');
+      urlMode.classList.add('hidden');
+    }
+  }
+
+  if (urlModeBtn) urlModeBtn.addEventListener('click', () => switchMode('url'));
+  if (uploadModeBtn) uploadModeBtn.addEventListener('click', () => switchMode('upload'));
+
+  function showFilePreview(file) {
+    _selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      if (previewThumb) previewThumb.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+    if (previewName) previewName.textContent = file.name;
+    if (previewSize) previewSize.textContent = (file.size / 1024).toFixed(1) + ' KB';
+    if (previewArea) previewArea.classList.remove('hidden');
+  }
+
+  if (dropzone) {
+    dropzone.addEventListener('click', () => fileInput && fileInput.click());
+    dropzone.addEventListener('dragover', e => {
+      e.preventDefault();
+      dropzone.classList.add('border-amber-400');
+    });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('border-amber-400'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault();
+      dropzone.classList.remove('border-amber-400');
+      const file = e.dataTransfer.files[0];
+      if (file) showFilePreview(file);
+    });
+  }
+
+  if (fileInput) {
+    fileInput.addEventListener('change', () => {
+      if (fileInput.files[0]) showFilePreview(fileInput.files[0]);
+    });
+  }
+
+  function imgSkeleton() {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 animate-pulse space-y-3">
+        <div class="h-4 bg-gray-800 rounded w-1/3"></div>
+        <div class="h-48 bg-gray-800 rounded"></div>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 animate-pulse space-y-3">
+        <div class="h-4 bg-gray-800 rounded w-1/4"></div>
+        <div class="grid grid-cols-3 gap-3">
+          ${[1,2,3,4,5,6].map(() => '<div class="h-24 bg-gray-800 rounded"></div>').join('')}
+        </div>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded p-5 animate-pulse space-y-3">
+        <div class="h-4 bg-gray-800 rounded w-1/4"></div>
+        <div class="h-32 bg-gray-800 rounded"></div>
+      </div>`;
+  }
+
+  async function runImageSearch(imageUrl, isUpload) {
+    if (!resultEl) return;
+    resultEl.innerHTML = imgSkeleton();
+    resultEl.classList.remove('hidden');
+
+    try {
+      const body = isUpload ? { signed_url: imageUrl } : { image_url: imageUrl };
+      const res = await fetch('/api/image/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHtml(data.detail || 'Unknown error')}</p>`;
+        return;
+      }
+      renderImageResult(resultEl, data, imageUrl);
+    } catch (e) {
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+    }
+  }
+
+  const analyzeBtn = document.getElementById('img-analyze-btn');
+  if (analyzeBtn) {
+    analyzeBtn.addEventListener('click', () => {
+      const url = (document.getElementById('img-url-input') || {}).value.trim();
+      if (url) runImageSearch(url, false);
+    });
+  }
+
+  const urlInput = document.getElementById('img-url-input');
+  if (urlInput) {
+    urlInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') analyzeBtn && analyzeBtn.click();
+    });
+  }
+
+  const uploadAnalyzeBtn = document.getElementById('img-upload-analyze-btn');
+  if (uploadAnalyzeBtn) {
+    uploadAnalyzeBtn.addEventListener('click', async () => {
+      if (!_selectedFile) return;
+      uploadAnalyzeBtn.disabled = true;
+      uploadAnalyzeBtn.textContent = 'Uploading...';
+      try {
+        const form = new FormData();
+        form.append('file', _selectedFile);
+        const res = await fetch('/api/image/upload', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) {
+          if (resultEl) resultEl.innerHTML = `<p class="text-red-400 text-sm">Upload failed: ${escapeHtml(data.detail || 'Unknown error')}</p>`;
+          resultEl && resultEl.classList.remove('hidden');
+          return;
+        }
+        await runImageSearch(data.signed_url, true);
+      } catch (e) {
+        if (resultEl) {
+          resultEl.innerHTML = `<p class="text-red-400 text-sm">Upload failed: ${escapeHtml(e.message)}</p>`;
+          resultEl.classList.remove('hidden');
+        }
+      } finally {
+        uploadAnalyzeBtn.disabled = false;
+        uploadAnalyzeBtn.textContent = 'Analyze';
+      }
+    });
+  }
+})();
+
+
+function renderImageResult(el, data, imageUrl) {
+  const s = data.sections || {};
+  const errors = data.errors || [];
+  const cacheBadge = data.cached
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  el.innerHTML = [
+    renderImagePreviewCard(imageUrl, cacheBadge),
+    renderGoogleLensCard(s.google_lens, errors),
+    renderYandexCard(s.yandex, errors),
+    renderCrossSourceCard(s.cross_source_domains),
+    renderExifCard(s.exif),
+  ].join('');
+}
+
+
+function renderImagePreviewCard(imageUrl, cacheBadge) {
+  const safe = escapeAttr(imageUrl);
+  const display = escapeHtml(imageUrl.length > 80 ? imageUrl.slice(0, 80) + '...' : imageUrl);
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">Query Image</h3>
+        ${cacheBadge}
+      </div>
+      <div class="flex gap-4 items-start">
+        <img src="${safe}" alt="Query image"
+             class="max-w-xs max-h-64 rounded border border-gray-700 object-contain bg-gray-800"
+             onerror="this.style.display='none'" />
+        <div class="min-w-0">
+          <p class="text-xs text-gray-500 mb-1">Source URL</p>
+          <a href="${safe}" target="_blank" rel="noopener noreferrer"
+             class="text-amber-400 hover:text-amber-300 text-xs break-all font-mono">${display}</a>
+        </div>
+      </div>
+    </div>`;
+}
+
+
+function renderGoogleLensCard(section, errors) {
+  const err = errors.find(e => e.section === 'google_lens');
+  const errNote = err
+    ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  const matches = (section && section.visual_matches) || [];
+  const related = (section && section.related_searches) || [];
+  const hasError = section && section.error && !matches.length;
+
+  const matchesHtml = matches.slice(0, 12).map(m => {
+    const thumb = m.thumbnail || (m.image && m.image.link) || '';
+    const title = escapeHtml(m.title || m.source || 'Result');
+    const link = escapeAttr(m.link || '#');
+    const source = escapeHtml(m.source || '');
+    const price = m.price ? `<span class="text-green-400 text-xs">${escapeHtml(m.price)}</span>` : '';
+    const stock = m.in_stock !== undefined
+      ? `<span class="text-xs ${m.in_stock ? 'text-green-500' : 'text-gray-500'}">${m.in_stock ? 'In stock' : 'Out of stock'}</span>`
+      : '';
+    return `
+      <a href="${link}" target="_blank" rel="noopener noreferrer"
+         class="block bg-gray-800 rounded p-2 hover:bg-gray-700 transition">
+        ${thumb ? `<img src="${escapeAttr(thumb)}" alt="" class="w-full h-24 object-cover rounded mb-2" onerror="this.style.display='none'" />` : '<div class="w-full h-24 bg-gray-700 rounded mb-2 flex items-center justify-center text-gray-600 text-xs">No preview</div>'}
+        <p class="text-xs text-gray-300 leading-tight mb-1 line-clamp-2">${title}</p>
+        <p class="text-xs text-gray-500">${source}</p>
+        ${price} ${stock}
+      </a>`;
+  }).join('');
+
+  const relatedHtml = related.map(r => {
+    const link = escapeAttr(r.link || '#');
+    return `<a href="${link}" target="_blank" rel="noopener noreferrer"
+               class="text-xs bg-gray-800 px-3 py-1 rounded-full text-gray-300 hover:text-white hover:bg-gray-700 transition">${escapeHtml(r.title || '')}</a>`;
+  }).join('');
+
+  const body = matches.length
+    ? `<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-4">${matchesHtml}</div>
+       ${relatedHtml ? `<div class="flex flex-wrap gap-2"><p class="text-xs text-gray-500 w-full mb-1">Related searches</p>${relatedHtml}</div>` : ''}`
+    : (hasError
+        ? `<p class="text-sm text-gray-500">${escapeHtml(section.error)}</p>`
+        : '<p class="text-sm text-gray-500">No visual matches returned.</p>');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-3">Google Lens Results</h3>
+      ${errNote}
+      ${body}
+    </div>`;
+}
+
+
+function renderYandexCard(section, errors) {
+  const err = errors.find(e => e.section === 'yandex');
+  const errNote = err
+    ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  if (!section) {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-3">Yandex Reverse Image</h3>
+        ${errNote}
+        <p class="text-sm text-gray-500">No Yandex results.</p>
+      </div>`;
+  }
+
+  const imageSizes = section.image_sizes || {};
+  const allSizes = [];
+  for (const [group, items] of Object.entries(imageSizes)) {
+    for (const item of (items || [])) {
+      if (item.size && item.link) allSizes.push(item);
+    }
+  }
+
+  function parsePx(sizeStr) {
+    const m = sizeStr.replace(/\xd7/g, 'x').match(/(\d+)\s*x\s*(\d+)/i);
+    return m ? parseInt(m[1]) * parseInt(m[2]) : 0;
+  }
+
+  allSizes.sort((a, b) => parsePx(b.size) - parsePx(a.size));
+
+  const sizesHtml = allSizes.length
+    ? `<div class="mb-5">
+        <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wide mb-2">Image Sizes Found (${allSizes.length})</h4>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs">
+            <thead><tr class="text-gray-500 border-b border-gray-800">
+              <th class="text-left py-1 pr-4">Resolution</th>
+              <th class="text-left py-1">Source</th>
+            </tr></thead>
+            <tbody>
+              ${allSizes.slice(0, 20).map(item => {
+                const domain = (() => { try { return new URL(item.link).hostname.replace(/^www\./, ''); } catch { return item.link.slice(0,30); } })();
+                return `<tr class="border-b border-gray-800 hover:bg-gray-800">
+                  <td class="py-1.5 pr-4 text-gray-200 font-mono font-bold">${escapeHtml(item.size)}</td>
+                  <td class="py-1.5"><a href="${escapeAttr(item.link)}" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">${escapeHtml(domain)}</a></td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`
+    : '';
+
+  const visualMatches = section.visual_matches || [];
+  const similarImages = section.similar_images || [];
+  const related = section.related_searches || [];
+
+  const vmHtml = visualMatches.slice(0, 8).map(m => {
+    const thumb = m.thumbnail || '';
+    const title = escapeHtml(m.title || m.source || '');
+    const link = escapeAttr(m.link || '#');
+    const source = escapeHtml(m.source || '');
+    return `
+      <a href="${link}" target="_blank" rel="noopener noreferrer"
+         class="block bg-gray-800 rounded p-2 hover:bg-gray-700 transition">
+        ${thumb ? `<img src="${escapeAttr(thumb)}" alt="" class="w-full h-20 object-cover rounded mb-1" onerror="this.style.display='none'" />` : '<div class="w-full h-20 bg-gray-700 rounded mb-1"></div>'}
+        <p class="text-xs text-gray-300 leading-tight line-clamp-2">${title}</p>
+        <p class="text-xs text-gray-500">${source}</p>
+      </a>`;
+  }).join('');
+
+  const similarHtml = similarImages.slice(0, 8).map(m => {
+    const thumb = m.thumbnail || '';
+    const link = escapeAttr(m.link || '#');
+    return thumb
+      ? `<a href="${link}" target="_blank" rel="noopener noreferrer"><img src="${escapeAttr(thumb)}" alt="Similar" class="w-full h-20 object-cover rounded hover:opacity-80 transition" onerror="this.style.display='none'" /></a>`
+      : '';
+  }).filter(Boolean).join('');
+
+  const relatedHtml = related.map(r =>
+    `<a href="${escapeAttr(r.link || '#')}" target="_blank" rel="noopener noreferrer"
+        class="text-xs bg-gray-800 px-3 py-1 rounded-full text-gray-300 hover:text-white hover:bg-gray-700 transition">${escapeHtml(r.title || '')}</a>`
+  ).join('');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-3">Yandex Reverse Image</h3>
+      ${errNote}
+      ${sizesHtml}
+      ${visualMatches.length ? `<h4 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Visual Matches (${visualMatches.length})</h4><div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">${vmHtml}</div>` : ''}
+      ${similarImages.length ? `<h4 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">Similar Images</h4><div class="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-4">${similarHtml}</div>` : ''}
+      ${relatedHtml ? `<div class="flex flex-wrap gap-2"><p class="text-xs text-gray-500 w-full mb-1">Related searches</p>${relatedHtml}</div>` : ''}
+      ${!sizesHtml && !visualMatches.length && !similarImages.length ? '<p class="text-sm text-gray-500">No results returned.</p>' : ''}
+    </div>`;
+}
+
+
+function renderCrossSourceCard(domains) {
+  const list = domains || [];
+  const signal = list.length >= 3
+    ? '<p class="text-xs text-green-400 mb-3">Strong signal: 3 or more overlapping sources found across both engines.</p>'
+    : '';
+  const body = list.length
+    ? `${signal}<div class="flex flex-wrap gap-2">${list.map(d => `<span class="text-xs bg-gray-800 px-3 py-1 rounded text-gray-300 font-mono">${escapeHtml(d)}</span>`).join('')}</div>`
+    : '<p class="text-sm text-gray-500">No overlapping sources found across engines.</p>';
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-3">Cross-Source Corroboration</h3>
+      ${body}
+    </div>`;
+}
+
+
+function renderExifCard(exif) {
+  if (!exif || !Object.keys(exif).length) return '';
+  const hasGps = exif.gps && typeof exif.gps.lat === 'number';
+  const gpsWarning = hasGps
+    ? `<div class="bg-yellow-950 border border-yellow-700 rounded p-3 mb-4 flex items-center gap-2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-yellow-400 flex-shrink-0"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <p class="text-xs text-yellow-300">This image contains embedded location data.</p>
+      </div>`
+    : '';
+
+  const rows = [];
+  if (exif.camera_make || exif.camera_model) {
+    rows.push({ label: 'Camera', value: [exif.camera_make, exif.camera_model].filter(Boolean).join(' ') });
+  }
+  if (exif.datetime_original) rows.push({ label: 'Date taken', value: exif.datetime_original });
+  if (exif.software) rows.push({ label: 'Software', value: exif.software });
+  if (exif.orientation) rows.push({ label: 'Orientation', value: String(exif.orientation) });
+  if (exif.width && exif.height) rows.push({ label: 'Dimensions', value: `${exif.width} x ${exif.height} px` });
+  if (hasGps) {
+    const lat = exif.gps.lat.toFixed(6);
+    const lon = exif.gps.lon.toFixed(6);
+    const alt = exif.gps.altitude !== undefined ? ` (alt: ${exif.gps.altitude}m)` : '';
+    const mapUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}&zoom=15`;
+    rows.push({
+      label: 'GPS',
+      value: `<a href="${escapeAttr(mapUrl)}" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">${lat}, ${lon}${escapeHtml(alt)}</a>`,
+      raw: true,
+    });
+  }
+
+  const rowsHtml = rows.map(r =>
+    `<tr class="border-b border-gray-800">
+      <td class="py-1.5 pr-6 text-xs text-gray-500 whitespace-nowrap">${escapeHtml(r.label)}</td>
+      <td class="py-1.5 text-xs text-gray-300">${r.raw ? r.value : escapeHtml(r.value)}</td>
+    </tr>`
+  ).join('');
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-3">EXIF Data</h3>
+      ${gpsWarning}
+      <table class="w-full"><tbody>${rowsHtml}</tbody></table>
+    </div>`;
+}
 
 // ---- Privacy Policy Modal ----
 
