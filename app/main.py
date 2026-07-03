@@ -40,7 +40,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.3.0"}
+    return {"status": "ok", "version": "3.3.1"}
 
 
 @app.get("/")
