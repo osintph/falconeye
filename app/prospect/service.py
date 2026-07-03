@@ -106,14 +106,17 @@ def _select_meta_page(pages: list, identity: CompanyIdentity):
             )
             continue
 
-        # Step 2: fuzzy score
+        # Step 2: fuzzy score against canonical and display names only.
+        # Short aliases (e.g. "Stripe") match too broadly via partial_ratio;
+        # they are used for the whole-word filter above, not for scoring.
+        score_names = list({identity.canonical_name, identity.display_name})
         if _HAVE_RAPIDFUZZ:
-            score = max(_partial_ratio(pname.lower(), n.lower()) for n in names if n)
+            score = max(_partial_ratio(pname.lower(), n.lower()) for n in score_names if n)
         else:
             score = 75  # allow through when rapidfuzz absent
 
-        if score < 70:
-            log.info("meta.page_drop name=%r reason=low_fuzzy_score score=%d", pname, score)
+        if score < 75:
+            log.info("meta.page_drop name=%r reason=low_fuzzy_score score=%d threshold=75", pname, score)
             continue
 
         # Step 3: category boost
