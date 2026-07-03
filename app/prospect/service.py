@@ -37,6 +37,29 @@ except ImportError:
 
 
 # ---------------------------------------------------------------------------
+# Legal-suffix strip for Meta search query
+# ---------------------------------------------------------------------------
+
+_LEGAL_SUFFIXES = (
+    ", Inc.", ", Inc", " Inc.", " Inc",
+    ", Ltd.", " Ltd.", " Ltd", ", LLC", " LLC", " LLC.",
+    " plc", " p.l.c.", " Corp.", " Corp", " LP", " L.P.",
+    " GmbH", " AG", " SA", " SAS", " S.A.", " N.V.", " B.V.",
+    " Sàrl", " Pte. Ltd", " Pty Ltd", " Pty. Ltd.",
+)
+
+
+def _meta_search_name(identity) -> str:
+    """Return a short business name without legal suffixes for Meta page search."""
+    name = identity.display_name
+    for suffix in _LEGAL_SUFFIXES:
+        if name.endswith(suffix):
+            name = name[: -len(suffix)].strip(" ,")
+            break
+    return name or identity.display_name
+
+
+# ---------------------------------------------------------------------------
 # Category boost mapping for Meta page selection (Fix 1)
 # ---------------------------------------------------------------------------
 
@@ -307,7 +330,7 @@ async def build_dossier(domain: str) -> dict:
         jobs_query = None
         run_jobs = False
 
-    meta_query = identity.display_name
+    meta_query = _meta_search_name(identity)
 
     # ------------------------------------------------------------------
     # Wave 1: ads, meta_page_search, news, optional jobs
