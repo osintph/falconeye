@@ -2576,8 +2576,8 @@ function renderProspectResult(el, data) {
     ${renderAboutDomainCard(s.about_domain, errors)}
     ${renderAdsTransparencyCard(s.ads_transparency, s.ads_transparency_historical, errors)}
     ${renderMetaAdPresenceCard(s.meta_page_search, s.meta_ads, errors)}
-    ${renderHiringSignalsCard(s.google_jobs, derived.company_name, errors)}
-    ${renderRecentNewsCard(s.google_news, errors)}
+    ${renderHiringSignalsCard(s.google_jobs, derived, errors)}
+    ${renderRecentNewsCard(s.google_news, derived, errors)}
     ${renderTimelineCard(s, errors)}
   `;
 }
@@ -2792,11 +2792,22 @@ function renderMetaAdPresenceCard(pageSearch, metaAds, errors) {
     </div>`;
 }
 
-function renderHiringSignalsCard(jobsSection, companyName, errors) {
+function renderHiringSignalsCard(jobsSection, derived, errors) {
   const err = errors.find(e => e.section === 'google_jobs');
   const errNote = err
     ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
     : '';
+
+  const confidence = (derived && derived.confidence) || 'high';
+
+  // Low confidence: jobs call was skipped to avoid garbage results
+  if (confidence === 'low') {
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-5">
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Hiring Signals</h3>
+        <p class="text-sm text-gray-500">Company identity could not be reliably resolved. Skipping hiring signals to avoid unrelated results.</p>
+      </div>`;
+  }
 
   const jobs = (jobsSection && jobsSection.jobs) || [];
 
@@ -2809,14 +2820,7 @@ function renderHiringSignalsCard(jobsSection, companyName, errors) {
       </div>`;
   }
 
-  const companyLower = (companyName || '').toLowerCase();
-  const matched = companyLower
-    ? jobs.filter(j => {
-        const jn = (j.company_name || '').toLowerCase();
-        return jn.includes(companyLower) || companyLower.includes(jn);
-      })
-    : jobs;
-  const displayJobs = matched.length ? matched : jobs;
+  const displayJobs = jobs;
 
   // Location frequency
   const locMap = {};
@@ -2865,10 +2869,15 @@ function renderHiringSignalsCard(jobsSection, companyName, errors) {
     </div>`;
 }
 
-function renderRecentNewsCard(newsSection, errors) {
+function renderRecentNewsCard(newsSection, derived, errors) {
   const err = errors.find(e => e.section === 'google_news');
   const errNote = err
     ? `<p class="text-xs text-gray-500 mb-3 italic">${escapeHtml(err.message)}</p>`
+    : '';
+
+  const confidence = (derived && derived.confidence) || 'high';
+  const scopeNote = confidence === 'low'
+    ? `<p class="text-xs text-amber-600 mb-3">Company identity could not be reliably resolved from the domain. Domain-scoped news only.</p>`
     : '';
 
   const articles = (newsSection && newsSection.organic_results) || [];
@@ -2878,6 +2887,7 @@ function renderRecentNewsCard(newsSection, errors) {
       <div class="bg-gray-900 border border-gray-800 rounded p-5">
         <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent News</h3>
         ${errNote}
+        ${scopeNote}
         <p class="text-sm text-gray-500">No recent news articles found.</p>
       </div>`;
   }
@@ -2899,6 +2909,7 @@ function renderRecentNewsCard(newsSection, errors) {
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
       <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent News</h3>
       ${errNote}
+      ${scopeNote}
       ${articlesHtml}
     </div>`;
 }

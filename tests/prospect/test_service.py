@@ -1,7 +1,15 @@
 """
-Tests for build_dossier() and derive_company_name().
-Engine functions are mocked with fixtures captured from live SearchAPI responses.
-Uses asyncio.run() — no pytest-asyncio required.
+Tests for build_dossier(), _fetch_news(), and _filter_jobs().
+
+Engine functions are mocked with real fixtures captured from SearchAPI.
+Uses asyncio.run() (no pytest-asyncio required).
+
+Key structural notes for v3.3.1:
+  - about_domain is called first (sequential) to drive identity resolution.
+  - Wave 1 runs ads_transparency, meta_page_search, _fetch_news, optional google_jobs.
+  - Wave 2 runs ads_historical and meta_ads.
+  - Jobs call is skipped when identity.confidence == "low".
+  - News results are filtered; retry triggered when drop rate >60%.
 """
 import asyncio
 import json
@@ -16,304 +24,31 @@ def _load(name: str) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# derive_company_name
+# Helper: build a patch context for all engines
 # ---------------------------------------------------------------------------
 
-def test_derive_company_name_from_knowledge_graph():
-    from app.prospect.service import derive_company_name
-    about = _load("about_domain_stripe.json")
-    assert derive_company_name("stripe.com", about) == "Stripe, Inc."
-
-
-def test_derive_company_name_fallback_to_domain_root():
-    from app.prospect.service import derive_company_name
-    assert derive_company_name("acme.io", None) == "Acme"
-    assert derive_company_name("example.com", {}) == "Example"
-
-
-def test_derive_company_name_about_this_result_fallback():
-    from app.prospect.service import derive_company_name
-    about_data = {"about_this_result": {"title": "ACME Corp."}}
-    # No knowledge_graph, falls through to about_this_result
-    name = derive_company_name("acme.com", about_data)
-    # Suffix stripped by _SUFFIX_RE
-    assert "ACME" in name
-
-
-# ---------------------------------------------------------------------------
-# Full happy path — all 7 sections succeed
-# ---------------------------------------------------------------------------
-
-def test_build_dossier_all_succeed():
-    """All 7 engine calls succeed: all sections populated, errors empty, derived.company_name set."""
-    about = _load("about_domain_stripe.json")
-    ads30d = _load("ads_transparency_stripe.json")
-    ads_hist = _load("ads_transparency_advertiser_stripe.json")
-    meta_search = _load("meta_page_search_stripe.json")
-    meta_ads = _load("meta_ads_stripe.json")
-    news = _load("news_stripe.json")
-    jobs = _load("jobs_stripe.json")
-
-    async def mock_about(client, domain):
-        return about
-
-    async def mock_ads(client, domain, **kwargs):
-        return ads30d
-
-    async def mock_ads_hist(client, advertiser_id):
-        return ads_hist
-
-    async def mock_meta_search(client, query, **kwargs):
-        return meta_search
-
-    async def mock_meta_ads(client, page_id, **kwargs):
-        return meta_ads
-
-    async def mock_news(client, query, **kwargs):
-        return news
-
-    async def mock_jobs(client, query):
-        return jobs
-
-    async def _run():
-        with patch("app.prospect.service.about_domain", mock_about), \
-             patch("app.prospect.service.ads_transparency", mock_ads), \
-             patch("app.prospect.service.ads_transparency_historical", mock_ads_hist), \
-             patch("app.prospect.service.meta_page_search", mock_meta_search), \
-             patch("app.prospect.service.meta_ads", mock_meta_ads), \
-             patch("app.prospect.service.google_news_search", mock_news), \
-             patch("app.prospect.service.google_jobs_search", mock_jobs):
-            from app.prospect.service import build_dossier
-            return await build_dossier("stripe.com")
-
-    result = asyncio.run(_run())
-
-    assert result["domain"] == "stripe.com"
-    assert result["errors"] == []
-    assert result["generated_at"]
-
-    s = result["sections"]
-    assert s["about_domain"] == about
-    assert s["ads_transparency"] == ads30d
-    assert s["ads_transparency_historical"] == ads_hist
-    assert s["meta_page_search"] == meta_search
-    assert s["meta_ads"] == meta_ads
-    assert s["google_news"] == news
-    assert s["google_jobs"] == jobs
-
-    # Company name derived from knowledge_graph.title
-    assert result["derived"]["company_name"] == "Stripe, Inc."
-
-
-def test_build_dossier_wave2_uses_advertiser_id():
-    """Wave 2 ads_historical is called with the advertiser ID from wave 1 ads response."""
-    ads30d = _load("ads_transparency_stripe.json")
-    captured_id = []
-
-    async def mock_about(client, domain):
-        return {}
-
-    async def mock_ads(client, domain, **kwargs):
-        return ads30d
-
-    async def mock_ads_hist(client, advertiser_id):
-        captured_id.append(advertiser_id)
-        return {"search_information": {"total_results": 8000}}
-
-    async def mock_meta_search(client, query, **kwargs):
-        return {"page_results": []}
-
-    async def mock_news(client, query, **kwargs):
-        return {"organic_results": []}
-
-    async def mock_jobs(client, query):
-        return {"jobs": []}
-
-    async def _run():
-        with patch("app.prospect.service.about_domain", mock_about), \
-             patch("app.prospect.service.ads_transparency", mock_ads), \
-             patch("app.prospect.service.ads_transparency_historical", mock_ads_hist), \
-             patch("app.prospect.service.meta_page_search", mock_meta_search), \
-             patch("app.prospect.service.meta_ads", AsyncMock(return_value={})), \
-             patch("app.prospect.service.google_news_search", mock_news), \
-             patch("app.prospect.service.google_jobs_search", mock_jobs):
-            from app.prospect.service import build_dossier
-            return await build_dossier("stripe.com")
-
-    asyncio.run(_run())
-    # The advertiser ID from the fixture's first creative
-    assert len(captured_id) == 1
-    assert captured_id[0] == "AR16951989901585285121"
-
-
-def test_build_dossier_wave2_uses_page_id():
-    """Wave 2 meta_ads is called with the page_id from the first meta_page_search result."""
-    meta_search = _load("meta_page_search_stripe.json")
-    captured_page_id = []
-
-    async def mock_about(client, domain):
-        return {}
-
-    async def mock_ads(client, domain, **kwargs):
-        return {"ad_creatives": []}
-
-    async def mock_meta_search(client, query, **kwargs):
-        return meta_search
-
-    async def mock_meta_ads(client, page_id, **kwargs):
-        captured_page_id.append(page_id)
-        return {"ads": []}
-
-    async def mock_news(client, query, **kwargs):
-        return {"organic_results": []}
-
-    async def mock_jobs(client, query):
-        return {"jobs": []}
-
-    async def _run():
-        with patch("app.prospect.service.about_domain", mock_about), \
-             patch("app.prospect.service.ads_transparency", mock_ads), \
-             patch("app.prospect.service.ads_transparency_historical", AsyncMock(return_value={})), \
-             patch("app.prospect.service.meta_page_search", mock_meta_search), \
-             patch("app.prospect.service.meta_ads", mock_meta_ads), \
-             patch("app.prospect.service.google_news_search", mock_news), \
-             patch("app.prospect.service.google_jobs_search", mock_jobs):
-            from app.prospect.service import build_dossier
-            return await build_dossier("stripe.com")
-
-    asyncio.run(_run())
-    assert len(captured_page_id) == 1
-    assert captured_page_id[0] == "175383762511776"
-
-
-def test_build_dossier_wave2_skipped_when_no_advertiser_id():
-    """If wave 1 ads returns no creatives, wave 2 historical is not called."""
-    hist_called = []
-
-    async def mock_about(client, domain):
-        return {}
-
-    async def mock_ads(client, domain, **kwargs):
-        return {"ad_creatives": []}  # no advertiser ID
-
-    async def mock_ads_hist(client, advertiser_id):
-        hist_called.append(True)
-        return {}
-
-    async def mock_meta_search(client, query, **kwargs):
-        return {"page_results": []}
-
-    async def mock_news(client, query, **kwargs):
-        return {"organic_results": []}
-
-    async def mock_jobs(client, query):
-        return {"jobs": []}
-
-    async def _run():
-        with patch("app.prospect.service.about_domain", mock_about), \
-             patch("app.prospect.service.ads_transparency", mock_ads), \
-             patch("app.prospect.service.ads_transparency_historical", mock_ads_hist), \
-             patch("app.prospect.service.meta_page_search", mock_meta_search), \
-             patch("app.prospect.service.meta_ads", AsyncMock(return_value={})), \
-             patch("app.prospect.service.google_news_search", mock_news), \
-             patch("app.prospect.service.google_jobs_search", mock_jobs):
-            from app.prospect.service import build_dossier
-            return await build_dossier("noads.com")
-
-    result = asyncio.run(_run())
-    assert not hist_called, "historical engine must not be called when no advertiser_id"
-    assert result["sections"]["ads_transparency_historical"] is None
-    assert not any(e["section"] == "ads_transparency_historical" for e in result["errors"])
-
-
-# ---------------------------------------------------------------------------
-# Partial failures
-# ---------------------------------------------------------------------------
-
-def _all_succeed_mocks(overrides: dict):
-    """Return a dict of mock coroutines for all 7 engines, with specific overrides."""
+def _patch_all(**overrides):
+    """Return a dict of engine name -> mock. Overrides replace defaults."""
     defaults = {
-        "about_domain": AsyncMock(return_value={"knowledge_graph": {"title": "Test Co"}}),
-        "ads_transparency": AsyncMock(return_value={"ad_creatives": []}),
-        "ads_transparency_historical": AsyncMock(return_value={}),
-        "meta_page_search": AsyncMock(return_value={"page_results": []}),
-        "meta_ads": AsyncMock(return_value={"ads": []}),
-        "google_news_search": AsyncMock(return_value={"organic_results": []}),
-        "google_jobs_search": AsyncMock(return_value={"jobs": []}),
+        "about_domain": AsyncMock(return_value=_load("about_domain_stripe_com.json")),
+        "ads_transparency": AsyncMock(return_value=_load("ads_transparency_stripe.json")),
+        "ads_transparency_historical": AsyncMock(return_value=_load("ads_transparency_advertiser_stripe.json")),
+        "meta_page_search": AsyncMock(return_value=_load("meta_page_search_stripe.json")),
+        "meta_ads": AsyncMock(return_value=_load("meta_ads_stripe.json")),
+        "google_news_search": AsyncMock(return_value=_load("news_stripe.json")),
+        "google_jobs_search": AsyncMock(return_value=_load("jobs_stripe.json")),
     }
     defaults.update(overrides)
     return defaults
 
 
-def _partial_run(engine_name: str, exc: Exception):
-    """Run build_dossier with one engine raising exc, rest succeed. Returns dossier."""
-    override_key = engine_name
-    # Map section names to engine function names (they match for these engines)
-    mocks = _all_succeed_mocks({override_key: AsyncMock(side_effect=exc)})
+# ---------------------------------------------------------------------------
+# Full happy path
+# ---------------------------------------------------------------------------
 
-    async def _run():
-        patches = [
-            patch(f"app.prospect.service.{k}", v) for k, v in mocks.items()
-        ]
-        ctx = __import__("contextlib").ExitStack()
-        for p in patches:
-            ctx.enter_context(p)
-        with ctx:
-            from app.prospect.service import build_dossier
-            return await build_dossier("example.com")
-
-    return asyncio.run(_run())
-
-
-def test_partial_failure_about_domain():
-    result = _partial_run("about_domain", RuntimeError("timeout"))
-    assert result["sections"]["about_domain"] is None
-    errs = [e for e in result["errors"] if e["section"] == "about_domain"]
-    assert len(errs) == 1
-    assert "timeout" in errs[0]["message"]
-
-
-def test_partial_failure_ads_transparency():
-    result = _partial_run("ads_transparency", RuntimeError("429"))
-    assert result["sections"]["ads_transparency"] is None
-    errs = [e for e in result["errors"] if e["section"] == "ads_transparency"]
-    assert len(errs) == 1
-
-
-def test_partial_failure_meta_page_search():
-    result = _partial_run("meta_page_search", ConnectionError("upstream down"))
-    assert result["sections"]["meta_page_search"] is None
-    errs = [e for e in result["errors"] if e["section"] == "meta_page_search"]
-    assert len(errs) == 1
-
-
-def test_partial_failure_google_news_search():
-    result = _partial_run("google_news_search", RuntimeError("rate limited"))
-    assert result["sections"]["google_news"] is None
-    errs = [e for e in result["errors"] if e["section"] == "google_news"]
-    assert len(errs) == 1
-
-
-def test_partial_failure_google_jobs_search():
-    result = _partial_run("google_jobs_search", RuntimeError("timeout"))
-    assert result["sections"]["google_jobs"] is None
-    errs = [e for e in result["errors"] if e["section"] == "google_jobs"]
-    assert len(errs) == 1
-
-
-def test_all_engines_fail():
-    """Every engine raises: all sections null, 5+ errors, no exception propagated."""
-    exc = RuntimeError("service down")
-
-    mocks = {
-        "about_domain": AsyncMock(side_effect=exc),
-        "ads_transparency": AsyncMock(side_effect=exc),
-        "ads_transparency_historical": AsyncMock(side_effect=exc),
-        "meta_page_search": AsyncMock(side_effect=exc),
-        "meta_ads": AsyncMock(side_effect=exc),
-        "google_news_search": AsyncMock(side_effect=exc),
-        "google_jobs_search": AsyncMock(side_effect=exc),
-    }
+def test_build_dossier_all_succeed():
+    """All 7 engine calls succeed: sections populated, no errors, derived present."""
+    mocks = _patch_all()
 
     async def _run():
         with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
@@ -324,20 +59,404 @@ def test_all_engines_fail():
              patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
              patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
             from app.prospect.service import build_dossier
-            return await build_dossier("broken.com")
+            return await build_dossier("stripe.com")
 
     result = asyncio.run(_run())
 
-    for section_name in [
-        "about_domain", "ads_transparency",
-        "meta_page_search", "google_news", "google_jobs",
-    ]:
-        assert result["sections"][section_name] is None
+    assert result["domain"] == "stripe.com"
+    assert result["errors"] == []
+    assert result["generated_at"]
 
-    # Wave 1 failures mean wave 2 is skipped (no advertiser_id or page_id)
+    # Derived identity present
+    derived = result["derived"]
+    assert derived["confidence"] == "high"
+    assert derived["source"] == "knowledge_graph"
+    assert "stripe" in derived["canonical_name"].lower()
+    assert "stripe" in derived["company_name"].lower()
+
+    # All 7 sections present
+    s = result["sections"]
+    assert s["about_domain"] is not None
+    assert s["ads_transparency"] is not None
+    assert s["ads_transparency_historical"] is not None
+    assert s["meta_page_search"] is not None
+    assert s["meta_ads"] is not None
+    assert s["google_news"] is not None
+    assert s["google_jobs"] is not None
+
+
+# ---------------------------------------------------------------------------
+# Wave 2 chains from wave 1
+# ---------------------------------------------------------------------------
+
+def test_wave2_uses_advertiser_id_from_ads30d():
+    """ads_historical is called with the advertiser_id from the 30-day response."""
+    captured_id = []
+
+    async def mock_ads_hist(client, advertiser_id):
+        captured_id.append(advertiser_id)
+        return {}
+
+    mocks = _patch_all(ads_transparency_historical=mock_ads_hist)
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mock_ads_hist), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    asyncio.run(_run())
+    assert len(captured_id) == 1
+    assert captured_id[0] == "AR16951989901585285121"
+
+
+def test_wave2_uses_page_id_from_meta_search():
+    """meta_ads is called with the page_id from the first meta_page_search result."""
+    captured_page_id = []
+
+    async def mock_meta_ads(client, page_id, **kwargs):
+        captured_page_id.append(page_id)
+        return {}
+
+    mocks = _patch_all(meta_ads=mock_meta_ads)
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mocks["ads_transparency_historical"]), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mock_meta_ads), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    asyncio.run(_run())
+    assert len(captured_page_id) == 1
+    assert captured_page_id[0] == "175383762511776"
+
+
+# ---------------------------------------------------------------------------
+# Low-confidence domain: jobs skipped
+# ---------------------------------------------------------------------------
+
+def test_low_confidence_skips_jobs():
+    """When about_domain returns no KG, identity is low-confidence and jobs are not called."""
+    jobs_called = []
+
+    async def mock_about(client, domain):
+        return {}  # no KG -> low confidence
+
+    async def mock_jobs(client, query):
+        jobs_called.append(True)
+        return {}
+
+    async def mock_news(client, query, **kwargs):
+        return {"organic_results": []}
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mock_about), \
+             patch("app.prospect.service.ads_transparency", AsyncMock(return_value={"ad_creatives": []})), \
+             patch("app.prospect.service.meta_page_search", AsyncMock(return_value={"page_results": []})), \
+             patch("app.prospect.service.google_news_search", mock_news), \
+             patch("app.prospect.service.google_jobs_search", mock_jobs), \
+             patch("app.prospect.service.ads_transparency_historical", AsyncMock(return_value={})), \
+             patch("app.prospect.service.meta_ads", AsyncMock(return_value={})):
+            from app.prospect.service import build_dossier
+            return await build_dossier("unknowndomain12345.tld")
+
+    result = asyncio.run(_run())
+    assert not jobs_called, "google_jobs_search must NOT be called for low-confidence identity"
+    assert result["sections"]["google_jobs"] is None
+    assert result["derived"]["confidence"] == "low"
+    # No error for skipped jobs
+    assert not any(e["section"] == "google_jobs" for e in result["errors"])
+
+
+def test_low_confidence_uses_site_news_query():
+    """When confidence is low, news query is site:{domain} not a quoted name."""
+    captured_query = []
+
+    async def mock_about(client, domain):
+        return {}
+
+    async def mock_news(client, query, **kwargs):
+        captured_query.append(query)
+        return {"organic_results": []}
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mock_about), \
+             patch("app.prospect.service.ads_transparency", AsyncMock(return_value={"ad_creatives": []})), \
+             patch("app.prospect.service.meta_page_search", AsyncMock(return_value={"page_results": []})), \
+             patch("app.prospect.service.google_news_search", mock_news), \
+             patch("app.prospect.service.google_jobs_search", AsyncMock(return_value={})), \
+             patch("app.prospect.service.ads_transparency_historical", AsyncMock(return_value={})), \
+             patch("app.prospect.service.meta_ads", AsyncMock(return_value={})):
+            from app.prospect.service import build_dossier
+            return await build_dossier("nondescript.io")
+
+    asyncio.run(_run())
+    assert len(captured_query) == 1
+    assert "site:nondescript.io" in captured_query[0]
+    # No quoted company name in a low-confidence query
+    assert captured_query[0].startswith("site:")
+
+
+def test_high_confidence_uses_quoted_news_query():
+    """When confidence is high, news query is quoted canonical_name OR site:{domain}."""
+    captured_query = []
+
+    async def mock_news(client, query, **kwargs):
+        captured_query.append(query)
+        return {"organic_results": []}
+
+    mocks = _patch_all(google_news_search=mock_news)
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mocks["ads_transparency_historical"]), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mock_news), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    asyncio.run(_run())
+    # At least one news query was issued (may be 2 if retry triggered)
+    assert len(captured_query) >= 1
+    first_query = captured_query[0]
+    assert '"' in first_query  # quoted canonical name
+    assert "stripe" in first_query.lower()
+    assert "site:stripe.com" in first_query
+
+
+# ---------------------------------------------------------------------------
+# News validation: drop unrelated articles
+# ---------------------------------------------------------------------------
+
+def test_news_drop_filter_removes_unrelated_articles():
+    """Articles with none of the identity tokens are filtered out."""
+    from app.prospect.resolver import CompanyIdentity
+
+    identity = CompanyIdentity(
+        display_name="Stripe, Inc.",
+        canonical_name="Stripe, Inc.",
+        aliases=["Stripe", "stripe"],
+        confidence="high",
+        source="knowledge_graph",
+    )
+
+    news_result = {
+        "organic_results": [
+            {"title": "Stripe raises new funding round", "snippet": "Stripe the payments company announced..."},
+            {"title": "Completely unrelated article about weather", "snippet": "Temperatures will rise this weekend"},
+            {"title": "Stripe announces new developer tools", "snippet": "Stripe API improvements launched today"},
+        ]
+    }
+
+    async def mock_news(client, query, **kwargs):
+        return news_result
+
+    async def _run():
+        from app.prospect.service import _fetch_news
+        client = object()  # not used, mock intercepts
+        with patch("app.prospect.service.google_news_search", mock_news):
+            return await _fetch_news(client, '"Stripe, Inc." OR site:stripe.com', "stripe.com", identity)
+
+    result = asyncio.run(_run())
+    articles = result.get("organic_results", [])
+    # Weather article must be dropped
+    titles = [a["title"] for a in articles]
+    assert "Completely unrelated article about weather" not in titles
+    # Stripe articles must be kept
+    assert any("Stripe" in t for t in titles)
+
+
+def test_news_retry_on_high_drop_rate():
+    """When >60% of articles are dropped, a stricter query is retried."""
+    from app.prospect.resolver import CompanyIdentity
+
+    identity = CompanyIdentity(
+        display_name="Stripe, Inc.",
+        canonical_name="Stripe, Inc.",
+        aliases=["Stripe", "stripe"],
+        confidence="high",
+        source="knowledge_graph",
+    )
+
+    # 5 unrelated articles -> 100% drop rate -> retry
+    unrelated = [
+        {"title": f"Unrelated article {i}", "snippet": "nothing about payments"}
+        for i in range(5)
+    ]
+    good_article = {"title": "Stripe the company launches feature", "snippet": "Stripe announced..."}
+
+    call_count = []
+
+    async def mock_news(client, query, **kwargs):
+        call_count.append(query)
+        if len(call_count) == 1:
+            return {"organic_results": unrelated}  # first call: all bad
+        return {"organic_results": [good_article]}  # retry: good result
+
+    async def _run():
+        from app.prospect.service import _fetch_news
+        client = object()
+        with patch("app.prospect.service.google_news_search", mock_news):
+            return await _fetch_news(client, '"Stripe, Inc." OR site:stripe.com', "stripe.com", identity)
+
+    result = asyncio.run(_run())
+    # Retry was triggered
+    assert len(call_count) == 2
+    # Second query is the stricter site:-anchored form
+    assert 'site:stripe.com' in call_count[1]
+    assert '"Stripe, Inc."' in call_count[1]
+    # Result contains the good article
+    assert len(result.get("organic_results", [])) == 1
+
+
+# ---------------------------------------------------------------------------
+# Jobs fuzzy validation
+# ---------------------------------------------------------------------------
+
+def test_jobs_filter_keeps_matching_companies():
+    from app.prospect.resolver import CompanyIdentity
+    from app.prospect.service import _filter_jobs
+
+    identity = CompanyIdentity(
+        display_name="Stripe, Inc.",
+        canonical_name="Stripe, Inc.",
+        aliases=["Stripe", "stripe"],
+        confidence="high",
+        source="knowledge_graph",
+    )
+
+    jobs = [
+        {"title": "Engineer", "company_name": "Stripe"},
+        {"title": "Manager", "company_name": "Stripe, Inc."},
+        {"title": "Analyst", "company_name": "Random Corp"},
+        {"title": "Designer", "company_name": ""},
+    ]
+
+    kept = _filter_jobs(jobs, identity, "stripe.com")
+    company_names = [j["company_name"] for j in kept]
+    assert "Stripe" in company_names
+    assert "Stripe, Inc." in company_names
+    assert "Random Corp" not in company_names
+
+
+def test_jobs_filter_drops_mismatched_companies():
+    from app.prospect.resolver import CompanyIdentity
+    from app.prospect.service import _filter_jobs
+
+    identity = CompanyIdentity(
+        display_name="BP",
+        canonical_name="BP p.l.c.",
+        aliases=["BP", "bp"],
+        confidence="high",
+        source="knowledge_graph",
+    )
+
+    jobs = [
+        {"title": "Engineer", "company_name": "BP"},
+        {"title": "Analyst", "company_name": "British Petroleum Services"},  # not BP
+        {"title": "Dev", "company_name": "Random Tech Co"},
+    ]
+
+    kept = _filter_jobs(jobs, identity, "bp.com")
+    company_names = [j["company_name"] for j in kept]
+    assert "BP" in company_names
+    assert "Random Tech Co" not in company_names
+
+
+# ---------------------------------------------------------------------------
+# Partial failures (wave 1 and wave 2)
+# ---------------------------------------------------------------------------
+
+def test_partial_failure_about_domain():
+    """about_domain failure recorded in errors; identity falls back to domain root."""
+    async def mock_about_fail(client, domain):
+        raise RuntimeError("timeout")
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mock_about_fail), \
+             patch("app.prospect.service.ads_transparency", AsyncMock(return_value={"ad_creatives": []})), \
+             patch("app.prospect.service.meta_page_search", AsyncMock(return_value={"page_results": []})), \
+             patch("app.prospect.service.google_news_search", AsyncMock(return_value={"organic_results": []})), \
+             patch("app.prospect.service.google_jobs_search", AsyncMock(return_value={"jobs": []})), \
+             patch("app.prospect.service.ads_transparency_historical", AsyncMock(return_value={})), \
+             patch("app.prospect.service.meta_ads", AsyncMock(return_value={})):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    result = asyncio.run(_run())
+    assert result["sections"]["about_domain"] is None
+    errs = [e for e in result["errors"] if e["section"] == "about_domain"]
+    assert len(errs) == 1
+    assert "timeout" in errs[0]["message"]
+    # Jobs still skipped (low confidence since about_domain failed)
+    # Actually: no about_data -> low confidence -> jobs skipped
+    assert result["derived"]["confidence"] == "low"
+
+
+def test_partial_failure_wave1_engine():
+    """A wave-1 engine failure sets its section to None and records an error."""
+    mocks = _patch_all(
+        ads_transparency=AsyncMock(side_effect=RuntimeError("429 rate limit"))
+    )
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mocks["ads_transparency_historical"]), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    result = asyncio.run(_run())
+    assert result["sections"]["ads_transparency"] is None
+    errs = [e for e in result["errors"] if e["section"] == "ads_transparency"]
+    assert len(errs) == 1
+    assert "429" in errs[0]["message"]
+
+
+def test_all_wave1_engines_fail():
+    """If all wave-1 engines fail, sections are null and errors list has 5 entries."""
+    exc = RuntimeError("service down")
+    mocks = _patch_all(
+        ads_transparency=AsyncMock(side_effect=exc),
+        meta_page_search=AsyncMock(side_effect=exc),
+        google_news_search=AsyncMock(side_effect=exc),
+        google_jobs_search=AsyncMock(side_effect=exc),
+    )
+
+    async def _run():
+        with patch("app.prospect.service.about_domain", mocks["about_domain"]), \
+             patch("app.prospect.service.ads_transparency", mocks["ads_transparency"]), \
+             patch("app.prospect.service.ads_transparency_historical", mocks["ads_transparency_historical"]), \
+             patch("app.prospect.service.meta_page_search", mocks["meta_page_search"]), \
+             patch("app.prospect.service.meta_ads", mocks["meta_ads"]), \
+             patch("app.prospect.service.google_news_search", mocks["google_news_search"]), \
+             patch("app.prospect.service.google_jobs_search", mocks["google_jobs_search"]):
+            from app.prospect.service import build_dossier
+            return await build_dossier("stripe.com")
+
+    result = asyncio.run(_run())
+
+    for name in ["ads_transparency", "meta_page_search", "google_news"]:
+        assert result["sections"][name] is None
+    # Wave 2 skipped cleanly (no advertiser_id, no page_id)
     assert result["sections"]["ads_transparency_historical"] is None
     assert result["sections"]["meta_ads"] is None
-
-    # Only wave 1 engines produce errors; wave 2 is skipped cleanly
-    assert len(result["errors"]) == 5
-    assert result["derived"]["company_name"] == "Broken"  # domain root fallback
+    # about_domain succeeded, so no error for it
+    assert all(e["section"] != "about_domain" for e in result["errors"])

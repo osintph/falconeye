@@ -1,0 +1,26 @@
+{
+  "search_metadata": {
+    "id": "search_yG2Vzg4wPpTK86GwQvMDRdNp",
+    "status": "Success",
+    "created_at": "2026-07-03T02:30:06Z",
+    "request_time_taken": 0.56,
+    "parsing_time_taken": 0.0,
+    "total_time_taken": 0.56,
+    "request_url": "https://www.google.com/search/about-this-result?origin=www.google.com&cs=1&req=Cg9odHRwczovL29yZi5hdC8SCAoAEgAaAggAGiwSAggBGgAiACoAMgYIARICdXM6AEIECAEQAEoAWgoIARIGb3JmLmF0cgB6ACICEAFIAVgA&ilrm=zpr&uact=1",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_yG2Vzg4wPpTK86GwQvMDRdNp.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_yG2Vzg4wPpTK86GwQvMDRdNp"
+  },
+  "search_parameters": {
+    "engine": "google_about_this_domain",
+    "domain": "orf.at"
+  },
+  "knowledge_graph": {
+    "title": "ORF",
+    "subtitle": "Media company",
+    "description": "Österreichischer Rundfunk is Austria's national public broadcaster. It is organised as a foundation under public law and is Austria's largest media organisation.",
+    "source": {
+      "name": "Wikipedia",
+      "link": "https://en.wikipedia.org/wiki/ORF_%28broadcaster%29"
+    }
+  }
+}

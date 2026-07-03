@@ -1,0 +1,92 @@
+{
+  "search_metadata": {
+    "id": "search_JoY68Me7qNsNQrpb7v0axRVb",
+    "status": "Success",
+    "created_at": "2026-07-03T02:30:08Z",
+    "request_time_taken": 2.91,
+    "parsing_time_taken": 0.0,
+    "total_time_taken": 2.91,
+    "request_url": "https://www.google.com/search/about-this-result?origin=www.google.com&cs=1&req=ChBodHRwczovL2libS5jb20vEggKABIAGgIIABotEgIIARoAIgAqADIGCAESAnVzOgBCBAgBEABKAFoLCAESB2libS5jb21yAHoAIgIQAUgBWAA&ilrm=zpr&uact=1",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_JoY68Me7qNsNQrpb7v0axRVb.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_JoY68Me7qNsNQrpb7v0axRVb"
+  },
+  "search_parameters": {
+    "engine": "google_about_this_domain",
+    "domain": "ibm.com"
+  },
+  "ai_overview": {
+    "text_blocks": [
+      {
+        "type": "header",
+        "answer": "IBM"
+      },
+      {
+        "type": "paragraph",
+        "answer": "Technology company"
+      },
+      {
+        "type": "paragraph",
+        "answer": "International Business Machines Corporation (IBM), nicknamed \"Big Blue,\" is an American multinational technology and consulting company headquartered in Armonk, New York, with operations in over 175 countries. Founded in 1911 as the Computing-Tabulating-Recording Company (CTR) and renamed in 1924, IBM pioneered technologies like mainframe computers, the IBM Personal Computer, and FORTRAN. It holds the record for most annual U.S. patents for 29 consecutive years (1993–2021). IBM generates revenue from software, consulting, and hybrid cloud solutions, leveraging AI and platforms like Red Hat."
+      }
+    ],
+    "reference_links": [
+      {
+        "index": 0,
+        "title": "IBM",
+        "link": "https://en.wikipedia.org/wiki/IBM",
+        "source": "Wikipedia",
+        "snippet": "Embracing both business and scientific computing, System/360 was the first family of computers designed to cover a complete range of applications from small to...",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAAAAABXZoBIAAAAnklEQVR4AeTNIQiDQABG4b+u17X1aF6PK3YEO9iMJqPVau82y4FgMezS0oVLhqsHtrcqeqzDXv3CEz/6L4yTtZM3dnHmPTtjzXZAXKYVo4agkU2GI2Lloc6JDez1+flswMu1EQZ3xlE7lK8eKDkjtwE+crBMV+wesKmCiisGGepZIfQJpMj9SNb2MYWrChjVkULuCyCfRvsdmBieyQQAsoDk/9ryhFMAAAAASUVORK5CYII="
+      },
+      {
+        "index": 1,
+        "title": "IBM",
+        "link": "https://www.britannica.com/money/International-Business-Machines-Corporation",
+        "source": "Encyclopedia Britannica",
+        "snippet": "World chess champion Garry Kasparov playing against Deep Blue, the chess-playing computer built by IBM. In 1996 Kasparov won the first match 4−2, but in 1997 he...",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAMAAABEpIrGAAAAPFBMVEVHcEwKPmwLQGwLQGwLQGsAOWgcTXZEaIlXdpMyWn+Bma9uiKGVqbypuskALmLM1t/g5+y0w9Dy9fj///8H8PJTAAAABXRSTlMAILD/6JrywKcAAAGISURBVHgBhZPhjishCIVnawEQRBze/10vmTaZuO3N+kc5fJ4QlOP4ebT/rsdP5Z+bBLiFz59ju49IjBvyOG4DEOGuyl0QbovjzhN16UKdjOW2uAHQTtiIAckUvgBNVKyT6qjDNwBIfQa2GcD8DfC+xGa3tWQM/wTEkENphvBJ0gl+AxiGs+tYqtH6KR8OwDZFT6KzF8hwA++KZfA0CKbAHjzoUkHaAUVfQY/eTdSotrArDV3hAMrVi0AzpMQIT4YioYGNFDiaZ57csMCglAhMnkmAyGemVw24MnMOB4ppaoPHONl9zZIXFoAF1uoOqNLgajm4XeLZCnifczYofS5zAJwvrUMBr6hsVmugJb7yJeR4N8qtohE5HfhMBZ85RyHmbwDAKtRIdT6rQM3omWlwtxpWCTSjcQEYk+vC8nYDDbhsJbQA0pDIybA/FrjMJQWkKq6JDp8/ClRQM7URw9c/2aBBzzRvd3oH2tW04Zt0PDdgZM4NeO6j55F5bsDj1/CCO+zD++f4/wPoVR1v3hUTLgAAAABJRU5ErkJggg=="
+      },
+      {
+        "index": 2,
+        "title": "Life at IBM: Culture, Salary, Reviews, Interviews & more",
+        "link": "https://www.ambitionbox.com/overview/ibm-overview",
+        "source": "AmbitionBox",
+        "snippet": "The company operates in over 170 countries, employing more than 300,000 professionals globally. IBM's broad portfolio includes services in consulting, software,...",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAb1BMVEX////R2f/f5P/r7/+Tov9Tbv9whv+ptv/6+/+0v/8yUv8vUP9VcP94jP/U2v9edf8hSP82Vf9Xcv9DY/98kf/k6P8jSf+cq//09v8pTP9HZv/K0v8+W//2+P+Pnf9iev9pgP/Z3//x8//Dy/8aQ/9vQh09AAAAuklEQVR4AcXQRQKDMBBAUVwmg8Rwh/tfsd7CUFjzl3lx4/JM65Rsx/X84NhCFxhiZP5LECcpcBDoSqV3plXGOOdMIKLr5gUxWT4IIMFXlbPFunkQc3OzeqGbtASBNZ0ZtPKNPcV0qB8DxRuR4Ij1630BXUmaOu6e4BQ+7yyfvMdijjjwR03l7rHumvJJb6aoZQn8G6QR/dqOsa+V0p8MqrpfXmtZ6mlKr+oEAHhvGodpx0WyI20cjau7A3jXD/9NI5JlAAAAAElFTkSuQmCC"
+      },
+      {
+        "index": 3,
+        "title": "International Business Machines Corporation (IBM) | Business and Management | Research Starters",
+        "link": "https://www.ebsco.com/research-starters/business-and-management/international-business-machines-corporation-ibm",
+        "source": "EBSCO",
+        "snippet": "The company has continually evolved, focusing on sectors like supercomputing, artificial intelligence, cloud computing, and cybersecurity. As of mid-2023, IBM...",
+        "thumbnail": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wCEAAkGBwgHBgkIBwgKCgkLDRYPDQwMDRsUFRAWIB0iIiAdHx8kKDQsJCYxJx8fLT0tMTU3Ojo6Iys/RD84QzQ5OjcBCgoKDQwNGg8PGjclHyU3Nzc3Nzc3Nzc3LTc3NzU3Nzc3Nzc3Nzc3Nzc3Nzc3NzU3NzcuLTc1LSsrKzcyNSsrNf/AABEIABwAHAMBIgACEQEDEQH/xAAZAAADAQEBAAAAAAAAAAAAAAAFBgcCAwH/xAAqEAABAwMDAwIHAQAAAAAAAAABAgMEAAUGERIhEzFBYYEUIiMyUXGxB//EABYBAQEBAAAAAAAAAAAAAAAAAAMCBf/EABgRAQADAQAAAAAAAAAAAAAAAAEAAhEh/9oADAMBAAIRAxEAPwCXw2hJlNMKkMRw4rb1pCiG0eqiASB7Uz33A52PxY0m73ezMMST9BaXH3OpxrxsaPGnmlA+as/+isWmRhmHovF0dt4DCChbcQv7h0kbuARp4rQtdEIFajsmd4sEi0xIU0yocyFNCuhJhuKUglOmqTuSClQ17EfyhdGs2tsGz5VNt9rWpcJoMllal7ioKZQrdr51KiaC0o6bDeMzFbZelNNSZKYrK1AOPqbUsNjydqeT+hVMze64dklnsdui5b8MLW0W9ztskK6vyoSDwkafb696mBArzYn8UTXUdljkZrizittxtca0XQXe6yJKCp4wlsCO0kKJCd47lRGvPPtS8DxXPQDtWh2pKkm3Z//Z"
+      },
+      {
+        "index": 4,
+        "title": "IBM (International Business Machines Corporation)",
+        "link": "https://www.techtarget.com/searchitchannel/definition/IBM-International-Business-Machines",
+        "source": "TechTarget",
+        "snippet": "IBM is one of the world's largest IT companies, with operations in over 170 countries. IBM is known for its hardware and software products.",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAVFBMVEX////u9/fI6Oao29iL0870+vqh2dVIv7gAsqoAsagArqV6zMdoxcATta1cxL6V1dGAzsnU7OtVwrvi8vGz4N37/f3O6ujA5eIzu7M7u7Tb7+5tycS12ZOLAAAArUlEQVR4Ad3QhYHDMBAEwBWf1jrJjP3X+YxJKsiUMHhGxjr/xlmDGyEmyfIuU1IM+GU6UkpREVHtqpCdwZdG7QcMKtXFUXTC0Csb3k2q8wIEkRVvtqwAlln3CbDZ4Z2nxZaSxcyId04sisGH/cBJVZ7QER9MwZegF1peDBvGHTcWrZjZGmccB26VbFDJgok9bq2swDQBiRPudEw2hG1nwwMtM2eKw0Pmbd4ZPKVX6CoHtyuUzjMAAAAASUVORK5CYII="
+      },
+      {
+        "index": 5,
+        "title": "What is IBM?",
+        "link": "https://www.techmonitor.ai/what-is/what-is-ibm-4950406/",
+        "source": "Tech Monitor",
+        "snippet": "Founded in 1911, IBM is one of the oldest technology companies in the world and has a long history of innovation and leadership in the industry. IBM Watson sign...",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAAAAABXZoBIAAAAjklEQVR4AeXJIQjDMABE0RPTk7Pz1Mt4qImOizeFQLyYjZyomvfeu0KgujZUR8Te0pBBB4kXfebgPi7kZqbC4mknHAarUD1Y3UdSI/Nc8SOliElIiRwDcMyCkxhR3oUG2EJqxtceoanZjE7ThB3t+MZGqm4c6dGN8KIfi/+YEjLJucYVJ84hGz4KxWxxIV/IM11sm1UOhwAAAABJRU5ErkJggg=="
+      },
+      {
+        "index": 6,
+        "title": "IBM Revenue Streams: Software, Cloud, and AI Focus",
+        "link": "https://www.investopedia.com/how-ibm-makes-money-4798528",
+        "source": "Investopedia",
+        "snippet": "The company has four main business segments: Software, Consulting, Infrastructure, and Finance. IBM has reported billions in revenue, showing the strongest...",
+        "thumbnail": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABwAAAAcCAMAAABF0y+mAAAAjVBMVEX////s7e+nqrRma38yO1kbJ0ro6ex6f48UIUYiLEwrNFIwOFUyOla7vcUnME8sOFURH0UuN1Q2PVhtXGpDRFzeiHb/kWz6lHpPSV7CxMtkVWT/lnd8XGbWhnbri3Q8Q12XmqZDTWbZ2t/39/m0tr5wdIWJjZsdKEtcYnbP0dZQVmwABTkAFj/Ky9KPkqBNES8MAAABNElEQVR4Aa2SVYLEMAhAkzqQpjLu7nL/4y2U8fnceZXgxMwPsEEYxXEUBsm3K80AyREhZKl99+XgHUOF/D3kr76gJLFWdastbiqDl7zSCVR3ur1+JWI5ePTz5IRiOOp2x01l8ve+KffTzMlo2lbZp+pLtCgD0JpVTsk0NQBVEeeDhX8EBkYIUZQKwqUxK1YUHxohIgmcrY2wUedDz7gibKXFowzu7npW7fYHEQaJMXt2UrznDoqnpneS1tbYReV8rboR5k2FgGDPFsQ4VT00dw7HHSGry9Px0Oj7c2AUuwVuhRs2zlc3PbPqu1RAsrKrUdYz0O0Tkp0uTVe23EPlCOz7kYEc02rr8XFkSiBe4iXkMxApC96uyc6zzde+kuZS4/2ClYDEIJTp9/1LghDLkuRq/p8/NDMW4C5bXRoAAAAASUVORK5CYII="
+      }
+    ],
+    "markdown": "## IBM\n\nTechnology company\n\nInternational Business Machines Corporation (IBM), nicknamed \"Big Blue,\" is an American multinational technology and consulting company headquartered in Armonk, New York, with operations in over 175 countries. Founded in 1911 as the Computing-Tabulating-Recording Company (CTR) and renamed in 1924, IBM pioneered technologies like mainframe computers, the IBM Personal Computer, and FORTRAN. It holds the record for most annual U.S. patents for 29 consecutive years (1993–2021). IBM generates revenue from software, consulting, and hybrid cloud solutions, leveraging AI and platforms like Red Hat.\n\n[[0] - IBM](https://en.wikipedia.org/wiki/IBM)\n[[1] - IBM](https://www.britannica.com/money/International-Business-Machines-Corporation)\n[[2] - Life at IBM: Culture, Salary, Reviews, Interviews & more](https://www.ambitionbox.com/overview/ibm-overview)\n[[3] - International Business Machines Corporation (IBM) | Business and Management | Research Starters](https://www.ebsco.com/research-starters/business-and-management/international-business-machines-corporation-ibm)\n[[4] - IBM (International Business Machines Corporation)](https://www.techtarget.com/searchitchannel/definition/IBM-International-Business-Machines)\n[[5] - What is IBM?](https://www.techmonitor.ai/what-is/what-is-ibm-4950406/)\n[[6] - IBM Revenue Streams: Software, Cloud, and AI Focus](https://www.investopedia.com/how-ibm-makes-money-4798528)"
+  }
+}

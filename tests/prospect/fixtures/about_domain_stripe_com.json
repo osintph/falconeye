@@ -1,0 +1,26 @@
+{
+  "search_metadata": {
+    "id": "search_mMjwVJvBznTKZWVL3vynp5OY",
+    "status": "Success",
+    "created_at": "2026-07-03T02:30:05Z",
+    "request_time_taken": 0.8,
+    "parsing_time_taken": 0.0,
+    "total_time_taken": 0.8,
+    "request_url": "https://www.google.com/search/about-this-result?origin=www.google.com&cs=1&req=ChNodHRwczovL3N0cmlwZS5jb20vEggKABIAGgIIABowEgIIARoAIgAqADIGCAESAnVzOgBCBAgBEABKAFoOCAESCnN0cmlwZS5jb21yAHoAIgIQAUgBWAA&ilrm=zpr&uact=1",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_mMjwVJvBznTKZWVL3vynp5OY.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_mMjwVJvBznTKZWVL3vynp5OY"
+  },
+  "search_parameters": {
+    "engine": "google_about_this_domain",
+    "domain": "stripe.com"
+  },
+  "knowledge_graph": {
+    "title": "Stripe, Inc.",
+    "subtitle": "Financial services company",
+    "description": "Stripe, Inc. is an Irish and American multinational financial services and software as a service company dual-headquartered in South San Francisco, California, United States, and Dublin, Ireland.",
+    "source": {
+      "name": "Wikipedia",
+      "link": "https://en.wikipedia.org/wiki/Stripe,_Inc."
+    }
+  }
+}
