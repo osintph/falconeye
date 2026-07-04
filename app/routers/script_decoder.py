@@ -73,11 +73,14 @@ def _check_rate_limit(source_ip: str) -> tuple[bool, int]:
 
 
 def _record_call(source_ip: str):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("INSERT INTO script_decoder_rate_limit (source_ip) VALUES (?)", (source_ip,))
-    conn.execute("DELETE FROM script_decoder_rate_limit WHERE called_at < datetime('now', '-48 hours')")
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO script_decoder_rate_limit (source_ip) VALUES (?)", (source_ip,))
+        conn.execute("DELETE FROM script_decoder_rate_limit WHERE called_at < datetime('now', '-48 hours')")
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        log.error("Failed to write script_decoder_rate_limit row for ip=%s: %s", source_ip, exc)
 
 
 def _cache_key(code: str, hint: str | None) -> str:

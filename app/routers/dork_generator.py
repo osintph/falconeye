@@ -76,11 +76,14 @@ def _check_rate_limit(source_ip: str) -> tuple[bool, int]:
 
 
 def _record_call(source_ip: str):
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("INSERT INTO dork_gen_rate_limit (source_ip) VALUES (?)", (source_ip,))
-    conn.execute("DELETE FROM dork_gen_rate_limit WHERE called_at < datetime('now', '-48 hours')")
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO dork_gen_rate_limit (source_ip) VALUES (?)", (source_ip,))
+        conn.execute("DELETE FROM dork_gen_rate_limit WHERE called_at < datetime('now', '-48 hours')")
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        log.error("Failed to write dork_gen_rate_limit row for ip=%s: %s", source_ip, exc)
 
 
 def _cache_key(goal: str, target: str | None) -> str:
