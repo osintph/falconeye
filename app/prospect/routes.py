@@ -4,15 +4,15 @@ import os
 
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.prospect.investigations import write_investigation
 from app.prospect.service import build_dossier
+from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain
 
 log = logging.getLogger("falconeye.prospect")
 router = APIRouter(prefix="/api/prospect", tags=["prospect"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 
 PROSPECT_ENABLED = os.getenv("PROSPECT_ENABLED", "true").lower() == "true"
 _CACHE_TTL = 6 * 3600
@@ -55,7 +55,7 @@ async def get_prospect(request: Request, domain: str):
 
     dossier = await build_dossier(normalized)
 
-    client_ip = request.client.host if request.client else "unknown"
+    client_ip = get_client_ip(request)
     write_investigation(
         domain=normalized,
         generated_at=dossier.get("generated_at", ""),

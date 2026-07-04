@@ -22,6 +22,7 @@ from app.config import (
     LLM_TIMEOUT_SECONDS,
     ANTHROPIC_API_KEY,
 )
+from app.utils.client_ip import get_client_ip
 
 LLM_DECODER_ENABLED = os.getenv("LLM_DECODER_ENABLED", "true").lower() == "true"
 
@@ -265,7 +266,7 @@ async def decode(req: DecodeRequest, request: Request):
         cached["fetched_at"] = fetched_at
         return cached
 
-    source_ip = request.client.host if request and request.client else "unknown"
+    source_ip = get_client_ip(request) if request else "unknown"
     allowed, calls_used = _check_rate_limit(source_ip)
     if not allowed:
         raise HTTPException(

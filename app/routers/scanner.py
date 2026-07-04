@@ -5,13 +5,13 @@ import httpx
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from slowapi import Limiter
-from slowapi.util import get_remote_address
+from app.utils.client_ip import get_client_ip_key
 from app.utils.ssrf import validate_url
 from app.database import get_db
 from app.config import HTTPX_TIMEOUT
 
 router = APIRouter(prefix="/api/scanner", tags=["scanner"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 
 INDICATORS = [
     {"id": "telegram_exfil", "pattern": "api.telegram.org/bot", "description": "Telegram bot exfiltration endpoint"},

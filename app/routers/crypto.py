@@ -3,13 +3,13 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.config import HTTPX_TIMEOUT
+from app.utils.client_ip import get_client_ip_key
 from app.utils.ssrf import validate_url
 
 router = APIRouter(prefix="/api/crypto", tags=["crypto"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 
 BLOCKSTREAM_BASE = "https://blockstream.info/api"
 BLOCKCYPHER_ETH_BASE = "https://api.blockcypher.com/v1/eth/main/addrs"

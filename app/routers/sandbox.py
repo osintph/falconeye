@@ -7,14 +7,14 @@ from datetime import datetime, timezone, timedelta
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.config import DB_PATH, ABUSECH_AUTH_KEY
 from app.database import get_db
+from app.utils.client_ip import get_client_ip_key
 from app.utils.indicator import classify_indicator
 
 router = APIRouter(prefix="/api/sandbox", tags=["sandbox"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 log = logging.getLogger("falconeye.sandbox")
 
 CACHE_TTL_HOURS = 6

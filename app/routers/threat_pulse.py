@@ -10,13 +10,13 @@ from datetime import datetime, timezone, timedelta
 import httpx
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.config import DB_PATH, ABUSECH_AUTH_KEY
 from app.database import get_db
+from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/threat-pulse", tags=["threat-pulse"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 log = logging.getLogger("falconeye.threat_pulse")
 
 CACHE_TTL_MINUTES = 60  # URLhaus PH feed updates roughly hourly

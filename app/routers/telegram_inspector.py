@@ -7,10 +7,10 @@ import httpx
 from bs4 import BeautifulSoup
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.config import DB_PATH
 from app.database import get_db
+from app.utils.client_ip import get_client_ip_key
 from app.utils.telegram import (
     normalize_channel,
     extract_iocs,
@@ -19,7 +19,7 @@ from app.utils.telegram import (
 )
 
 router = APIRouter(prefix="/api/telegram", tags=["telegram"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 log = logging.getLogger("falconeye.telegram")
 
 CACHE_TTL_HOURS = 6

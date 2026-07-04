@@ -4,12 +4,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+from app.utils.client_ip import get_client_ip_key
 from app.routers import crypto, scanner, news, domain_intel, telegram_inspector, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder
 from app.prospect import routes as prospect_routes
 from app.image_search import routes as image_routes
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 
 _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 

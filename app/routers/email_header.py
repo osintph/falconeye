@@ -31,6 +31,7 @@ from app.config import (
     LLM_RATE_LIMIT_PER_DAY, LLM_TIMEOUT_SECONDS, LLM_MIN_BODY_CHARS,
     ANTHROPIC_API_KEY,
 )
+from app.utils.client_ip import get_client_ip
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -1080,7 +1081,7 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     # LLM body analysis: ONLY runs if body is provided
     llm_analysis = None
     if body_provided and LLM_ANALYSIS_ENABLED and ANTHROPIC_API_KEY:
-        source_ip = request.client.host if request and request.client else "unknown"
+        source_ip = get_client_ip(request) if request else "unknown"
         allowed, calls_used = _check_llm_rate_limit(source_ip)
         if allowed:
             sender_email = parsed["from"][0]["email"] if parsed["from"] else ""

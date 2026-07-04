@@ -11,14 +11,14 @@ import dns.reversename
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.config import DB_PATH
 from app.database import get_db
+from app.utils.client_ip import get_client_ip_key
 from app.utils.domain import normalize_domain, extract_tld
 
 router = APIRouter(prefix="/api/domain", tags=["domain"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 log = logging.getLogger("falconeye.domain")
 
 CACHE_TTL_HOURS = 6

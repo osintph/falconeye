@@ -3,12 +3,12 @@ import feedparser
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 from app.database import get_db
 from app.config import NEWS_CACHE_TTL_MINUTES
+from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/news", tags=["news"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 
 FEEDS = {
     "global_cyber": [
