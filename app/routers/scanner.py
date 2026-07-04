@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from slowapi import Limiter
 from app.utils.client_ip import get_client_ip_key
-from app.utils.ssrf import validate_url
+from app.utils.safe_fetch import safe_fetch, SafeFetchError
 from app.database import get_db
 from app.config import HTTPX_TIMEOUT
 
@@ -71,17 +71,19 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
     fetch_error = None
 
     if payload.url:
-        safe, reason = validate_url(payload.url)
-        if not safe:
-            raise HTTPException(status_code=400, detail=f"URL blocked: {reason}")
         try:
-            async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT, follow_redirects=True, verify=False) as client:
-                response = await client.get(payload.url, headers={"User-Agent": "Mozilla/5.0 (compatible; FalconEye/3.0)"})
-                html_content = response.text
+            result = await safe_fetch(
+                payload.url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; FalconEye/3.0)"},
+                timeout=HTTPX_TIMEOUT,
+            )
+            html_content = result["body"]
+        except SafeFetchError as e:
+            raise HTTPException(status_code=400, detail=f"URL blocked: {e}")
         except httpx.TimeoutException:
             fetch_error = "Request timed out. Site may be offline or blocking automated requests."
-        except Exception as e:
-            fetch_error = f"Fetch error: {str(e)}"
+        except Exception:
+            fetch_error = "Fetch error: could not retrieve the URL."
 
     if payload.raw_html:
         html_content = payload.raw_html
