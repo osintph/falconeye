@@ -10,9 +10,10 @@ from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from slowapi import Limiter
-from slowapi.util import get_remote_address
 
 from app.image_search.exif import extract_exif
+from app.utils.client_ip import get_client_ip_key
+from app.utils.ssrf import validate_url
 from app.image_search.service import search_image
 from app.image_search.upload import (
     _UPLOAD_DIR,
@@ -24,7 +25,7 @@ from app.image_search.upload import (
 
 log = logging.getLogger("falconeye.image_search")
 router = APIRouter(prefix="/api/image", tags=["image_search"])
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_client_ip_key)
 
 _ENABLED = os.getenv("IMAGE_SEARCH_ENABLED", "true").lower() == "true"
 _YANDEX_ENABLED = os.getenv("IMAGE_SEARCH_YANDEX_ENABLED", "true").lower() == "true"
@@ -107,6 +108,13 @@ async def image_search_endpoint(request: Request, body: SearchRequest):
         raise HTTPException(status_code=400, detail="Provide image_url or signed_url.")
 
     is_upload = bool(body.signed_url)
+
+    if not is_upload:
+        if not image_url.startswith("https://"):
+            raise HTTPException(status_code=400, detail="image_url must use https://")
+        safe, reason = validate_url(image_url)
+        if not safe:
+            raise HTTPException(status_code=400, detail=f"image_url blocked: {reason}")
 
     if is_upload:
         try:
