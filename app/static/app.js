@@ -480,28 +480,28 @@ function renderRdapCard(rdap, whoisText) {
       ${rdap.registrar ? `
       <div class="mb-3">
         <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Registrar</p>
-        <p class="text-sm text-white">${rdap.registrar.name || rdap.registrar.handle || 'Unknown'}</p>
-        ${rdap.registrar.email ? `<p class="text-xs text-gray-400">${rdap.registrar.email}</p>` : ''}
+        <p class="text-sm text-white">${escapeHtml(rdap.registrar.name || rdap.registrar.handle || 'Unknown')}</p>
+        ${rdap.registrar.email ? `<p class="text-xs text-gray-400">${escapeHtml(rdap.registrar.email)}</p>` : ''}
       </div>` : ''}
 
       ${rdap.registrant ? `
       <div class="mb-3">
         <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Registrant</p>
-        <p class="text-sm text-white">${rdap.registrant.name || rdap.registrant.handle || 'Redacted (GDPR)'}</p>
-        ${rdap.registrant.email ? `<p class="text-xs text-gray-400">${rdap.registrant.email}</p>` : ''}
+        <p class="text-sm text-white">${escapeHtml(rdap.registrant.name || rdap.registrant.handle || 'Redacted (GDPR)')}</p>
+        ${rdap.registrant.email ? `<p class="text-xs text-gray-400">${escapeHtml(rdap.registrant.email)}</p>` : ''}
       </div>` : ''}
 
       ${rdap.abuse_contact ? `
       <div class="mb-3">
         <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Abuse Contact</p>
-        <p class="text-sm text-white">${rdap.abuse_contact.email || rdap.abuse_contact.name || 'Not listed'}</p>
+        <p class="text-sm text-white">${escapeHtml(rdap.abuse_contact.email || rdap.abuse_contact.name || 'Not listed')}</p>
       </div>` : ''}
 
       ${rdap.nameservers && rdap.nameservers.length ? `
       <div class="mb-3">
         <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Nameservers</p>
         <div class="flex flex-wrap gap-2">
-          ${rdap.nameservers.map(ns => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">${ns}</span>`).join('')}
+          ${rdap.nameservers.map(ns => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">${escapeHtml(ns)}</span>`).join('')}
         </div>
       </div>` : ''}
 
@@ -509,7 +509,7 @@ function renderRdapCard(rdap, whoisText) {
       <div>
         <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">EPP Status</p>
         <div class="flex flex-wrap gap-2">
-          ${rdap.status.map(s => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-amber-300">${s}</span>`).join('')}
+          ${rdap.status.map(s => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-amber-300">${escapeHtml(s)}</span>`).join('')}
         </div>
       </div>` : ''}
     </div>`;
@@ -655,15 +655,18 @@ async function loadNews(category) {
       return;
     }
 
-    el.innerHTML = data.map(item => `
-      <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="news-card block">
+    el.innerHTML = data.map(item => {
+      const safeUrl = /^https?:\/\//i.test(item.url) ? item.url : '#';
+      return `
+      <a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer" class="news-card block">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-amber-400 font-bold">${item.feed_source}</span>
+          <span class="text-xs text-amber-400 font-bold">${escapeHtml(item.feed_source)}</span>
           <span class="text-xs text-gray-600">${fmtPHT(item.published_at)}</span>
         </div>
-        <p class="text-sm text-white leading-snug mb-1">${item.title}</p>
-        ${item.summary ? `<p class="text-xs text-gray-500 leading-relaxed line-clamp-2">${item.summary.replace(/<[^>]*>/g, '')}</p>` : ''}
-      </a>`).join('');
+        <p class="text-sm text-white leading-snug mb-1">${escapeHtml(item.title)}</p>
+        ${item.summary ? `<p class="text-xs text-gray-500 leading-relaxed line-clamp-2">${escapeHtml(item.summary)}</p>` : ''}
+      </a>`;
+    }).join('');
   } catch (e) {
     el.innerHTML = `<p class="text-red-400 text-sm">Load failed: ${e.message}</p>`;
   }
@@ -727,9 +730,10 @@ function renderTelegramResult(el, data) {
 }
 
 function renderTelegramHeader(data, cacheBadge) {
-  const photoHtml = data.photo_url
-    ? `<img src="${data.photo_url}" class="w-16 h-16 rounded-full border border-gray-700" alt="" onerror="this.style.display='none'" />`
-    : `<div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-amber-400 font-bold text-2xl">${(data.title || '?').charAt(0).toUpperCase()}</div>`;
+  const safePhotoUrl = data.photo_url && /^https:\/\//i.test(data.photo_url) ? data.photo_url : null;
+  const photoHtml = safePhotoUrl
+    ? `<img src="${escapeAttr(safePhotoUrl)}" class="w-16 h-16 rounded-full border border-gray-700" alt="" onerror="this.style.display='none'" />`
+    : `<div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-amber-400 font-bold text-2xl">${escapeHtml((data.title || '?').charAt(0).toUpperCase())}</div>`;
 
   const stats = [];
   if (data.subscribers) stats.push(`<span class="text-amber-300 font-bold">${data.subscribers}</span> subscribers`);
@@ -744,9 +748,9 @@ function renderTelegramHeader(data, cacheBadge) {
         <div class="flex items-start gap-4">
           ${photoHtml}
           <div>
-            <h3 class="text-base font-bold text-white">${data.title}</h3>
-            <p class="text-xs text-amber-400 mb-2">${data.username}</p>
-            ${data.description ? `<p class="text-xs text-gray-400 max-w-2xl">${data.description}</p>` : ''}
+            <h3 class="text-base font-bold text-white">${escapeHtml(data.title)}</h3>
+            <p class="text-xs text-amber-400 mb-2">${escapeHtml(data.username)}</p>
+            ${data.description ? `<p class="text-xs text-gray-400 max-w-2xl">${escapeHtml(data.description)}</p>` : ''}
           </div>
         </div>
         ${cacheBadge}
@@ -832,7 +836,7 @@ function renderTelegramMessages(messages) {
               <div class="flex items-center gap-2">
                 <span class="text-xs text-gray-500">${fmtPHT(m.timestamp)}</span>
                 ${m.views ? `<span class="text-xs text-gray-600">${m.views} views</span>` : ''}
-                ${m.forwarded_from ? `<span class="text-xs text-blue-400">⤴ ${m.forwarded_from}</span>` : ''}
+                ${m.forwarded_from ? `<span class="text-xs text-blue-400">⤴ ${escapeHtml(m.forwarded_from)}</span>` : ''}
               </div>
               ${m.link ? `<a href="${m.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-amber-400 hover:text-amber-300">view ↗</a>` : ''}
             </div>
@@ -1276,11 +1280,11 @@ async function loadThreatPulse() {
           <div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-3">
             <div class="flex-1 min-w-0">
               <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs bg-gray-800 text-amber-300 px-1.5 py-0.5 rounded">${item.brand}</span>
-                <span class="text-xs ${item.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(item.url_status || 'unknown').toUpperCase()}</span>
-                <span class="text-xs text-gray-600">${item.dateadded ? item.dateadded.split(' ')[0] : ''}</span>
+                <span class="text-xs bg-gray-800 text-amber-300 px-1.5 py-0.5 rounded">${escapeHtml(item.brand)}</span>
+                <span class="text-xs ${item.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${escapeHtml((item.url_status || 'unknown').toUpperCase())}</span>
+                <span class="text-xs text-gray-600">${item.dateadded ? escapeHtml(item.dateadded.split(' ')[0]) : ''}</span>
               </div>
-              <p class="text-xs text-gray-300 font-mono truncate">${item.url}</p>
+              <p class="text-xs text-gray-300 font-mono truncate">${escapeHtml(item.url)}</p>
             </div>
             <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-3 py-1 rounded transition whitespace-nowrap"
                     onclick="pivotThreatPulseToScanner('${item.url.replace(/'/g, "\\'")}')">
@@ -1390,16 +1394,18 @@ async function loadLandingNews() {
       return;
     }
 
-    el.innerHTML = data.slice(0, 3).map(item => `
-      <a href="${item.url}" target="_blank" rel="noopener noreferrer"
+    el.innerHTML = data.slice(0, 3).map(item => {
+      const safeUrl = /^https?:\/\//i.test(item.url) ? item.url : '#';
+      return `
+      <a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer"
          class="bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-3 block transition">
         <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-amber-400 font-bold">${item.feed_source}</span>
+          <span class="text-xs text-amber-400 font-bold">${escapeHtml(item.feed_source)}</span>
           <span class="text-xs text-gray-600">${fmtPHT(item.published_at)}</span>
         </div>
-        <p class="text-sm text-white leading-snug line-clamp-3">${item.title}</p>
-      </a>
-    `).join('');
+        <p class="text-sm text-white leading-snug line-clamp-3">${escapeHtml(item.title)}</p>
+      </a>`;
+    }).join('');
   } catch (e) {
     el.innerHTML = `<p class="text-xs text-red-400 col-span-3">Failed to load news: ${e.message}</p>`;
   }
