@@ -10,6 +10,7 @@ from app.utils.safe_fetch import safe_fetch, SafeFetchError
 from app.database import get_db
 from app.config import HTTPX_TIMEOUT
 from app.scanner.ph_bank_indicators import match_ph_indicators
+from app.scanner.cloudflare_detect import detect_cloudflare_challenge
 
 router = APIRouter(prefix="/api/scanner", tags=["scanner"])
 limiter = Limiter(key_func=get_client_ip_key)
@@ -91,6 +92,9 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
 
     matched_indicators = [i for i in INDICATORS if i["pattern"].lower() in html_content.lower()]
     matched_indicators += match_ph_indicators(html_content, phishing_url)
+    cf_indicator = detect_cloudflare_challenge(html_content)
+    if cf_indicator:
+        matched_indicators.append(cf_indicator)
     telegram_bot_id = extract_telegram_bot_id(html_content)
     target_brand = detect_brand(html_content, phishing_url)
     is_live = 1 if html_content and not fetch_error else 0
