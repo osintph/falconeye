@@ -5,6 +5,53 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.5.1] — 2026-07-05
+
+Phishing scanner detection improvements. Four independently-committed features that close the detection gap surfaced by `gobpi.cc/cancel/6t2w8y4b` returning zero indicators.
+
+### Features
+
+- **Phishing scanner: PH banking impersonation indicators.** New module `app/scanner/ph_bank_indicators.py` with 35 indicators across four groups: URL path patterns (`/cancel/`, `/verify/`, `/suspended/`, `/reactivate/`, `/otp/`), domain impersonation patterns (`gobpi*`, `bpiverify*`, `bdo-online*`, `gcash-verify*`, `maya-cancel*`, `paymaya-*`, `unionbank-verify*`, `metrobank-verify*`, `landbank-ph*`, `dbp-online*`), HTML content signals (OTP/TIN/CVV/PIN input fields, BPI/BDO/GCash/Maya brand text, PHP capture endpoints), and HTML structure signals (hidden `bank_name`/`target_bank`/`account_type` fields). 33 unit tests.
+
+- **Phishing scanner: Cloudflare challenge page detection.** `app/scanner/cloudflare_detect.py` returns a `cloudflare_bot_protection` medium-severity indicator when the fetched HTML matches Cloudflare challenge/block page signals ("Attention Required! | Cloudflare", "Just a moment", "cf-browser-verification", "Cloudflare Ray ID", etc.). Phishing infra behind Cloudflare Tunnel/Workers routinely blocks automated scanners to prevent takedown — this is a meaningful signal for the analyst. 10 unit tests.
+
+- **Phishing scanner: urlscan.io lookup enrichment.** `app/utils/urlscan.py` queries the urlscan.io search API for the most recent scan of the target domain. Result returned as `urlscan` key in the scanner response alongside FalconEye's own indicator verdict — the two verdicts are kept separate and neither overwrites the other. Free tier works without an API key; set `URLSCAN_API_KEY` to raise the rate limit. 12 unit tests.
+
+- **Phishing scanner: domain age check.** `app/utils/domain_age.py` queries RDAP (rdap.org) for the domain registration date, with whois subprocess fallback. Returns `{found, created_at, age_days, source, error}`. Fires `dom_age_recent` (HIGH if ≤ 7 days, MEDIUM if 8–30 days) or `dom_age_moderate` (LOW if 31–90 days). No indicator fires on lookup failure — no false positives from unavailable registries. Results cached 24 hours in new `domain_age_cache` table. whois parser collects all creation-date candidates and returns the most recent, preventing multi-section whois output (TLD registry preamble + registrar section) from returning the TLD birth year instead of the domain registration date. urlscan and domain_age run in parallel via `asyncio.gather`. Result exposed under `domain_age` key. 35 unit tests.
+
+### Regression test — gobpi.cc/cancel/6t2w8y4b
+
+Before: `indicators_matched: 0`. After:
+
+```
+[HIGH  ] dom_age_recent            Domain registered 4 days ago on 2026-06-30
+[HIGH  ] dom_gobpi                 gobpi* domain — known BPI impersonation TLD family
+[MEDIUM] ph_path_cancel            Suspicious /cancel/ path — common in PH banking phish flows
+[MEDIUM] cloudflare_bot_protection Target is behind Cloudflare bot protection
+```
+
+### Added
+
+- `app/scanner/__init__.py`
+- `app/scanner/ph_bank_indicators.py` — 35 static indicators + `match_ph_indicators()` + `match_age_indicators()`
+- `app/scanner/cloudflare_detect.py` — Cloudflare challenge page detection
+- `app/utils/urlscan.py` — urlscan.io enrichment
+- `app/utils/domain_age.py` — RDAP + whois domain age lookup with 24h cache
+- `tests/unit/test_ph_bank_indicators.py` (33 tests)
+- `tests/unit/test_cloudflare_detection.py` (10 tests)
+- `tests/unit/test_urlscan.py` (12 tests)
+- `tests/unit/test_domain_age.py` (20 tests)
+- `tests/unit/test_domain_age_indicators.py` (15 tests)
+
+### Changed
+
+- `app/routers/scanner.py` — chains all four new detection passes; `asyncio.gather` for urlscan + domain_age; adds `urlscan` and `domain_age` keys to response
+- `app/config.py` — added `URLSCAN_API_KEY`
+- `.env.example` — `URLSCAN_API_KEY` documented (optional, commented)
+- `scripts/db_init.py` — `domain_age_cache` table added
+
+---
+
 ## [3.5.0] — 2026-07-05
 
 Security remediation release. All findings from the Fable 5 automated security review (SECURITY_REVIEW_FABLE.md) are closed except the prompt injection structural risk (M-4 note) and the `script-src 'unsafe-inline'` CSP item (M-5 note), both of which require frontend refactoring and are documented as follow-on work.
