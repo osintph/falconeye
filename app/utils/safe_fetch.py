@@ -86,7 +86,7 @@ def resolve_and_check(host: str) -> list[str]:
     for result in results:
         addr = result[4][0]
         if is_private_ip(addr):
-            raise SafeFetchError(f"Hostname {host!r} resolves to a blocked address: {addr}")
+            raise SafeFetchError("hostname resolves to a private or reserved address")
         addrs.append(addr)
 
     if not addrs:

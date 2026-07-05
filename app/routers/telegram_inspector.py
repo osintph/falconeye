@@ -180,8 +180,8 @@ async def lookup_channel(request: Request, channel: str, db: sqlite3.Connection 
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Telegram request timed out. Try again in a moment.")
     except Exception as e:
-        log.warning(f"Telegram fetch failed for {normalized}: {e}")
-        raise HTTPException(status_code=502, detail=f"Telegram fetch error: {str(e)}")
+        log.warning("Telegram fetch failed for %s: %s", normalized, e)
+        raise HTTPException(status_code=502, detail="Telegram fetch error. Try again in a moment.")
 
     if r.status_code == 404:
         raise HTTPException(status_code=404, detail="Channel not found or has no public preview.")

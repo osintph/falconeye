@@ -87,7 +87,7 @@ def _getaddrinfo_returning(addr: str):
 
 def test_resolve_raises_on_private_resolution():
     with patch("app.utils.safe_fetch.socket.getaddrinfo", return_value=_getaddrinfo_returning("127.0.0.1")):
-        with pytest.raises(SafeFetchError, match="blocked"):
+        with pytest.raises(SafeFetchError, match="private or reserved"):
             resolve_and_check("evil.example.com")
 
 
@@ -162,7 +162,7 @@ def test_redirect_to_private_ip_raises():
             with patch("httpx.AsyncClient", side_effect=lambda **kw: _make_async_client(redirect_response)):
                 await safe_fetch("http://public.example.com/", max_redirects=3)
 
-    with pytest.raises(SafeFetchError, match="blocked"):
+    with pytest.raises(SafeFetchError, match="private or reserved"):
         asyncio.run(run())
 
 

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 import httpx
@@ -7,6 +8,8 @@ from slowapi import Limiter
 from app.config import HTTPX_TIMEOUT
 from app.utils.client_ip import get_client_ip_key
 from app.utils.ssrf import validate_url
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/crypto", tags=["crypto"])
 limiter = Limiter(key_func=get_client_ip_key)
@@ -71,7 +74,8 @@ async def lookup_btc(address: str) -> dict:
             raise HTTPException(status_code=429, detail="Blockstream rate limit reached. Try again in a moment.")
         raise HTTPException(status_code=503, detail=f"Blockstream API error: {e.response.status_code}")
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Upstream fetch failed: {str(e)}")
+        log.exception("BTC lookup failed for %s", address)
+        raise HTTPException(status_code=503, detail="Upstream service unavailable.")
 
     chain_stats = info.get("chain_stats", {})
     funded_sat = chain_stats.get("funded_txo_sum", 0) or 0
@@ -151,8 +155,9 @@ async def lookup_eth(address: str) -> dict:
         if e.response.status_code == 429:
             raise HTTPException(status_code=429, detail="BlockCypher rate limit reached. Try again in a moment.")
         raise HTTPException(status_code=503, detail=f"BlockCypher API error: {e.response.status_code}")
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Upstream fetch failed: {str(e)}")
+    except Exception:
+        log.exception("ETH lookup failed for %s", address)
+        raise HTTPException(status_code=503, detail="Upstream service unavailable.")
 
     balance_wei = info.get("balance", 0) or 0
     tx_count = info.get("n_tx", 0) or 0
@@ -209,8 +214,9 @@ async def lookup_trc20(address: str) -> dict:
                 },
                 headers={"User-Agent": "FalconEye/3.0"},
             )
-    except Exception as e:
-        raise HTTPException(status_code=503, detail=f"TronGrid fetch failed: {str(e)}")
+    except Exception:
+        log.exception("TRC20 lookup failed for %s", address)
+        raise HTTPException(status_code=503, detail="Upstream service unavailable.")
 
     acc_data = acc_r.json() if acc_r.status_code == 200 else {}
     tx_data = tx_r.json() if tx_r.status_code == 200 else {}
