@@ -30,6 +30,7 @@ from app.config import (
     LLM_ANALYSIS_ENABLED, LLM_MAX_BODY_TOKENS,
     LLM_RATE_LIMIT_PER_DAY, LLM_TIMEOUT_SECONDS, LLM_MIN_BODY_CHARS,
     ANTHROPIC_API_KEY,
+    REGEX_MAX_BODY_BYTES,
 )
 from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import clamp_int, safe_str, validate_findings_list
@@ -510,6 +511,9 @@ def _analyze_body(body: str, from_addrs: list[dict]) -> dict:
     text_only = re.sub(r"\s+", " ", text_only)
     text_only = text_only.replace("=20", " ").replace("=3D", "=").replace("=0A", " ")
 
+    body_truncated = len(text_only) > REGEX_MAX_BODY_BYTES
+    text_only = text_only[:REGEX_MAX_BODY_BYTES]
+
     for category, cfg in SCAM_PATTERNS.items():
         for pat in cfg["patterns"]:
             try:
@@ -597,6 +601,7 @@ def _analyze_body(body: str, from_addrs: list[dict]) -> dict:
         "urls": url_result["urls"],
         "crypto_addresses": crypto_addresses,
         "attachment_mentions": attachments_mentioned,
+        "body_truncated": body_truncated,
     }
 
 
@@ -1065,6 +1070,7 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     body_analysis = _analyze_body(body_to_analyze, parsed["from"]) if body_provided else None
     parsed["body_analysis"] = body_analysis
     parsed["body_provided"] = body_provided
+    parsed["body_regex_truncated"] = body_analysis.get("body_truncated", False) if body_analysis else False
 
     parsed["bec_assessment"] = _score_bec_indicators(parsed)
     if body_analysis:

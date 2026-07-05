@@ -17,5 +17,6 @@ LLM_MAX_BODY_TOKENS = 8000          # roughly 32KB of body text, skip LLM if lar
 LLM_RATE_LIMIT_PER_DAY = 10         # per source IP per rolling 24-hour window
 LLM_TIMEOUT_SECONDS = 15
 LLM_MIN_BODY_CHARS = 50             # below this, skip LLM (too short to analyze meaningfully)
+REGEX_MAX_BODY_BYTES = 100_000      # regex pass only; 100KB cap prevents compute amplification on adversarial input
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
