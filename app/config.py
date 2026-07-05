@@ -20,3 +20,4 @@ LLM_MIN_BODY_CHARS = 50             # below this, skip LLM (too short to analyze
 REGEX_MAX_BODY_BYTES = 100_000      # regex pass only; 100KB cap prevents compute amplification on adversarial input
 
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+URLSCAN_API_KEY = os.getenv("URLSCAN_API_KEY", "")

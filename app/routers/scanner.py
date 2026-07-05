@@ -11,6 +11,7 @@ from app.database import get_db
 from app.config import HTTPX_TIMEOUT
 from app.scanner.ph_bank_indicators import match_ph_indicators
 from app.scanner.cloudflare_detect import detect_cloudflare_challenge
+from app.utils.urlscan import check_urlscan
 
 router = APIRouter(prefix="/api/scanner", tags=["scanner"])
 limiter = Limiter(key_func=get_client_ip_key)
@@ -99,6 +100,10 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
     target_brand = detect_brand(html_content, phishing_url)
     is_live = 1 if html_content and not fetch_error else 0
 
+    urlscan_result = {}
+    if phishing_url:
+        urlscan_result = await check_urlscan(phishing_url)
+
     if phishing_url:
         h = hashlib.sha256(phishing_url.strip().lower().encode()).hexdigest()
         db.execute(
@@ -115,6 +120,7 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
         "indicators_matched": len(matched_indicators),
         "indicators": matched_indicators,
         "fetch_error": fetch_error,
+        "urlscan": urlscan_result,
     }
 
 
