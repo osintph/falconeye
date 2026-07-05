@@ -23,11 +23,17 @@ import httpx
 
 ALLOWED_SCHEMES = {"http", "https"}
 
-# RFC 6598 CGNAT
+# Explicit blocks for ranges that ipaddress stdlib does not classify via the
+# is_private / is_loopback / is_link_local / is_reserved / is_unspecified
+# flags on Python 3.9 (L-1 blocklist completeness):
+#   0.0.0.0/8  — "This" network (RFC 1122 §3.2.1.3): also caught by is_private
+#   100.64.0.0/10 — CGNAT (RFC 6598): NOT in is_private on Python 3.9
+#   64:ff9b::/96  — NAT64 well-known prefix (RFC 6052): NOT reliably in stdlib flags
+# Remaining ranges (169.254.0.0/16, fe80::/10, ::/128, ::1, ::ffff:a.b.c.d)
+# are caught by is_link_local, is_unspecified, is_loopback, or the ipv4_mapped
+# unwrap below.
 _CGNAT = ipaddress.ip_network("100.64.0.0/10")
-# Well-known prefix for NAT64 (RFC 6052)
 _NAT64 = ipaddress.ip_network("64:ff9b::/96")
-# "This" network
 _THIS_NETWORK = ipaddress.ip_network("0.0.0.0/8")
 
 
