@@ -1,7 +1,9 @@
+import asyncio
 import json
 import sqlite3
 import hashlib
 import httpx
+from urllib.parse import urlparse
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from slowapi import Limiter
@@ -9,9 +11,10 @@ from app.utils.client_ip import get_client_ip_key
 from app.utils.safe_fetch import safe_fetch, SafeFetchError
 from app.database import get_db
 from app.config import HTTPX_TIMEOUT
-from app.scanner.ph_bank_indicators import match_ph_indicators
+from app.scanner.ph_bank_indicators import match_ph_indicators, match_age_indicators
 from app.scanner.cloudflare_detect import detect_cloudflare_challenge
 from app.utils.urlscan import check_urlscan
+from app.utils.domain_age import check_domain_age
 
 router = APIRouter(prefix="/api/scanner", tags=["scanner"])
 limiter = Limiter(key_func=get_client_ip_key)
@@ -100,9 +103,15 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
     target_brand = detect_brand(html_content, phishing_url)
     is_live = 1 if html_content and not fetch_error else 0
 
-    urlscan_result = {}
+    urlscan_result: dict = {}
+    domain_age_result: dict = {}
     if phishing_url:
-        urlscan_result = await check_urlscan(phishing_url)
+        host = urlparse(phishing_url).hostname or ""
+        urlscan_result, domain_age_result = await asyncio.gather(
+            check_urlscan(phishing_url),
+            check_domain_age(host, db),
+        )
+        matched_indicators += match_age_indicators(domain_age_result)
 
     if phishing_url:
         h = hashlib.sha256(phishing_url.strip().lower().encode()).hexdigest()
@@ -121,6 +130,7 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
         "indicators": matched_indicators,
         "fetch_error": fetch_error,
         "urlscan": urlscan_result,
+        "domain_age": domain_age_result,
     }
 
 

@@ -88,6 +88,16 @@ CREATE TABLE IF NOT EXISTS prospect_investigations (
 
 CREATE INDEX IF NOT EXISTS idx_prospect_domain ON prospect_investigations(domain);
 CREATE INDEX IF NOT EXISTS idx_prospect_generated ON prospect_investigations(generated_at);
+
+CREATE TABLE IF NOT EXISTS domain_age_cache (
+    domain      TEXT PRIMARY KEY,
+    created_at  TEXT NOT NULL,
+    age_days    INTEGER NOT NULL,
+    source      TEXT NOT NULL,
+    checked_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_domain_age_checked ON domain_age_cache(checked_at);
 """)
 
 conn.commit()

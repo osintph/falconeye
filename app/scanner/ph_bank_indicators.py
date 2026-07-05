@@ -425,3 +425,72 @@ def match_ph_indicators(html: str, url: str) -> list[dict]:
         if ind["pattern"].lower() in target:
             matched.append(ind)
     return matched
+
+
+def match_age_indicators(age_result: dict) -> list[dict]:
+    """
+    Returns domain-age-based indicators given the result of check_domain_age().
+
+    Fires nothing when age_result["found"] is False — no false positives
+    from lookup failures.
+
+    dom_age_recent  — HIGH  if age_days ≤ 7
+                    — MEDIUM if 8 ≤ age_days ≤ 30
+    dom_age_moderate — LOW  if 31 ≤ age_days ≤ 90
+    """
+    if not age_result.get("found"):
+        return []
+
+    age_days = age_result.get("age_days", -1)
+    created_at = age_result.get("created_at", "")
+
+    if age_days < 0:
+        return []
+
+    if age_days <= 7:
+        return [
+            {
+                "id": "dom_age_recent",
+                "type": "domain_age",
+                "pattern": f"age_days={age_days}",
+                "severity": "high",
+                "description": (
+                    f"Domain registered {age_days} day{'s' if age_days != 1 else ''} ago"
+                    f" on {created_at[:10]}. Newly registered domains are the primary"
+                    " infrastructure for banking phishing."
+                ),
+                "category": "ph_banking",
+            }
+        ]
+
+    if age_days <= 30:
+        return [
+            {
+                "id": "dom_age_recent",
+                "type": "domain_age",
+                "pattern": f"age_days={age_days}",
+                "severity": "medium",
+                "description": (
+                    f"Domain registered {age_days} days ago on {created_at[:10]}."
+                    " Newly registered domains are the primary infrastructure for banking phishing."
+                ),
+                "category": "ph_banking",
+            }
+        ]
+
+    if age_days <= 90:
+        return [
+            {
+                "id": "dom_age_moderate",
+                "type": "domain_age",
+                "pattern": f"age_days={age_days}",
+                "severity": "low",
+                "description": (
+                    f"Domain registered {age_days} days ago on {created_at[:10]}."
+                    " Recent registration is a mild phishing signal."
+                ),
+                "category": "ph_banking",
+            }
+        ]
+
+    return []
