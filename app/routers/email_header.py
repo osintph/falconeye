@@ -32,6 +32,7 @@ from app.config import (
     ANTHROPIC_API_KEY,
 )
 from app.utils.client_ip import get_client_ip
+from app.utils.llm_response import clamp_int, safe_str, validate_findings_list
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -1100,16 +1101,16 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
 
     # Merge LLM verdict into BEC score
     if llm_analysis and not llm_analysis.get("rate_limited"):
-        llm_score = llm_analysis.get("scam_score", 0)
+        llm_score = clamp_int(llm_analysis.get("scam_score"), 0, 100, default=0)
         current_score = parsed["bec_assessment"]["score"]
         new_score = max(current_score, llm_score)
         parsed["bec_assessment"]["score"] = new_score
 
-        for finding in llm_analysis.get("findings", []):
+        for finding in validate_findings_list(llm_analysis.get("findings")):
             parsed["bec_assessment"]["indicators"].append({
-                "severity": finding.get("severity", "medium"),
-                "name": f"[LLM] {finding.get('name', 'Detection')}",
-                "detail": finding.get("evidence", "")[:200],
+                "severity": safe_str(finding.get("severity"), 20, "medium"),
+                "name": f"[LLM] {safe_str(finding.get('name'), 100, 'Detection')}",
+                "detail": safe_str(finding.get("evidence"), 200, ""),
             })
 
         score = parsed["bec_assessment"]["score"]
@@ -1122,9 +1123,12 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
         else:
             parsed["bec_assessment"]["verdict"] = "low_risk"
 
-        parsed["bec_assessment"]["llm_verdict"] = llm_analysis.get("verdict", "unknown")
-        parsed["bec_assessment"]["llm_scam_type"] = llm_analysis.get("scam_type", "")
-        parsed["bec_assessment"]["llm_summary"] = llm_analysis.get("summary", "")
+        parsed["bec_assessment"]["llm_verdict"] = safe_str(llm_analysis.get("verdict"), 100, "unknown")
+        parsed["bec_assessment"]["llm_scam_type"] = safe_str(llm_analysis.get("scam_type"), 100, "")
+        parsed["bec_assessment"]["llm_summary"] = safe_str(llm_analysis.get("summary"), 500, "")
+        parsed["bec_assessment"]["llm_note"] = (
+            "llm_verdict, llm_scam_type, and llm_summary are Claude Haiku 4.5 model opinions, not verified verdicts."
+        )
 
     parsed["cache_hit"] = False
     parsed["fetched_at"] = datetime.now(timezone.utc).isoformat()
