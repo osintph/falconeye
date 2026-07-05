@@ -1,5 +1,5 @@
 [Unit]
-Description=FalconEye v3
+Description=FalconEye v3.5.0
 After=network.target
 
 [Service]
