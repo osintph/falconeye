@@ -58,7 +58,7 @@ FalconEye is a public, unauthenticated OSINT tool with no login. The following c
 
 **XSS.** Attacker-controlled strings from Telegram channel metadata, RDAP registration fields, RSS feeds, and threat intelligence APIs are escaped with `escapeHtml()` / `escapeAttr()` before any DOM insertion. The existing escape helpers are used consistently; no `innerHTML` is assigned with unescaped external data.
 
-**Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings.
+**Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings. `script-src` also allows `cdn.tailwindcss.com` for Tailwind and `cdnjs.cloudflare.com` for D3.
 
 **Error isolation.** Exception strings from httpx and upstream APIs are logged server-side with `log.exception` and never echoed to the client. Client responses get generic messages only (`"Upstream service unavailable."`).
 

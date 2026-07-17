@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.5.2] — 2026-07-17
+
+CSP hotfix — restores the Crypto Investigation Workbench transaction graph, which the v3.5.0 CSP `script-src` allowlist broke by omitting the D3 CDN.
+
+### Fixed
+
+- **Crypto Investigation Workbench D3 graph render.** The nginx CSP `script-src` allowlist added in v3.5.0 did not include `cdnjs.cloudflare.com`, the CDN serving `d3/7.9.0/d3.min.js`. The browser silently blocked D3 and the frontend surfaced the resulting `ReferenceError` as "Request failed: d3 is not defined" once a wallet lookup completed. The transaction timeline still rendered because it is plain HTML with no D3 dependency. Added `https://cdnjs.cloudflare.com` to `script-src` in `nginx/falconeye.conf` and mirrored the change to the live `/etc/nginx/sites-available/falconeye` config on the VPS. `style-src` was intentionally not widened. No frontend code changes.
+
+---
+
 ## [3.5.1] — 2026-07-05
 
 Phishing scanner detection improvements. Four independently-committed features that close the detection gap surfaced by `gobpi.cc/cancel/6t2w8y4b` returning zero indicators.
