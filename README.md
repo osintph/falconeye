@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Fourteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, commercial prospect dossiers, reverse image search, and a curated cyber news aggregator with a Philippines-focused threat pulse.
 
-Current version: **3.5.0**
+Current version: **3.5.2**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
