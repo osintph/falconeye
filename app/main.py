@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.utils.client_ip import get_client_ip_key
-from app.routers import crypto, scanner, news, domain_intel, telegram_inspector, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder
+from app.routers import crypto, scanner, news, domain_intel, telegram_inspector, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer
 from app.prospect import routes as prospect_routes
 from app.image_search import routes as image_routes
 
@@ -15,7 +15,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.5.2",
+    version="3.6.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -34,6 +34,8 @@ app.include_router(threat_pulse.router)
 app.include_router(email_header.router)
 app.include_router(dork_generator.router)
 app.include_router(script_decoder.router)
+app.include_router(url_expander.router)
+app.include_router(qr_analyzer.router)
 app.include_router(prospect_routes.router)
 app.include_router(image_routes.router)
 
@@ -42,7 +44,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.5.2"}
+    return {"status": "ok", "version": "3.6.0"}
 
 
 @app.get("/")

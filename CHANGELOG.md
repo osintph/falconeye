@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.6.0] — 2026-07-17
+
+Two new tabs for the same investigative flow: figure out where a suspicious link actually goes before touching it.
+
+### Added
+
+- **URL Expander + Redirect Chain Analyzer (`/api/url/expand`).** Paste a short URL and get the full redirect chain hop-by-hop with status codes, TLS certificate details per HTTPS hop, server headers, and elapsed time. Detects a meta-refresh redirect in HTML bodies (one hop deep). Computes shortener-chain depth against a curated list of 21 shorteners, and flags TLD switches, punycode hostnames, and non-standard ports. One-click pivot pushes the final URL into the Phishing Scanner.
+- **QR Code Analyzer (`/api/qr/decode`).** Upload a QR image or paste a base64 data URI. Decodes multiple QR codes per image with pyzbar and categorizes decoded content by scheme: HTTP(S), Bitcoin, Ethereum, UPI, WiFi, sms, tel, geo, or plain text. Images are processed in memory and never persisted (5 MB cap). Decoded URLs pivot into the URL Expander with one click.
+
+### Security
+
+- The URL Expander reuses the existing `app/utils/safe_fetch` SSRF primitives (`resolve_and_check` / `is_private_ip`) — **no second SSRF implementation was introduced.** Every redirect hop and each per-hop TLS grab are re-validated against private/loopback/link-local/reserved/multicast/CGNAT/NAT64/IPv4-mapped ranges; embedded userinfo and non-`http(s)` schemes are rejected. The QR endpoint never fetches a URL — it only decodes.
+
+### Changed
+
+- Two new per-IP daily rate-limit tables (`url_expand_rate_limit`, `qr_decode_rate_limit`), 10 requests per client IP per 24 hours each, keyed on `CF-Connecting-IP`, mirroring the existing `dork_gen_rate_limit` pattern.
+- FastAPI app metadata and `/health` bumped to 3.6.0; JSON-LD `softwareVersion` bumped to 3.6.0; README module count updated to sixteen.
+- Added `pyzbar` and `qrcode[pil]` to `requirements.txt`; the `libzbar0` system package is now required (pyzbar's native dependency).
+
+### Operator notes
+
+Requires the `libzbar0` system package (`apt-get install -y libzbar0`) for pyzbar. **Playwright is intentionally not installed in this release** — the URL Expander skips the final-page screenshot and returns the chain as normal (the screenshot panel shows an "unavailable" note). A hardened, private-range-blocking browser capture is deferred to a later release.
+
+---
+
 ## [3.5.2] — 2026-07-17
 
 CSP hotfix — restores the Crypto Investigation Workbench transaction graph, which the v3.5.0 CSP `script-src` allowlist broke by omitting the D3 CDN.

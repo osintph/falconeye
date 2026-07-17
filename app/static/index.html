@@ -54,7 +54,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.5.2",
+    "softwareVersion": "3.6.0",
     "featureList": [
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
@@ -66,7 +66,9 @@
       "Google dork generator (LLM-powered)",
       "Suspicious script decoder (LLM-powered)",
       "Company dossier (Google identity, Ads Transparency, Meta Ad Library, hiring signals, recent news)",
-      "Cyber news aggregator"
+      "Cyber news aggregator",
+      "URL expander and redirect chain analyzer",
+      "QR code analyzer"
     ]
   }
   </script>
@@ -141,6 +143,14 @@
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="sandbox">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8L4.5 20.5a2.5 2.5 0 0 0 2 3.5h11a2.5 2.5 0 0 0 2-3.5L14 10V2"/><path d="M8 2h8"/><path d="M7 16h10"/></svg>
       Sandbox
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="url">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      URL Expander
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="qr">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="4" height="4"/></svg>
+      QR
     </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="image">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
@@ -454,6 +464,52 @@
       </button>
 
       <div id="sandbox-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- URL EXPANDER TAB -->
+    <div id="tab-url" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">URL Expander</h2>
+      <p class="text-gray-400 text-sm mb-6">Paste a short URL to reveal the full redirect chain, TLS chain, and final landing page. Results are not cached.</p>
+
+      <div class="flex gap-3 mb-3">
+        <input id="url-input" type="text" placeholder="https://bit.ly/..."
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="url-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
+          Expand
+        </button>
+      </div>
+      <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-6"
+              data-sample="https://httpbin.org/absolute-redirect/3"
+              data-target="url-input"
+              data-trigger="url-btn">
+        ↳ Try sample (httpbin 3-hop)
+      </button>
+
+      <div id="url-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- QR ANALYZER TAB -->
+    <div id="tab-qr" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">QR Code Analyzer</h2>
+      <p class="text-gray-400 text-sm mb-6">Upload a QR image to decode its content. URLs can be forwarded to the URL Expander for full redirect analysis. Images are processed in memory and never stored.</p>
+
+      <div id="qr-drop" class="border-2 border-dashed border-gray-700 rounded p-6 text-center text-sm text-gray-400 hover:border-amber-400 transition cursor-pointer mb-3">
+        <p class="mb-1">Drag &amp; drop a QR image here, or <span class="text-amber-400">click to browse</span></p>
+        <p class="text-xs text-gray-600">PNG, JPG, GIF, WEBP &middot; Max 5 MB</p>
+        <input id="qr-file" type="file" accept="image/*" class="hidden" />
+      </div>
+      <div class="mb-3">
+        <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Or paste a data URI</label>
+        <input id="qr-datauri" type="text" placeholder="data:image/png;base64,..."
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="qr-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Analyze</button>
+        <button id="qr-sample" class="text-xs text-gray-500 hover:text-amber-400 transition">↳ Try sample (falconeye.osintph.info QR)</button>
+      </div>
+      <p id="qr-filename" class="text-xs text-gray-500 mt-2"></p>
+
+      <div id="qr-result" class="mt-8 hidden space-y-4"></div>
     </div>
 
     <!-- IMAGE REVERSE SEARCH TAB -->

@@ -1,8 +1,8 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Fourteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, commercial prospect dossiers, reverse image search, and a curated cyber news aggregator with a Philippines-focused threat pulse.
+**Free, self-hosted OSINT investigator's toolkit.** Sixteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, and a curated cyber news aggregator with a Philippines-focused threat pulse.
 
-Current version: **3.5.2**
+Current version: **3.6.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -25,6 +25,8 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
 | **IP Reputation** | Shodan InternetDB, GreyNoise Community, RIPEstat, URLhaus, reverse DNS |
 | **Sandbox History** | URLhaus and MalwareBazaar lookup by URL or file hash |
+| **URL Expander** | Follow a short URL's full redirect chain hop-by-hop with per-hop status codes, TLS certificate details, server headers, and timing. Flags shortener depth, TLD switches, punycode hostnames, and non-standard ports. Every hop is re-validated through `safe_fetch`'s SSRF guard. One-click pivot to the Phishing Scanner. |
+| **QR Analyzer** | Decode one or more QR codes from an uploaded image or a base64 data URI (processed in memory, never stored). Categorizes payloads (HTTP, Bitcoin, Ethereum, UPI, WiFi, sms, tel, geo, text). One-click pivot of decoded URLs into the URL Expander. |
 | **Image** | Reverse image search via Google Lens and Yandex in parallel. Paste a URL or upload a file (JPEG, PNG, WebP, GIF, max 10 MB). Shows visual match grids, cross-source domain corroboration, and EXIF metadata for uploads. Requires a SearchAPI.io key. Results cached 24 hours in Redis. |
 | **Email Header** | Authentication checks (SPF/DKIM/DMARC), hop analysis with ASN attribution, body scam pattern detection. LLM-powered classification with validated, clamped output. Supports .eml and .msg file upload. |
 | **Dork Generator** | LLM-powered Google search query generator with preset categories and free-form natural-language input |
@@ -52,7 +54,7 @@ Typical cost per LLM call: ~$0.003.
 
 FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.5.0:
 
-**SSRF prevention (Phishing Scanner).** All user-supplied URLs pass through `safe_fetch` before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). TLS certificate verification is enforced on all outbound fetches (`verify=True`). Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
+**SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
 **Rate limiting.** All per-IP limits — including LLM cost controls and phishing scanner — are keyed on the `CF-Connecting-IP` header, which Cloudflare sets and nginx preserves. This header is trustworthy because nginx only accepts connections from Cloudflare IP ranges. The fallback for local development (no `CF-Connecting-IP`) is `request.client.host`.
 
@@ -186,6 +188,8 @@ All write endpoints accept JSON. Rate limits are enforced per real client IP (`C
 | `/api/email-header/upload` | POST | None |
 | `/api/dork-generator/generate` | POST | 10/IP/24h |
 | `/api/script-decoder/decode` | POST | 10/IP/24h |
+| `/api/url/expand` | POST | 10/IP/24h |
+| `/api/qr/decode` | POST | 10/IP/24h |
 | `/api/news/feed` | GET | None |
 | `/api/threat-pulse` | GET | None |
 | `/api/image/search` | POST | 5/minute per IP |

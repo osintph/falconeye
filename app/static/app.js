@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'url', 'qr', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -370,6 +370,239 @@ document.getElementById('scan-btn').addEventListener('click', async () => {
     resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
   }
 });
+
+// ---- URL Expander ----
+function urlStatusClass(status) {
+  if (status >= 200 && status < 300) return 'text-green-400';
+  if (status >= 300 && status < 400) return 'text-amber-400';
+  if (status >= 400) return 'text-red-400';
+  return 'text-gray-500';
+}
+
+document.getElementById('url-btn').addEventListener('click', runUrlExpand);
+document.getElementById('url-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runUrlExpand();
+});
+
+async function runUrlExpand() {
+  const url = document.getElementById('url-input').value.trim();
+  const resultEl = document.getElementById('url-result');
+  if (!url) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Enter a URL to expand.</p>';
+    resultEl.classList.remove('hidden');
+    return;
+  }
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Following redirects...</p>';
+  resultEl.classList.remove('hidden');
+  try {
+    const res = await fetch('/api/url/expand', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHtml(String(data.detail || 'request failed'))}</p>`;
+      return;
+    }
+    renderUrlExpand(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function renderUrlExpand(el, data) {
+  const s = data.signals || {};
+  const pills = [
+    `<span class="inline-block text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">shortener depth: ${Number(s.shortener_chain_depth) || 0}</span>`,
+    `<span class="inline-block text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">TLD switches: ${Number(s.tld_switches) || 0}</span>`,
+    s.final_tld ? `<span class="inline-block text-xs bg-gray-800 px-2 py-1 rounded text-gray-300">final TLD: .${escapeHtml(s.final_tld)}</span>` : '',
+    s.final_is_punycode ? `<span class="inline-block text-xs bg-red-900 px-2 py-1 rounded text-red-300">&#9888; punycode hostname</span>` : '',
+    s.suspicious_ports ? `<span class="inline-block text-xs bg-red-900 px-2 py-1 rounded text-red-300">&#9888; non-standard port</span>` : '',
+  ].filter(Boolean).join(' ');
+
+  const blockedBanner = data.blocked_at_hop
+    ? `<div class="bg-red-950 border border-red-800 rounded p-4 text-sm text-red-300">
+         &#9940; Chain blocked at hop ${data.blocked_at_hop}: ${escapeHtml(String(data.blocked_reason || 'unsafe target'))}
+       </div>`
+    : '';
+
+  const hopsHtml = (data.chain || []).map(hop => {
+    const statusCls = urlStatusClass(hop.status);
+    const tls = hop.tls
+      ? `<div class="text-xs text-gray-500 mt-1">TLS issuer: ${escapeHtml(String(hop.tls.issuer || 'unknown'))}${hop.tls.valid_to ? ' &middot; valid to ' + escapeHtml(String(hop.tls.valid_to)) : ''}</div>`
+      : '';
+    const loc = hop.location
+      ? `<div class="text-xs text-amber-300 mt-1 break-all">&#8594; ${escapeHtml(String(hop.location))}</div>`
+      : '';
+    const err = hop.error
+      ? `<div class="text-xs text-red-400 mt-1">${escapeHtml(String(hop.error))}</div>`
+      : '';
+    const statusLabel = hop.status ? hop.status : '&mdash;';
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-3">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-500 font-mono">#${hop.hop}</span>
+          <span class="text-sm font-bold ${statusCls}">${statusLabel}</span>
+          <span class="text-xs text-gray-400 break-all font-mono" title="${escapeAttr(String(hop.url || ''))}">${escapeHtml(String(hop.url || ''))}</span>
+          <span class="text-xs text-gray-600 ml-auto whitespace-nowrap">${Number(hop.elapsed_ms) || 0} ms</span>
+        </div>
+        ${hop.server ? `<div class="text-xs text-gray-500 mt-1">server: ${escapeHtml(String(hop.server))}</div>` : ''}
+        ${tls}${loc}${err}
+      </div>`;
+  }).join('');
+
+  const shot = data.screenshot || {};
+  const shotHtml = shot.available && shot.data_uri
+    ? `<img src="${escapeAttr(shot.data_uri)}" alt="Final page screenshot" class="max-w-full rounded border border-gray-800" />`
+    : `<p class="text-xs text-gray-500">${escapeHtml(String(shot.reason || 'Screenshot unavailable'))}</p>`;
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="grid gap-2 mb-4">
+        <div class="text-xs text-gray-500 uppercase tracking-wide">Original</div>
+        <div class="text-sm text-gray-300 break-all font-mono">${escapeHtml(String(data.original || ''))}</div>
+        <div class="text-xs text-gray-500 uppercase tracking-wide mt-2">Final landing URL</div>
+        <div class="text-sm text-amber-300 break-all font-mono">${escapeHtml(String(data.final || ''))}</div>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="text-xs text-gray-400">${Number(data.hop_count) || 0} hop(s)</span>
+        <button id="url-pivot-btn" class="bg-amber-400 text-gray-950 font-bold px-4 py-1.5 rounded text-xs hover:bg-amber-300 transition">Push to Phishing Scanner &#8594;</button>
+      </div>
+    </div>
+    ${pills ? `<div class="flex flex-wrap gap-2">${pills}</div>` : ''}
+    ${blockedBanner}
+    <div class="space-y-2">${hopsHtml}</div>
+    <div class="bg-gray-900 border border-gray-800 rounded p-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wide mb-2">Final page screenshot</div>
+      ${shotHtml}
+    </div>`;
+
+  const pivot = document.getElementById('url-pivot-btn');
+  if (pivot && data.final) {
+    pivot.addEventListener('click', () => pushToTab('scanner', 'scan-url', 'scan-btn', data.final));
+  }
+}
+
+// ---- QR Analyzer ----
+let qrSelectedFile = null;
+
+const qrDrop = document.getElementById('qr-drop');
+const qrFileInput = document.getElementById('qr-file');
+qrDrop.addEventListener('click', () => qrFileInput.click());
+qrDrop.addEventListener('dragover', e => { e.preventDefault(); qrDrop.classList.add('border-amber-400'); });
+qrDrop.addEventListener('dragleave', () => qrDrop.classList.remove('border-amber-400'));
+qrDrop.addEventListener('drop', e => {
+  e.preventDefault();
+  qrDrop.classList.remove('border-amber-400');
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) qrSetFile(e.dataTransfer.files[0]);
+});
+qrFileInput.addEventListener('change', () => {
+  if (qrFileInput.files && qrFileInput.files[0]) qrSetFile(qrFileInput.files[0]);
+});
+
+function qrSetFile(file) {
+  qrSelectedFile = file;
+  document.getElementById('qr-datauri').value = '';
+  document.getElementById('qr-filename').textContent = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+}
+
+document.getElementById('qr-btn').addEventListener('click', runQrDecode);
+document.getElementById('qr-sample').addEventListener('click', async () => {
+  const resultEl = document.getElementById('qr-result');
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Loading sample...</p>';
+  resultEl.classList.remove('hidden');
+  try {
+    const blob = await (await fetch('/static/samples/qr-example.png')).blob();
+    await qrDecodeBlob(blob);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Could not load sample: ${escapeHtml(e.message)}</p>`;
+  }
+});
+
+async function runQrDecode() {
+  const dataUri = document.getElementById('qr-datauri').value.trim();
+  const resultEl = document.getElementById('qr-result');
+  if (!qrSelectedFile && !dataUri) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Choose an image or paste a data URI.</p>';
+    resultEl.classList.remove('hidden');
+    return;
+  }
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Decoding...</p>';
+  resultEl.classList.remove('hidden');
+  try {
+    let res;
+    if (qrSelectedFile) {
+      const fd = new FormData();
+      fd.append('image', qrSelectedFile);
+      res = await fetch('/api/qr/decode', { method: 'POST', body: fd });
+    } else {
+      res = await fetch('/api/qr/decode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data_uri: dataUri }),
+      });
+    }
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHtml(String(data.detail || 'request failed'))}</p>`;
+      return;
+    }
+    renderQr(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+async function qrDecodeBlob(blob) {
+  const resultEl = document.getElementById('qr-result');
+  const fd = new FormData();
+  fd.append('image', blob, 'qr-example.png');
+  const res = await fetch('/api/qr/decode', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (!res.ok) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHtml(String(data.detail || 'request failed'))}</p>`;
+    return;
+  }
+  renderQr(resultEl, data);
+}
+
+function renderQr(el, data) {
+  if (!data.count) {
+    el.innerHTML = `<div class="bg-red-950 border border-red-800 rounded p-4 text-sm text-red-300">${escapeHtml(String(data.error || 'No QR code detected.'))}</div>`;
+    return;
+  }
+  const cards = (data.codes || []).map(code => {
+    const badge = `<span class="inline-block text-xs bg-gray-800 px-2 py-1 rounded text-amber-300 uppercase tracking-wide">${escapeHtml(String(code.kind))}</span>`;
+    const pivot = code.is_url
+      ? `<button class="qr-pivot-btn bg-amber-400 text-gray-950 font-bold px-4 py-1.5 rounded text-xs hover:bg-amber-300 transition mt-3" data-url="${escapeAttr(String(code.data))}">Push to URL Expander &#8594;</button>`
+      : '';
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-4">
+        <div class="flex items-center gap-3 mb-2">
+          <span class="text-xs text-gray-500 font-mono">#${code.index}</span>
+          ${badge}
+        </div>
+        <div class="text-sm text-gray-200 break-all font-mono">${escapeHtml(String(code.data))}</div>
+        ${pivot}
+      </div>`;
+  }).join('');
+  el.innerHTML = `<p class="text-xs text-gray-500 uppercase tracking-wide">${data.count} code(s) decoded</p>${cards}`;
+
+  el.querySelectorAll('.qr-pivot-btn').forEach(btn => {
+    btn.addEventListener('click', () => pushToTab('url', 'url-input', 'url-btn', btn.dataset.url));
+  });
+}
+
+// Switch to target tab, prefill its input, and trigger its lookup button.
+function pushToTab(tabName, inputId, triggerId, value) {
+  showTab(tabName);
+  if (window.location.hash !== `#${tabName}`) window.location.hash = tabName;
+  const input = document.getElementById(inputId);
+  if (input) input.value = value;
+  const trigger = document.getElementById(triggerId);
+  if (trigger) trigger.click();
+}
 
 // ---- News ----
 let currentNewsCategory = 'global_cyber';

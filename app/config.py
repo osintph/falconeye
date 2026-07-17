@@ -4,6 +4,10 @@ DB_PATH = os.getenv("FALCONEYE_DB", "/opt/falconeye/data/falconeye.db")
 HTTPX_TIMEOUT = 10.0
 NEWS_CACHE_TTL_MINUTES = 30
 
+# Per source IP per rolling 24-hour window, for the URL Expander and QR Analyzer tabs.
+URL_EXPAND_RATE_LIMIT_PER_DAY = 10
+QR_DECODE_RATE_LIMIT_PER_DAY = 10
+
 # Secrets — loaded from /opt/falconeye/.env via systemd EnvironmentFile.
 # DO NOT log, print, or expose these values anywhere in application code.
 GREYNOISE_API_KEY = os.getenv("GREYNOISE_API_KEY", "")

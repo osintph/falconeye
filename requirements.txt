@@ -12,3 +12,5 @@ python-whois==0.9.4
 redis[asyncio]==5.0.8
 rapidfuzz==3.14.5
 Pillow>=10.0.0
+pyzbar==0.1.9
+qrcode[pil]>=7.4.0
