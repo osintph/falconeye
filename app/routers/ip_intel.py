@@ -36,6 +36,30 @@ def validate_ip(raw: str) -> str | None:
         return None
 
 
+# ---- Cache table ----
+# Self-initialize the cache table at import, mirroring every other router
+# (dork_generator, email_header, url_expander, abuse). Without this the tab
+# 500s on any database that was created fresh rather than migrated in place.
+
+def _init_cache():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ip_intel_cache (
+            ip TEXT PRIMARY KEY,
+            response_json TEXT,
+            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_ip_cache_fetched ON ip_intel_cache(fetched_at)")
+    conn.commit()
+    conn.close()
+
+
+_init_cache()
+
+
 # ---- Cache helpers ----
 
 def get_cached(db: sqlite3.Connection, ip: str) -> dict | None:

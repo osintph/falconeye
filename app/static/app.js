@@ -1157,6 +1157,22 @@ async function runIpLookup() {
     }
 
     renderIpResult(resultEl, data);
+
+    // Abuse report card is an enhancement — never let it regress the IP result.
+    try {
+      const ipAbuse = document.createElement('div');
+      ipAbuse.className = 'mt-4';
+      resultEl.appendChild(ipAbuse);
+      renderAbuseReportCard(ipAbuse, {
+        target: data.ip,
+        targetType: 'ip',
+        label: 'Hosting provider (RDAP abuse-c)',
+        defaultCategory: abusePickIpCategory(data),
+        evidence: abuseBuildIpEvidence(data),
+      });
+    } catch (abuseErr) {
+      console.error('abuse card render failed (IP tab):', abuseErr);
+    }
   } catch (e) {
     resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
   }
@@ -1688,6 +1704,12 @@ document.getElementById('email-header-btn')?.addEventListener('click', async () 
 
     const data = await res.json();
     resultEl.innerHTML = renderEmailHeaderResult(data);
+    // Abuse cards are an enhancement — never let them regress the analysis result.
+    try {
+      renderEmailAbuseCards(resultEl, data);
+    } catch (abuseErr) {
+      console.error('abuse cards render failed (Email tab):', abuseErr);
+    }
   } catch (e) {
     console.error('email-header analyze exception:', e);
     resultEl.innerHTML = `<p class="text-red-400 text-sm">Network error: ${e.message}</p>`;
@@ -3812,3 +3834,290 @@ if (privacyModal) {
 }
 
 window.openPrivacyPolicy = openPrivacyPolicy;
+
+
+// ============================================================
+//  Abuse Reporting (v3.7.0) — shared card for IP + Email tabs
+//  Compose + Copy work for everyone; Send via Mailgun is gated
+//  behind admin HTTP Basic Auth and only appears when the server
+//  reports the send path is configured (/api/abuse/send_available).
+// ============================================================
+
+const ABUSE_CATEGORIES = [
+  ['phishing', 'Phishing / credential harvesting'],
+  ['spam', 'Spam (unsolicited bulk email)'],
+  ['bec', 'Business Email Compromise'],
+  ['malware', 'Malware distribution / C2'],
+  ['bruteforce', 'Brute-force login attempts'],
+  ['scanning', 'Port / vulnerability scanning'],
+  ['ddos', 'DDoS participation'],
+  ['crypto_fraud', 'Crypto fraud infrastructure'],
+  ['other', 'Other (describe in evidence)'],
+];
+
+function abuseNowIso() {
+  return new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+}
+
+function abusePickIpCategory(data) {
+  try {
+    if (data && data.urlhaus && (data.urlhaus.urls || data.urlhaus.url_count)) return 'malware';
+    const gn = data && data.greynoise;
+    if (gn && gn.classification === 'malicious') return 'scanning';
+  } catch (e) { /* fall through */ }
+  return 'scanning';
+}
+
+function abuseBuildIpEvidence(data) {
+  const lines = [];
+  const ip = data.ip || '';
+  lines.push(`Abusive activity observed from IP ${ip}.`);
+  const rs = data.ripestat || {};
+  if (rs.asn) lines.push(`Network: AS${rs.asn}${rs.asn_holder ? ' ' + rs.asn_holder : ''}${rs.prefix ? ' (' + rs.prefix + ')' : ''}.`);
+  const ptr = data.reverse_dns || [];
+  if (ptr.length) lines.push(`Reverse DNS: ${ptr.join(', ')}.`);
+  const gn = data.greynoise || {};
+  if (gn.classification) lines.push(`GreyNoise classification: ${gn.classification}.`);
+  if (data.shodan && Array.isArray(data.shodan.tags) && data.shodan.tags.length) {
+    lines.push(`Shodan tags: ${data.shodan.tags.join(', ')}.`);
+  }
+  lines.push('');
+  lines.push('Describe the specific abusive activity you observed (dates, log excerpts, target service) before sending.');
+  return lines.join('\n');
+}
+
+function abuseBuildEmailEvidence(data) {
+  const lines = [];
+  const from = (data.from || [])[0] || {};
+  lines.push(`Abusive email received from ${from.email || '(unknown sender)'}.`);
+  const auth = data.authentication || {};
+  lines.push(`Authentication results — SPF: ${auth.spf || 'none'}, DKIM: ${auth.dkim || 'none'}, DMARC: ${auth.dmarc || 'none'}.`);
+  const rp = (data.return_path || [])[0] || {};
+  if (rp.email) lines.push(`Return-Path: ${rp.email}.`);
+  const orig = data.originating_ip || {};
+  if (orig.ip) lines.push(`Originating IP: ${orig.ip}${orig.asn ? ' (AS' + orig.asn + ')' : ''}${orig.country ? ', ' + orig.country : ''}.`);
+  const hops = (data.received_chain || []).filter(h => h.ip).slice(0, 5);
+  if (hops.length) {
+    lines.push('Received chain (public hops):');
+    hops.forEach(h => lines.push(`  - ${h.ip}${h.from_host ? ' from ' + h.from_host : ''}${h.timestamp ? ' @ ' + h.timestamp : ''}`));
+  }
+  lines.push('');
+  lines.push('(Recipient address redacted for privacy.) Add any additional detail before sending.');
+  return lines.join('\n');
+}
+
+// Build one self-contained abuse-report card into `container`.
+// info: {target, targetType('ip'|'domain'), label, defaultCategory, evidence}
+function renderAbuseReportCard(container, info) {
+  let composed = null;   // last composed report object
+  let recipient = null;  // resolved RDAP abuse email
+
+  const optionsHtml = ABUSE_CATEGORIES.map(([v, lbl]) =>
+    `<option value="${v}"${v === info.defaultCategory ? ' selected' : ''}>${escapeHtml(lbl)}</option>`
+  ).join('');
+
+  container.innerHTML = `
+  <div class="bg-gray-900 border border-gray-800 rounded p-5" data-abuse-card>
+    <div class="flex items-center gap-2 mb-3">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400 flex-shrink-0"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+      <h3 class="text-sm font-bold text-amber-300 uppercase tracking-wide">Report Abuse — ${escapeHtml(info.label || 'Abuse contact')}</h3>
+    </div>
+    <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
+      <strong class="font-bold">How to use this.</strong> FalconEye composes the abuse report. Click Preview to check it, then Copy Report and paste into your own email to send from your address, so the hosting provider can reply directly to you. The Send button is reserved for the FalconEye operator and requires admin credentials.
+    </div>
+    <div class="abuse-contact text-sm text-gray-400 mb-4"><span class="animate-pulse">Looking up abuse contact via RDAP…</span></div>
+    <div class="abuse-form space-y-3">
+      <div>
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Category</label>
+        <select class="abuse-category w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">${optionsHtml}</select>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Evidence (editable)</label>
+        <textarea class="abuse-evidence w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:border-amber-400" rows="7">${escapeHtml(info.evidence || '')}</textarea>
+      </div>
+      <div>
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Observed at (UTC)</label>
+        <input type="text" class="abuse-observed w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-xs font-mono focus:outline-none focus:border-amber-400" value="${escapeAttr(abuseNowIso())}">
+      </div>
+      <button class="abuse-preview-btn bg-amber-400 text-gray-950 font-bold px-5 py-2 rounded text-sm hover:bg-amber-300 transition">Preview Report</button>
+    </div>
+    <div class="abuse-preview hidden mt-4 border-t border-gray-800 pt-4">
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Subject</p>
+      <p class="abuse-subject text-sm text-gray-200 font-mono break-all mb-3"></p>
+      <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Body</p>
+      <pre class="abuse-body text-xs text-gray-300 bg-gray-950 border border-gray-800 rounded p-3 whitespace-pre-wrap break-words max-h-80 overflow-auto mb-2"></pre>
+      <div class="abuse-warnings text-xs text-yellow-400 mb-2"></div>
+      <div class="flex flex-wrap gap-2">
+        <button class="abuse-copy-btn bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Copy Report (send from your email)</button>
+        <button class="abuse-send-btn hidden bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Send via Mailgun (operator only)</button>
+      </div>
+      <div class="abuse-auth hidden mt-3 bg-gray-950 border border-gray-800 rounded p-3">
+        <p class="text-xs text-gray-400 mb-2">Admin authentication required to send.</p>
+        <div class="flex flex-wrap gap-2 items-center">
+          <input type="text" class="abuse-auth-user bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs" placeholder="username" value="admin" autocomplete="username">
+          <input type="password" class="abuse-auth-pass bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs" placeholder="password" autocomplete="current-password">
+          <button class="abuse-auth-submit bg-amber-400 text-gray-950 font-bold px-3 py-1 rounded text-xs hover:bg-amber-300 transition">Authenticate &amp; Send</button>
+        </div>
+      </div>
+      <div class="abuse-send-status text-xs mt-2"></div>
+    </div>
+  </div>`;
+
+  const $ = (sel) => container.querySelector(sel);
+  const contactEl = $('.abuse-contact');
+  const previewEl = $('.abuse-preview');
+  const sendBtn = $('.abuse-send-btn');
+  const authBox = $('.abuse-auth');
+  const statusEl = $('.abuse-send-status');
+
+  // 1) resolve abuse contact via RDAP
+  fetch('/api/abuse/lookup', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({target: info.target, target_type: info.targetType}),
+  }).then(r => r.json()).then(res => {
+    if (res && res.abuse_email) {
+      recipient = res.abuse_email;
+      const meta = [res.network_name, res.rir].filter(Boolean).map(escapeHtml).join(' · ');
+      contactEl.innerHTML = `Abuse contact: <span class="text-green-400 font-mono">${escapeHtml(res.abuse_email)}</span>${meta ? ' <span class="text-gray-500">(' + meta + ')</span>' : ''}`;
+    } else {
+      const msg = (res && res.error) ? res.error : 'No abuse contact found.';
+      contactEl.innerHTML = `<span class="text-yellow-400">${escapeHtml(msg)}</span> You can still compose and copy a report to send manually.`;
+    }
+  }).catch(() => {
+    contactEl.innerHTML = '<span class="text-yellow-400">Abuse contact lookup failed.</span> You can still compose and copy a report.';
+  });
+
+  // 2) preview (compose)
+  $('.abuse-preview-btn').addEventListener('click', async () => {
+    const btn = $('.abuse-preview-btn');
+    btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Composing…';
+    try {
+      const res = await fetch('/api/abuse/compose', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          target: info.target,
+          target_type: info.targetType,
+          category: $('.abuse-category').value,
+          evidence_text: $('.abuse-evidence').value,
+          observed_at_utc: $('.abuse-observed').value,
+        }),
+      });
+      const data = await res.json();
+      previewEl.classList.remove('hidden');
+      if (!res.ok) {
+        $('.abuse-subject').textContent = '';
+        $('.abuse-body').textContent = (data && data.detail) ? data.detail : ('Compose failed (HTTP ' + res.status + ')');
+        sendBtn.classList.add('hidden');
+        return;
+      }
+      composed = data;
+      $('.abuse-subject').textContent = data.subject || '';
+      $('.abuse-body').textContent = data.body_text || '';
+      $('.abuse-warnings').textContent = (data.warnings && data.warnings.length) ? ('⚠ ' + data.warnings.join('; ')) : '';
+      // Send renders for everyone once there's a resolved recipient; clicking it
+      // triggers admin Basic Auth (non-operators cannot get past the prompt).
+      if (recipient) sendBtn.classList.remove('hidden'); else sendBtn.classList.add('hidden');
+    } catch (e) {
+      previewEl.classList.remove('hidden');
+      $('.abuse-body').textContent = 'Network error: ' + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = orig;
+    }
+  });
+
+  // 3) copy to clipboard (always available)
+  $('.abuse-copy-btn').addEventListener('click', () => {
+    if (!composed) return;
+    const text = (composed.subject || '') + '\n\n' + (composed.body_text || '');
+    navigator.clipboard.writeText(text).then(() => {
+      const b = $('.abuse-copy-btn'); const t = b.textContent; b.textContent = 'Copied ✓';
+      setTimeout(() => { b.textContent = t; }, 1500);
+    }).catch(() => {
+      statusEl.innerHTML = '<span class="text-yellow-400">Clipboard blocked — select the text above to copy.</span>';
+    });
+  });
+
+  // 4) send via Mailgun (admin Basic Auth; credentials kept for the session)
+  const doSend = async (authHeader) => {
+    statusEl.innerHTML = '<span class="text-gray-400 animate-pulse">Sending…</span>';
+    try {
+      const res = await fetch('/api/abuse/send', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': authHeader},
+        body: JSON.stringify({composed: composed, recipient_email: recipient}),
+      });
+      if (res.status === 401) {
+        window.__abuseAuth = null;
+        authBox.classList.remove('hidden');
+        statusEl.innerHTML = '<span class="text-red-400">Authentication failed. Check credentials and try again.</span>';
+        return;
+      }
+      if (res.status === 503) {
+        statusEl.innerHTML = '<span class="text-yellow-400">Send is not configured on this server.</span>';
+        return;
+      }
+      const data = await res.json();
+      if (data && data.sent) {
+        authBox.classList.add('hidden');
+        statusEl.innerHTML = `<span class="text-green-400">✓ Sent to ${escapeHtml(recipient)}${data.mailgun_message_id ? ' (id: ' + escapeHtml(String(data.mailgun_message_id)) + ')' : ''}.</span>`;
+        sendBtn.disabled = true;
+      } else if (data && data.rate_limited) {
+        statusEl.innerHTML = `<span class="text-yellow-400">Rate limited: ${escapeHtml(data.error || 'try again later')}.</span>`;
+      } else {
+        statusEl.innerHTML = `<span class="text-red-400">Send failed: ${escapeHtml((data && data.error) || ('HTTP ' + res.status))}.</span>`;
+      }
+    } catch (e) {
+      statusEl.innerHTML = '<span class="text-red-400">Network error: ' + escapeHtml(e.message) + '</span>';
+    }
+  };
+
+  sendBtn.addEventListener('click', () => {
+    if (!composed || !recipient) return;
+    if (window.__abuseAuth) doSend(window.__abuseAuth);
+    else { authBox.classList.remove('hidden'); $('.abuse-auth-pass').focus(); }
+  });
+
+  $('.abuse-auth-submit').addEventListener('click', () => {
+    const u = $('.abuse-auth-user').value || '';
+    const p = $('.abuse-auth-pass').value || '';
+    if (!p) { statusEl.innerHTML = '<span class="text-yellow-400">Enter a password.</span>'; return; }
+    let header;
+    try { header = 'Basic ' + btoa(u + ':' + p); }
+    catch (e) { statusEl.innerHTML = '<span class="text-red-400">Password contains unsupported characters.</span>'; return; }
+    window.__abuseAuth = header;
+    doSend(header);
+  });
+}
+
+// Email Header tab: render up to two abuse cards (sender domain + sending IP).
+function renderEmailAbuseCards(resultEl, data) {
+  const wrap = document.createElement('div');
+  wrap.className = 'mt-6 space-y-4';
+  resultEl.appendChild(wrap);
+
+  const from = (data.from || [])[0] || {};
+  if (from.domain) {
+    const c = document.createElement('div');
+    wrap.appendChild(c);
+    renderAbuseReportCard(c, {
+      target: from.domain, targetType: 'domain',
+      label: 'Sender domain registrar (RDAP)',
+      defaultCategory: 'phishing',
+      evidence: abuseBuildEmailEvidence(data),
+    });
+  }
+
+  const orig = (data.originating_ip && data.originating_ip.ip)
+    ? data.originating_ip.ip
+    : ((data.iocs && data.iocs.ips && data.iocs.ips[0]) ? data.iocs.ips[0] : null);
+  if (orig) {
+    const c = document.createElement('div');
+    wrap.appendChild(c);
+    renderAbuseReportCard(c, {
+      target: orig, targetType: 'ip',
+      label: 'Sending IP hoster (RDAP)',
+      defaultCategory: 'spam',
+      evidence: abuseBuildEmailEvidence(data),
+    });
+  }
+}

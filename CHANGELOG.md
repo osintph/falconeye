@@ -5,6 +5,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.7.1] — 2026-07-19
+
+UX clarification for the abuse report card on the IP Reputation and Email Header tabs.
+
+### Changed
+
+- **Abuse card now leads with a prominent banner** explaining that Copy is the intended path: FalconEye composes the report, you Preview it, Copy it, and send it from your own email so the provider can reply directly to you. The Send button is framed as operator-only.
+- **Buttons relabeled and re-weighted.** "Copy to Clipboard" → **"Copy Report (send from your email)"** and is now the primary (amber) action; "Send via Mailgun" → **"Send via Mailgun (operator only)"** and is now the secondary (muted) action. Preview stays. This reverses the earlier visual hierarchy that made Send look like the primary action.
+
+### Notes
+
+The Send button remains visible to everyone; clicking it triggers admin HTTP Basic Auth, which non-operators cannot pass. No backend or endpoint behavior changed in this release.
+
+---
+
+## [3.7.0] — 2026-07-19
+
+Turn identification into action: both the IP Reputation and Email Header tabs can now compose an abuse report to the responsible provider, prefilled from what FalconEye already knows.
+
+### Added
+
+- **Abuse report composition on the IP Reputation tab.** After an IP lookup, FalconEye resolves the hosting provider's abuse-c contact via RDAP (`rdap.org` → RIR), prefills a category-appropriate report (phishing, spam, BEC, malware, brute-force, scanning, DDoS, crypto fraud, other) with the observed network, reverse DNS, and reputation signals, and offers **Copy to Clipboard**.
+- **Abuse report composition on the Email Header tab.** After a header analysis, FalconEye surfaces up to two abuse contacts — the sending IP's hoster (RDAP on the originating `Received` hop) and the sender domain's registrar (RDAP on the `From:` domain) — each with its own prefilled report. The recipient address from the analyzed email is redacted from the evidence by default.
+- **RDAP-based abuse contact lookup service** (`POST /api/abuse/lookup`) with a 24-hour SQLite cache to reduce load on RDAP endpoints. Extracted abuse emails are validated against a strict regex before display.
+- **Report composition service** (`POST /api/abuse/compose`) that renders reports from a shared template. Reporter identity comes from `FALCONEYE_REPORTER_NAME` / `FALCONEYE_REPORTER_EMAIL` (env, never user-supplied); the endpoint returns 503 if they are unset.
+- **Optional Mailgun send** (`POST /api/abuse/send`) for operators with Mailgun credentials. Gated behind HTTP Basic Auth (bcrypt), enforces per-IP (3/hour, 10/day), per-recipient (1/hour), and global (100/day) rate limits, refuses any recipient not previously returned by an RDAP lookup, and writes an append-only audit row per send (never the report body). `GET /api/abuse/send_available` drives the UI so the Send button only appears when the server is configured for it.
+
+### Security
+
+- **Email header injection** is neutralized in the composition layer: CR/LF/NUL are stripped from every single-line field (target, category, reporter identity, timestamp) and normalized in the multi-line evidence field (capped at 8000 chars), with a warning surfaced whenever an input was altered. The send layer re-strips defensively before calling Mailgun.
+- **RDAP is treated as untrusted input** — abuse emails are strictly validated, and the fetch goes through the existing `app/utils/safe_fetch` SSRF primitive (every redirect hop re-validated); **no second SSRF guard was introduced.** Non-public IPs short-circuit before any network call.
+- **Send is defense-in-depth gated**: admin Basic Auth *plus* the RDAP-recipient allowlist means valid credentials still cannot be used to mail an arbitrary address. The Mailgun API key is read from the environment at call time and never logged, never returned, and never interpolated into an error string.
+
+### Changed
+
+- New abuse package `app/abuse/` (lookup, compose, send, store, routes) registered in `app/main.py`; five new SQLite tables self-initialize (`abuse_contact_cache`, three rate-limit tables, `abuse_send_audit`), mirroring the existing per-router table pattern.
+- FastAPI app metadata and `/health` bumped to 3.7.0; JSON-LD `softwareVersion` bumped to 3.7.0 with an abuse-reporting `featureList` entry.
+- Added `bcrypt` to `requirements.txt` (admin auth for the send endpoint).
+
+### Operator notes
+
+Compose and Copy work with **no configuration**. Send via Mailgun requires `FALCONEYE_REPORTER_NAME`, `FALCONEYE_REPORTER_EMAIL`, `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, `MAILGUN_REGION`, `MAILGUN_FROM`, `FALCONEYE_ABUSE_ADMIN_USER`, and `FALCONEYE_ABUSE_ADMIN_PASS_HASH`. The domain part of `MAILGUN_FROM` must exactly match `MAILGUN_DOMAIN`, and `MAILGUN_REGION` must be a bare `us`/`eu` value (systemd does not strip inline `#` comments). See `docs/abuse-reporting.md` for the full setup guide and current Mailgun free-tier state.
+
+---
+
 ## [3.6.0] — 2026-07-17
 
 Two new tabs for the same investigative flow: figure out where a suspicious link actually goes before touching it.

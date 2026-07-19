@@ -1,8 +1,8 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Sixteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, and a curated cyber news aggregator with a Philippines-focused threat pulse.
+**Free, self-hosted OSINT investigator's toolkit.** Sixteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.6.0**
+Current version: **3.7.1**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -23,12 +23,12 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs |
 | **Domain Intelligence** | RDAP, DNS, certificate transparency logs (crt.sh + Cert Spotter fallback), RIPEstat ASN data |
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
-| **IP Reputation** | Shodan InternetDB, GreyNoise Community, RIPEstat, URLhaus, reverse DNS |
+| **IP Reputation** | Shodan InternetDB, GreyNoise Community, RIPEstat, URLhaus, reverse DNS. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, or optional Mailgun send). |
 | **Sandbox History** | URLhaus and MalwareBazaar lookup by URL or file hash |
 | **URL Expander** | Follow a short URL's full redirect chain hop-by-hop with per-hop status codes, TLS certificate details, server headers, and timing. Flags shortener depth, TLD switches, punycode hostnames, and non-standard ports. Every hop is re-validated through `safe_fetch`'s SSRF guard. One-click pivot to the Phishing Scanner. |
 | **QR Analyzer** | Decode one or more QR codes from an uploaded image or a base64 data URI (processed in memory, never stored). Categorizes payloads (HTTP, Bitcoin, Ethereum, UPI, WiFi, sms, tel, geo, text). One-click pivot of decoded URLs into the URL Expander. |
 | **Image** | Reverse image search via Google Lens and Yandex in parallel. Paste a URL or upload a file (JPEG, PNG, WebP, GIF, max 10 MB). Shows visual match grids, cross-source domain corroboration, and EXIF metadata for uploads. Requires a SearchAPI.io key. Results cached 24 hours in Redis. |
-| **Email Header** | Authentication checks (SPF/DKIM/DMARC), hop analysis with ASN attribution, body scam pattern detection. LLM-powered classification with validated, clamped output. Supports .eml and .msg file upload. |
+| **Email Header** | Authentication checks (SPF/DKIM/DMARC), hop analysis with ASN attribution, body scam pattern detection. LLM-powered classification with validated, clamped output. Supports .eml and .msg file upload. Composes abuse reports to the sending IP's hoster and the sender domain's registrar. |
 | **Dork Generator** | LLM-powered Google search query generator with preset categories and free-form natural-language input |
 | **Script Decoder** | LLM-powered deobfuscation of suspicious PowerShell, JavaScript, VBA, Base64 blobs, and packed scripts. Returns deobfuscated code, IOCs, MITRE ATT&CK techniques, and detection suggestions |
 | **Prospect** | Commercial intelligence dossier for any domain — identity resolution, news, job postings, and Google Ads Transparency data. Requires a SearchAPI.io key. Results cached 6 hours in Redis. |
@@ -47,6 +47,17 @@ Three tabs use Anthropic's Claude Haiku 4.5: **Email Header**, **Dork Generator*
 LLM JSON output is schema-validated and clamped before use — numeric fields are type-coerced and range-clamped, string fields are truncated, enum fields (severity, intent, risk_level) are validated against known values, and finding lists are filtered to allowed keys only. LLM output is presented in the UI as model opinion, not as verified verdict.
 
 Typical cost per LLM call: ~$0.003.
+
+---
+
+## Abuse Reporting
+
+The IP Reputation and Email Header tabs can turn an identified piece of hostile infrastructure into an abuse report to the responsible provider. FalconEye resolves the abuse contact via RDAP, prefills a category-appropriate report from what it already knows, and offers two actions:
+
+- **Copy to Clipboard** — always available, no configuration, no authentication. Paste into your own mail client and send from there.
+- **Send via Mailgun** — optional. Gated behind admin HTTP Basic Auth, rate-limited per IP / per recipient / globally, and restricted to recipients FalconEye itself resolved via RDAP. Every send is written to an append-only audit log.
+
+Compose-and-copy works out of the box. Enabling send requires reporter-identity and Mailgun environment variables plus an admin bcrypt hash. See **[docs/abuse-reporting.md](docs/abuse-reporting.md)** for the full setup guide, security posture, and current Mailgun free-tier state.
 
 ---
 
