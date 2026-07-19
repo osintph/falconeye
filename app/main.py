@@ -9,6 +9,7 @@ from app.routers import crypto, scanner, news, domain_intel, telegram_inspector,
 from app.prospect import routes as prospect_routes
 from app.image_search import routes as image_routes
 from app.abuse import routes as abuse_routes
+from app.username import routes as username_routes
 
 limiter = Limiter(key_func=get_client_ip_key)
 
@@ -16,7 +17,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.7.1",
+    version="3.8.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -40,13 +41,14 @@ app.include_router(qr_analyzer.router)
 app.include_router(prospect_routes.router)
 app.include_router(image_routes.router)
 app.include_router(abuse_routes.router)
+app.include_router(username_routes.router)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.7.1"}
+    return {"status": "ok", "version": "3.8.0"}
 
 
 @app.get("/")

@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.8.0] — 2026-07-19
+
+The first identity-oriented tab: turn a handle into a map of where else it appears.
+
+### Added
+
+- **Username Enumeration tab.** Checks where a username appears across ~950 platforms using vendored data from **WhatsMyName** (698 sites) and **Sherlock** (478 sites), merged and deduplicated by host. Dual-engine: a hit found by both engines is tagged **high confidence** (cross-validated), single-engine hits are **medium**. Quick Scan (priority 2-3, ~280 sites) and Full Scan (all sites) modes; adult platforms excluded by default with an opt-in toggle. Results are grouped into collapsible categories (Social, Developer, Gaming, Forum, Regional, Adult, Other) with source badges, CSV export, a copy-handle button, and a one-click Telegram pivot.
+- **Vendored dual-engine data pipeline.** WhatsMyName and Sherlock JSON data files vendored under `app/data/` (both MIT-licensed, no runtime dependency on either project's code). Refresh script at `scripts/refresh_username_data.py` fetches upstream and validates schema; run manually at release cadence (suggested every 4-6 weeks).
+- **Backend package `app/username/`** — parser (adapters + category/NSFW/priority tagging + cross-engine merge), async checker (concurrency-capped sweep, per-detection-type logic), merger, self-initializing rate-limit store, and router (`POST /api/username/scan`, `GET /api/username/meta`).
+
+### Security
+
+- **Strict username validation** (`^[A-Za-z0-9._-]{1,40}$`) rejected at the router before any check runs, plus `urllib.parse.quote` on every substituted URL template. Every outbound check is validated with the existing `app/utils/safe_fetch` SSRF primitive (`resolve_and_check`) — **no second SSRF guard** — with per-host verdicts cached and a bounded DNS phase.
+- **Rate limits as load protection:** a single scan makes 280-950 outbound requests, so scans are capped at 3 per client IP per hour, 20 per day, and 100 globally per day, enforced *before* any async work is spawned. The whole scan runs under one wall-clock budget so a request can never exceed the gunicorn worker timeout (Full scans return partial results with a warning rather than running long).
+
+### Changed
+
+- New Username tab in the nav between Contact and News; `main.py`, `/health`, and JSON-LD `softwareVersion` bumped to 3.8.0; README module count updated to seventeen.
+- No new Python dependency: both data files are JSON, so PyYAML was not needed.
+
+### Operator notes
+
+False positives run 5-10% because some platforms return the same response for any username; hits are surfaced as leads for human verification, not proof of identity. See `docs/username-enumeration.md` for confidence tiers, the data-refresh procedure, and ethical-use guidance.
+
+---
+
 ## [3.7.1] — 2026-07-19
 
 UX clarification for the abuse report card on the IP Reputation and Email Header tabs.

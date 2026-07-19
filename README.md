@@ -1,8 +1,8 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Sixteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
+**Free, self-hosted OSINT investigator's toolkit.** Seventeen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.7.1**
+Current version: **3.8.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -33,6 +33,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Script Decoder** | LLM-powered deobfuscation of suspicious PowerShell, JavaScript, VBA, Base64 blobs, and packed scripts. Returns deobfuscated code, IOCs, MITRE ATT&CK techniques, and detection suggestions |
 | **Prospect** | Commercial intelligence dossier for any domain — identity resolution, news, job postings, and Google Ads Transparency data. Requires a SearchAPI.io key. Results cached 6 hours in Redis. |
 | **Contact** | Feedback form for bug reports, feature requests, and new tab suggestions |
+| **Username** | Check where a username appears across ~950 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **News** | Cyber news RSS aggregator with PH-specific feeds and global outlets |
 
 ### LLM-powered tabs

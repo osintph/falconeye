@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'url', 'qr', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'url', 'qr', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'username', 'news'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -4120,4 +4120,155 @@ function renderEmailAbuseCards(resultEl, data) {
       evidence: abuseBuildEmailEvidence(data),
     });
   }
+}
+
+
+// ============================================================
+//  Username Enumeration (v3.8.0)
+// ============================================================
+
+const USERNAME_RE = /^[a-zA-Z0-9._-]{1,40}$/;
+
+document.getElementById('username-btn')?.addEventListener('click', runUsernameScan);
+document.getElementById('username-input')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runUsernameScan();
+});
+
+async function runUsernameScan() {
+  const input = document.getElementById('username-input');
+  const resultEl = document.getElementById('username-result');
+  const btn = document.getElementById('username-btn');
+  const username = (input.value || '').trim();
+  const scope = (document.querySelector('input[name="username-scope"]:checked') || {}).value || 'quick';
+  const includeNsfw = !!(document.getElementById('username-nsfw') || {}).checked;
+
+  resultEl.classList.remove('hidden');
+  if (!username) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Enter a username first.</p>';
+    return;
+  }
+  if (!USERNAME_RE.test(username)) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Invalid username. Use 1-40 characters: letters, digits, and . _ - only.</p>';
+    return;
+  }
+
+  const est = scope === 'full' ? 'up to ~50s' : '~20s';
+  btn.disabled = true;
+  const origLabel = btn.textContent;
+  btn.textContent = 'Scanning…';
+  resultEl.innerHTML = `<p class="text-gray-400 text-sm animate-pulse">Checking ${scope === 'full' ? 'all' : '~280'} platforms for &ldquo;${escapeHtml(username)}&rdquo; (${est})…</p>`;
+
+  try {
+    const res = await fetch('/api/username/scan', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({username: username, scope: scope, include_nsfw: includeNsfw}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      const label = res.status === 429 ? 'Rate limited' : 'Scan failed';
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">${label}</p>
+        <p class="text-xs text-gray-400">${escapeHtml((data && data.detail) || ('HTTP ' + res.status))}</p></div>`;
+      return;
+    }
+    renderUsernameResult(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = origLabel;
+  }
+}
+
+function renderUsernameResult(el, data) {
+  const cats = data.categories || [];
+  const confBadge = (c) => c === 'high'
+    ? '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-500/15 text-green-400 border border-green-500/30">high</span>'
+    : '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">medium</span>';
+  const srcBadges = (sources) => (sources || []).map(s =>
+    `<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">${s === 'wmn' ? 'WMN' : 'Sherlock'}</span>`).join(' ');
+
+  const catHtml = cats.map(cat => {
+    const hits = cat.hits.map(h => {
+      const isTg = /telegram/i.test(h.site);
+      const pivot = isTg
+        ? `<button class="username-tg-pivot text-[11px] text-amber-400 hover:text-amber-300 underline" data-handle="${escapeAttr(data.username)}">→ Telegram</button>`
+        : '';
+      return `<div class="flex items-center justify-between gap-3 py-1.5 border-b border-gray-800/60">
+        <div class="flex items-center gap-2 min-w-0">
+          <a href="${escapeAttr(h.url)}" target="_blank" rel="noopener noreferrer" class="text-sm text-gray-200 hover:text-amber-400 truncate">${escapeHtml(h.site)}</a>
+          ${confBadge(h.confidence)}
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">${srcBadges(h.sources)}${pivot}</div>
+      </div>`;
+    }).join('');
+    return `<details class="bg-gray-900 border border-gray-800 rounded mb-2" open>
+      <summary class="cursor-pointer px-4 py-2.5 text-sm font-bold text-gray-200 hover:text-amber-400 select-none flex items-center justify-between">
+        <span>${escapeHtml(cat.name)}</span>
+        <span class="text-xs font-normal text-gray-500">${cat.count} hit${cat.count === 1 ? '' : 's'}</span>
+      </summary>
+      <div class="px-4 pb-3">${hits}</div>
+    </details>`;
+  }).join('');
+
+  const warnHtml = (data.warnings || []).map(w => `<p class="text-xs text-yellow-400/90 mb-1">⚠ ${escapeHtml(w)}</p>`).join('');
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-4">
+        <div class="flex items-center gap-3">
+          <span class="brand-badge text-sm px-3 py-1 font-mono">${escapeHtml(data.username)}</span>
+          <span class="text-xs text-gray-500">${escapeHtml(data.scope)} scan</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="username-copy" class="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded hover:bg-gray-700 transition">Copy handle</button>
+          <button id="username-csv" class="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded hover:bg-gray-700 transition">Export CSV</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+        <div><p class="text-2xl font-bold text-amber-300">${data.hit_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">hits</p></div>
+        <div><p class="text-2xl font-bold text-green-400">${data.dual_source_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">high conf.</p></div>
+        <div><p class="text-2xl font-bold text-gray-200">${data.checked_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">checked</p></div>
+        <div><p class="text-2xl font-bold text-gray-200">${(data.duration_ms / 1000).toFixed(1)}s</p><p class="text-xs text-gray-500 uppercase tracking-wide">duration</p></div>
+      </div>
+    </div>
+    ${warnHtml ? `<div class="mb-4">${warnHtml}</div>` : ''}
+    ${cats.length ? catHtml : '<p class="text-sm text-gray-400">No hits found for this username.</p>'}
+  `;
+
+  const copyBtn = document.getElementById('username-copy');
+  if (copyBtn) copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(data.username).then(() => {
+      copyBtn.textContent = 'Copied ✓';
+      setTimeout(() => { copyBtn.textContent = 'Copy handle'; }, 1500);
+    }).catch(() => {});
+  });
+  const csvBtn = document.getElementById('username-csv');
+  if (csvBtn) csvBtn.addEventListener('click', () => exportUsernameCsv(data));
+  el.querySelectorAll('.username-tg-pivot').forEach(b =>
+    b.addEventListener('click', () => usernamePivotTelegram(b.dataset.handle)));
+}
+
+function exportUsernameCsv(data) {
+  const rows = [['category', 'site', 'url', 'confidence', 'sources']];
+  (data.categories || []).forEach(cat => cat.hits.forEach(h => {
+    rows.push([cat.name, h.site, h.url || '', h.confidence, (h.sources || []).join('+')]);
+  }));
+  const csv = rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `falconeye-username-${data.username}-${data.scope}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+function usernamePivotTelegram(handle) {
+  const input = document.getElementById('telegram-input');
+  if (input) input.value = handle;
+  window.location.hash = '#telegram';
+  if (input) setTimeout(() => input.focus(), 200);
 }

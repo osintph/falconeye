@@ -54,8 +54,9 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.7.1",
+    "softwareVersion": "3.8.0",
     "featureList": [
+      "Username enumeration across ~950 platforms (WhatsMyName + Sherlock)",
       "Abuse report composition with RDAP contact lookup and optional Mailgun send",
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
@@ -176,6 +177,10 @@
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="contact">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       Contact
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="username">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Username
     </button>
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="news">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
@@ -860,6 +865,39 @@
       </button>
 
       <div id="prospect-result" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- Username Enumeration Tab -->
+    <div id="tab-username" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Username Enumeration</h2>
+      <p class="text-gray-400 text-sm mb-4">Check where a username appears across ~950 platforms using WhatsMyName and Sherlock data. Cross-validated hits (found by both engines) carry higher confidence. Results are leads for human verification, not proof of identity.</p>
+
+      <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
+        <strong class="font-bold">How to use this.</strong> A hit means the username has a profile at that platform. It does NOT mean the same person owns all matching profiles. False positives run 5-10% because some platforms return the same response for any username. Verify each lead manually before drawing conclusions. Do not use this tool for stalking or harassment.
+      </div>
+
+      <div class="flex gap-3 mb-3">
+        <input id="username-input" type="text" placeholder="handle (e.g. torvalds)" maxlength="40"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="username-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Scan</button>
+      </div>
+      <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-4"
+              data-sample="torvalds" data-target="username-input" data-trigger="username-btn">
+        ↳ Try sample (torvalds)
+      </button>
+
+      <div class="flex flex-wrap items-center gap-x-6 gap-y-3 mb-5 text-sm">
+        <div class="flex items-center gap-3">
+          <span class="text-xs text-gray-500 uppercase tracking-wider">Scope</span>
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="username-scope" value="quick" checked class="accent-amber-400"> <span>Quick (~280 sites, faster)</span></label>
+          <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="username-scope" value="full" class="accent-amber-400"> <span>Full (all sites, ~50s)</span></label>
+        </div>
+        <label class="flex items-center gap-1.5 cursor-pointer text-gray-400">
+          <input type="checkbox" id="username-nsfw" class="accent-amber-400"> <span>Include adult platforms</span>
+        </label>
+      </div>
+
+      <div id="username-result" class="hidden"></div>
     </div>
 
     <!-- News Tab -->
