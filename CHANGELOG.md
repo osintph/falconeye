@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.8.1] — 2026-07-20
+
+### Fixed
+
+- **Duplicate authentication surface on Send via Mailgun.** The `/api/abuse/send` endpoint accepted HTTP Basic Auth *and* the abuse card rendered an in-page admin form for the same credential. The endpoint's `401` + `WWW-Authenticate` response could trip the browser's native Basic Auth dialog, which raced the in-page form and caused correct passwords to be rejected. Removed Basic Auth from the endpoint entirely — credentials now travel only in the JSON body (`admin_user`, `admin_password`), validated against the bcrypt hash by the in-page form's submit. The browser dialog can no longer appear under any circumstance.
+
+### Changed
+
+- **Auth mechanism for `/api/abuse/send`** moved from HTTP Basic Auth to JSON body fields. Security posture is unchanged: JSON body credentials over TLS are functionally equivalent to Basic Auth over TLS (both send the password in the request). Rate limits, the append-only audit log, the RDAP-recipient allowlist, and bcrypt validation are all preserved. The endpoint now always returns HTTP 200 with a structured `{sent, error, rate_limited}` body — never `401`, never `WWW-Authenticate` — guarded by a regression test.
+
+---
+
 ## [3.8.0] — 2026-07-19
 
 The first identity-oriented tab: turn a handle into a map of where else it appears.

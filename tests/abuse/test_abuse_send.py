@@ -152,25 +152,75 @@ def _client():
     return TestClient(app)
 
 
-def test_send_endpoint_401_without_and_with_wrong_auth(monkeypatch):
+def test_send_endpoint_never_returns_401(monkeypatch):
+    """v3.8.1 regression: /api/abuse/send must never return HTTP 401 or emit
+    WWW-Authenticate — that pops the browser's Basic Auth dialog, which races the
+    in-page credential form and rejects correct passwords."""
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH",
                        bcrypt.hashpw(b"correct horse", bcrypt.gensalt()).decode())
     c = _client()
-    body = {"composed": _COMPOSED, "recipient_email": "abuse@prov.example"}
 
-    r = c.post("/api/abuse/send", json=body)
-    assert r.status_code == 401
-    assert r.headers.get("WWW-Authenticate", "").startswith("Basic")
+    def _no_basic_auth(r):
+        assert r.status_code != 401
+        assert "www-authenticate" not in {k.lower() for k in r.headers.keys()}
 
-    r = c.post("/api/abuse/send", json=body, auth=("admin", "wrong-password"))
-    assert r.status_code == 401
+    # No credentials at all
+    r = c.post("/api/abuse/send", json={"composed": _COMPOSED, "recipient_email": "abuse@prov.example"})
+    _no_basic_auth(r)
+    assert r.json()["sent"] is False and "invalid" in r.json()["error"].lower()
+
+    # Wrong password in the body
+    r = c.post("/api/abuse/send", json={
+        "composed": _COMPOSED, "recipient_email": "abuse@prov.example",
+        "admin_user": "admin", "admin_password": "wrong-password",
+    })
+    _no_basic_auth(r)
+    assert r.json()["sent"] is False and "invalid" in r.json()["error"].lower()
+
+    # Wrong username in the body
+    r = c.post("/api/abuse/send", json={
+        "composed": _COMPOSED, "recipient_email": "abuse@prov.example",
+        "admin_user": "nope", "admin_password": "correct horse",
+    })
+    _no_basic_auth(r)
+    assert r.json()["sent"] is False and "invalid" in r.json()["error"].lower()
 
 
-def test_send_endpoint_503_when_unconfigured(monkeypatch):
+def test_send_endpoint_unconfigured_returns_200_not_503(monkeypatch):
     monkeypatch.delenv("FALCONEYE_ABUSE_ADMIN_USER", raising=False)
     monkeypatch.delenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH", raising=False)
     c = _client()
-    r = c.post("/api/abuse/send", json={"composed": _COMPOSED, "recipient_email": "abuse@prov.example"},
-               auth=("admin", "whatever"))
-    assert r.status_code == 503
+    r = c.post("/api/abuse/send", json={
+        "composed": _COMPOSED, "recipient_email": "abuse@prov.example",
+        "admin_user": "admin", "admin_password": "whatever",
+    })
+    assert r.status_code == 200
+    assert r.json()["sent"] is False and "not configured" in r.json()["error"].lower()
+
+
+def test_send_endpoint_valid_creds_reach_send_service(monkeypatch):
+    """Correct body creds pass the gate and reach the send service; wrong ones don't."""
+    monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")
+    monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH",
+                       bcrypt.hashpw(b"s3cret-pw", bcrypt.gensalt()).decode())
+    called = {"n": 0}
+
+    async def fake_send(composed, recipient, client_ip):
+        called["n"] += 1
+        return {"sent": True, "mailgun_message_id": "<m@mg>", "error": None, "rate_limited": False}
+
+    monkeypatch.setattr(abuse_routes.send_mod, "send_via_mailgun", fake_send)
+    c = _client()
+
+    r = c.post("/api/abuse/send", json={
+        "composed": _COMPOSED, "recipient_email": "a@b.com",
+        "admin_user": "admin", "admin_password": "nope",
+    })
+    assert r.json()["sent"] is False and called["n"] == 0
+
+    r = c.post("/api/abuse/send", json={
+        "composed": _COMPOSED, "recipient_email": "a@b.com",
+        "admin_user": "admin", "admin_password": "s3cret-pw",
+    })
+    assert r.status_code == 200 and r.json()["sent"] is True and called["n"] == 1

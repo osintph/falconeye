@@ -4,12 +4,15 @@ Abuse-reporting API.
 Endpoints (all under /api/abuse):
   POST /lookup          — RDAP abuse contact for an IP or domain (no auth)
   POST /compose         — render a report from env reporter identity (no auth)
-  POST /send            — send via Mailgun (HTTP Basic Auth, Option B only)
+  POST /send            — send via Mailgun (admin creds in JSON body, Option B only)
   GET  /send_available  — is the send path configured? (drives the UI button)
 
 Compose and copy work with zero configuration. Send additionally requires the
-MAILGUN_* env vars and admin Basic Auth (FALCONEYE_ABUSE_ADMIN_USER +
-FALCONEYE_ABUSE_ADMIN_PASS_HASH, the latter a bcrypt hash).
+MAILGUN_* env vars and admin credentials (FALCONEYE_ABUSE_ADMIN_USER +
+FALCONEYE_ABUSE_ADMIN_PASS_HASH, the latter a bcrypt hash) supplied in the JSON
+request body. It deliberately does NOT use HTTP Basic Auth: a 401 +
+WWW-Authenticate response pops the browser's native auth dialog, which raced the
+in-page credential form and rejected correct passwords (v3.8.1 fix).
 """
 import logging
 import os
@@ -17,8 +20,7 @@ import secrets
 from datetime import datetime, timezone
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from slowapi import Limiter
 
@@ -32,7 +34,6 @@ log = logging.getLogger("falconeye.abuse")
 
 router = APIRouter(prefix="/api/abuse", tags=["abuse"])
 limiter = Limiter(key_func=get_client_ip_key)
-security = HTTPBasic(auto_error=False)
 
 # SQLite quota windows (the burst layer is the slowapi decorator below).
 LOOKUP_PER_HOUR = 10
@@ -60,6 +61,8 @@ class ComposeRequest(BaseModel):
 class SendRequest(BaseModel):
     composed: dict
     recipient_email: str
+    admin_user: str = ""
+    admin_password: str = ""
 
 
 # ---------- admin auth ----------
@@ -71,38 +74,29 @@ def _admin_configured() -> bool:
     )
 
 
-def require_admin(credentials: HTTPBasicCredentials = Depends(security)) -> str:
-    """FastAPI dependency: HTTP Basic Auth against the bcrypt admin hash."""
+def _verify_admin(admin_user: str, admin_password: str) -> str | None:
+    """Validate admin credentials (from the JSON body) against the bcrypt hash.
+
+    Returns None on success, or a short error string on failure. It NEVER raises
+    a 401 or emits WWW-Authenticate — doing so would pop the browser's native
+    Basic Auth dialog and race the in-page form (the v3.8.1 bug). The password is
+    never logged, returned, or stored.
+    """
     user = os.getenv("FALCONEYE_ABUSE_ADMIN_USER", "").strip()
     pass_hash = os.getenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH", "").strip()
-
     if not user or not pass_hash:
-        raise HTTPException(
-            status_code=503,
-            detail="Send endpoint is not configured (admin auth env vars missing).",
-        )
+        return "send not configured on this server"
 
-    unauthorized = HTTPException(
-        status_code=401,
-        detail="Admin authentication required.",
-        headers={"WWW-Authenticate": 'Basic realm="FalconEye Admin"'},
-    )
-    if credentials is None:
-        raise unauthorized
-
-    user_ok = secrets.compare_digest(credentials.username or "", user)
+    user_ok = secrets.compare_digest(admin_user or "", user)
     try:
-        pass_ok = bcrypt.checkpw(
-            (credentials.password or "").encode("utf-8"),
-            pass_hash.encode("utf-8"),
-        )
+        pass_ok = bcrypt.checkpw((admin_password or "").encode("utf-8"), pass_hash.encode("utf-8"))
     except Exception:
         pass_ok = False
 
     # Evaluate both regardless of the username result to avoid short-circuit timing leaks.
     if not (user_ok and pass_ok):
-        raise unauthorized
-    return credentials.username
+        return "invalid credentials"
+    return None
 
 
 # ---------- endpoints ----------
@@ -179,7 +173,15 @@ async def compose(req: ComposeRequest, request: Request):
 
 @router.post("/send")
 @limiter.limit("10/minute")
-async def send(req: SendRequest, request: Request, admin: str = Depends(require_admin)):
+async def send(req: SendRequest, request: Request):
+    # Credentials arrive in the JSON body and are validated here. This endpoint
+    # ALWAYS returns HTTP 200 with a structured {sent, rate_limited, error} body —
+    # never 401, never WWW-Authenticate — so the browser cannot open its native
+    # Basic Auth dialog (v3.8.1). See test_send_endpoint_never_returns_401.
+    auth_error = _verify_admin(req.admin_user, req.admin_password)
+    if auth_error is not None:
+        return {"sent": False, "mailgun_message_id": None, "error": auth_error, "rate_limited": False}
+
     client_ip = get_client_ip(request)
     # SendResult is returned as-is (200) even when rate_limited, so the caller
     # can read the structured {sent, rate_limited, error} fields.

@@ -16,7 +16,7 @@ is itself a legitimate abuse vector:
   gives you a *Copy to Clipboard* button. You paste into your own mail client
   and send from there. No Mailgun code path runs.
 - **Send via Mailgun** — optional, off unless you configure it. Adds a *Send via
-  Mailgun* button gated behind admin HTTP Basic Auth, rate limits, an audit log,
+  Mailgun* button gated behind admin credentials, rate limits, an audit log,
   and an allowlist that restricts recipients to addresses FalconEye itself
   resolved via RDAP.
 
@@ -89,9 +89,9 @@ Two rules the send path enforces implicitly:
   defensively takes the first whitespace/`#`-delimited token, but keep the file
   clean. Anything unrecognized falls back to `us`.
 
-### 4. Admin Basic Auth
+### 4. Admin authentication
 
-The send endpoint is protected by HTTP Basic Auth. Store a **bcrypt hash**, not
+The send endpoint is gated by admin credentials. Store a **bcrypt hash**, not
 a plaintext password:
 
 ```bash
@@ -109,10 +109,15 @@ Do **not** reuse the Mailgun API key as the password — they are two different
 secrets. Restart the service after editing `.env` (`sudo systemctl restart
 falconeye`) so the new environment is loaded.
 
-In the browser, clicking **Send via Mailgun** reveals an inline credential form
-(username defaults to `admin`). Credentials are kept in memory for the browser
-session so you authenticate once. A wrong password returns HTTP 401 and
-re-prompts.
+The **Send via Mailgun** button reveals an in-page authentication form with
+username and password fields (username defaults to `admin`). Credentials are
+sent in the JSON request body and validated against the bcrypt hash in
+`FALCONEYE_ABUSE_ADMIN_PASS_HASH`. **No browser authentication dialog is
+triggered at any point** — the endpoint never returns `401` or a
+`WWW-Authenticate` header (that would pop the browser's native Basic Auth prompt
+and race the in-page form; see v3.8.1). Credentials are kept in memory for the
+browser session so you authenticate once; a wrong password shows an inline error
+under the form.
 
 ### 5. Rate limits
 
@@ -178,8 +183,9 @@ call and report that no abuse contact exists.
 
 Design decisions and why they exist:
 
-- **Send is gated** behind admin Basic Auth because emitting mail from a real
-  domain via a public UI is an abuse vector. Basic Auth is the minimum bar.
+- **Send is gated** behind admin credentials (validated in the request body,
+  not Basic Auth) because emitting mail from a real domain via a public UI is an
+  abuse vector. That gate is the minimum bar.
 - **Recipients are allowlisted to RDAP results.** Even with valid admin
   credentials, the send endpoint will only mail an address that a recent RDAP
   lookup returned — so the endpoint cannot be repurposed to send to arbitrary

@@ -4037,32 +4037,36 @@ function renderAbuseReportCard(container, info) {
     });
   });
 
-  // 4) send via Mailgun (admin Basic Auth; credentials kept for the session)
-  const doSend = async (authHeader) => {
+  // 4) send via Mailgun — credentials travel ONLY in the JSON body (never an
+  //    Authorization header / Basic Auth), so the browser's native auth dialog
+  //    can never appear and race the in-page form (v3.8.1 fix). The in-page form
+  //    is the single credential surface; creds are remembered for the session so
+  //    multiple sends need one entry.
+  const doSend = async (adminUser, adminPassword) => {
     statusEl.innerHTML = '<span class="text-gray-400 animate-pulse">Sending…</span>';
     try {
       const res = await fetch('/api/abuse/send', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': authHeader},
-        body: JSON.stringify({composed: composed, recipient_email: recipient}),
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          composed: composed,
+          recipient_email: recipient,
+          admin_user: adminUser,
+          admin_password: adminPassword,
+        }),
       });
-      if (res.status === 401) {
-        window.__abuseAuth = null;
-        authBox.classList.remove('hidden');
-        statusEl.innerHTML = '<span class="text-red-400">Authentication failed. Check credentials and try again.</span>';
-        return;
-      }
-      if (res.status === 503) {
-        statusEl.innerHTML = '<span class="text-yellow-400">Send is not configured on this server.</span>';
-        return;
-      }
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (data && data.sent) {
+        window.__abuseCreds = {user: adminUser, password: adminPassword};
         authBox.classList.add('hidden');
         statusEl.innerHTML = `<span class="text-green-400">✓ Sent to ${escapeHtml(recipient)}${data.mailgun_message_id ? ' (id: ' + escapeHtml(String(data.mailgun_message_id)) + ')' : ''}.</span>`;
         sendBtn.disabled = true;
       } else if (data && data.rate_limited) {
         statusEl.innerHTML = `<span class="text-yellow-400">Rate limited: ${escapeHtml(data.error || 'try again later')}.</span>`;
+      } else if (data && /invalid credentials/i.test(data.error || '')) {
+        window.__abuseCreds = null;
+        authBox.classList.remove('hidden');
+        statusEl.innerHTML = '<span class="text-red-400">Authentication failed. Check the password and try again.</span>';
       } else {
         statusEl.innerHTML = `<span class="text-red-400">Send failed: ${escapeHtml((data && data.error) || ('HTTP ' + res.status))}.</span>`;
       }
@@ -4073,7 +4077,7 @@ function renderAbuseReportCard(container, info) {
 
   sendBtn.addEventListener('click', () => {
     if (!composed || !recipient) return;
-    if (window.__abuseAuth) doSend(window.__abuseAuth);
+    if (window.__abuseCreds) doSend(window.__abuseCreds.user, window.__abuseCreds.password);
     else { authBox.classList.remove('hidden'); $('.abuse-auth-pass').focus(); }
   });
 
@@ -4081,11 +4085,7 @@ function renderAbuseReportCard(container, info) {
     const u = $('.abuse-auth-user').value || '';
     const p = $('.abuse-auth-pass').value || '';
     if (!p) { statusEl.innerHTML = '<span class="text-yellow-400">Enter a password.</span>'; return; }
-    let header;
-    try { header = 'Basic ' + btoa(u + ':' + p); }
-    catch (e) { statusEl.innerHTML = '<span class="text-red-400">Password contains unsupported characters.</span>'; return; }
-    window.__abuseAuth = header;
-    doSend(header);
+    doSend(u, p);
   });
 }
 

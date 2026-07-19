@@ -7,6 +7,12 @@ os.environ.setdefault("FALCONEYE_DB", "/tmp/falconeye_test.db")
 import pytest
 
 from app.abuse import store
+from app.abuse import routes as _abuse_routes
+
+# The slowapi burst limiter (10/min) has process-global in-memory state that
+# leaks across tests; disable it so endpoint tests are deterministic. The real
+# rate limits (SQLite quotas) are covered at the service level.
+_abuse_routes.limiter.enabled = False
 
 _ABUSE_TABLES = (
     "abuse_contact_cache",
