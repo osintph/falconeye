@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.11.0] — 2026-07-20
+
+Security release addressing the two HIGH findings from the 2026-07-20 assessment.
+
+### Security
+
+- **H-1 — DNS-rebinding TOCTOU in the SSRF guard fixed via IP-pinned connections.** `safe_fetch` previously resolved and validated a hostname, then handed the *hostname* back to httpx, which re-resolved it at connect time — a short-TTL attacker-controlled domain could rebind public→internal between the guard's check and httpx's connect. The guard now resolves the hostname **once** (`resolve_and_check`), validates every returned address, and opens the connection **directly to the validated IP** (httpx receives an IP-literal URL, so there is no second resolution to rebind), while preserving the original hostname for the TLS SNI/certificate check (`extensions={"sni_hostname": …}`) and the HTTP `Host` header (vhost routing). Redirect hops re-run the full resolve→validate→pin cycle (`follow_redirects=False`), IPv6 targets are bracketed and pinned, multiple validated IPs fail over on connection error, and the guard fails closed on any resolution/parse error. Reusable primitives `resolve_pinned()` / `pinned_request()` are the single source of truth; the URL Expander now routes its per-hop fetch through them and pins its TLS-cert probe to the same validated IP as the fetch. All existing `safe_fetch` callers (phishing scanner, RDAP abuse/domain-age lookups, urlscan enrichment) inherit the fix. Verified against the full SSRF fuzzing battery (all payloads blocked, in-process and over HTTP on staging), a specific DNS-rebinding test (connection pinned to the first validated IP; no connect-time re-resolution), and legitimate traffic (TLS validated against the hostname, CDN vhost routing, and a real multi-hop redirect chain).
+- **H-2 (part 1) — `python-multipart` bumped to `>=0.0.31`** (resolves to 0.0.32), clearing the multipart-parser DoS advisories (PYSEC-2026-3038/3039/3040/3036/3037, 1851, 1852) that are reachable through the file-upload endpoints before route-handler size checks apply. `pip-audit` confirms the `python-multipart` advisories are cleared.
+- **H-2 (part 2) — deferred by design.** The remaining Starlette DoS advisories (PYSEC-2026-1943/1941/249, plus the Host/path-validation items) require Starlette 0.40+/1.x, which means moving off FastAPI 0.111 — a framework upgrade with regression risk across every endpoint that does not belong in the same release as an SSRF-guard rewrite. It is scoped in `docs/fastapi-upgrade-plan.md` for a following release. Interim mitigations already in place: nginx `client_max_body_size`, request timeouts, and Cloudflare upload limits.
+
+---
+
 ## [3.10.0] — 2026-07-20
 
 ### Added

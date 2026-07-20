@@ -26,7 +26,7 @@ from slowapi import Limiter
 
 from app.config import DB_PATH, HTTPX_TIMEOUT, URL_EXPAND_RATE_LIMIT_PER_DAY
 from app.utils.client_ip import get_client_ip, get_client_ip_key
-from app.utils.safe_fetch import ALLOWED_SCHEMES, SafeFetchError, resolve_and_check
+from app.utils.safe_fetch import SafeFetchError, pinned_request, resolve_pinned
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/url", tags=["url_expander"])
@@ -94,40 +94,18 @@ def _record_call(source_ip: str):
 
 # ---------- helpers ----------
 
-def _precheck(url: str) -> tuple[bool, str]:
-    """SSRF + scheme validation for a single URL, reusing safe_fetch primitives."""
-    try:
-        parsed = urlparse(url)
-    except Exception as exc:
-        return False, f"URL parse error: {exc}"
-    if parsed.scheme not in ALLOWED_SCHEMES:
-        return False, f"scheme not allowed: {parsed.scheme or '(none)'}"
-    if parsed.username or parsed.password:
-        return False, "userinfo in URL not allowed"
-    host = parsed.hostname
-    if not host:
-        return False, "no hostname"
-    try:
-        resolve_and_check(host)  # raises SafeFetchError on private/reserved/unresolvable
-    except SafeFetchError as exc:
-        return False, str(exc)
-    return True, "ok"
-
-
-def _grab_tls(host: str, port: int) -> dict | None:
+def _grab_tls(host: str, port: int, pinned_ip: str) -> dict | None:
     """Best-effort TLS peer-cert summary for an HTTPS hop.
 
-    Pins the connection to an already-validated public IP (resolve_and_check) so
-    the cert grab cannot be pointed at a private host, and verifies the cert
-    (invalid/self-signed -> returns None rather than trusting it).
+    Connects to *pinned_ip* — the same validated IP the HTTP fetch is pinned to
+    (resolved once by resolve_pinned) — so the cert grab and the fetch hit the
+    same host, and neither can be pointed at a private address. The cert is
+    verified against the original hostname (invalid/self-signed -> returns None
+    rather than trusting it).
     """
-    try:
-        addrs = resolve_and_check(host)
-    except SafeFetchError:
-        return None
     ctx = ssl.create_default_context()
     try:
-        with socket.create_connection((addrs[0], port), timeout=5) as sock:
+        with socket.create_connection((pinned_ip, port), timeout=5) as sock:
             with ctx.wrap_socket(sock, server_hostname=host) as tls_sock:
                 cert = tls_sock.getpeercert()
     except Exception:
@@ -217,20 +195,27 @@ async def expand_url(url: str, max_hops: int = DEFAULT_MAX_HOPS) -> dict:
         while hop_num < max_hops:
             hop_num += 1
 
-            ok, reason = _precheck(current)
-            if not ok:
+            # Resolve + SSRF-validate + pin ONCE per hop. resolve_pinned raises
+            # (fail closed) on a bad scheme, embedded userinfo, a missing/private
+            # host, or an unresolvable name — so a redirect to an internal IP is
+            # caught here exactly like the initial URL.
+            try:
+                conn = resolve_pinned(current)
+            except SafeFetchError as exc:
                 blocked_at_hop = hop_num
-                blocked_reason = reason
+                blocked_reason = str(exc)
                 break
 
-            parsed = urlparse(current)
-            host = parsed.hostname
-            port = parsed.port or (443 if parsed.scheme == "https" else 80)
-            tls = _grab_tls(host, port) if parsed.scheme == "https" else None
+            host = conn.host
+            port = conn.port
+            # Pin the cert grab to the same validated IP the fetch will use.
+            tls = _grab_tls(host, port, conn.ips[0]) if conn.scheme == "https" else None
 
             start = time.monotonic()
             try:
-                resp = await client.request("GET", current, headers={"User-Agent": USER_AGENT})
+                resp = await pinned_request(
+                    client, "GET", current, headers={"User-Agent": USER_AGENT}, conn=conn
+                )
             except httpx.TimeoutException:
                 chain.append({
                     "hop": hop_num, "url": current, "status": 0, "tls": tls,
@@ -275,7 +260,9 @@ async def expand_url(url: str, max_hops: int = DEFAULT_MAX_HOPS) -> dict:
                     final = current
                     continue
 
-            final = str(resp.url)
+            # current is the hostname-based URL; resp.url is the internal IP-pinned
+            # URL, so report current (what the user actually reached).
+            final = current
             break
 
     return {

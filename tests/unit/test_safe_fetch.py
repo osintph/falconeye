@@ -206,3 +206,120 @@ def _make_async_client(response):
             return response
 
     return _FakeClient()
+
+
+def _recording_client(response, sink):
+    """Async client stub that records each request (url/headers/extensions)."""
+
+    class _RecClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            pass
+
+        async def request(self, method, url, **kwargs):
+            sink.append({
+                "method": method,
+                "url": str(url),
+                "headers": {k: v for k, v in (kwargs.get("headers") or {}).items()},
+                "extensions": dict(kwargs.get("extensions") or {}),
+            })
+            return response
+
+    return _RecClient()
+
+
+# ---------------------------------------------------------------------------
+# H-1 (v3.11.0): connection is pinned to the validated IP (DNS-rebinding fix)
+# ---------------------------------------------------------------------------
+
+def test_connection_pinned_to_validated_ip():
+    """The HTTP connection targets the validated IP, while the hostname is
+    preserved for TLS SNI (cert check) and the Host header (vhost routing)."""
+    sink = []
+    ok = httpx.Response(200, request=httpx.Request("GET", "https://example.com/"))
+
+    async def run():
+        with patch("app.utils.safe_fetch.socket.getaddrinfo",
+                   return_value=_getaddrinfo_returning("93.184.216.34")):
+            with patch("httpx.AsyncClient", side_effect=lambda **kw: _recording_client(ok, sink)):
+                return await safe_fetch("https://example.com/path?q=1")
+
+    res = asyncio.run(run())
+    assert res["status"] == 200
+    # url_final is the hostname URL, never the internal IP-pinned URL.
+    assert res["url_final"] == "https://example.com/path?q=1"
+    assert len(sink) == 1
+    rec = sink[0]
+    assert "93.184.216.34" in rec["url"]          # connected to the IP
+    assert "example.com" not in rec["url"]         # not to the hostname
+    assert rec["url"].endswith("/path?q=1")        # path/query preserved
+    assert rec["extensions"].get("sni_hostname") == "example.com"  # TLS validates vs host
+    assert rec["headers"].get("Host") == "example.com"             # vhost routing
+
+
+def test_dns_rebind_blocked_no_second_resolution():
+    """The specific H-1 vulnerability: a host that resolves public first and
+    internal second. We resolve ONCE and connect to the validated IP, so the
+    rebind target is never reached and getaddrinfo is called exactly once."""
+    sink = []
+    ok = httpx.Response(200, request=httpx.Request("GET", "https://x/"))
+    calls = {"n": 0}
+
+    def side_effect(host, port):
+        calls["n"] += 1
+        # 1st lookup: public (passes the guard). Any later lookup: metadata IP.
+        return _getaddrinfo_returning("93.184.216.34" if calls["n"] == 1 else "169.254.169.254")
+
+    async def run():
+        with patch("app.utils.safe_fetch.socket.getaddrinfo", side_effect=side_effect):
+            with patch("httpx.AsyncClient", side_effect=lambda **kw: _recording_client(ok, sink)):
+                return await safe_fetch("https://rebind.example.com/")
+
+    res = asyncio.run(run())
+    assert res["status"] == 200
+    assert calls["n"] == 1                          # no connect-time re-resolution
+    assert "93.184.216.34" in sink[0]["url"]        # pinned to the validated IP
+    assert "169.254.169.254" not in sink[0]["url"]  # never the rebind target
+
+
+def test_pins_to_first_reachable_validated_ip():
+    """When a host has multiple validated IPs, a connect failure on the first
+    falls through to the next — and every candidate is a validated public IP."""
+    sink = []
+    ok = httpx.Response(200, request=httpx.Request("GET", "http://x/"))
+
+    def two_public_ips(host, port):
+        return [
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("1.2.3.4", 0)),
+            (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("5.6.7.8", 0)),
+        ]
+
+    class _FailFirstClient:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            pass
+
+        async def request(self, method, url, **kwargs):
+            sink.append(str(url))
+            if "1.2.3.4" in str(url):
+                raise httpx.ConnectError("connection refused")
+            return ok
+
+    async def run():
+        with patch("app.utils.safe_fetch.socket.getaddrinfo", side_effect=two_public_ips):
+            with patch("httpx.AsyncClient", side_effect=lambda **kw: _FailFirstClient()):
+                return await safe_fetch("http://multi.example.com/")
+
+    res = asyncio.run(run())
+    assert res["status"] == 200
+    assert any("1.2.3.4" in u for u in sink)   # first IP attempted
+    assert any("5.6.7.8" in u for u in sink)   # failover to second
+
+
+def test_userinfo_url_rejected():
+    with pytest.raises(SafeFetchError, match="userinfo"):
+        asyncio.run(safe_fetch("http://user:pass@example.com/"))
