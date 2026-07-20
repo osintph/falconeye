@@ -42,11 +42,11 @@ def test_crlf_in_target_no_header_line_survives():
     assert any("target" in w for w in r["warnings"])
 
 
-def test_long_evidence_truncated():
+def test_evidence_under_cap_not_truncated():
+    # 9000 chars is now under the v3.8.3 cap (20000) — no truncation.
     r = compose.compose_report("x", "ip", "other", "A" * 9000, "2026", "N", "n@e.com")
-    assert any("truncated" in w for w in r["warnings"])
-    assert "A" * 8000 in r["body_text"]
-    assert "A" * 8001 not in r["body_text"]
+    assert not any("truncated" in w for w in r["warnings"])
+    assert "A" * 9000 in r["body_text"]
 
 
 def test_unknown_category_becomes_other():
@@ -58,6 +58,41 @@ def test_unknown_category_becomes_other():
 def test_braces_in_evidence_safe():
     r = compose.compose_report("x", "domain", "phishing", 'json {"a": 1}', "2026", "N", "n@e.com")
     assert 'json {"a": 1}' in r["body_text"]
+
+
+def test_compose_carries_rich_email_evidence():
+    """v3.8.3: the client builds rich evidence (real headers, verbatim Received
+    chain, body excerpt, URLs); compose must carry it through intact."""
+    evidence = (
+        "Subject: You have won\n"
+        "From: scammer@evil.example\n"
+        "Message-ID: <abc123@evil.example>\n"
+        "Date: Mon, 20 Jul 2026 00:00:00 +0000\n"
+        "Return-Path: bounce@evil.example\n"
+        "Authentication-Results: SPF=fail DKIM=none DMARC=fail\n\n"
+        "Received chain (verbatim, oldest first):\n"
+        "  from mail.evil.example ([203.0.113.9]) by mx.victim.example\n\n"
+        "URLs found in the message:\n"
+        "  http://evil.example/login\n\n"
+        "Attachments referenced (filenames only, content omitted): invoice.exe"
+    )
+    r = compose.compose_report("evil.example", "domain", "phishing", evidence,
+                               "2026-07-20T00:00:00Z", "Reporter", "r@osintph.info")
+    body = r["body_text"]
+    assert "Message-ID: <abc123@evil.example>" in body
+    assert "Subject: You have won" in body
+    assert "Received chain (verbatim" in body and "203.0.113.9" in body
+    assert "http://evil.example/login" in body
+    assert "invoice.exe" in body           # filename present...
+    # ...but this is a name-only reference; no attachment content is present
+    assert r["warnings"] == []
+
+
+def test_compose_evidence_cap_raised_for_full_body():
+    r = compose.compose_report("x", "ip", "other", "A" * 25000, "2026", "N", "n@e.com")
+    assert "A" * 20000 in r["body_text"]
+    assert "A" * 20001 not in r["body_text"]
+    assert any("truncated" in w for w in r["warnings"])
 
 
 # ---------- compose endpoint ----------

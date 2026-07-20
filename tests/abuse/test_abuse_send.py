@@ -93,19 +93,25 @@ def test_send_success_inserts_audit(monkeypatch):
     assert n == 1
 
 
-def test_send_rate_limit_same_recipient(monkeypatch):
+def test_send_is_not_rate_limited(monkeypatch):
+    """v3.8.3: send is admin-only + single-user, so it is NOT rate-limited.
+    Repeated sends to the same recipient all succeed and never set rate_limited,
+    and nothing is written to abuse_send_rate_limit."""
     _mailgun_env(monkeypatch)
     _seed_recipient()
     monkeypatch.setattr(
         httpx, "AsyncClient",
         lambda *a, **k: _FakeClient(resp=_FakeResp(200, {"id": "<m@mg>"})),
     )
-    r1 = asyncio.run(send.send_via_mailgun(_COMPOSED, "abuse@prov.example", "1.1.1.1"))
-    assert r1["sent"] is True
-    # different client IP so the per-IP limit isn't the cause — recipient 1/hour must block
-    r2 = asyncio.run(send.send_via_mailgun(_COMPOSED, "abuse@prov.example", "2.2.2.2"))
-    assert r2["sent"] is False
-    assert r2["rate_limited"] is True
+    for _ in range(5):
+        r = asyncio.run(send.send_via_mailgun(_COMPOSED, "abuse@prov.example", "1.1.1.1"))
+        assert r["sent"] is True
+        assert r["rate_limited"] is False
+    # the rate-limit table is left in place but must not be written to
+    conn = store._connect()
+    rows = conn.execute("SELECT COUNT(*) FROM abuse_send_rate_limit").fetchone()[0]
+    conn.close()
+    assert rows == 0
 
 
 def test_send_rejects_recipient_not_in_cache(monkeypatch):

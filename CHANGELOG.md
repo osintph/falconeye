@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.8.3] — 2026-07-20
+
+### Fixed
+
+- **Abuse reports now include the real email content and full headers.** Previously the report evidence was a thin summary (sender, auth results, a few hops) — the message's Subject, Message-ID, body, and linked URLs never made it in, so reports composed with older versions were materially useless; **regenerate any pending drafts.** Reports now carry the real `Subject` / `Message-ID` / `Date` / `Return-Path` / `Authentication-Results`, the **verbatim `Received` chain**, and a body excerpt (or the full body via an "Include full email body" checkbox); domain-registrar reports get the message's URLs instead of the body. Attachment filenames (content omitted) and body URLs are extracted too — URL extraction **refangs** defanged links (`hxxp`, `example[.]com`) and **decodes** base64 / quoted-printable bodies, and merges the server's decoded-body URLs, so an obfuscated phishing link is still surfaced. Both abuse cards render the identical structured block. The evidence is assembled **entirely client-side** from the raw email already in the browser and kept in an editable field for PII redaction — so `email_header.py` is unchanged, nothing new is persisted, and the Email Header tab's "never written to disk" guarantee stays intact (now locked by a regression test).
+
+### Changed
+
+- **Send via Mailgun is no longer rate-limited.** It is admin-authenticated and single-user, so the rate limit added no protection and only created debugging friction. Auth, the RDAP-recipient allowlist, and the append-only audit log all remain. The `abuse_send_rate_limit` table is left in place (no destructive migration) but is no longer written to or read. Compose (3/hour, 10/day per IP) and lookup (10/hour per IP) stay rate-limited as public-endpoint load protection.
+
+### Docs
+
+- Added "What makes an abuse report actionable" to `docs/abuse-reporting.md`, citing M3AAWG Sender Best Common Practices and Abuse Desk Common Practices.
+
+---
+
+## [3.8.2] — 2026-07-20
+
+### Fixed
+
+- **Inline comments in `.env` no longer break credential / API-key reads.** A trailing `# comment` on an env line — e.g. the `FALCONEYE_ABUSE_ADMIN_PASS_HASH` bcrypt hash — reached the consumer verbatim, because `os.getenv(...).strip()` and systemd's `EnvironmentFile` both leave inline comments in place. The 88-character result (hash + comment) failed `bcrypt.checkpw`, rejecting the correct admin password on Send via Mailgun. Env values are now read through `getenv_clean` (`app/utils/env.py`), which strips dotenv-style inline comments and surrounding quotes; applied across the abuse routes/send layer and `config.py`. This gap was latent since v3.7.1 and only surfaced once the v3.8.1 popup fix enabled the first real authenticated send — v3.8.1 did not introduce it. Full post-mortem in `docs/regressions.md`.
+
+### Added
+
+- **Operator rate-limit reset tool.** `python -m app.abuse.tools reset-rate-limit --ip <ip> [--endpoint compose|send|lookup|username|url|qr|dork|decoder|llm|all] [--dry-run]` clears one client IP's rate-limit counters across every rate-limit table (each stores the IP differently — `client_ip` / `source_ip` / `scope='ip:<ip>'`), printing the rows cleared per table. A blocked legitimate investigator, or the operator debugging, no longer needs hand-written SQLite `DELETE`s. Documented under "Operator troubleshooting" in `docs/abuse-reporting.md`.
+- **`docs/regressions.md`** — a regression post-mortem log, opened with the v3.8.1 inline-comment entry.
+
+---
+
 ## [3.8.1] — 2026-07-20
 
 ### Fixed

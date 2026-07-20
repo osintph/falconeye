@@ -13,25 +13,22 @@ The Mailgun API key is read from the environment at call time and is never
 logged, never included in an error string, and never returned to the caller.
 """
 import logging
-import os
 import re
 
 import httpx
 
 from app.abuse import store
+from app.utils.env import getenv_clean
 
 log = logging.getLogger("falconeye.abuse")
 
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
-# Rate limits (see plan "Cautionary notes").
-IP_PER_HOUR = 3
-IP_PER_DAY = 10
-RECIPIENT_PER_HOUR = 1
-GLOBAL_PER_DAY = 100
-
-_HOUR = 3600
-_DAY = 86400
+# NOTE: Send is NOT rate-limited (v3.8.3). It is admin-authenticated and
+# single-user, so a rate limit added no protection and only created debugging
+# friction. Auth, the RDAP-recipient allowlist, and the audit log all remain.
+# The abuse_send_rate_limit table is left in place (no destructive migration in
+# a hotfix); it is simply no longer written to or read.
 
 
 def _norm_region(raw) -> str:
@@ -53,30 +50,19 @@ def _mailgun_base(region: str) -> str:
 
 
 def _config() -> dict:
+    # getenv_clean strips any inline comment / quotes systemd leaves in the value
+    # (see docs/regressions.md, v3.8.1). _norm_region stays as a second guard.
     return {
-        "api_key": os.getenv("MAILGUN_API_KEY", "").strip(),
-        "domain": os.getenv("MAILGUN_DOMAIN", "").strip(),
-        "from": os.getenv("MAILGUN_FROM", "").strip(),
-        "region": _norm_region(os.getenv("MAILGUN_REGION")),
+        "api_key": getenv_clean("MAILGUN_API_KEY"),
+        "domain": getenv_clean("MAILGUN_DOMAIN"),
+        "from": getenv_clean("MAILGUN_FROM"),
+        "region": _norm_region(getenv_clean("MAILGUN_REGION")),
     }
 
 
 def mailgun_configured() -> bool:
     c = _config()
     return bool(c["api_key"] and c["domain"] and c["from"])
-
-
-def _rate_check(client_ip: str, recipient: str):
-    """Return a human message if a limit is hit, else None."""
-    if store.count_recent("abuse_send_rate_limit", "scope", "global", _DAY) >= GLOBAL_PER_DAY:
-        return "Global daily send limit reached. Try again tomorrow."
-    if store.count_recent("abuse_send_rate_limit", "scope", f"ip:{client_ip}", _HOUR) >= IP_PER_HOUR:
-        return "Per-IP hourly send limit reached."
-    if store.count_recent("abuse_send_rate_limit", "scope", f"ip:{client_ip}", _DAY) >= IP_PER_DAY:
-        return "Per-IP daily send limit reached."
-    if store.count_recent("abuse_send_rate_limit", "scope", f"recipient:{recipient.lower()}", _HOUR) >= RECIPIENT_PER_HOUR:
-        return "This abuse contact was already emailed within the last hour."
-    return None
 
 
 async def send_via_mailgun(composed: dict, recipient_email: str, client_ip: str) -> dict:
@@ -91,7 +77,7 @@ async def send_via_mailgun(composed: dict, recipient_email: str, client_ip: str)
     # Recipient allowlist: only an address the tool itself resolved via RDAP, OR
     # the operator's own configured reporter address (so "send a test to your own
     # inbox" works without weakening the arbitrary-recipient protection).
-    reporter_self = os.getenv("FALCONEYE_REPORTER_EMAIL", "").strip().lower()
+    reporter_self = getenv_clean("FALCONEYE_REPORTER_EMAIL").lower()
     allowed = store.recipient_seen_in_cache(recipient) or (
         bool(reporter_self) and recipient.lower() == reporter_self
     )
@@ -105,12 +91,6 @@ async def send_via_mailgun(composed: dict, recipient_email: str, client_ip: str)
     cfg = _config()
     if not (cfg["api_key"] and cfg["domain"] and cfg["from"]):
         result["error"] = "Mailgun is not configured on this server."
-        return result
-
-    limit_msg = _rate_check(client_ip, recipient)
-    if limit_msg:
-        result["rate_limited"] = True
-        result["error"] = limit_msg
         return result
 
     composed = composed or {}
@@ -156,9 +136,6 @@ async def send_via_mailgun(composed: dict, recipient_email: str, client_ip: str)
             msg_id = None
         result["sent"] = True
         result["mailgun_message_id"] = msg_id
-        store.record_event("abuse_send_rate_limit", "scope", "global")
-        store.record_event("abuse_send_rate_limit", "scope", f"ip:{client_ip}")
-        store.record_event("abuse_send_rate_limit", "scope", f"recipient:{recipient.lower()}")
         store.record_audit(client_ip, recipient, target, target_type, category, subject, msg_id, True)
         return result
 

@@ -28,7 +28,10 @@ CATEGORY_TITLES = {
 
 VALID_CATEGORIES = tuple(CATEGORY_TITLES.keys())
 
-MAX_EVIDENCE_CHARS = 8000
+# Raised in v3.8.3: evidence now carries real email content (headers, verbatim
+# Received chain, and an optional full body) built client-side, so it needs more
+# room than a hand-typed note.
+MAX_EVIDENCE_CHARS = 20000
 MAX_TARGET_CHARS = 255
 
 BODY_TEMPLATE = """To Whom It May Concern,

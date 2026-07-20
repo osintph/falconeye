@@ -23,6 +23,31 @@ is itself a legitimate abuse vector:
 Both modes share the same RDAP lookup and the same composition/sanitization
 logic. Only the send layer differs.
 
+## What makes an abuse report actionable
+
+Provider abuse desks and registrars triage by whether a report carries enough
+**forensic evidence to verify and act on** — not by how strongly it is worded. An
+actionable report includes the raw material: the full header block with every
+`Received` line in original order, the message's `Subject`, `Message-ID`, `Date`,
+`From`, `Return-Path`, and `Authentication-Results` (SPF/DKIM/DMARC), plus the
+body or the URLs it linked to. For an IP report, name the ASN/network and the
+concrete observed activity (log excerpts, UTC timestamps, malicious-URL records).
+A vague "this IP/domain is bad" is routinely ignored; a report the desk can
+reproduce or cross-check gets acted on. This is why FalconEye v3.8.3 composes
+reports from the real email content (verbatim `Received` chain, real headers, and
+a body excerpt or the full body) rather than a summary.
+
+Beyond the evidence, keep the report **specific, factual, and self-contained**:
+one incident per report, a real monitored reply-to address (desks reply asking
+for clarification), UTC timestamps, and no overstatement. Registrars care most
+about what the mail *linked to* (the URLs); hosting abuse desks care about what
+their IP *did* — FalconEye tailors each report accordingly. Because the body is
+included as evidence, **review it and remove any of your own PII before sending**
+(the evidence field is editable for exactly that). See M3AAWG's
+[Sender Best Common Practices](https://www.m3aawg.org/documents/en/m3aawg-sender-best-common-practices-version-30)
+and [Abuse Desk Common Practices](https://www.m3aawg.org/documents/en/abuse-desk-common-practices)
+for the authoritative guidance.
+
 ## Compose and Copy mode
 
 No configuration is required for lookup and copy. Composition additionally needs
@@ -121,16 +146,19 @@ under the form.
 
 ### 5. Rate limits
 
-Enforced in SQLite before Mailgun is ever contacted:
+**Send is not rate-limited** (as of v3.8.3). It is admin-authenticated and
+single-user, so a rate limit added no protection and only created debugging
+friction. Send is protected instead by admin credentials, the RDAP-recipient
+allowlist, and the append-only audit log.
 
-| Scope | Limit |
+The public, unauthenticated endpoints **are** rate-limited as load protection:
+
+| Endpoint | Limit (per client IP) |
 |---|---|
-| Per client IP | 3 sends/hour, 10 sends/day |
-| Per recipient abuse contact | 1 send/hour |
-| Global (all senders) | 100 sends/day |
+| `/api/abuse/compose` | 3/hour, 10/day |
+| `/api/abuse/lookup` | 10/hour |
 
-The compose and lookup endpoints are separately limited (compose 3/hour and
-10/day per IP; lookup 10/hour per IP), plus a short-window burst limit on each.
+plus a short-window burst limit on each.
 
 ### 6. Audit log
 
@@ -146,6 +174,44 @@ sqlite3 /opt/falconeye/data/falconeye.db \
 ```
 
 The table is append-only and unbounded; prune old rows manually if desired.
+
+## Operator troubleshooting
+
+### Clearing a rate-limit counter
+
+Each client IP is capped on the public endpoints (compose 3/hour, lookup
+10/hour; send is not limited — it is admin-only; the Username tab and other tabs
+have their own caps). If a
+legitimate investigator hits their own cap mid-casework — or you hit it while
+debugging — clear that IP's counters with the operator CLI instead of
+hand-writing SQLite `DELETE`s against the right table and column:
+
+```bash
+cd /opt/falconeye/app_src
+# clear one IP across every rate-limit table
+/opt/falconeye/venv/bin/python -m app.abuse.tools reset-rate-limit --ip 1.2.3.4
+
+# just one endpoint
+/opt/falconeye/venv/bin/python -m app.abuse.tools reset-rate-limit --ip 1.2.3.4 --endpoint compose
+
+# preview without deleting
+/opt/falconeye/venv/bin/python -m app.abuse.tools reset-rate-limit --ip 1.2.3.4 --dry-run
+```
+
+`--endpoint` accepts `lookup`, `compose`, `send`, `username`, `url`, `qr`, `dork`,
+`decoder`, `llm`, or `all` (default). It prints how many rows it cleared per
+table. The IP is the value FalconEye records — the real client IP from
+`CF-Connecting-IP`. Use it for debugging or when a real investigator is blocked;
+it is not a way to disable rate limiting.
+
+### Send rejects the correct password
+
+If Send returns "invalid credentials" for a password you know is right, check the
+`FALCONEYE_ABUSE_ADMIN_PASS_HASH` line in `/opt/falconeye/.env` for a trailing
+inline comment — a real bcrypt hash is exactly 60 characters and starts with
+`$2b$`. As of v3.8.2 the app strips inline comments from env values defensively,
+but confirm the value and restart the service after any `.env` edit. Background:
+`docs/regressions.md`.
 
 ## Mailgun free-tier note
 

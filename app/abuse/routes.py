@@ -15,7 +15,6 @@ WWW-Authenticate response pops the browser's native auth dialog, which raced the
 in-page credential form and rejected correct passwords (v3.8.1 fix).
 """
 import logging
-import os
 import secrets
 from datetime import datetime, timezone
 
@@ -29,6 +28,7 @@ from app.abuse import lookup as lookup_mod
 from app.abuse import send as send_mod
 from app.abuse import store
 from app.utils.client_ip import get_client_ip, get_client_ip_key
+from app.utils.env import getenv_clean
 
 log = logging.getLogger("falconeye.abuse")
 
@@ -69,8 +69,8 @@ class SendRequest(BaseModel):
 
 def _admin_configured() -> bool:
     return bool(
-        os.getenv("FALCONEYE_ABUSE_ADMIN_USER", "").strip()
-        and os.getenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH", "").strip()
+        getenv_clean("FALCONEYE_ABUSE_ADMIN_USER")
+        and getenv_clean("FALCONEYE_ABUSE_ADMIN_PASS_HASH")
     )
 
 
@@ -82,8 +82,10 @@ def _verify_admin(admin_user: str, admin_password: str) -> str | None:
     Basic Auth dialog and race the in-page form (the v3.8.1 bug). The password is
     never logged, returned, or stored.
     """
-    user = os.getenv("FALCONEYE_ABUSE_ADMIN_USER", "").strip()
-    pass_hash = os.getenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH", "").strip()
+    # getenv_clean strips any inline comment / quotes systemd leaves in the value
+    # (the v3.8.1 bcrypt-hash regression; see docs/regressions.md).
+    user = getenv_clean("FALCONEYE_ABUSE_ADMIN_USER")
+    pass_hash = getenv_clean("FALCONEYE_ABUSE_ADMIN_PASS_HASH")
     if not user or not pass_hash:
         return "send not configured on this server"
 
@@ -130,8 +132,8 @@ async def lookup(req: LookupRequest, request: Request):
 @router.post("/compose")
 @limiter.limit("10/minute")
 async def compose(req: ComposeRequest, request: Request):
-    reporter_name = os.getenv("FALCONEYE_REPORTER_NAME", "").strip()
-    reporter_email = os.getenv("FALCONEYE_REPORTER_EMAIL", "").strip()
+    reporter_name = getenv_clean("FALCONEYE_REPORTER_NAME")
+    reporter_email = getenv_clean("FALCONEYE_REPORTER_EMAIL")
     if not reporter_name or not reporter_email:
         raise HTTPException(
             status_code=503,
@@ -172,7 +174,6 @@ async def compose(req: ComposeRequest, request: Request):
 
 
 @router.post("/send")
-@limiter.limit("10/minute")
 async def send(req: SendRequest, request: Request):
     # Credentials arrive in the JSON body and are validated here. This endpoint
     # ALWAYS returns HTTP 200 with a structured {sent, rate_limited, error} body —

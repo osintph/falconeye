@@ -1706,7 +1706,7 @@ document.getElementById('email-header-btn')?.addEventListener('click', async () 
     resultEl.innerHTML = renderEmailHeaderResult(data);
     // Abuse cards are an enhancement — never let them regress the analysis result.
     try {
-      renderEmailAbuseCards(resultEl, data);
+      renderEmailAbuseCards(resultEl, data, raw, rawBody);
     } catch (abuseErr) {
       console.error('abuse cards render failed (Email tab):', abuseErr);
     }
@@ -3868,41 +3868,168 @@ function abusePickIpCategory(data) {
   return 'scanning';
 }
 
+// IP Reputation tab: observed-activity block from the IP intel already in `data`.
 function abuseBuildIpEvidence(data) {
   const lines = [];
   const ip = data.ip || '';
-  lines.push(`Abusive activity observed from IP ${ip}.`);
+  lines.push(`Observed activity on IP ${ip}:`);
+  lines.push('');
   const rs = data.ripestat || {};
-  if (rs.asn) lines.push(`Network: AS${rs.asn}${rs.asn_holder ? ' ' + rs.asn_holder : ''}${rs.prefix ? ' (' + rs.prefix + ')' : ''}.`);
+  if (rs.asn) lines.push(`ASN: AS${rs.asn}${rs.asn_holder ? ' (' + rs.asn_holder + ')' : ''}${rs.prefix ? ', prefix ' + rs.prefix : ''}.`);
   const ptr = data.reverse_dns || [];
   if (ptr.length) lines.push(`Reverse DNS: ${ptr.join(', ')}.`);
   const gn = data.greynoise || {};
-  if (gn.classification) lines.push(`GreyNoise classification: ${gn.classification}.`);
+  if (gn.classification) lines.push(`GreyNoise classification: ${gn.classification}${gn.name ? ' (' + gn.name + ')' : ''}.`);
   if (data.shodan && Array.isArray(data.shodan.tags) && data.shodan.tags.length) {
     lines.push(`Shodan tags: ${data.shodan.tags.join(', ')}.`);
+  }
+  const uhUrls = (data.urlhaus && data.urlhaus.urls) ? data.urlhaus.urls : [];
+  if (uhUrls.length) {
+    lines.push(`URLhaus: ${uhUrls.length} malicious URL record(s) on this host. Recent:`);
+    uhUrls.slice(0, 5).forEach(u => lines.push(`  - ${(u && u.url) ? u.url : u}`));
   }
   lines.push('');
   lines.push('Describe the specific abusive activity you observed (dates, log excerpts, target service) before sending.');
   return lines.join('\n');
 }
 
-function abuseBuildEmailEvidence(data) {
-  const lines = [];
+// ---- client-side helpers for email evidence (nothing sent to the server to parse) ----
+function abuseEmailBody(rawHeader, rawBody) {
+  let body = (rawBody || '').trim();
+  if (!body && rawHeader) {
+    const parts = rawHeader.split(/\r?\n\r?\n/);
+    if (parts.length > 1) body = parts.slice(1).join('\n\n').trim();
+  }
+  return body;
+}
+function abuseStripHtml(s) {
+  return (s || '')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .trim();
+}
+// Refang defanged URLs so phishing links obfuscated as hxxp / example[.]com are
+// still extracted.
+function abuseRefang(s) {
+  return (s || '')
+    .replace(/h(?:xx|tt)p(s?)(?:\[?:\]?)\/\//gi, 'http$1://')
+    .replace(/\[\.\]|\(\.\)|\{\.\}|\[dot\]|\(dot\)/gi, '.')
+    .replace(/\[:\]/g, ':');
+}
+// Decode a MIME body enough to read URLs out of it: quoted-printable, base64
+// text parts, or a whole-body base64 blob. Best-effort; returns the input on
+// failure. This is why an uploaded Office365 phish (base64 HTML) still yields
+// its links client-side.
+function abuseDecodeBody(raw) {
+  if (!raw) return '';
+  let out = raw;
+  try {
+    if (/Content-Transfer-Encoding:\s*quoted-printable/i.test(raw)) {
+      out = out.replace(/=\r?\n/g, '').replace(/=([0-9A-F]{2})/gi, (m, h) => String.fromCharCode(parseInt(h, 16)));
+    }
+    const decoded = [];
+    const re = /Content-Type:\s*text\/(?:html|plain)[\s\S]*?Content-Transfer-Encoding:\s*base64\s*\r?\n\r?\n([A-Za-z0-9+/=\r\n]+)/gi;
+    let m;
+    while ((m = re.exec(raw)) !== null) {
+      const b64 = m[1].replace(/\s+/g, '');
+      try { decoded.push(decodeURIComponent(escape(atob(b64)))); } catch (e) { try { decoded.push(atob(b64)); } catch (e2) { /* skip */ } }
+    }
+    if (decoded.length) out = decoded.join('\n');
+    else if (/^[A-Za-z0-9+/=\s]{200,}$/.test(raw.trim())) {
+      const b64 = raw.replace(/\s+/g, '');
+      try { out = decodeURIComponent(escape(atob(b64))); } catch (e) { try { out = atob(b64); } catch (e2) { /* keep */ } }
+    }
+  } catch (e) { /* keep out */ }
+  return out;
+}
+function abuseExtractUrls(s) {
+  const t = abuseRefang(s || '');
+  const found = new Set();
+  const trim = (u) => u.replace(/[.,;:!)\]}'"]+$/, '');
+  (t.match(/https?:\/\/[^\s<>"')\]]+/gi) || []).forEach(u => found.add(trim(u)));
+  (t.match(/\bwww\.[a-z0-9][a-z0-9.-]*\.[a-z]{2,}(?:\/[^\s<>"')\]]*)?/gi) || []).forEach(u => found.add(trim(u)));
+  (t.match(/\b[a-z0-9][a-z0-9.-]*\.[a-z]{2,}\/[^\s<>"')\]]+/gi) || []).forEach(u => found.add(trim(u)));
+  return Array.from(found).slice(0, 40);
+}
+function abuseExtractAttachments(raw) {
+  const out = [];
+  const re = /(?:filename|name)\s*=\s*"?([^"\r\n;]+\.[A-Za-z0-9]{1,8})"?/gi;
+  let m;
+  while ((m = re.exec(raw || '')) !== null) out.push(m[1].trim());
+  return Array.from(new Set(out)).slice(0, 10);
+}
+
+// Email tab: build the report evidence entirely client-side from the raw email
+// (already in the browser) + parsed headers in `data`. Nothing is sent to the
+// server to parse and nothing new is persisted — the email-header cache stays
+// headers-only, so the tab's "never written to disk" guarantee is preserved.
+// opts: {rawHeader, rawBody, variant:'domain'|'ip', fullBody:bool}
+// Both abuse cards (sender-domain registrar and sending-IP hoster) call this and
+// get the IDENTICAL structured block: full headers, verbatim Received chain, the
+// message URLs, and the body (excerpt or full). No per-card divergence.
+function abuseBuildEmailEvidence(data, opts) {
+  opts = opts || {};
   const from = (data.from || [])[0] || {};
-  lines.push(`Abusive email received from ${from.email || '(unknown sender)'}.`);
-  const auth = data.authentication || {};
-  lines.push(`Authentication results — SPF: ${auth.spf || 'none'}, DKIM: ${auth.dkim || 'none'}, DMARC: ${auth.dmarc || 'none'}.`);
   const rp = (data.return_path || [])[0] || {};
-  if (rp.email) lines.push(`Return-Path: ${rp.email}.`);
+  const auth = data.authentication || {};
   const orig = data.originating_ip || {};
-  if (orig.ip) lines.push(`Originating IP: ${orig.ip}${orig.asn ? ' (AS' + orig.asn + ')' : ''}${orig.country ? ', ' + orig.country : ''}.`);
-  const hops = (data.received_chain || []).filter(h => h.ip).slice(0, 5);
-  if (hops.length) {
-    lines.push('Received chain (public hops):');
-    hops.forEach(h => lines.push(`  - ${h.ip}${h.from_host ? ' from ' + h.from_host : ''}${h.timestamp ? ' @ ' + h.timestamp : ''}`));
+  const rawHeader = opts.rawHeader || '';
+  const bodyDecoded = abuseDecodeBody(abuseEmailBody(rawHeader, opts.rawBody));
+  const looksHtml = /<html|<body|<div|<a\s|<table/i.test(bodyDecoded.slice(0, 2000));
+  const bodyText = (looksHtml ? abuseStripHtml(bodyDecoded) : bodyDecoded)
+    // strip leftover MIME part headers / boundary markers from the excerpt
+    .replace(/^(?:--[^\r\n]*|(?:Content-[A-Za-z-]+|MIME-Version):[^\r\n]*)$/gim, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  const lines = [];
+  lines.push(`Subject: ${data.subject || '(none)'}`);
+  lines.push(`From: ${from.email || from.display || '(unknown)'}`);
+  lines.push(`Message-ID: ${data.message_id || '(none)'}`);
+  lines.push(`Date: ${data.date || '(none)'}`);
+  lines.push(`Return-Path: ${rp.email || '(none)'}`);
+  lines.push(`Authentication-Results: SPF=${auth.spf || 'none'} DKIM=${auth.dkim || 'none'} DMARC=${auth.dmarc || 'none'}`);
+  if (orig.ip) lines.push(`Originating IP: ${orig.ip}${orig.asn ? ' (AS' + orig.asn + ')' : ''}${orig.country ? ', ' + orig.country : ''}`);
+  lines.push('');
+  lines.push('Received chain (verbatim, oldest first):');
+  const hops = data.received_chain || [];
+  if (hops.length) hops.forEach(h => lines.push('  ' + (h.raw || `${h.ip || ''} ${h.from_host || ''}`.trim())));
+  else lines.push('  (no Received headers found)');
+  lines.push('');
+
+  // URLs — the single most important evidence for a registrar abuse desk.
+  // Combine the client-decoded body (refanged), the server's decoded-body URLs,
+  // and any header URLs.
+  const urls = Array.from(new Set([].concat(
+    abuseExtractUrls(bodyDecoded),
+    (data.body_analysis && data.body_analysis.urls) || [],
+    (data.iocs && data.iocs.urls) || [],
+  ).map(u => (u || '').trim()).filter(Boolean))).slice(0, 40);
+  lines.push('URLs found in the message:');
+  if (urls.length) urls.forEach(u => lines.push('  ' + u));
+  else lines.push('  (none found — the body may be missing or in a format we could not decode)');
+  lines.push('');
+
+  if (opts.fullBody) {
+    lines.push('Full message body:');
+    lines.push(bodyText || 'Body empty or not present in supplied message.');
+  } else {
+    lines.push('Body excerpt (first 500 characters):');
+    lines.push(bodyText ? bodyText.slice(0, 500) : 'Body empty or not present in supplied message.');
+  }
+
+  const atts = Array.from(new Set(
+    abuseExtractAttachments(rawHeader).concat(abuseExtractAttachments(opts.rawBody || '')),
+  )).slice(0, 10);
+  if (atts.length) {
+    lines.push('');
+    lines.push('Attachments referenced (filenames only, content omitted): ' + atts.join(', '));
   }
   lines.push('');
-  lines.push('(Recipient address redacted for privacy.) Add any additional detail before sending.');
+  lines.push('(Recipient address redacted for privacy. Review the body above and remove any of your own personal information before sending.)');
   return lines.join('\n');
 }
 
@@ -3932,8 +4059,9 @@ function renderAbuseReportCard(container, info) {
         <select class="abuse-category w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">${optionsHtml}</select>
       </div>
       <div>
-        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Evidence (editable)</label>
-        <textarea class="abuse-evidence w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:border-amber-400" rows="7">${escapeHtml(info.evidence || '')}</textarea>
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Evidence (editable — redact your own PII before sending)</label>
+        ${info.bodyVariants ? `<label class="flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 mb-1.5"><input type="checkbox" class="abuse-fullbody accent-amber-400"> <span>Include full email body (default: 500-character excerpt)</span></label>` : ''}
+        <textarea class="abuse-evidence w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:border-amber-400" rows="9">${escapeHtml(info.evidence || '')}</textarea>
       </div>
       <div>
         <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Observed at (UTC)</label>
@@ -3969,6 +4097,15 @@ function renderAbuseReportCard(container, info) {
   const sendBtn = $('.abuse-send-btn');
   const authBox = $('.abuse-auth');
   const statusEl = $('.abuse-send-status');
+
+  // 0) full-body toggle (email-derived cards): swap the editable evidence between
+  //    the 500-char excerpt and the full body. Both are prebuilt client-side.
+  const fullBodyCb = $('.abuse-fullbody');
+  if (fullBodyCb && info.bodyVariants) {
+    fullBodyCb.addEventListener('change', () => {
+      $('.abuse-evidence').value = fullBodyCb.checked ? info.bodyVariants.full : info.bodyVariants.excerpt;
+    });
+  }
 
   // 1) resolve abuse contact via RDAP
   fetch('/api/abuse/lookup', {
@@ -4090,10 +4227,15 @@ function renderAbuseReportCard(container, info) {
 }
 
 // Email Header tab: render up to two abuse cards (sender domain + sending IP).
-function renderEmailAbuseCards(resultEl, data) {
+function renderEmailAbuseCards(resultEl, data, rawHeader, rawBody) {
   const wrap = document.createElement('div');
   wrap.className = 'mt-6 space-y-4';
   resultEl.appendChild(wrap);
+
+  // Both cards get the same structured evidence (built once) and the full-body toggle.
+  const excerpt = abuseBuildEmailEvidence(data, {rawHeader: rawHeader, rawBody: rawBody, fullBody: false});
+  const full = abuseBuildEmailEvidence(data, {rawHeader: rawHeader, rawBody: rawBody, fullBody: true});
+  const variants = {excerpt: excerpt, full: full};
 
   const from = (data.from || [])[0] || {};
   if (from.domain) {
@@ -4103,7 +4245,8 @@ function renderEmailAbuseCards(resultEl, data) {
       target: from.domain, targetType: 'domain',
       label: 'Sender domain registrar (RDAP)',
       defaultCategory: 'phishing',
-      evidence: abuseBuildEmailEvidence(data),
+      evidence: excerpt,
+      bodyVariants: variants,
     });
   }
 
@@ -4117,7 +4260,8 @@ function renderEmailAbuseCards(resultEl, data) {
       target: orig, targetType: 'ip',
       label: 'Sending IP hoster (RDAP)',
       defaultCategory: 'spam',
-      evidence: abuseBuildEmailEvidence(data),
+      evidence: excerpt,
+      bodyVariants: variants,
     });
   }
 }
