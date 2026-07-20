@@ -12,7 +12,7 @@ ExecStart=/opt/falconeye/venv/bin/gunicorn app.main:app \
     --bind 127.0.0.1:8000 \
     --workers 3 \
     --worker-class uvicorn.workers.UvicornWorker \
-    --timeout 60 \
+    --timeout 90 \
     --access-logfile /var/log/falconeye/access.log \
     --error-logfile /var/log/falconeye/error.log
 Restart=always
