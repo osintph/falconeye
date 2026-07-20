@@ -3955,6 +3955,17 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Show a "· updated" badge on the Privacy Policy link for 14 days after a
+// material policy change (2026-07-20: new IP-reputation providers, Username +
+// URL Expander data flows, the abuse-send audit log, and the fe_theme cookie),
+// per the policy's own "Changes to this policy" commitment.
+(function privacyUpdatedBadge() {
+  const badge = document.getElementById('privacy-updated-badge');
+  if (!badge) return;
+  const until = Date.UTC(2026, 7, 3); // 2026-08-03, 14 days after the update
+  if (Date.now() < until) badge.classList.remove('hidden');
+})();
+
 if (privacyModal) {
   privacyModal.addEventListener('click', (e) => {
     if (e.target === privacyModal) closePrivacyPolicy();
@@ -4197,6 +4208,10 @@ function renderAbuseReportCard(container, info) {
     </div>
     <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
       <strong class="font-bold">How to use this.</strong> FalconEye composes the abuse report. Click Preview to check it, then Copy Report and paste into your own email to send from your address, so the hosting provider can reply directly to you. The Send button is reserved for the FalconEye operator and requires admin credentials.
+    </div>
+    <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the report is composed &mdash; and any PDF built &mdash; in your browser. Recipient addresses are redacted in the evidence by default; review and remove any of your own details before sending. If the operator sends via Mailgun, the send is logged (timestamp, recipient, target, category, and subject line &mdash; not the report body).</div>
     </div>
     <div class="abuse-contact text-sm text-gray-400 mb-4"><span class="animate-pulse">Looking up abuse contact via RDAP…</span></div>
     <div class="abuse-form space-y-3">
@@ -5089,3 +5104,28 @@ function downloadAbusePdf(composed, info) {
     alert('Could not generate the PDF: ' + e.message);
   }
 }
+
+// ============================================================================
+//  Theme toggle (v3.10.0). data-theme on <html> is set pre-paint by the inline
+//  head script from the fe_theme cookie (default dark). Here we wire the header
+//  button to flip it and persist the choice. No localStorage — a cookie only.
+// ============================================================================
+(function initThemeToggle() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  const sun = btn.querySelector('.icon-sun');
+  const moon = btn.querySelector('.icon-moon');
+  function sync() {
+    const light = document.documentElement.getAttribute('data-theme') === 'light';
+    if (sun) sun.classList.toggle('hidden', light);    // sun shown in dark
+    if (moon) moon.classList.toggle('hidden', !light); // moon shown in light
+    btn.setAttribute('title', light ? 'Switch to dark theme' : 'Switch to light theme');
+  }
+  sync();
+  btn.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    document.cookie = 'fe_theme=' + next + '; path=/; max-age=' + (365 * 24 * 3600) + '; SameSite=Lax';
+    sync();
+  });
+})();

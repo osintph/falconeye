@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.10.0] — 2026-07-20
+
+### Added
+
+- **Light / dark theme.** FalconEye now ships a proper light theme alongside the default dark one, toggled from a control in the header next to the branding. The whole UI (every tab, card, sub-card, input, button, table, and callout) is themed via CSS custom variables — the Tailwind color scales are remapped to `rgb(var(--x) / <alpha-value>)`, so a single `data-theme` switch retints everything and opacity modifiers keep working. The light theme is deliberately tuned for readability (not a naive inversion) and keeps the terminal/monospace aesthetic. Dark remains the default and is byte-for-byte unchanged, so existing users see nothing new until they toggle. The choice persists in an `fe_theme` cookie (no localStorage).
+- **Per-tab privacy notes.** Sensitive-input tabs now carry a short, factual one-line note stating exactly where the input goes: Crypto (public blockchain APIs), IP Reputation (the five reputation APIs + Shodan/GreyNoise/RIPEstat/URLhaus), URL Expander (server-side fetch; IP recorded briefly for rate limiting), Username (~965 external platforms), QR (decoded in server memory, never written to disk), plus the existing Email Header note. Abuse cards note that reports (and PDFs) are composed in-browser, recipient addresses are redacted by default, and operator sends are audit-logged.
+
+### Changed
+
+- **Privacy policy brought current.** The in-app privacy policy now reflects what the tool actually does: the IP Reputation provider list adds AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox; new rows cover Username Enumeration, URL Expander, and operator abuse-report sends via Mailgun; the abuse-send audit log (and exactly what it records) is documented; QR image handling and client-side PDF generation are covered; rate-limit IP collection is described accurately (Cloudflare `CF-Connecting-IP`, across all rate-limited tabs); and the `fe_theme` cookie is disclosed. "Last updated" is now 20 July 2026, with a 14-day "updated" indicator on the footer link.
+
+---
+
 ## [3.9.1] — 2026-07-20
 
 ### Added

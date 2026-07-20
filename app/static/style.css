@@ -1,9 +1,58 @@
 * { box-sizing: border-box; }
 body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 
+/* ============================================================================
+   Theme tokens (v3.10.0). The whole UI uses Tailwind's numeric color scales
+   (bg-gray-900, text-amber-400, ...). tailwind.config in index.html remaps each
+   scale to rgb(var(--xNNN) / <alpha-value>) so opacity modifiers still work.
+   :root = dark = the FalconEye default, with values equal to Tailwind's stock
+   palette so existing users see zero change. html[data-theme="light"] overrides
+   with a deliberately tuned (not naively inverted) readable light theme that
+   keeps the terminal/monospace look. Theme is set on <html> before paint by a
+   tiny inline script in <head>, and persisted in the fe_theme cookie.
+   ============================================================================ */
+:root {
+  --wht: 255 255 255;
+  --g50:249 250 251;  --g100:243 244 246; --g200:229 231 235; --g300:209 213 219;
+  --g400:156 163 175; --g500:107 114 128; --g600:75 85 99;    --g700:55 65 81;
+  --g800:31 41 55;    --g900:17 24 39;    --g950:3 7 18;
+  --am50:255 251 235; --am100:254 243 199; --am200:253 230 138; --am300:252 211 77;
+  --am400:251 191 36; --am500:245 158 11;  --am600:217 119 6;   --am700:180 83 9;
+  --am800:146 64 14;  --am900:120 53 15;   --am950:69 26 3;
+  --rd200:254 202 202; --rd300:252 165 165; --rd400:248 113 113; --rd500:239 68 68;
+  --rd600:220 38 38;   --rd700:185 28 28;   --rd800:153 27 27;   --rd900:127 29 29; --rd950:69 10 10;
+  --gn300:134 239 172; --gn400:74 222 128; --gn500:34 197 94; --gn600:22 163 74; --gn700:21 128 61; --gn900:20 83 45;
+  --yl100:254 249 195; --yl200:254 240 138; --yl300:253 224 71; --yl400:250 204 21;
+  --yl500:234 179 8;   --yl600:202 138 4;   --yl700:161 98 7;   --yl900:113 63 18; --yl950:66 32 6;
+  --bl200:191 219 254; --bl300:147 197 253; --bl400:96 165 250; --bl500:59 130 246;
+  --bl600:37 99 235;   --bl800:30 64 175;   --bl950:23 37 84;
+  --pu300:216 180 254; --pu400:192 132 252; --pu900:88 28 135;
+  --or300:253 186 116; --or900:124 45 18;
+  --shadow: 0 0 0;
+}
+html[data-theme="light"] {
+  --wht: 15 23 42;                                    /* text-white -> dark slate */
+  --g50:255 255 255;  --g100:15 23 42;  --g200:15 23 42;   --g300:30 41 59;    /* text */
+  --g400:71 85 105;   --g500:100 116 139; --g600:100 116 139; --g700:203 213 225; /* muted / borders */
+  --g800:226 232 240; --g900:255 255 255; --g950:241 245 249;                  /* borders / card / page */
+  --am50:255 251 235; --am100:254 243 199; --am200:180 83 9; --am300:146 64 14;
+  --am400:180 83 9;   --am500:161 98 7;    --am600:146 64 14; --am700:120 53 15;
+  --am800:120 53 15;  --am900:120 53 15;   --am950:255 251 235;
+  --rd200:254 202 202; --rd300:220 38 38; --rd400:220 38 38; --rd500:220 38 38;
+  --rd600:185 28 28;   --rd700:220 38 38; --rd800:185 28 28; --rd900:220 38 38; --rd950:254 226 226;
+  --gn300:21 128 61; --gn400:21 128 61; --gn500:21 128 61; --gn600:20 83 45; --gn700:20 83 45; --gn900:187 247 208;
+  --yl100:113 63 18;  --yl200:161 98 7;  --yl300:161 98 7; --yl400:161 98 7;
+  --yl500:161 98 7;   --yl600:161 98 7;  --yl700:161 98 7; --yl900:254 249 195; --yl950:254 249 195;
+  --bl200:30 58 138; --bl300:30 64 175; --bl400:37 99 235; --bl500:37 99 235;
+  --bl600:37 99 235; --bl800:147 197 253; --bl950:239 246 255;
+  --pu300:107 33 168; --pu400:126 34 206; --pu900:243 232 255;
+  --or300:154 52 18;  --or900:255 237 213;
+  --shadow: 100 116 139;
+}
+
 .indicator-hit {
-  background: rgba(251,191,36,0.08);
-  border-left: 3px solid #fbbf24;
+  background: rgb(var(--am400) / 0.08);
+  border-left: 3px solid rgb(var(--am400));
   padding: 8px 12px;
   margin-bottom: 6px;
   border-radius: 2px;
@@ -16,50 +65,50 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
   font-weight: bold;
   padding: 2px 8px;
   border-radius: 3px;
-  background: #1f2937;
-  color: #fbbf24;
+  background: rgb(var(--g800));
+  color: rgb(var(--am400));
   letter-spacing: 0.05em;
 }
 
 .news-card {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: rgb(var(--g900));
+  border: 1px solid rgb(var(--g800));
   border-radius: 6px;
   padding: 14px 16px;
   transition: border-color 0.15s;
 }
 
 .news-card:hover {
-  border-color: #374151;
+  border-color: rgb(var(--g700));
 }
 
 .tx-row {
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: rgb(var(--g900));
+  border: 1px solid rgb(var(--g800));
   border-radius: 4px;
   padding: 10px 14px;
   font-size: 0.78rem;
 }
 
-.tx-in { border-left: 3px solid #4ade80; }
-.tx-out { border-left: 3px solid #f87171; }
+.tx-in { border-left: 3px solid rgb(var(--gn400)); }
+.tx-out { border-left: 3px solid rgb(var(--rd400)); }
 
 /* D3 graph styles */
 #crypto-graph svg { width: 100%; height: 100%; }
-.node circle { stroke: #fbbf24; stroke-width: 1.5px; cursor: pointer; }
-.node text { fill: #9ca3af; font-size: 10px; }
-.link { stroke: #374151; stroke-width: 1.5px; }
-.node.target circle { fill: #fbbf24; }
-.node.exchange circle { fill: #60a5fa; }
-.node.counterparty circle { fill: #374151; }
+.node circle { stroke: rgb(var(--am400)); stroke-width: 1.5px; cursor: pointer; }
+.node text { fill: rgb(var(--g400)); font-size: 10px; }
+.link { stroke: rgb(var(--g700)); stroke-width: 1.5px; }
+.node.target circle { fill: rgb(var(--am400)); }
+.node.exchange circle { fill: rgb(var(--bl400)); }
+.node.counterparty circle { fill: rgb(var(--g700)); }
 
 /* Data source pill in footer */
 .data-source {
   display: inline-flex;
   align-items: center;
   padding: 4px 10px;
-  background: #111827;
-  border: 1px solid #1f2937;
+  background: rgb(var(--g900));
+  border: 1px solid rgb(var(--g800));
   border-radius: 14px;
   font-size: 0.7rem;
   letter-spacing: 0.02em;
@@ -70,8 +119,8 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 }
 
 .data-source:hover {
-  border-color: #fbbf24;
-  color: #fbbf24;
+  border-color: rgb(var(--am400));
+  color: rgb(var(--am400));
   text-decoration: none;
 }
 
@@ -91,7 +140,7 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 }
 
 #crypto-hero > div:hover {
-  border-color: #374151;
+  border-color: rgb(var(--g700));
 }
 
 /* Smooth tab transitions */
@@ -116,6 +165,9 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
 .tab-btn svg {
   transition: stroke 0.15s ease;
 }
+
+/* Theme toggle button */
+#theme-toggle { cursor: pointer; background: none; border: none; line-height: 0; }
 
 /* Examples grid card hover state */
 .example-card {
@@ -158,5 +210,5 @@ body { font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; }
   transform: scale(3);
   z-index: 50;
   border-radius: 2px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.8);
+  box-shadow: 0 4px 24px rgb(var(--shadow) / 0.5);
 }

@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
+  <!-- Theme init: set data-theme on <html> before paint (no flash). Persisted in
+       the fe_theme cookie; defaults to dark (the existing FalconEye look). -->
+  <script>
+    (function () {
+      try {
+        var m = document.cookie.match(/(?:^|;\s*)fe_theme=(light|dark)/);
+        document.documentElement.setAttribute('data-theme', (m && m[1]) ? m[1] : 'dark');
+      } catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
+    })();
+  </script>
+
   <!-- Primary SEO -->
   <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
   <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram channel inspector, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
@@ -54,8 +65,9 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.9.1",
+    "softwareVersion": "3.10.0",
     "featureList": [
+      "Light and dark theme with a header toggle",
       "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
       "Client-side PDF export for IP reputation and abuse reports",
       "Username enumeration across ~950 platforms (WhatsMyName + Sherlock)",
@@ -90,6 +102,33 @@
   </script>
 
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Remap Tailwind's color scales to CSS variables (defined in style.css) so a
+       single [data-theme] switch retints the entire UI. rgb(var(--x) / <alpha-value>)
+       keeps opacity modifiers (bg-red-900/30 etc.) working. Dark values equal the
+       stock Tailwind palette, so the default (dark) look is byte-for-byte unchanged. -->
+  <script>
+    (function () {
+      var v = function (n) { return 'rgb(var(--' + n + ') / <alpha-value>)'; };
+      var scale = function (p, shades) { var o = {}; shades.forEach(function (s) { o[s] = v(p + s); }); return o; };
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              white: v('wht'),
+              gray:   scale('g',  [50,100,200,300,400,500,600,700,800,900,950]),
+              amber:  scale('am', [50,100,200,300,400,500,600,700,800,900,950]),
+              red:    scale('rd', [200,300,400,500,600,700,800,900,950]),
+              green:  scale('gn', [300,400,500,600,700,900]),
+              yellow: scale('yl', [100,200,300,400,500,600,700,900,950]),
+              blue:   scale('bl', [200,300,400,500,600,800,950]),
+              purple: scale('pu', [300,400,900]),
+              orange: scale('or', [300,900]),
+            },
+          },
+        },
+      };
+    })();
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
@@ -116,6 +155,10 @@
         <span class="ml-3 text-sm text-gray-500 uppercase tracking-widest">Investigator's Toolkit</span>
       </div>
     </div>
+    <button id="theme-toggle" class="text-gray-400 hover:text-amber-400 transition p-2 -mr-2 rounded shrink-0" title="Toggle light / dark theme" aria-label="Toggle light or dark theme">
+      <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+      <svg class="icon-moon hidden" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
   </header>
 
   <!-- Tab nav with inline SVG icons -->
@@ -330,7 +373,11 @@
     <!-- CRYPTO TAB — focused workbench, no landing content -->
     <div id="tab-crypto" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Crypto Investigation Workbench</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a Bitcoin, Ethereum, or USDT TRC20 wallet address to investigate transaction history and counterparties.</p>
+      <p class="text-gray-400 text-sm mb-4">Paste a Bitcoin, Ethereum, or USDT TRC20 wallet address to investigate transaction history and counterparties.</p>
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the wallet address you submit is queried against public blockchain APIs (Blockstream, BlockCypher, TronGrid) to trace transactions.</div>
+      </div>
 
       <div class="flex gap-3 mb-3">
         <input id="crypto-address" type="text" placeholder="BTC / ETH / USDT-TRC20 address"
@@ -433,7 +480,11 @@
     <!-- IP Reputation Tab -->
     <div id="tab-ip" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">IP Reputation & Threat Lookup</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a public IPv4 or IPv6 address for a multi-source reputation verdict (AbuseIPDB, VirusTotal, AlienVault OTX, Censys, ThreatFox), ASN, geolocation consensus, merged open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
+      <p class="text-gray-400 text-sm mb-4">Paste a public IPv4 or IPv6 address for a multi-source reputation verdict (AbuseIPDB, VirusTotal, AlienVault OTX, Censys, ThreatFox), ASN, geolocation consensus, merged open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the IP you look up is sent to external reputation services &mdash; AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan, GreyNoise, RIPEstat, and URLhaus.</div>
+      </div>
 
       <div class="flex gap-3 mb-3">
         <input id="ip-input" type="text" placeholder="8.8.8.8"
@@ -477,7 +528,11 @@
     <!-- URL EXPANDER TAB -->
     <div id="tab-url" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">URL Expander</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a short URL to reveal the full redirect chain, TLS chain, and final landing page. Results are not cached.</p>
+      <p class="text-gray-400 text-sm mb-4">Paste a short URL to reveal the full redirect chain, TLS chain, and final landing page. Results are not cached.</p>
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the URL you submit is fetched by the FalconEye server (not your browser) to follow its redirects; your IP is recorded briefly for rate limiting.</div>
+      </div>
 
       <div class="flex gap-3 mb-3">
         <input id="url-input" type="text" placeholder="https://bit.ly/..."
@@ -499,7 +554,11 @@
     <!-- QR ANALYZER TAB -->
     <div id="tab-qr" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">QR Code Analyzer</h2>
-      <p class="text-gray-400 text-sm mb-6">Upload a QR image to decode its content. URLs can be forwarded to the URL Expander for full redirect analysis. Images are processed in memory and never stored.</p>
+      <p class="text-gray-400 text-sm mb-4">Upload a QR image to decode its content. URLs can be forwarded to the URL Expander for full redirect analysis.</p>
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the uploaded image is decoded in memory on the server and never written to disk.</div>
+      </div>
 
       <div id="qr-drop" class="border-2 border-dashed border-gray-700 rounded p-6 text-center text-sm text-gray-400 hover:border-amber-400 transition cursor-pointer mb-3">
         <p class="mb-1">Drag &amp; drop a QR image here, or <span class="text-amber-400">click to browse</span></p>
@@ -872,7 +931,11 @@
     <!-- Username Enumeration Tab -->
     <div id="tab-username" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Username Enumeration</h2>
-      <p class="text-gray-400 text-sm mb-4">Check where a username appears across ~950 platforms using WhatsMyName and Sherlock data. Cross-validated hits (found by both engines) carry higher confidence. Results are leads for human verification, not proof of identity.</p>
+      <p class="text-gray-400 text-sm mb-4">Check where a username appears across ~965 platforms using WhatsMyName and Sherlock data. Cross-validated hits (found by both engines) carry higher confidence. Results are leads for human verification, not proof of identity.</p>
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the username you submit is checked against ~965 external platforms (WhatsMyName + Sherlock) by requesting each site directly.</div>
+      </div>
 
       <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
         <strong class="font-bold">How to use this.</strong> A hit means the username has a profile at that platform. It does NOT mean the same person owns all matching profiles. False positives run 5-10% because some platforms return the same response for any username. Verify each lead manually before drawing conclusions. Do not use this tool for stalking or harassment.
@@ -937,7 +1000,7 @@
     </div>
     <p class="text-center text-xs text-gray-700 mt-4">
       FalconEye is open source · <a href="https://github.com/osintph/falconeye" class="hover:text-amber-400 transition" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>
-      · <a href="#" id="open-privacy-policy" class="hover:text-amber-400 transition">Privacy Policy</a>
+      · <a href="#" id="open-privacy-policy" class="hover:text-amber-400 transition">Privacy Policy<span id="privacy-updated-badge" class="hidden text-amber-400"> · updated</span></a>
       · <a href="mailto:security@osintph.info" class="hover:text-amber-400 transition">Contact</a>
     </p>
   </footer>
@@ -958,7 +1021,7 @@
 
           <p class="text-xs text-gray-500">
             <strong>Effective date:</strong> 25 June 2026<br>
-            <strong>Last updated:</strong> 25 June 2026<br>
+            <strong>Last updated:</strong> 20 July 2026<br>
             <strong>Operator:</strong> OSINT-PH (<a href="https://blog.osintph.info" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">blog.osintph.info</a>)
           </p>
 
@@ -974,8 +1037,9 @@
             <h3 class="text-base font-bold text-white mb-2">What data we collect</h3>
             <ul class="list-disc list-inside space-y-2">
               <li><strong>Input you submit.</strong> Crypto addresses, domains, URLs, IPs, email headers, email bodies, file hashes, Telegram channel names, search goals. This is what the tool is for.</li>
-              <li><strong>Uploaded files (Email Header tab only).</strong> .eml and .msg files are parsed in memory and discarded immediately. The original file content is never written to persistent storage and never logged.</li>
-              <li><strong>Source IP address.</strong> Used for rate limiting on LLM-powered features (10 requests per 24 hours per IP, per feature). Stored in our SQLite database with a timestamp. Rows older than 48 hours are automatically deleted.</li>
+              <li><strong>Uploaded files (Email Header and QR Analyzer tabs).</strong> Email .eml / .msg files and QR images are parsed or decoded in server memory and discarded immediately. The original file content is never written to persistent storage and never logged.</li>
+              <li><strong>Source IP address.</strong> Used for rate limiting on the rate-limited features (the LLM tabs — Email Header, Dork Generator, Script Decoder — plus URL Expander and QR Analyzer). The IP is read from Cloudflare's <code class="text-amber-300">CF-Connecting-IP</code> header, stored in our SQLite database with a timestamp, and older rows are automatically deleted.</li>
+              <li><strong>Abuse-report send audit (operator sends only).</strong> The Report Abuse cards compose a report you can copy and send from your own email. If the FalconEye operator sends one via Mailgun, an append-only audit row records the timestamp, source IP, recipient abuse-desk address, the reported target and category, the subject line, and the Mailgun message ID — never the report body or evidence.</li>
               <li><strong>nginx access logs.</strong> Standard web server logs: timestamp, source IP, requested URL, response status, user agent. Used for security monitoring and capacity planning. Retained for 30 days, then deleted by log rotation.</li>
             </ul>
           </section>
@@ -984,10 +1048,11 @@
             <h3 class="text-base font-bold text-white mb-2">What we do NOT collect</h3>
             <ul class="list-disc list-inside space-y-2">
               <li>User accounts. There is no signup, no login, no profile.</li>
-              <li>Cookies set by FalconEye itself (Cloudflare may set its own cookies; see Cloudflare section below).</li>
+              <li>Tracking cookies. FalconEye sets one functional cookie — <code class="text-amber-300">fe_theme</code>, which stores your light/dark theme preference in your own browser — and nothing else. It carries no identifier and is never transmitted to any third party. (Cloudflare may set its own security cookies; see the Cloudflare section below.)</li>
               <li>Browser fingerprints, device IDs, or behavioral analytics.</li>
               <li>Email addresses or personal identifiers, unless you voluntarily paste them as input.</li>
-              <li>The raw content of uploaded .eml / .msg files after parsing.</li>
+              <li>The raw content of uploaded .eml / .msg files or QR images after parsing.</li>
+              <li>The content of PDF reports you generate. IP-reputation and abuse-report PDFs are built entirely in your browser (client-side) and are never uploaded to or stored on the server.</li>
             </ul>
           </section>
 
@@ -1040,7 +1105,22 @@
                 <tr class="border-b border-gray-800">
                   <td class="py-2">IP Reputation</td>
                   <td class="py-2 font-mono">IP address</td>
-                  <td class="py-2">Shodan InternetDB / CVEDB, GreyNoise, RIPEstat, URLhaus</td>
+                  <td class="py-2">AbuseIPDB, VirusTotal, AlienVault OTX, Censys, ThreatFox, Shodan InternetDB / CVEDB, GreyNoise, RIPEstat, URLhaus</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">URL Expander</td>
+                  <td class="py-2 font-mono">URL to expand</td>
+                  <td class="py-2">The URL's own server (fetched server-side to follow redirects)</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Username Enumeration</td>
+                  <td class="py-2 font-mono">username</td>
+                  <td class="py-2">~965 platform websites (WhatsMyName + Sherlock), queried directly</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Report Abuse &rarr; Send (operator only)</td>
+                  <td class="py-2 font-mono">the composed abuse report</td>
+                  <td class="py-2">Mailgun (email delivery to the recipient abuse desk)</td>
                 </tr>
                 <tr class="border-b border-gray-800">
                   <td class="py-2">Sandbox History</td>
