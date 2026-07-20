@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Seventeen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.9.0**
+Current version: **3.9.1**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -23,7 +23,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs |
 | **Domain Intelligence** | RDAP, DNS, certificate transparency logs (crt.sh + Cert Spotter fallback), RIPEstat ASN data |
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
-| **IP Reputation** | Multi-source reputation with a consensus verdict (Clean/Suspicious/Malicious) from AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, reverse DNS. Merges Censys + Shodan ports and surfaces geolocation disagreement across sources. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, or optional Mailgun send). |
+| **IP Reputation** | Multi-source reputation with a consensus verdict (Clean/Suspicious/Malicious) from AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, reverse DNS. Merges Censys + Shodan ports and surfaces geolocation disagreement across sources. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, optional Mailgun send, or client-side PDF). Reputation reports export to PDF in the browser. |
 | **Sandbox History** | URLhaus and MalwareBazaar lookup by URL or file hash |
 | **URL Expander** | Follow a short URL's full redirect chain hop-by-hop with per-hop status codes, TLS certificate details, server headers, and timing. Flags shortener depth, TLD switches, punycode hostnames, and non-standard ports. Every hop is re-validated through `safe_fetch`'s SSRF guard. One-click pivot to the Phishing Scanner. |
 | **QR Analyzer** | Decode one or more QR codes from an uploaded image or a base64 data URI (processed in memory, never stored). Categorizes payloads (HTTP, Bitcoin, Ethereum, UPI, WiFi, sms, tel, geo, text). One-click pivot of decoded URLs into the URL Expander. |

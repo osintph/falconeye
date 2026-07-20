@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.9.1] — 2026-07-20
+
+### Added
+
+- **Client-side PDF export for the IP reputation report and abuse reports.** A shared, in-browser PDF builder (jsPDF, vendored locally under `/static/vendor/` — no CDN, satisfies the existing `self` CSP) drives both:
+  - **IP report** — "Download Report" button on the IP tab. FalconEye branding, the IP, a UTC generation timestamp, the consensus verdict banner with reasoning, ASN/network/prefix, geolocation consensus (including the disagreement when disputed), a section per source (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox, GreyNoise, URLhaus), a merged open-ports table with source tags, and a footer listing the data sources queried.
+  - **Abuse report** — "Download as PDF" button alongside Copy Report / Send on both the IP and Email Header abuse cards. The composed report exactly as previewed (subject, full body, evidence, signature), respecting the on-screen recipient-redaction default. Prose is proportional; the technical evidence block is monospace.
+  - Everything runs in the browser — no server round-trip, nothing written server-side. Filenames: `falconeye-ip-report-{ip}-{date}.pdf` and `falconeye-abuse-report-{target}-{date}.pdf` (dots in the IP sanitized to dashes). A4 layout that also prints cleanly on Letter, with page breaks that never cut a line.
+
+### Fixed
+
+- **Disputed-geo header no longer leads with the least-supported country.** The IP card header previously rendered e.g. "Tehran · geo disputed (IR/LT/US/RS)", anchoring the reader on a single (often wrong) city. When sources disagree it now leads with "Location disputed (IR/LT/US/RS)" and drops the single-city lead entirely; undisputed geo is unchanged.
+
+---
+
 ## [3.9.0] — 2026-07-20
 
 Multi-source IP reputation: the IP tab now cross-references five threat-intel vendors, forms a consensus verdict, and stops asserting a single (often wrong) country.

@@ -1184,6 +1184,12 @@ function renderIpResult(el, data) {
     : '<span class="text-xs text-green-400">fresh</span>';
 
   el.innerHTML = `
+    <div class="flex justify-end mb-3">
+      <button class="ip-download-pdf inline-flex items-center gap-1.5 bg-gray-800 text-amber-300 border border-gray-700 hover:bg-gray-700 hover:text-amber-200 font-semibold px-3 py-1.5 rounded text-xs transition" title="Download this report as a PDF">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+        Download Report
+      </button>
+    </div>
     ${renderReputationVerdict(data.reputation)}
     ${renderIpSummary(data, cacheBadge)}
     ${renderIpClassification(data.greynoise)}
@@ -1191,6 +1197,8 @@ function renderIpResult(el, data) {
     ${renderReputationSources(data.reputation)}
     ${renderIpUrlhaus(data.urlhaus)}
   `;
+  const dlBtn = el.querySelector('.ip-download-pdf');
+  if (dlBtn) dlBtn.addEventListener('click', () => downloadIpReportPdf(data));
 }
 
 // ---- v3.9.0 multi-source reputation rendering ----
@@ -1314,7 +1322,7 @@ function renderIpSummary(data, cacheBadge) {
   const ptrStr = ptr.length ? ptr.join(', ') : '<span class="text-gray-600">no PTR</span>';
   const _geo = (data.reputation && data.reputation.geo) || {};
   const locStr = (_geo.countries && !_geo.agreement)
-    ? (rs.city ? escapeHtml(rs.city) + ' · ' : '') + 'geo disputed (' + escapeHtml(Object.keys(_geo.countries).join('/')) + ')'
+    ? 'Location disputed (' + escapeHtml(Object.keys(_geo.countries).join('/')) + ')'
     : [rs.city, rs.country].filter(Boolean).join(', ');
 
   return `
@@ -4215,6 +4223,7 @@ function renderAbuseReportCard(container, info) {
       <div class="abuse-warnings text-xs text-yellow-400 mb-2"></div>
       <div class="flex flex-wrap gap-2">
         <button class="abuse-copy-btn bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Copy Report (send from your email)</button>
+        <button class="abuse-pdf-btn bg-gray-800 text-amber-300 border border-gray-700 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Download as PDF</button>
         <button class="abuse-send-btn hidden bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Send via Mailgun (operator only)</button>
       </div>
       <div class="abuse-auth hidden mt-3 bg-gray-950 border border-gray-800 rounded p-3">
@@ -4310,6 +4319,13 @@ function renderAbuseReportCard(container, info) {
     }).catch(() => {
       statusEl.innerHTML = '<span class="text-yellow-400">Clipboard blocked — select the text above to copy.</span>';
     });
+  });
+
+  // 3b) download the composed report as a PDF (client-side; uses composed = the
+  //     exact previewed subject/body, so redaction applied on screen carries over)
+  $('.abuse-pdf-btn').addEventListener('click', () => {
+    if (!composed) { statusEl.innerHTML = '<span class="text-yellow-400">Click Preview Report first.</span>'; return; }
+    downloadAbusePdf(composed, info);
   });
 
   // 4) send via Mailgun — credentials travel ONLY in the JSON body (never an
@@ -4553,4 +4569,523 @@ function usernamePivotTelegram(handle) {
   if (input) input.value = handle;
   window.location.hash = '#telegram';
   if (input) setTimeout(() => input.focus(), 200);
+}
+
+// ============================================================================
+//  Client-side PDF export (v3.9.1)
+//  jsPDF is vendored at /static/vendor/jspdf.umd.min.js (self-hosted, no CDN).
+//  One shared builder (fePdfNew + fe* primitives) drives both report types —
+//  the IP reputation report and the abuse report. Everything runs in the
+//  browser; no bytes are sent to the server and nothing is written to disk
+//  server-side, consistent with the app's privacy posture.
+//  A4 page (210×297mm) with 18mm margins: content fits Letter width (216mm) and
+//  scales to Letter height on print, so it reads cleanly on both. Prose is
+//  Helvetica; technical data (IPs, hashes, headers, ports) is Courier.
+// ============================================================================
+
+const FE_PDF = {
+  M: 18,
+  SANS: 'helvetica',
+  MONO: 'courier',
+  ink:   [33, 37, 41],      // near-black body text
+  muted: [107, 114, 128],   // gray labels / captions
+  amber: [176, 116, 12],    // brand amber, darkened for paper
+  red:   [185, 28, 28],
+  green: [21, 128, 61],
+  rule:  [209, 213, 219],   // light hairlines
+  fill:  [243, 244, 246],   // table header fill
+};
+
+function _c(doc, rgb) { doc.setTextColor(rgb[0], rgb[1], rgb[2]); }
+function feLh(size) { return size * 0.5; }   // line pitch (mm) for a given pt size
+
+// jsPDF's built-in fonts (Helvetica/Courier) are Latin-1 only, so common
+// Unicode punctuation (em dash, ellipsis, curly quotes, arrows) would render as
+// blank gaps. Map those to ASCII equivalents and drop anything else outside the
+// printable Latin-1 range. Wired into doc.text (see fePdfNew) so it covers every
+// string the report writers emit.
+function feSan(s) {
+  if (Array.isArray(s)) return s.map(feSan);
+  if (s == null) return s;
+  return String(s)
+    .replace(/[—–]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[‘’‛]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/→/g, '->')
+    .replace(/≥/g, '>=').replace(/≤/g, '<=')
+    .replace(/[^\t\n\r\x20-\x7E\xA0-\xFF]/g, '');
+}
+
+function fePdfReady() { return !!(window.jspdf && window.jspdf.jsPDF); }
+
+function fePdfNew() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
+  // Route every string through the Latin-1 sanitizer so no glyph renders blank.
+  const _text = doc.text.bind(doc);
+  doc.text = function (txt, x, y, opts) { return _text(feSan(txt), x, y, opts); };
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const M = FE_PDF.M;
+  return {
+    doc, pageW, pageH, M,
+    contentW: pageW - 2 * M,
+    bottom: pageH - M - 8,   // reserve space above the footer
+    y: M,
+  };
+}
+
+function feEnsure(st, h) {
+  if (st.y + h > st.bottom) { st.doc.addPage(); st.y = st.M; }
+}
+
+function feRule(st, gap) {
+  gap = (gap == null) ? 3 : gap;
+  st.doc.setDrawColor(FE_PDF.rule[0], FE_PDF.rule[1], FE_PDF.rule[2]);
+  st.doc.setLineWidth(0.2);
+  st.doc.line(st.M, st.y, st.M + st.contentW, st.y);
+  st.y += gap;
+}
+
+// Wrapping text writer. Preserves explicit newlines, wraps each line to width,
+// and page-breaks per line so nothing is ever cut mid-line.
+function feText(st, text, opts) {
+  opts = opts || {};
+  const doc = st.doc;
+  const size = opts.size || 10;
+  const font = opts.mono ? FE_PDF.MONO : FE_PDF.SANS;
+  const style = opts.style || 'normal';
+  const color = opts.color || FE_PDF.ink;
+  const lh = opts.lineHeight || feLh(size);
+  const indent = opts.indent || 0;
+  const maxW = (opts.maxW || st.contentW) - indent;
+  doc.setFont(font, style);
+  doc.setFontSize(size);
+  _c(doc, color);
+  const raw = (text == null) ? '' : String(text);
+  const paras = raw.split('\n');
+  for (const para of paras) {
+    const lines = para.length ? doc.splitTextToSize(para, maxW) : [''];
+    for (const line of lines) {
+      feEnsure(st, lh);
+      doc.text(line, st.M + indent, st.y + lh - 1.4);
+      st.y += lh;
+    }
+  }
+  if (opts.gapAfter != null) st.y += opts.gapAfter;
+}
+
+// Section heading with an underline rule. Keeps the heading with the first line
+// of following content (won't orphan at a page bottom).
+function feHeading(st, text) {
+  st.y += 2.5;
+  feEnsure(st, 16);
+  feText(st, text, { size: 11, style: 'bold', color: FE_PDF.amber });
+  feRule(st, 3);
+}
+
+// Label + value on one row; value wraps under itself and may be monospace.
+function feKeyVal(st, label, value, opts) {
+  opts = opts || {};
+  const doc = st.doc;
+  const size = 9.5;
+  const lh = feLh(size) + 0.6;
+  feEnsure(st, lh);
+  doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(size); _c(doc, FE_PDF.muted);
+  const labelText = label + ':  ';
+  const baseY = st.y + lh - 1.4;
+  doc.text(labelText, st.M, baseY);
+  const lw = doc.getTextWidth(labelText);
+  doc.setFont(opts.mono ? FE_PDF.MONO : FE_PDF.SANS, 'normal'); _c(doc, FE_PDF.ink);
+  const valMaxW = st.contentW - lw;
+  const vlines = doc.splitTextToSize(String(value == null ? '—' : value), valMaxW);
+  doc.text(vlines[0] || '', st.M + lw, baseY);
+  st.y += lh;
+  for (let i = 1; i < vlines.length; i++) {
+    feEnsure(st, lh);
+    doc.setFont(opts.mono ? FE_PDF.MONO : FE_PDF.SANS, 'normal'); _c(doc, FE_PDF.ink);
+    doc.text(vlines[i], st.M + lw, st.y + lh - 1.4);
+    st.y += lh;
+  }
+}
+
+function feBrandHeader(st, title, subtitleLines) {
+  const doc = st.doc;
+  feEnsure(st, 10);
+  doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(17); _c(doc, FE_PDF.amber);
+  doc.text('FalconEye', st.M, st.y + 5);
+  doc.setFont(FE_PDF.SANS, 'normal'); doc.setFontSize(8.5); _c(doc, FE_PDF.muted);
+  const tag = 'falconeye.osintph.info';
+  doc.text(tag, st.M + st.contentW - doc.getTextWidth(tag), st.y + 5);
+  st.y += 9;
+  feRule(st, 4);
+  feText(st, title, { size: 13, style: 'bold', color: FE_PDF.ink, gapAfter: 0.5 });
+  for (const line of (subtitleLines || [])) {
+    feText(st, line, { size: 9, color: FE_PDF.muted });
+  }
+  st.y += 3;
+}
+
+function feVerdictBanner(st, verdict, reasoning) {
+  const rgb = { MALICIOUS: FE_PDF.red, SUSPICIOUS: FE_PDF.amber, CLEAN: FE_PDF.green }[verdict] || FE_PDF.muted;
+  const doc = st.doc;
+  feEnsure(st, 13);
+  doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+  doc.rect(st.M, st.y, 1.8, 9, 'F');
+  doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(15); _c(doc, rgb);
+  doc.text(String(verdict || 'UNKNOWN'), st.M + 4, st.y + 7);
+  st.y += 11;
+  if (reasoning) feText(st, String(reasoning), { size: 10, color: FE_PDF.ink, gapAfter: 1 });
+}
+
+// Simple paginated table. cols: [{title, width(mm), mono}]. rows: array of arrays.
+function feTable(st, cols, rows) {
+  const doc = st.doc;
+  const headH = 6;
+  const drawHeader = () => {
+    feEnsure(st, headH + 6);
+    doc.setFillColor(FE_PDF.fill[0], FE_PDF.fill[1], FE_PDF.fill[2]);
+    doc.rect(st.M, st.y, st.contentW, headH, 'F');
+    doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(8.5); _c(doc, FE_PDF.muted);
+    let x = st.M + 1.5;
+    for (const c of cols) { doc.text(c.title, x, st.y + 4); x += c.width; }
+    st.y += headH;
+  };
+  drawHeader();
+  for (const r of rows) {
+    const cellLines = cols.map((c, i) => {
+      doc.setFont(c.mono ? FE_PDF.MONO : FE_PDF.SANS, 'normal'); doc.setFontSize(9);
+      return doc.splitTextToSize(String(r[i] == null ? '' : r[i]), c.width - 3);
+    });
+    const nLines = Math.max(1, ...cellLines.map(l => l.length));
+    const h = Math.max(headH, nLines * 4.4 + 1.6);
+    if (st.y + h > st.bottom) { doc.addPage(); st.y = st.M; drawHeader(); }
+    let x = st.M + 1.5;
+    for (let i = 0; i < cols.length; i++) {
+      const c = cols[i];
+      doc.setFont(c.mono ? FE_PDF.MONO : FE_PDF.SANS, 'normal'); doc.setFontSize(9); _c(doc, FE_PDF.ink);
+      let yy = st.y + 4;
+      for (const ln of cellLines[i]) { doc.text(ln, x, yy); yy += 4.4; }
+      x += c.width;
+    }
+    doc.setDrawColor(FE_PDF.rule[0], FE_PDF.rule[1], FE_PDF.rule[2]); doc.setLineWidth(0.15);
+    doc.line(st.M, st.y + h, st.M + st.contentW, st.y + h);
+    st.y += h;
+  }
+  st.y += 2;
+}
+
+// Footer stamped on every page after the body is fully laid out.
+function feFooterAll(st, footerLines) {
+  const doc = st.doc;
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    const fy = st.pageH - st.M + 3;
+    doc.setDrawColor(FE_PDF.rule[0], FE_PDF.rule[1], FE_PDF.rule[2]); doc.setLineWidth(0.2);
+    doc.line(st.M, fy - 4, st.M + st.contentW, fy - 4);
+    doc.setFont(FE_PDF.SANS, 'normal'); doc.setFontSize(7.5); _c(doc, FE_PDF.muted);
+    if (footerLines[0]) doc.text(footerLines[0], st.M, fy);
+    if (footerLines[1]) doc.text(footerLines[1], st.M, fy + 3.2);
+    const pg = 'Page ' + p + ' of ' + total;
+    doc.text(pg, st.M + st.contentW - doc.getTextWidth(pg), fy);
+  }
+}
+
+// --- filename + timestamp helpers ---
+function fePad2(n) { return String(n).padStart(2, '0'); }
+function fePdfDate() {
+  const d = new Date();
+  return d.getUTCFullYear() + '-' + fePad2(d.getUTCMonth() + 1) + '-' + fePad2(d.getUTCDate());
+}
+function fePdfUtcStamp() {
+  const d = new Date();
+  return d.getUTCFullYear() + '-' + fePad2(d.getUTCMonth() + 1) + '-' + fePad2(d.getUTCDate()) +
+    ' ' + fePad2(d.getUTCHours()) + ':' + fePad2(d.getUTCMinutes()) + ':' + fePad2(d.getUTCSeconds()) + ' UTC';
+}
+function feSanitizeName(s) {
+  return String(s == null ? '' : s)
+    .replace(/\./g, '-')
+    .replace(/[^A-Za-z0-9_-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80) || 'report';
+}
+
+// --- per-source state → human label + colour (mirrors the on-screen sub-cards) ---
+function feSourceState(s) {
+  if (!s) return { txt: 'not queried', rgb: FE_PDF.muted };
+  const map = {
+    ok:        { txt: 'ok', rgb: FE_PDF.green },
+    not_found: { txt: 'no records', rgb: FE_PDF.muted },
+    no_key:    { txt: 'no API key configured', rgb: FE_PDF.muted },
+    quota:     { txt: 'quota reached', rgb: FE_PDF.amber },
+    error:     { txt: (s.error || 'error'), rgb: FE_PDF.red },
+  };
+  return map[s.state] || { txt: (s.state || 'unknown'), rgb: FE_PDF.muted };
+}
+
+function feSourceHead(st, name, s) {
+  const stt = feSourceState(s);
+  const doc = st.doc;
+  feEnsure(st, 11);
+  doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(10); _c(doc, FE_PDF.ink);
+  const baseY = st.y + 4;
+  doc.text(name, st.M, baseY);
+  const nw = doc.getTextWidth(name);
+  doc.setFont(FE_PDF.SANS, 'normal'); doc.setFontSize(8.5); _c(doc, stt.rgb);
+  doc.text('— ' + stt.txt, st.M + nw + 2, baseY);
+  st.y += 5.5;
+}
+
+function feListShort(arr, n) {
+  if (!arr || !arr.length) return '';
+  const shown = arr.slice(0, n).join(', ');
+  return arr.length > n ? shown + ', … (+' + (arr.length - n) + ' more)' : shown;
+}
+
+// --- IP report per-source blocks ---
+function feIpAbuseIpdb(st, s) {
+  feSourceHead(st, 'AbuseIPDB', s);
+  if (s && s.state === 'ok') {
+    const d = s.data || {};
+    feKeyVal(st, 'Abuse confidence', (d.confidence != null ? d.confidence + '%' : '—'));
+    feKeyVal(st, 'Reports', (d.total_reports != null ? d.total_reports : '—') +
+      (d.distinct_users != null ? '  (' + d.distinct_users + ' distinct reporters)' : ''));
+    if (d.usage_type) feKeyVal(st, 'Usage type', d.usage_type);
+    if (d.isp) feKeyVal(st, 'ISP', d.isp);
+    if (d.categories && d.categories.length) feKeyVal(st, 'Categories', d.categories.join(', '));
+    if (d.last_reported) feKeyVal(st, 'Last reported', d.last_reported, { mono: true });
+  }
+  st.y += 2;
+}
+function feIpVirusTotal(st, s) {
+  feSourceHead(st, 'VirusTotal', s);
+  if (s && s.state === 'ok') {
+    const d = s.data || {};
+    feKeyVal(st, 'Detections', (d.malicious || 0) + ' malicious / ' + (d.suspicious || 0) +
+      ' suspicious of ' + (d.total_engines != null ? d.total_engines : '—') + ' engines');
+    if (d.flagged_vendors && d.flagged_vendors.length) feKeyVal(st, 'Flagged by', feListShort(d.flagged_vendors, 12));
+    if (d.as_owner) feKeyVal(st, 'AS owner', d.as_owner);
+  }
+  st.y += 2;
+}
+function feIpOtx(st, s) {
+  feSourceHead(st, 'AlienVault OTX', s);
+  if (s && s.state === 'ok') {
+    const d = s.data || {};
+    feKeyVal(st, 'Pulses', (d.pulse_count != null ? d.pulse_count : 0));
+    if (d.pulse_names && d.pulse_names.length) feKeyVal(st, 'Pulse names', feListShort(d.pulse_names, 4));
+    if (d.malware_families && d.malware_families.length) feKeyVal(st, 'Malware families', d.malware_families.join(', '));
+    if (d.tags && d.tags.length) feKeyVal(st, 'Tags', feListShort(d.tags, 12));
+  }
+  st.y += 2;
+}
+function feIpCensys(st, s) {
+  feSourceHead(st, 'Censys', s);
+  if (s && s.state === 'ok') {
+    const d = s.data || {};
+    const nports = (d.ports || []).length;
+    feKeyVal(st, 'Services', nports + ' open port' + (nports === 1 ? '' : 's') + ' (see Open ports)');
+    if (d.os) feKeyVal(st, 'OS', d.os);
+    if (d.asn) feKeyVal(st, 'ASN', 'AS' + d.asn + (d.asn_name ? '  ' + d.asn_name : ''));
+    if (d.asn_country) feKeyVal(st, 'ASN country', d.asn_country);
+    if (d.last_updated) feKeyVal(st, 'Last updated', d.last_updated, { mono: true });
+  }
+  st.y += 2;
+}
+function feIpThreatFox(st, s) {
+  feSourceHead(st, 'ThreatFox', s);
+  if (s && s.state === 'ok') {
+    const d = s.data || {};
+    const iocs = d.iocs || [];
+    feKeyVal(st, 'IOC matches', iocs.length);
+    iocs.slice(0, 6).forEach((i, idx) => {
+      feKeyVal(st, 'IOC ' + (idx + 1), [i.malware, i.threat_type, (i.confidence != null ? i.confidence + '% conf' : '')]
+        .filter(Boolean).join(' · '));
+    });
+  } else if (s && s.state === 'not_found') {
+    feText(st, 'No IOC match in ThreatFox.', { size: 9, color: FE_PDF.muted });
+  }
+  st.y += 2;
+}
+function feIpGreyNoise(st, gn) {
+  const doc = st.doc;
+  feEnsure(st, 11);
+  doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(10); _c(doc, FE_PDF.ink);
+  doc.text('GreyNoise', st.M, st.y + 4);
+  st.y += 5.5;
+  if (!gn || (gn.message === undefined && !gn.classification)) {
+    feText(st, 'Not queried / no data.', { size: 9, color: FE_PDF.muted });
+  } else if (gn.message && gn.message.includes('not observed')) {
+    feText(st, 'Not observed scanning the internet or in the RIOT (known-benign) dataset.', { size: 9, color: FE_PDF.muted });
+  } else {
+    feKeyVal(st, 'Classification', (gn.classification || 'unknown'));
+    if (gn.name && gn.name !== 'unknown') feKeyVal(st, 'Actor', gn.name);
+    const tags = [];
+    if (gn.noise) tags.push('scanning the internet');
+    if (gn.riot) tags.push('known-benign service (RIOT)');
+    if (tags.length) feKeyVal(st, 'Signals', tags.join(' · '));
+    if (gn.last_seen) feKeyVal(st, 'Last seen', gn.last_seen, { mono: true });
+  }
+  st.y += 2;
+}
+function feIpUrlhaus(st, uh) {
+  const doc = st.doc;
+  feEnsure(st, 11);
+  doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(10); _c(doc, FE_PDF.ink);
+  doc.text('URLhaus', st.M, st.y + 4);
+  st.y += 5.5;
+  if (!uh || uh.query_status !== 'ok') {
+    feText(st, 'No URLhaus records for this host.', { size: 9, color: FE_PDF.muted });
+  } else {
+    const urls = uh.urls || [];
+    feKeyVal(st, 'Malicious URLs', (uh.url_count || urls.length));
+    if (uh.firstseen) feKeyVal(st, 'First seen', uh.firstseen, { mono: true });
+    const bl = uh.blacklists || {};
+    if (Object.keys(bl).length) feKeyVal(st, 'Blacklists', Object.entries(bl).map(([k, v]) => k + ': ' + v).join(' · '));
+    urls.slice(0, 5).forEach((u) => feKeyVal(st, (u.url_status || 'unknown').toUpperCase(), u.url, { mono: true }));
+  }
+  st.y += 2;
+}
+
+function feIpPortsTable(st, ports, shodan) {
+  const rows = (ports && ports.ports) || [];
+  if (!rows.length) {
+    const consulted = (ports && ports.consulted && ports.consulted.length)
+      ? ports.consulted.join(', ') : 'Shodan InternetDB, Censys';
+    feText(st, 'No open ports observed (consulted: ' + consulted + ').', { size: 9.5, color: FE_PDF.muted });
+    return;
+  }
+  const sorted = rows.slice().sort((a, b) => (a.port || 0) - (b.port || 0));
+  feTable(st,
+    [{ title: 'PORT', width: 26, mono: true }, { title: 'SERVICE', width: 60 }, { title: 'SOURCE(S)', width: st.contentW - 86 }],
+    sorted.map(p => [String(p.port != null ? p.port : '—'), (p.service || '—'), (p.sources || []).join(', ')]));
+}
+
+function fePdfSourcesQueried(data) {
+  const names = { abuseipdb: 'AbuseIPDB', virustotal: 'VirusTotal', otx: 'AlienVault OTX', censys: 'Censys', threatfox: 'ThreatFox' };
+  const rep = (data.reputation || {}).sources || {};
+  const list = [];
+  for (const k of Object.keys(names)) if (rep[k]) list.push(names[k]);
+  list.push('GreyNoise', 'URLhaus', 'Shodan InternetDB', 'RIPEstat');
+  return list.join(', ');
+}
+
+function downloadIpReportPdf(data) {
+  try {
+    if (!fePdfReady()) { alert('PDF library did not load — reload the page and try again.'); return; }
+    const st = fePdfNew();
+    const rep = (data && data.reputation) || {};
+    const rs = (data && data.ripestat) || {};
+    const ip = (data && data.ip) || 'unknown';
+    const stamp = fePdfUtcStamp();
+
+    feBrandHeader(st, 'IP Reputation Report — ' + ip, [
+      'Generated ' + stamp,
+      'OSINT intelligence summary — aggregated third-party signals, provided as-is.',
+    ]);
+
+    if (rep.verdict) { feVerdictBanner(st, rep.verdict.verdict, rep.verdict.reasoning); st.y += 1; }
+
+    feHeading(st, 'Network');
+    feKeyVal(st, 'IP address', ip, { mono: true });
+    if (rs.asn) feKeyVal(st, 'ASN', 'AS' + rs.asn);
+    if (rs.asn_holder) feKeyVal(st, 'Network', rs.asn_holder);
+    if (rs.prefix) feKeyVal(st, 'Prefix', rs.prefix, { mono: true });
+    const ptr = (data.reverse_dns || []);
+    feKeyVal(st, 'Reverse DNS', ptr.length ? ptr.join(', ') : 'none', { mono: true });
+
+    if (rep.geo && rep.geo.countries && Object.keys(rep.geo.countries).length) {
+      feHeading(st, 'Geolocation consensus');
+      if (rep.geo.agreement) {
+        feText(st, 'Sources agree on: ' + Object.keys(rep.geo.countries).join(', '), { size: 10 });
+      } else {
+        feText(st, 'Sources disagree on the country. Geolocation is an estimate; single-source country claims are often wrong.', { size: 10, gapAfter: 1 });
+        for (const [code, labels] of Object.entries(rep.geo.countries)) {
+          feKeyVal(st, code, (labels || []).join(', '));
+        }
+      }
+      if (rep.geo.is_hosting_asn) feText(st, 'Note: hosting/VPS/cloud ASN — geolocation is least reliable here.', { size: 8.5, color: FE_PDF.muted, gapAfter: 1 });
+    }
+
+    feHeading(st, 'Sources');
+    const S = rep.sources || {};
+    feIpAbuseIpdb(st, S.abuseipdb);
+    feIpVirusTotal(st, S.virustotal);
+    feIpOtx(st, S.otx);
+    feIpCensys(st, S.censys);
+    feIpThreatFox(st, S.threatfox);
+    feIpGreyNoise(st, data.greynoise);
+    feIpUrlhaus(st, data.urlhaus);
+
+    feHeading(st, 'Open ports');
+    feIpPortsTable(st, rep.ports, data.shodan);
+
+    feFooterAll(st, [
+      'Generated by FalconEye · falconeye.osintph.info · ' + stamp,
+      'Data sources queried: ' + fePdfSourcesQueried(data),
+    ]);
+
+    st.doc.save('falconeye-ip-report-' + feSanitizeName(ip) + '-' + fePdfDate() + '.pdf');
+  } catch (e) {
+    console.error('IP report PDF failed:', e);
+    alert('Could not generate the PDF: ' + e.message);
+  }
+}
+
+// Render the composed abuse letter: prose proportional, the Evidence block
+// monospace (IPs, headers, hashes). Falls back to whole-body proportional if
+// the template markers are absent.
+function feAbuseBody(st, body) {
+  body = String(body || '');
+  const evIdx = body.search(/^\s*Evidence:\s*$/m);
+  if (evIdx < 0) { feText(st, body, { size: 9.5 }); return; }
+  const after = body.slice(evIdx);
+  const endMatch = after.match(/\n\s*\n(I am reporting this in good faith|Regards,)/);
+  const evEnd = endMatch ? (evIdx + endMatch.index) : body.length;
+  const preText = body.slice(0, evIdx).replace(/\s+$/, '');
+  const evBlock = body.slice(evIdx, evEnd).replace(/^\s*Evidence:\s*\n?/, '').trim();
+  const postText = body.slice(evEnd).replace(/^\s+/, '');
+  if (preText) feText(st, preText, { size: 9.5, gapAfter: 1.5 });
+  feText(st, 'Evidence:', { size: 9.5, style: 'bold', gapAfter: 0.5 });
+  feText(st, evBlock, { size: 8.5, mono: true, gapAfter: 1.5 });
+  if (postText) feText(st, postText, { size: 9.5 });
+}
+
+function downloadAbusePdf(composed, info) {
+  try {
+    if (!fePdfReady()) { alert('PDF library did not load — reload the page and try again.'); return; }
+    if (!composed) { alert('Compose the report first (click Preview Report).'); return; }
+    const st = fePdfNew();
+    const target = (info && info.target) || 'target';
+    const stamp = fePdfUtcStamp();
+
+    feBrandHeader(st, 'Abuse Report', [
+      'Target: ' + target,
+      'Generated ' + stamp,
+    ]);
+
+    feHeading(st, 'Subject');
+    feText(st, composed.subject || '(no subject)', { size: 10, style: 'bold', gapAfter: 1 });
+
+    feHeading(st, 'Report');
+    feAbuseBody(st, composed.body_text || '');
+
+    if (composed.warnings && composed.warnings.length) {
+      st.y += 1;
+      feText(st, 'Notes: ' + composed.warnings.join('; '), { size: 8.5, color: FE_PDF.amber });
+    }
+
+    feFooterAll(st, [
+      'Generated by FalconEye · falconeye.osintph.info · ' + stamp,
+      'Composed client-side; recipient redaction as applied on screen.',
+    ]);
+
+    st.doc.save('falconeye-abuse-report-' + feSanitizeName(target) + '-' + fePdfDate() + '.pdf');
+  } catch (e) {
+    console.error('Abuse report PDF failed:', e);
+    alert('Could not generate the PDF: ' + e.message);
+  }
 }

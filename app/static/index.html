@@ -54,9 +54,10 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.9.0",
+    "softwareVersion": "3.9.1",
     "featureList": [
       "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
+      "Client-side PDF export for IP reputation and abuse reports",
       "Username enumeration across ~950 platforms (WhatsMyName + Sherlock)",
       "Abuse report composition with RDAP contact lookup and optional Mailgun send",
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
@@ -1125,6 +1126,8 @@
     </div>
   </div>
 
+  <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
+  <script src="/static/vendor/jspdf.umd.min.js"></script>
   <script src="/static/app.js"></script>
 </body>
 </html>
