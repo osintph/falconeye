@@ -14,6 +14,7 @@ from slowapi import Limiter
 
 from app.config import DB_PATH, GREYNOISE_API_KEY, ABUSECH_AUTH_KEY
 from app.database import get_db
+from app.ip_sources import reputation
 from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/ip", tags=["ip"])
@@ -257,9 +258,12 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         ripestat_task = fetch_ripestat(client, validated)
         urlhaus_task = fetch_urlhaus_host(client, validated)
         ptr_task = fetch_reverse_dns(validated)
+        # v3.9.0: five reputation sources fetched concurrently with the core ones,
+        # so total latency is bounded by the slowest source, not the sum.
+        reputation_task = reputation.fetch_sources(validated, client)
 
-        shodan, greynoise, ripestat, urlhaus, ptr = await asyncio.gather(
-            shodan_task, greynoise_task, ripestat_task, urlhaus_task, ptr_task,
+        shodan, greynoise, ripestat, urlhaus, ptr, rep_sources = await asyncio.gather(
+            shodan_task, greynoise_task, ripestat_task, urlhaus_task, ptr_task, reputation_task,
             return_exceptions=True,
         )
 
@@ -268,10 +272,27 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         if isinstance(ripestat, Exception): ripestat = None
         if isinstance(urlhaus, Exception): urlhaus = None
         if isinstance(ptr, Exception): ptr = []
+        if isinstance(rep_sources, Exception) or not isinstance(rep_sources, dict): rep_sources = {}
 
         cve_details = {}
         if shodan and shodan.get("vulns"):
             cve_details = await fetch_cve_details(client, shodan["vulns"])
+
+    # Assemble the multi-source reputation: consensus verdict, geo consensus, merged ports.
+    _shodan = shodan if isinstance(shodan, dict) else None
+    _ripestat = ripestat if isinstance(ripestat, dict) else None
+    _greynoise = greynoise if isinstance(greynoise, dict) else None
+    if _shodan is not None:
+        shodan_ports = [] if _shodan.get("empty") else (_shodan.get("ports") or [])
+    else:
+        shodan_ports = None
+    reputation_block = reputation.assemble(
+        rep_sources,
+        greynoise_malicious=((_greynoise or {}).get("classification") == "malicious"),
+        shodan_ports=shodan_ports,
+        existing_country=(_ripestat or {}).get("country"),
+        network_name=(_ripestat or {}).get("asn_holder"),
+    )
 
     response = {
         "ip": validated,
@@ -281,6 +302,7 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         "urlhaus": urlhaus,
         "reverse_dns": ptr,
         "cve_details": cve_details,
+        "reputation": reputation_block,
         "cache_hit": False,
     }
 

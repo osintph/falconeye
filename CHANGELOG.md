@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.9.0] — 2026-07-20
+
+Multi-source IP reputation: the IP tab now cross-references five threat-intel vendors, forms a consensus verdict, and stops asserting a single (often wrong) country.
+
+### Added
+
+- **Five reputation sources on the IP Reputation tab** — **AbuseIPDB** (abuse-confidence score, reports, categories), **VirusTotal** (multi-vendor detection ratio + flagged vendors), **AlienVault OTX** (community pulses + malware families), **Censys** (host services/ports), and **ThreatFox** (IOC matches). Each renders its own sub-card with an explicit ok / no-key / quota / error / not-found state, so one source failing never blanks the card or 500s the endpoint. All five are fetched concurrently (latency bounded by the slowest, not the sum) and cached per IP in the existing 6-hour window to conserve free-tier quotas.
+- **Consensus verdict banner** (Clean / Suspicious / Malicious) at the top of the IP result, with reasoning (e.g. "Malicious: AbuseIPDB 100%, VirusTotal 7 vendors"). Thresholds are named constants.
+- **Geolocation consensus.** Instead of asserting one country, the tab collects geo from every source (plus MaxMind and ASN registration) and, when they disagree, shows the disagreement (e.g. "Geo disputed: LT (AbuseIPDB, Censys), IR (VirusTotal, MaxMind), US (OTX), RS (ASN registration)"), with a caveat when the ASN is a hosting/VPS network where geo is unreliable.
+- **Censys + Shodan port merge** — open ports are merged and deduplicated across both, each tagged with its source(s); "no open ports observed" only when *both* sources returned nothing, naming which were consulted.
+- **`docs/ip-reputation-sources.md`** documenting each source, free-tier limit, signal, `.env` variable, verdict logic, and the geo-unreliability rationale.
+
+### Changed
+
+- **IP abuse-report evidence prefill** now includes the consensus verdict, AbuseIPDB score/reports, VirusTotal ratio/vendors, OTX pulses, ThreatFox matches, merged ports (with source tags), and the geo disagreement.
+- New `app/ip_sources/` package (one normalized module per source + aggregate/verdict/geo/ports), wired into the existing `GET /api/ip/lookup/{ip}`. ThreatFox reuses the existing `ABUSECH_AUTH_KEY` (abuse.ch made it mandatory in 2024). No new runtime dependencies — all five use the existing `httpx`.
+
+---
+
 ## [3.8.3] — 2026-07-20
 
 ### Fixed

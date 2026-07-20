@@ -1184,18 +1184,138 @@ function renderIpResult(el, data) {
     : '<span class="text-xs text-green-400">fresh</span>';
 
   el.innerHTML = `
+    ${renderReputationVerdict(data.reputation)}
     ${renderIpSummary(data, cacheBadge)}
     ${renderIpClassification(data.greynoise)}
-    ${renderIpPorts(data.shodan, data.cve_details)}
+    ${renderReputationPorts(data.reputation, data.shodan, data.cve_details)}
+    ${renderReputationSources(data.reputation)}
     ${renderIpUrlhaus(data.urlhaus)}
   `;
+}
+
+// ---- v3.9.0 multi-source reputation rendering ----
+function renderReputationVerdict(rep) {
+  if (!rep || !rep.verdict) return '';
+  const v = rep.verdict.verdict || 'CLEAN';
+  const color = {MALICIOUS: 'red', SUSPICIOUS: 'amber', CLEAN: 'green'}[v] || 'gray';
+  return `
+    <div class="bg-gray-900 border-l-4 border-${color}-500 rounded p-4 mb-4">
+      <div class="flex items-center gap-3 flex-wrap">
+        <span class="text-${color}-400 font-bold text-lg uppercase tracking-wide">${escapeHtml(v)}</span>
+        <span class="text-sm text-gray-300">${escapeHtml(rep.verdict.reasoning || '')}</span>
+      </div>
+      ${renderGeoConsensus(rep.geo)}
+    </div>`;
+}
+
+function renderGeoConsensus(geo) {
+  if (!geo || !geo.countries || !Object.keys(geo.countries).length) return '';
+  const entries = Object.entries(geo.countries);
+  if (geo.agreement) {
+    return `<p class="text-xs text-gray-400 mt-2">Geolocation: ${escapeHtml(entries[0][0])} (${escapeHtml(entries[0][1].join(', '))})</p>`;
+  }
+  const parts = entries.map(([c, srcs]) => `${escapeHtml(c)} (${srcs.map(escapeHtml).join(', ')})`).join('; ');
+  const caveat = geo.is_hosting_asn ? ' <span class="text-gray-500">— hosting/VPS ASN, geolocation is often unreliable</span>' : '';
+  return `<p class="text-xs text-amber-400/90 mt-2">⚠ Geo disputed: ${parts}${caveat}</p>`;
+}
+
+function renderReputationPorts(rep, shodan, cveDetails) {
+  const pd = (rep && rep.ports) || {};
+  const ports = pd.ports || [];
+  const srcBadge = (s) => `<span class="text-[10px] px-1 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">${s === 'shodan' ? 'Shodan' : 'Censys'}</span>`;
+  let portsHtml;
+  if (ports.length) {
+    portsHtml = ports.map(p => `<div class="flex items-center gap-2 py-1 border-b border-gray-800/50 last:border-0">
+      <span class="text-amber-300 font-mono text-sm w-14">${p.port}</span>
+      <span class="text-gray-300 text-sm flex-1">${escapeHtml(p.service || '')}</span>
+      <span class="flex gap-1">${(p.sources || []).map(srcBadge).join('')}</span></div>`).join('');
+  } else {
+    const consulted = (pd.consulted || []).join(' + ') || 'no port sources available';
+    portsHtml = `<p class="text-sm text-gray-400">No open ports observed (checked ${escapeHtml(consulted)}).</p>`;
+  }
+  let cveHtml = '';
+  const vulns = (shodan && shodan.vulns) || [];
+  if (vulns.length) {
+    cveHtml = `<div class="mt-3 pt-3 border-t border-gray-800"><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Vulnerabilities (Shodan)</p>` +
+      vulns.slice(0, 15).map(c => {
+        const det = (cveDetails || {})[c] || {};
+        return `<span class="inline-block text-xs font-mono text-red-400 mr-3 mb-1">${escapeHtml(c)}${det.cvss ? ' (' + det.cvss + ')' : ''}${det.kev ? ' KEV' : ''}</span>`;
+      }).join('') + `</div>`;
+  }
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-5">
+    <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Open Ports & Services</h3>
+    ${portsHtml}${cveHtml}</div>`;
+}
+
+function _repCard(title, src, renderer) {
+  src = src || {state: 'error', ok: false, error: 'unavailable', data: {}};
+  let body;
+  if (src.state === 'no_key') body = '<p class="text-xs text-gray-500">No API key configured.</p>';
+  else if (src.state === 'quota') body = `<p class="text-xs text-yellow-400">Quota reached: ${escapeHtml(src.error || '')}</p>`;
+  else if (src.state === 'error') body = `<p class="text-xs text-red-400">Error: ${escapeHtml(src.error || 'unknown')}</p>`;
+  else body = renderer(src.data || {}, src.state);
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-4">
+    <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wide mb-2">${title}</h4>${body}</div>`;
+}
+
+function renderReputationSources(rep) {
+  if (!rep || !rep.sources) return '';
+  const s = rep.sources;
+  return `<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+    ${_repCard('AbuseIPDB', s.abuseipdb, _repAbuseIpdb)}
+    ${_repCard('VirusTotal', s.virustotal, _repVirusTotal)}
+    ${_repCard('AlienVault OTX', s.otx, _repOtx)}
+    ${_repCard('Censys', s.censys, _repCensys)}
+    ${_repCard('ThreatFox', s.threatfox, _repThreatFox)}
+  </div>`;
+}
+
+function _repAbuseIpdb(d) {
+  const conf = (d.confidence != null) ? d.confidence : 0;
+  const color = conf >= 75 ? 'red' : conf >= 25 ? 'amber' : 'green';
+  const cats = (d.categories || []).map(c => `<span class="text-[10px] px-1.5 py-0.5 rounded bg-gray-800 text-gray-400">${escapeHtml(c)}</span>`).join(' ');
+  return `<div class="flex items-center gap-2 mb-2"><div class="flex-1 bg-gray-800 rounded h-2 overflow-hidden"><div class="bg-${color}-500 h-2" style="width:${conf}%"></div></div><span class="text-sm text-${color}-400 font-bold">${conf}%</span></div>
+    <p class="text-xs text-gray-400">${d.total_reports || 0} reports from ${d.distinct_users || 0} reporters${d.last_reported ? ', last ' + escapeHtml(String(d.last_reported).slice(0, 10)) : ''}.</p>
+    ${d.usage_type ? `<p class="text-xs text-gray-500">Usage: ${escapeHtml(d.usage_type)}</p>` : ''}
+    ${cats ? `<div class="flex flex-wrap gap-1 mt-2">${cats}</div>` : ''}`;
+}
+
+function _repVirusTotal(d) {
+  const mal = d.malicious || 0, tot = d.total_engines || 0;
+  const color = mal >= 3 ? 'red' : mal >= 1 ? 'amber' : 'green';
+  return `<p class="text-sm"><span class="text-${color}-400 font-bold">${mal}/${tot}</span> <span class="text-gray-400">vendors flagged malicious</span>${d.suspicious ? ` (${d.suspicious} suspicious)` : ''}.</p>
+    ${(d.flagged_vendors || []).length ? `<p class="text-xs text-gray-500 mt-1">${(d.flagged_vendors || []).slice(0, 10).map(escapeHtml).join(', ')}</p>` : ''}
+    ${d.as_owner ? `<p class="text-xs text-gray-500 mt-1">AS owner: ${escapeHtml(d.as_owner)}</p>` : ''}`;
+}
+
+function _repOtx(d) {
+  const pc = d.pulse_count || 0;
+  return `<p class="text-sm text-gray-300">${pc} community pulse${pc === 1 ? '' : 's'}.</p>
+    ${(d.pulse_names || []).length ? `<ul class="text-xs text-gray-500 mt-1 list-disc list-inside">${(d.pulse_names || []).slice(0, 4).map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : ''}
+    ${(d.malware_families || []).length ? `<p class="text-xs text-gray-400 mt-1">Malware: ${(d.malware_families || []).map(escapeHtml).join(', ')}</p>` : ''}`;
+}
+
+function _repCensys(d) {
+  const ports = d.ports || [];
+  if (!ports.length) return `<p class="text-xs text-gray-400">No services observed${d.asn ? ` (AS${d.asn})` : ''}.</p>`;
+  return `<p class="text-sm text-gray-300">${ports.map(p => `${p.port}/${escapeHtml(p.service || p.transport || '')}`).join(', ')}</p>
+    ${d.os ? `<p class="text-xs text-gray-500 mt-1">OS: ${escapeHtml(d.os)}</p>` : ''}
+    ${d.asn_name ? `<p class="text-xs text-gray-500">AS${d.asn} ${escapeHtml(d.asn_name)}</p>` : ''}`;
+}
+
+function _repThreatFox(d) {
+  if (!d.matched) return '<p class="text-xs text-green-400">No IOC match in ThreatFox.</p>';
+  return (d.iocs || []).slice(0, 5).map(i => `<p class="text-xs text-red-400">${escapeHtml(i.malware || 'malware')} (${escapeHtml(i.threat_type || '')}, conf ${i.confidence != null ? i.confidence + '%' : '?'})</p>`).join('');
 }
 
 function renderIpSummary(data, cacheBadge) {
   const rs = data.ripestat || {};
   const ptr = data.reverse_dns || [];
   const ptrStr = ptr.length ? ptr.join(', ') : '<span class="text-gray-600">no PTR</span>';
-  const locStr = [rs.city, rs.country].filter(Boolean).join(', ');
+  const _geo = (data.reputation && data.reputation.geo) || {};
+  const locStr = (_geo.countries && !_geo.agreement)
+    ? (rs.city ? escapeHtml(rs.city) + ' · ' : '') + 'geo disputed (' + escapeHtml(Object.keys(_geo.countries).join('/')) + ')'
+    : [rs.city, rs.country].filter(Boolean).join(', ');
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
@@ -3888,6 +4008,24 @@ function abuseBuildIpEvidence(data) {
     lines.push(`URLhaus: ${uhUrls.length} malicious URL record(s) on this host. Recent:`);
     uhUrls.slice(0, 5).forEach(u => lines.push(`  - ${(u && u.url) ? u.url : u}`));
   }
+
+  // v3.9.0: multi-source reputation signals
+  const rep = data.reputation || {};
+  const src = rep.sources || {};
+  if (rep.verdict) lines.push(`Consensus verdict: ${rep.verdict.verdict} — ${rep.verdict.reasoning}.`);
+  const ab = (src.abuseipdb && src.abuseipdb.ok) ? src.abuseipdb.data : null;
+  if (ab && ab.confidence != null) lines.push(`AbuseIPDB: ${ab.confidence}% confidence, ${ab.total_reports} reports from ${ab.distinct_users} reporters${(ab.categories || []).length ? ' (' + ab.categories.slice(0, 6).join(', ') + ')' : ''}.`);
+  const vt = (src.virustotal && src.virustotal.ok) ? src.virustotal.data : null;
+  if (vt) lines.push(`VirusTotal: ${vt.malicious}/${vt.total_engines} vendors malicious${(vt.flagged_vendors || []).length ? ' (' + vt.flagged_vendors.slice(0, 6).join(', ') + ')' : ''}.`);
+  const ox = (src.otx && src.otx.ok) ? src.otx.data : null;
+  if (ox && ox.pulse_count) lines.push(`AlienVault OTX: ${ox.pulse_count} pulse(s)${(ox.pulse_names || []).length ? ' — ' + ox.pulse_names.slice(0, 3).join('; ') : ''}.`);
+  const tf = (src.threatfox && src.threatfox.ok) ? src.threatfox.data : null;
+  if (tf && tf.matched) lines.push(`ThreatFox: ${(tf.iocs || []).map(i => i.malware).filter(Boolean).slice(0, 3).join(', ')} IOC match.`);
+  const mports = (rep.ports && rep.ports.ports) || [];
+  if (mports.length) lines.push(`Open ports: ${mports.map(p => p.port + '/' + (p.service || '') + ' [' + (p.sources || []).join(',') + ']').join(', ')}.`);
+  const geo = rep.geo || {};
+  if (geo.countries && !geo.agreement) lines.push(`Geolocation disputed across sources: ${Object.entries(geo.countries).map(([c, s]) => c + ' (' + s.join(',') + ')').join('; ')}.`);
+
   lines.push('');
   lines.push('Describe the specific abusive activity you observed (dates, log excerpts, target service) before sending.');
   return lines.join('\n');

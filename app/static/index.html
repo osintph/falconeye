@@ -54,8 +54,9 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.8.3",
+    "softwareVersion": "3.9.0",
     "featureList": [
+      "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
       "Username enumeration across ~950 platforms (WhatsMyName + Sherlock)",
       "Abuse report composition with RDAP contact lookup and optional Mailgun send",
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
@@ -431,7 +432,7 @@
     <!-- IP Reputation Tab -->
     <div id="tab-ip" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">IP Reputation & Threat Lookup</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a public IPv4 or IPv6 address for ASN, geolocation, open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
+      <p class="text-gray-400 text-sm mb-6">Paste a public IPv4 or IPv6 address for a multi-source reputation verdict (AbuseIPDB, VirusTotal, AlienVault OTX, Censys, ThreatFox), ASN, geolocation consensus, merged open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
 
       <div class="flex gap-3 mb-3">
         <input id="ip-input" type="text" placeholder="8.8.8.8"
