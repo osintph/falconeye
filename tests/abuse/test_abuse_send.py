@@ -93,10 +93,10 @@ def test_send_success_inserts_audit(monkeypatch):
     assert n == 1
 
 
-def test_send_is_not_rate_limited(monkeypatch):
-    """v3.8.3: send is admin-only + single-user, so it is NOT rate-limited.
-    Repeated sends to the same recipient all succeed and never set rate_limited,
-    and nothing is written to abuse_send_rate_limit."""
+def test_send_service_does_not_self_rate_limit(monkeypatch):
+    """v3.12.0 (M-1): rate limiting lives at the /send ROUTE, not the send SERVICE.
+    Calling send_via_mailgun directly performs no throttling — repeated calls all
+    send and write no rate-limit rows (the route is where the caps live)."""
     _mailgun_env(monkeypatch)
     _seed_recipient()
     monkeypatch.setattr(
@@ -107,7 +107,6 @@ def test_send_is_not_rate_limited(monkeypatch):
         r = asyncio.run(send.send_via_mailgun(_COMPOSED, "abuse@prov.example", "1.1.1.1"))
         assert r["sent"] is True
         assert r["rate_limited"] is False
-    # the rate-limit table is left in place but must not be written to
     conn = store._connect()
     rows = conn.execute("SELECT COUNT(*) FROM abuse_send_rate_limit").fetchone()[0]
     conn.close()
@@ -230,3 +229,69 @@ def test_send_endpoint_valid_creds_reach_send_service(monkeypatch):
         "admin_user": "admin", "admin_password": "s3cret-pw",
     })
     assert r.status_code == 200 and r.json()["sent"] is True and called["n"] == 1
+
+
+# ---------- M-1: send rate limiting + failure backoff (v3.12.0) ----------
+
+def _no_401(r):
+    assert r.status_code == 200
+    assert "www-authenticate" not in {k.lower() for k in r.headers.keys()}
+
+
+def test_send_endpoint_rate_limits_burst(monkeypatch):
+    """M-1: more than SEND_PER_MINUTE sends/min from one IP are throttled with a
+    structured 200 (rate_limited=true), and the throttled request never reaches the
+    send service — capping bcrypt CPU cost. Never a 401."""
+    monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")
+    monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH",
+                       bcrypt.hashpw(b"pw", bcrypt.gensalt()).decode())
+    called = {"n": 0}
+
+    async def fake_send(composed, recipient, client_ip):
+        called["n"] += 1
+        return {"sent": True, "mailgun_message_id": "<m@mg>", "error": None, "rate_limited": False}
+
+    monkeypatch.setattr(abuse_routes.send_mod, "send_via_mailgun", fake_send)
+    c = _client()
+    body = {"composed": _COMPOSED, "recipient_email": "a@b.com",
+            "admin_user": "admin", "admin_password": "pw"}
+
+    for i in range(abuse_routes.SEND_PER_MINUTE):
+        r = c.post("/api/abuse/send", json=body)
+        _no_401(r)
+        assert r.json()["sent"] is True, f"request {i} should have sent"
+
+    # The next request over the per-minute cap is throttled, not sent.
+    r = c.post("/api/abuse/send", json=body)
+    _no_401(r)
+    d = r.json()
+    assert d["sent"] is False and d["rate_limited"] is True
+    assert called["n"] == abuse_routes.SEND_PER_MINUTE  # service not called again
+
+
+def test_send_endpoint_backoff_on_repeated_failures(monkeypatch):
+    """M-1: consecutive wrong-password attempts from one IP trigger exponential
+    backoff — after SEND_FAIL_FREE failures a further attempt is rejected
+    (rate_limited=true) without running bcrypt, still 200, never 401. This throttles
+    online password guessing."""
+    monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")
+    monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH",
+                       bcrypt.hashpw(b"correct horse", bcrypt.gensalt()).decode())
+    c = _client()
+    wrong = {"composed": _COMPOSED, "recipient_email": "a@b.com",
+             "admin_user": "admin", "admin_password": "wrong-password"}
+
+    # The first SEND_FAIL_FREE + 1 wrong attempts still run auth -> "invalid".
+    for i in range(abuse_routes.SEND_FAIL_FREE + 1):
+        r = c.post("/api/abuse/send", json=wrong)
+        _no_401(r)
+        d = r.json()
+        assert d["sent"] is False and d["rate_limited"] is False
+        assert "invalid" in d["error"].lower(), f"request {i}"
+
+    # Now fails > SEND_FAIL_FREE, so the next attempt is backed off within cooldown.
+    r = c.post("/api/abuse/send", json=wrong)
+    _no_401(r)
+    d = r.json()
+    assert d["sent"] is False and d["rate_limited"] is True
+    assert "slow down" in d["error"].lower() or "too many" in d["error"].lower()

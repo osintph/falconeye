@@ -195,11 +195,71 @@ def _init_cache():
         )
     """)
     conn.execute("CREATE INDEX IF NOT EXISTS idx_llm_rate_ip ON llm_rate_limit(source_ip, called_at)")
+    # M-2: per-IP throttle for /analyze (the parse path is a DoS surface).
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS email_analyze_rate_limit (
+            source_ip TEXT NOT NULL,
+            called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_email_analyze_rate_ip ON email_analyze_rate_limit(source_ip, called_at)")
     conn.commit()
     conn.close()
 
 
 _init_cache()
+
+
+# ---------- M-2: analyze rate limit + MIME structure bounds ----------
+
+ANALYZE_PER_MINUTE = 20            # generous for interactive use; blocks a flood
+MAX_MIME_PARTS = 500              # total parts; a legit email has a handful
+MAX_MIME_DEPTH = 100             # nesting depth; well below the ~2000 that overflows
+
+
+def _check_analyze_rate_limit(source_ip: str) -> bool:
+    """True if this IP may run another analyze in the current minute window."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM email_analyze_rate_limit "
+            "WHERE source_ip = ? AND called_at > datetime('now', '-1 minute')",
+            (source_ip,),
+        ).fetchone()[0]
+    finally:
+        conn.close()
+    return count < ANALYZE_PER_MINUTE
+
+
+def _record_analyze_call(source_ip: str):
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("INSERT INTO email_analyze_rate_limit (source_ip) VALUES (?)", (source_ip,))
+        conn.execute("DELETE FROM email_analyze_rate_limit WHERE called_at < datetime('now', '-1 hour')")
+        conn.commit()
+        conn.close()
+    except Exception as exc:
+        log.error("Failed to write email_analyze_rate_limit row for ip=%s: %s", source_ip, exc)
+
+
+def _mime_within_limits(msg) -> bool:
+    """Iterative (no Python recursion) bound on MIME structure. Returns False if
+    the parsed message exceeds MAX_MIME_DEPTH nesting or MAX_MIME_PARTS total parts.
+    Runs on the ALREADY-parsed message, so it can't itself overflow; the deep-nest
+    parse overflow is caught separately around message_from_string."""
+    stack = [(msg, 1)]
+    parts = 0
+    while stack:
+        part, depth = stack.pop()
+        parts += 1
+        if parts > MAX_MIME_PARTS or depth > MAX_MIME_DEPTH:
+            return False
+        if part.is_multipart():
+            payload = part.get_payload()
+            if isinstance(payload, list):
+                for sub in payload:
+                    stack.append((sub, depth + 1))
+    return True
 
 
 # ---------- header parsing helpers ----------
@@ -974,6 +1034,16 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     if len(body_input) > 500000:
         raise HTTPException(status_code=400, detail="body too large (max 500KB)")
 
+    # M-2: throttle the (unauthenticated) parse path so a flood of crafted messages
+    # can't pin the box, and meter it per IP.
+    source_ip = get_client_ip(request) if request else "unknown"
+    if not _check_analyze_rate_limit(source_ip):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit reached ({ANALYZE_PER_MINUTE} analyses per minute). Try again shortly.",
+        )
+    _record_analyze_call(source_ip)
+
     cache_key_source = raw + "\n\n----BODY----\n\n" + body_input
     header_id = _hash_header(cache_key_source)
 
@@ -992,7 +1062,23 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
         cached["fetched_at"] = fetched_at
         return cached
 
-    msg = message_from_string(raw)
+    # M-2: a deeply nested multipart (~85 bytes/level, so depth ~2000 fits the
+    # 200KB header cap) overflows Python's recursion limit during parse. Catch it
+    # (and any parse error) -> clean 400 instead of an unhandled 500, then bound the
+    # parsed structure's depth/part-count before any further processing.
+    try:
+        msg = message_from_string(raw)
+    except RecursionError:
+        raise HTTPException(status_code=400, detail="Email is too deeply nested to parse.")
+    except Exception:
+        raise HTTPException(status_code=400, detail="Malformed email; could not parse.")
+
+    if not _mime_within_limits(msg):
+        raise HTTPException(
+            status_code=400,
+            detail="Email has too many or too deeply nested MIME parts.",
+        )
+
     headers_pairs = list(msg.items())
 
     # Determine body to analyze: explicit input > auto-extracted from full email paste

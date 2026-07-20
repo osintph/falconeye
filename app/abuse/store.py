@@ -221,6 +221,34 @@ def record_event(table: str, column: str, value: str) -> None:
         conn.close()
 
 
+def last_event_ts(table: str, column: str, value: str) -> int | None:
+    """Unix ts of the most recent event for *value*, or None. Used by the send
+    failure-backoff (M-1) to measure the cooldown since the last failed attempt."""
+    assert table in _RL_TABLES and _RL_TABLES[table] == column
+    conn = _connect()
+    try:
+        row = conn.execute(
+            f"SELECT MAX(ts) FROM {table} WHERE {column} = ?", (value,)
+        ).fetchone()
+    finally:
+        conn.close()
+    return row[0] if row and row[0] is not None else None
+
+
+def clear_events(table: str, column: str, value: str) -> None:
+    """Delete all events for *value* (e.g. reset an IP's failure backoff on a
+    successful auth)."""
+    assert table in _RL_TABLES and _RL_TABLES[table] == column
+    conn = _connect()
+    try:
+        conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (value,))
+        conn.commit()
+    except Exception as exc:
+        log.error("rate-limit clear failed on %s: %s", table, exc)
+    finally:
+        conn.close()
+
+
 # ---------- audit ----------
 
 def record_audit(client_ip, recipient_email, target, target_type, category, subject,

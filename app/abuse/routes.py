@@ -16,6 +16,7 @@ in-page credential form and rejected correct passwords (v3.8.1 fix).
 """
 import logging
 import secrets
+import time
 from datetime import datetime, timezone
 
 import bcrypt
@@ -39,8 +40,26 @@ limiter = Limiter(key_func=get_client_ip_key)
 LOOKUP_PER_HOUR = 10
 COMPOSE_PER_HOUR = 3
 COMPOSE_PER_DAY = 10
+_MINUTE = 60
 _HOUR = 3600
 _DAY = 86400
+
+# Send throttle (M-1, reinstated v3.12.0). /send runs bcrypt on every request and
+# always returns 200, so with no limit it is (a) an unauthenticated bcrypt
+# CPU-exhaustion primitive and (b) an unthrottled online password-guessing oracle.
+# All of these are checked BEFORE bcrypt. They reuse the pre-existing
+# abuse_send_rate_limit table (scope column), keyed "ip:<ip>" / "global" for the
+# rate caps and "fail:<ip>" for the consecutive-failure backoff.
+_SEND_RL = "abuse_send_rate_limit"
+SEND_PER_MINUTE = 5
+SEND_PER_HOUR = 20
+SEND_GLOBAL_PER_HOUR = 60
+# Exponential backoff on consecutive failed auth from one IP (online guessing):
+# the first SEND_FAIL_FREE failures cost nothing; each further failure requires a
+# cooldown that doubles (SEND_BACKOFF_BASE, 2, 4, 8 ... seconds) up to the cap.
+SEND_FAIL_FREE = 3
+SEND_BACKOFF_BASE = 2
+SEND_BACKOFF_MAX = 300
 
 
 # ---------- request models ----------
@@ -173,17 +192,52 @@ async def compose(req: ComposeRequest, request: Request):
     )
 
 
+def _send_rate_error(message: str) -> dict:
+    """Structured 200 body for a throttled/backed-off send (never 401, so the
+    browser's Basic Auth dialog stays closed — v3.8.1). The frontend already
+    surfaces {rate_limited: true}."""
+    return {"sent": False, "mailgun_message_id": None, "error": message, "rate_limited": True}
+
+
 @router.post("/send")
 async def send(req: SendRequest, request: Request):
     # Credentials arrive in the JSON body and are validated here. This endpoint
     # ALWAYS returns HTTP 200 with a structured {sent, rate_limited, error} body —
     # never 401, never WWW-Authenticate — so the browser cannot open its native
     # Basic Auth dialog (v3.8.1). See test_send_endpoint_never_returns_401.
+    client_ip = get_client_ip(request)
+
+    # --- M-1: throttle BEFORE bcrypt so /send can't be a bcrypt CPU-exhaustion
+    # primitive or an unthrottled guessing oracle. Per-IP burst + hourly cap and a
+    # global hourly ceiling. ---
+    if store.count_recent(_SEND_RL, "scope", f"ip:{client_ip}", _MINUTE) >= SEND_PER_MINUTE:
+        return _send_rate_error("Rate limit exceeded: too many send attempts. Try again shortly.")
+    if store.count_recent(_SEND_RL, "scope", f"ip:{client_ip}", _HOUR) >= SEND_PER_HOUR:
+        return _send_rate_error("Hourly send limit reached. Try again later.")
+    if store.count_recent(_SEND_RL, "scope", "global", _HOUR) >= SEND_GLOBAL_PER_HOUR:
+        return _send_rate_error("The send endpoint is at its global hourly capacity. Try again later.")
+
+    # Exponential backoff on consecutive failed auth from this IP (online guessing).
+    fails = store.count_recent(_SEND_RL, "scope", f"fail:{client_ip}", _HOUR)
+    if fails > SEND_FAIL_FREE:
+        cooldown = min(SEND_BACKOFF_MAX, SEND_BACKOFF_BASE * (2 ** (fails - SEND_FAIL_FREE - 1)))
+        last_fail = store.last_event_ts(_SEND_RL, "scope", f"fail:{client_ip}")
+        if last_fail is not None and (int(time.time()) - last_fail) < cooldown:
+            return _send_rate_error("Too many failed attempts; please slow down and try again shortly.")
+
+    # Meter this attempt (every request that reaches bcrypt costs) against the
+    # burst/global caps, then run auth.
+    store.record_event(_SEND_RL, "scope", f"ip:{client_ip}")
+    store.record_event(_SEND_RL, "scope", "global")
+
     auth_error = _verify_admin(req.admin_user, req.admin_password)
     if auth_error is not None:
+        store.record_event(_SEND_RL, "scope", f"fail:{client_ip}")
         return {"sent": False, "mailgun_message_id": None, "error": auth_error, "rate_limited": False}
 
-    client_ip = get_client_ip(request)
+    # Successful auth clears this IP's failure backoff.
+    store.clear_events(_SEND_RL, "scope", f"fail:{client_ip}")
+
     # SendResult is returned as-is (200) even when rate_limited, so the caller
     # can read the structured {sent, rate_limited, error} fields.
     return await send_mod.send_via_mailgun(req.composed or {}, req.recipient_email or "", client_ip)

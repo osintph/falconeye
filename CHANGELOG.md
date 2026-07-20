@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.12.1] — 2026-07-20
+
+Security release fixing the two unauthenticated denial-of-service findings (M-1, M-2) from the 2026-07-20 assessment, on top of the v3.12.0 framework upgrade. Scoped to just these two.
+
+### Security
+
+- **M-1 — rate limiting reinstated on `/api/abuse/send`.** Send throttling was removed in v3.8.3 on the assumption that admin auth sufficed; the assessment showed otherwise. Because `/send` runs `bcrypt.checkpw` on every request and always returns 200, an unthrottled endpoint was both an unauthenticated bcrypt CPU-exhaustion primitive and an unthrottled online password-guessing oracle. It now enforces, **all before bcrypt runs**, a per-IP burst cap (5/min), a per-IP hourly cap (20/hr), and a global hourly ceiling (60/hr), plus **exponential backoff on consecutive failed auth from the same IP** (first 3 failures free; each further failure requires a cooldown that doubles 2→4→8… seconds up to 5 minutes, reset on a successful auth). Reuses the pre-existing `abuse_send_rate_limit` table. Throttled/backed-off requests return the structured `{"sent": false, "rate_limited": true, "error": …}` at HTTP 200 — never 401 (which would re-open the browser Basic Auth dialog killed in v3.8.1); the frontend already surfaces `rate_limited`. A real operator sending a handful of reports never hits the limit.
+- **M-2 — `/api/email-header/analyze` hardened against the nested-multipart RecursionError DoS.** The unauthenticated endpoint parsed pasted headers (≤200KB) with the stdlib `message_from_string` unguarded; a deeply nested multipart (~85 bytes/level, so depth ~2000 fits the cap) overflowed Python's recursion limit → an unhandled HTTP 500, and a novel payload each request bypassed the response cache. Now: the parse is wrapped so a `RecursionError` (or any parse error) returns a clean **400**; an **iterative (non-recursive) depth/part-count cap** (≤100 nesting levels, ≤500 parts) rejects excessive structures with a 400 well below the overflow threshold; and the endpoint is **rate-limited per IP** (20/min). This path uses the stdlib email parser, not Starlette's multipart parser, so it is unaffected by the v3.12.0 framework change. Legitimate email, including normal multipart, analyzes unchanged.
+
+Both are unauthenticated DoS vectors a hostile visitor could exploit against the origin.
+
+---
+
 ## [3.12.0] — 2026-07-20
 
 Security release closing **H-2 part 2** — the FastAPI/Starlette framework upgrade — the last open HIGH from the 2026-07-20 assessment. Scoped to the framework bump only.
