@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.12.0] — 2026-07-20
+
+Security release closing **H-2 part 2** — the FastAPI/Starlette framework upgrade — the last open HIGH from the 2026-07-20 assessment. Scoped to the framework bump only.
+
+### Security
+
+- **H-2 (part 2) — FastAPI/Starlette upgraded, clearing the remaining Starlette DoS advisories.** `python-multipart` was fixed in v3.11.0, but the Starlette-side advisories (PYSEC-2026-1943/1941/249 multipart/form DoS, and the Host/path-validation items 161/248) required moving off FastAPI 0.111 and were scoped in `docs/fastapi-upgrade-plan.md` for a following release. This is that release: **FastAPI 0.111.0 → 0.139.2**, **Starlette 0.37.2 → 1.3.1** (pinned; the exact advisory-clearing floor), **slowapi 0.1.9 → 0.1.10**, and pydantic moves to 2.13.4 transitively. `pip-audit` now reports **no Starlette advisories**. `httpx` is deliberately held at 0.27.0 so the H-1 SSRF `sni_hostname` IP-pinning is undisturbed; `lxml` stays 5.2.1 (its one advisory is not reachable — deferred). slowapi 0.1.10 was confirmed to initialize and enforce rate limits on Starlette 1.3.1 before upgrading (the scoping doc's flagged blocker). Verified: full test suite green on the new stack, every endpoint reachable, the SSRF guard (H-1) battery still blocks, the three multipart upload endpoints and their DoS vectors handled by the new parser, security headers unchanged, rate limiting enforced on the live origin, and the abuse-send auth path (bcrypt + JSON-body credentials + structured-200) intact.
+
+---
+
 ## [3.11.0] — 2026-07-20
 
 Security release addressing the two HIGH findings from the 2026-07-20 assessment.
