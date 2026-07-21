@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.13.0] — 2026-07-21
+
+Telegram Intelligence — full rework of the old Telegram Channel Inspector, which only handled `t.me/s/{channel}` and 404'd on any user, bot, or channel/group without preview enabled. Replaces `app/routers/telegram_inspector.py` + `app/utils/telegram.py` with a new `app/telegram/` package.
+
+### Added
+
+- **Any Telegram username, @handle, channel, bot, or t.me link now resolves.** Three independent capability tiers, each degrading gracefully on its own:
+  - **Tier 1 (free scrape, always on).** Fetches `t.me/{identifier}` — not just the old `/s/{channel}` preview — which works for any entity type. Entity-type detection (user/bot/channel/group) is derived from empirically-confirmed t.me HTML signals (action-button text, subscriber/member counters, the verified checkmark), documented in `tier1_scrape.py`. A syntactically-valid-but-unowned username renders the identical generic fallback page as a genuinely nonexistent one, so this tier reports "unresolved" rather than a false "not found," giving tier 3 a chance to resolve it first.
+  - **Tier 2 (Bot API, `TELEGRAM_BOT_TOKEN`).** `getChat` + `getChatMemberCount` enrichment for channels/groups (member count needs a separate call — not present in `ChatFullInfo`). Correctly skipped as not-applicable for users/bots, a real Bot API limitation.
+  - **Tier 3 (MTProto via Telethon, `TELEGRAM_API_ID`/`TELEGRAM_API_HASH`/session file).** Definitive entity type, verified/scam/fake flags, DC geolocation, and a clearly-caveated rough account-era estimate from the ID range. `FLOOD_WAIT` is slept through inline up to 10s; longer waits are reported as a status instead of hanging the request.
+  - Tier 3 is authoritative when available and overrides tier 1's best-effort guess; every header field is tagged with the tier it came from (shown subtly in the UI).
+- **IOC extraction** now separates URLs, other `@handles`, and other `t.me` links into distinct buckets (previously only URLs/crypto/contact patterns). New pivots: Telegram handle → Username Enumeration (the highest-value one — a Telegram handle is a username), extracted URLs → URL Expander, extracted handles → re-run this tab, crypto → Crypto tab.
+- **Renamed to "Telegram Intelligence"** with a full visual rework: entity-type badges (user/bot/channel/group), loud red scam/fake flags, a green verified badge, and per-field tier-source tags. All-new privacy note covering the three lookup paths.
+
+### Fixed
+
+- Standalone one-time login script (`telegram_login.py`, deployed outside the git tree to `/opt/falconeye/private/`) had an un-awaited `get_me()` call that printed `(@None, id=?)` and a `RuntimeWarning` on successful login. Fixed — future re-authentications print the account confirmation correctly.
+
+### Known caveat (tracked for v3.13.1, not built yet)
+
+Gunicorn's 3 worker processes each lazily open their own Telethon connection against the same SQLite session file, which isn't designed for concurrent multi-process access. Under real concurrent load this can occasionally raise "database is locked," caught and surfaced as a transient tier-3 error rather than a crash. Being monitored via the daily operator report; if it shows up meaningfully, the fix is a dedicated async worker or file-lock initialization for tier 3.
+
+---
+
 ## [3.12.2] — 2026-07-21
 
 Fixes the Username Enumeration tab's Full scan (~965 sites, ~50s) returning a raw parse error instead of a result. Closes the whole class of "non-JSON reached the frontend," not just the immediate cause, with three independent layers.

@@ -16,3 +16,4 @@ Pillow>=10.0.0
 pyzbar==0.1.9
 qrcode[pil]>=7.4.0
 bcrypt==5.0.0
+telethon==1.44.0

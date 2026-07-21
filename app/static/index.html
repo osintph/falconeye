@@ -17,7 +17,7 @@
 
   <!-- Primary SEO -->
   <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
-  <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram channel inspector, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
+  <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram intelligence, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
   <meta name="keywords" content="OSINT toolkit, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, OSINT-PH" />
   <meta name="author" content="OSINT-PH" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
@@ -57,7 +57,7 @@
     "name": "FalconEye",
     "alternateName": "FalconEye OSINT Toolkit",
     "url": "https://falconeye.osintph.info/",
-    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram channel inspection, IP reputation, email header analysis with BEC detection, Google dork generation, suspicious script deobfuscation, and commercial prospect dossiers into a single interface.",
+    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram intelligence, IP reputation, email header analysis with BEC detection, Google dork generation, suspicious script deobfuscation, and commercial prospect dossiers into a single interface.",
     "applicationCategory": "SecurityApplication",
     "applicationSubCategory": "OSINT Tool",
     "operatingSystem": "Any (web-based)",
@@ -65,7 +65,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.12.1",
+    "softwareVersion": "3.13.0",
     "featureList": [
       "Light and dark theme with a header toggle",
       "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
@@ -75,7 +75,7 @@
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
       "Domain intelligence with RDAP, DNS, and CT logs",
-      "Telegram channel OSINT",
+      "Telegram Intelligence — tiered entity resolution (t.me scrape, Bot API, MTProto) for users, bots, channels, and groups",
       "IP reputation with Shodan and GreyNoise",
       "URL and file hash sandbox lookup",
       "Email header analyzer with BEC and scam detection",
@@ -244,7 +244,7 @@
           <div class="lg:col-span-2">
             <h1 class="text-2xl font-bold text-white mb-3">An investigator's toolkit for the open web.</h1>
             <p class="text-gray-300 leading-relaxed mb-3">
-              FalconEye is a free, self-hosted OSINT workbench built for cybersecurity investigators, fraud analysts, and journalists. It collapses the dozen browser tabs an investigator usually juggles — wallet explorers, RDAP lookups, certificate transparency, ASN tools, phishing kit analysis, malware databases, Telegram channel inspection — into one focused interface.
+              FalconEye is a free, self-hosted OSINT workbench built for cybersecurity investigators, fraud analysts, and journalists. It collapses the dozen browser tabs an investigator usually juggles — wallet explorers, RDAP lookups, certificate transparency, ASN tools, phishing kit analysis, malware databases, Telegram intelligence — into one focused interface.
             </p>
             <p class="text-gray-300 leading-relaxed mb-3">
               Every tab takes a single indicator as input and returns structured intelligence pulled from free, reputable public data sources. There is no paywall, no enterprise sales call, no API budget. Just the tools.
@@ -276,7 +276,7 @@
               </li>
               <li class="flex items-start gap-2">
                 <span class="text-amber-400 font-bold">→</span>
-                <span>Inspect public Telegram channels for IOCs</span>
+                <span>Resolve any Telegram user, bot, or channel with tiered intelligence</span>
               </li>
               <li class="flex items-start gap-2">
                 <span class="text-amber-400 font-bold">→</span>
@@ -346,7 +346,7 @@
                   data-value="durov">
             <div class="flex items-center gap-2 mb-2">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
-              <span class="text-xs font-bold text-white">Telegram Channel</span>
+              <span class="text-xs font-bold text-white">Telegram Intelligence</span>
             </div>
             <p class="text-xs text-gray-500 font-mono">@durov</p>
             <p class="text-xs text-gray-600 mt-2">Messages and IOC extraction</p>
@@ -455,16 +455,20 @@
       <div id="domain-result" class="hidden space-y-4"></div>
     </div>
 
-    <!-- Telegram Inspector Tab -->
+    <!-- Telegram Intelligence Tab -->
     <div id="tab-telegram" class="tab-content hidden">
-      <h2 class="text-lg font-bold mb-1">Telegram Channel Inspector</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a public Telegram channel name or t.me link to extract metadata, recent messages, and IOCs. Results cached for 6 hours. Private channels and groups not supported.</p>
+      <h2 class="text-lg font-bold mb-1">Telegram Intelligence</h2>
+      <p class="text-gray-400 text-sm mb-4">Paste a Telegram username, @handle, channel, or t.me link. Resolves the entity type and extracts all public metadata, messages, and IOCs. Public data only.</p>
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the identifier is looked up three ways &mdash; Telegram's public t.me web preview, the Bot API (channels/groups only), and, if the server operator has authenticated an MTProto session, direct entity resolution. Each tier degrades independently if unavailable; results cached 6 hours.</div>
+      </div>
 
       <div class="flex gap-3 mb-3">
-        <input id="telegram-input" type="text" placeholder="@channelname or t.me/channelname"
+        <input id="telegram-input" type="text" placeholder="@username, channel, bot, or t.me link"
           class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
         <button id="telegram-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
-          Inspect
+          Investigate
         </button>
       </div>
       <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-6"
@@ -1098,9 +1102,9 @@
                   <td class="py-2">rdap.org, crt.sh, Cert Spotter, RIPEstat</td>
                 </tr>
                 <tr class="border-b border-gray-800">
-                  <td class="py-2">Telegram Inspector</td>
-                  <td class="py-2 font-mono">channel name</td>
-                  <td class="py-2">Telegram (public web preview at t.me/s)</td>
+                  <td class="py-2">Telegram Intelligence</td>
+                  <td class="py-2 font-mono">username / handle / t.me link</td>
+                  <td class="py-2">Telegram's public t.me web preview; the Bot API (channels/groups); MTProto entity resolution if an operator session is authenticated</td>
                 </tr>
                 <tr class="border-b border-gray-800">
                   <td class="py-2">IP Reputation</td>

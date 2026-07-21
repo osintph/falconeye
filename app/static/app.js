@@ -905,17 +905,36 @@ async function loadNews(category) {
   }
 }
 
-// ---- Telegram Channel Inspector ----
+// ---- Telegram Intelligence ----
 
 document.getElementById('telegram-btn').addEventListener('click', runTelegramLookup);
 document.getElementById('telegram-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') runTelegramLookup();
 });
 
-function normalizeChannelInput(raw) {
+const TG_TYPE_BADGE = {
+  user:    {label: 'User',    cls: 'bg-gray-800 text-gray-300 border-gray-700',
+            icon: '<circle cx="12" cy="7" r="4"/><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>'},
+  bot:     {label: 'Bot',     cls: 'bg-purple-900/30 text-purple-300 border-purple-900',
+            icon: '<rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 16h.01"/><path d="M16 16h.01"/>'},
+  channel: {label: 'Channel', cls: 'bg-orange-900/20 text-orange-300 border-orange-900',
+            icon: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>'},
+  group:   {label: 'Group',   cls: 'bg-green-900/20 text-green-400 border-green-700',
+            icon: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>'},
+  unknown: {label: 'Unknown', cls: 'bg-gray-800/50 text-gray-500 border-gray-700',
+            icon: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><path d="M12 17h.01"/>'},
+};
+
+const TG_TIER_LABEL = {scrape: 'via t.me scrape', bot_api: 'via Bot API', mtproto: 'via MTProto'};
+
+function tgTierTag(source) {
+  if (!source) return '';
+  return `<span class="text-[9px] text-gray-600 border border-gray-700 rounded px-1 ml-1.5 align-middle uppercase tracking-wide" title="${escapeAttr(TG_TIER_LABEL[source] || source)}">${escapeHtml(source.replace('_api', ''))}</span>`;
+}
+
+function normalizeTelegramInput(raw) {
   raw = raw.trim();
   if (raw.startsWith('@')) raw = raw.slice(1);
-  // Extract name from any t.me URL form (t.me/x, t.me/s/x, https://t.me/x)
   const m = raw.match(/t\.me\/(?:s\/)?([a-zA-Z0-9_]{4,32})/i);
   if (m) return m[1];
   return raw.split('/')[0].split('?')[0].split('#')[0];
@@ -927,26 +946,30 @@ async function runTelegramLookup() {
 
   if (!raw) return;
 
-  const channel = normalizeChannelInput(raw);
-
-  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Fetching channel preview from t.me...</p>';
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Resolving entity across scrape / Bot API / MTProto…</p>';
   resultEl.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/telegram/lookup/${encodeURIComponent(channel)}`);
+    const res = await fetch('/api/telegram/lookup', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({query: raw}),
+    });
     const data = await res.json();
 
     if (!res.ok) {
       resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
         <p class="text-yellow-400 text-sm font-bold mb-1">Lookup failed</p>
-        <p class="text-xs text-gray-400">${data.detail}</p>
+        <p class="text-xs text-gray-400">${escapeHtml(data.detail || ('HTTP ' + res.status))}</p>
       </div>`;
       return;
     }
 
     renderTelegramResult(resultEl, data);
   } catch (e) {
-    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
+    const msg = e instanceof SyntaxError
+      ? 'Lookup timed out or failed — try again.'
+      : `Request failed: ${escapeHtml(e.message)}`;
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
   }
 }
 
@@ -957,75 +980,161 @@ function renderTelegramResult(el, data) {
 
   el.innerHTML = `
     ${renderTelegramHeader(data, cacheBadge)}
-    ${renderTelegramIocs(data.aggregated_iocs)}
+    ${renderTelegramTierStrip(data.tiers)}
     ${renderTelegramMessages(data.messages)}
+    ${renderTelegramIocs(data.iocs, data.identifier)}
   `;
+
+  el.querySelectorAll('.tg-username-pivot').forEach(b =>
+    b.addEventListener('click', () => pivotToUsernameEnum(b.dataset.handle)));
+  el.querySelectorAll('.tg-telegram-pivot').forEach(b =>
+    b.addEventListener('click', () => pivotToTelegram(b.dataset.handle)));
 }
 
 function renderTelegramHeader(data, cacheBadge) {
-  const safePhotoUrl = data.photo_url && /^https:\/\//i.test(data.photo_url) ? data.photo_url : null;
-  const photoHtml = safePhotoUrl
-    ? `<img src="${escapeAttr(safePhotoUrl)}" class="w-16 h-16 rounded-full border border-gray-700" alt="" onerror="this.style.display='none'" />`
-    : `<div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-amber-400 font-bold text-2xl">${escapeHtml((data.title || '?').charAt(0).toUpperCase())}</div>`;
+  const h = data.header || {};
+  const val = (f) => (h[f] && h[f].value != null) ? h[f].value : null;
+  const src = (f) => (h[f] && h[f].value != null) ? h[f].source : null;
 
-  const stats = [];
-  if (data.subscribers) stats.push(`<span class="text-amber-300 font-bold">${data.subscribers}</span> subscribers`);
-  if (data.photos) stats.push(`<span class="text-gray-300">${data.photos}</span> photos`);
-  if (data.videos) stats.push(`<span class="text-gray-300">${data.videos}</span> videos`);
-  if (data.files) stats.push(`<span class="text-gray-300">${data.files}</span> files`);
-  if (data.links) stats.push(`<span class="text-gray-300">${data.links}</span> links`);
+  const photoUrl = val('photo_url');
+  const safePhotoUrl = photoUrl && /^https:\/\//i.test(photoUrl) ? photoUrl : null;
+  const displayName = val('display_name') || h.handle;
+  const photoHtml = safePhotoUrl
+    ? `<img src="${escapeAttr(safePhotoUrl)}" class="w-16 h-16 rounded-full border border-gray-700 flex-shrink-0" alt="" onerror="this.style.display='none'" />`
+    : `<div class="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center text-amber-400 font-bold text-2xl flex-shrink-0">${escapeHtml((displayName || '?').charAt(0).toUpperCase())}</div>`;
+
+  const typeBadge = TG_TYPE_BADGE[h.entity_type] || TG_TYPE_BADGE.unknown;
+  const badgeHtml = `<span class="inline-flex items-center gap-1.5 text-xs font-bold px-2 py-1 rounded border ${typeBadge.cls}">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${typeBadge.icon}</svg>
+    ${typeBadge.label}
+  </span>`;
+
+  const flags = [];
+  if (val('verified')) flags.push('<span class="inline-flex items-center gap-1 text-xs font-bold px-2 py-1 rounded bg-green-900/20 text-green-400 border border-green-700"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verified</span>');
+  if (val('scam')) flags.push('<span class="text-xs font-bold px-2 py-1 rounded bg-red-900/40 text-red-300 border border-red-700 animate-pulse">⚠ SCAM</span>');
+  if (val('fake')) flags.push('<span class="text-xs font-bold px-2 py-1 rounded bg-red-900/40 text-red-300 border border-red-700 animate-pulse">⚠ FAKE</span>');
+  if (val('premium')) flags.push('<span class="text-xs font-bold px-2 py-1 rounded bg-amber-900/20 text-amber-300 border border-amber-700">★ Premium</span>');
+
+  const memberCount = val('member_count');
+  const memberLabel = h.entity_type === 'group' ? 'members' : 'subscribers';
+
+  const metaLines = [];
+  if (memberCount != null) metaLines.push(`<span class="text-gray-300 font-bold">${Number(memberCount).toLocaleString()}</span> ${memberLabel}${tgTierTag(src('member_count'))}`);
+  if (val('dc_location')) metaLines.push(`<span class="text-gray-400">DC:</span> ${escapeHtml(val('dc_location'))}${tgTierTag(src('dc_location'))}`);
+  if (val('account_era_estimate')) metaLines.push(`<span class="text-gray-400">Est. account era:</span> ${escapeHtml(val('account_era_estimate'))}${tgTierTag(src('account_era_estimate'))}`);
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
-      <div class="flex items-start justify-between mb-3">
-        <div class="flex items-start gap-4">
+      <div class="flex items-start justify-between mb-3 gap-3 flex-wrap">
+        <div class="flex items-start gap-4 min-w-0">
           ${photoHtml}
-          <div>
-            <h3 class="text-base font-bold text-white">${escapeHtml(data.title)}</h3>
-            <p class="text-xs text-amber-400 mb-2">${escapeHtml(data.username)}</p>
-            ${data.description ? `<p class="text-xs text-gray-400 max-w-2xl">${escapeHtml(data.description)}</p>` : ''}
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap mb-1">
+              <h3 class="text-base font-bold text-white truncate">${escapeHtml(displayName)}</h3>
+              ${badgeHtml}
+            </div>
+            <p class="text-xs text-amber-400 mb-2">
+              <a href="${escapeAttr(h.canonical_url)}" target="_blank" rel="noopener noreferrer" class="hover:text-amber-300">${escapeHtml(h.handle)} ↗</a>
+            </p>
+            ${flags.length ? `<div class="flex flex-wrap gap-2 mb-2">${flags.join('')}</div>` : ''}
+            ${val('bio') ? `<p class="text-xs text-gray-400 max-w-2xl">${escapeHtml(val('bio'))}${tgTierTag(src('bio'))}</p>` : ''}
           </div>
         </div>
-        ${cacheBadge}
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button class="tg-username-pivot text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-3 py-1.5 rounded transition" data-handle="${escapeAttr(data.identifier)}">→ Username Enum</button>
+          ${cacheBadge}
+        </div>
       </div>
-      ${stats.length ? `<div class="flex gap-4 text-xs text-gray-400 mt-3 pt-3 border-t border-gray-800">${stats.join(' · ')}</div>` : ''}
+      ${metaLines.length ? `<div class="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400 mt-3 pt-3 border-t border-gray-800">${metaLines.join('')}</div>` : ''}
     </div>`;
 }
 
-function renderTelegramIocs(iocs) {
+function renderTelegramTierStrip(tiers) {
+  if (!tiers) return '';
+  const labels = {tier1: 'Scrape (free)', tier2: 'Bot API', tier3: 'MTProto'};
+  const stateText = (t) => {
+    if (t.ok) return {txt: 'ok', cls: 'text-green-400'};
+    const map = {
+      no_creds: 'not configured', not_applicable: 'not applicable to this entity type',
+      not_authenticated: 'session not authenticated', unresolved: 'no public page',
+      not_found: 'not found', flood_wait: 'rate limited by Telegram', error: t.error || 'error',
+    };
+    return {txt: map[t.state] || t.state, cls: t.state === 'error' || t.state === 'flood_wait' ? 'text-yellow-400' : 'text-gray-500'};
+  };
+  return `<div class="flex flex-wrap gap-x-5 gap-y-1 text-xs px-1">
+    ${Object.entries(labels).map(([key, label]) => {
+      const t = tiers[key];
+      if (!t) return '';
+      const s = stateText(t);
+      return `<span class="text-gray-600">${label}: <span class="${s.cls}">${escapeHtml(s.txt)}</span></span>`;
+    }).join('')}
+  </div>`;
+}
+
+function renderTelegramMessages(messages) {
+  if (!messages || messages.length === 0) return '';
+
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent Messages (${messages.length})</h3>
+      <div class="space-y-3">
+        ${messages.slice().reverse().map(m => `
+          <div class="bg-gray-950 rounded p-3 border border-gray-800">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500">${fmtPHT(m.timestamp)}</span>
+                ${m.views ? `<span class="text-xs text-gray-600">${escapeHtml(m.views)} views</span>` : ''}
+                ${m.forwarded_from ? `<span class="text-xs text-blue-400">⤴ ${escapeHtml(m.forwarded_from)}</span>` : ''}
+              </div>
+              ${m.link ? `<a href="${escapeAttr(m.link)}" target="_blank" rel="noopener noreferrer" class="text-xs text-amber-400 hover:text-amber-300">view ↗</a>` : ''}
+            </div>
+            ${m.body ? `<p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escapeHtml(m.body).slice(0, 800)}${m.body.length > 800 ? '...' : ''}</p>` : ''}
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function renderTelegramIocs(iocs, ownIdentifier) {
   if (!iocs) return '';
 
   const sections = [
-    {key: "urls", label: "URLs", color: "amber-300"},
-    {key: "crypto_btc", label: "Bitcoin Addresses", color: "yellow-400"},
-    {key: "crypto_eth", label: "Ethereum Addresses", color: "blue-400"},
-    {key: "crypto_trc20", label: "TRON / USDT TRC20", color: "green-400"},
-    {key: "emails", label: "Email Addresses", color: "purple-400"},
-    {key: "phones_ph", label: "PH Phone Numbers", color: "amber-300"},
-    {key: "phones_intl", label: "International Phones", color: "gray-300"},
-    {key: "possible_accounts", label: "Possible Account Numbers", color: "orange-300"},
-    {key: "brands", label: "Brands Mentioned", color: "amber-300"},
+    {key: "telegram_handles", label: "Other Telegram Handles", color: "amber-300", kind: "handle"},
+    {key: "urls", label: "URLs", color: "gray-300", kind: "url"},
+    {key: "crypto_btc", label: "Bitcoin Addresses", color: "yellow-400", kind: "crypto"},
+    {key: "crypto_eth", label: "Ethereum Addresses", color: "blue-400", kind: "crypto"},
+    {key: "crypto_trc20", label: "TRON / USDT TRC20", color: "green-400", kind: "crypto"},
+    {key: "emails", label: "Email Addresses", color: "purple-400", kind: "plain"},
+    {key: "phones_ph", label: "PH Phone Numbers", color: "amber-300", kind: "plain"},
+    {key: "phones_intl", label: "International Phones", color: "gray-300", kind: "plain"},
+    {key: "brands", label: "Brands Mentioned", color: "amber-300", kind: "plain"},
   ];
 
   const renderedSections = sections
     .filter(s => iocs[s.key] && iocs[s.key].length > 0)
     .map(s => {
       const items = iocs[s.key].slice(0, 50);
-      const isCrypto = s.key.startsWith("crypto_");
       const itemsHtml = items.map(item => {
-        if (isCrypto) {
+        const escaped = escapeHtml(item);
+        if (s.kind === "crypto") {
           return `<span class="inline-flex items-center gap-1 bg-gray-800 px-2 py-1 rounded text-xs font-mono">
-            <span class="text-gray-200 break-all">${item}</span>
-            <button onclick="pivotToCrypto('${item}')" class="text-amber-400 hover:text-amber-300 text-xs font-bold">↗</button>
+            <span class="text-gray-200 break-all">${escaped}</span>
+            <button onclick="pivotToCrypto('${item.replace(/'/g, "\\'")}')" class="text-amber-400 hover:text-amber-300 text-xs font-bold">↗</button>
           </span>`;
         }
-        if (s.key === "urls") {
+        if (s.kind === "url") {
           return `<span class="inline-flex items-center gap-1 bg-gray-800 px-2 py-1 rounded text-xs font-mono">
-            <span class="text-gray-200 break-all">${item}</span>
-            <button onclick="pivotToScanner('${item.replace(/'/g, "\\'")}')" class="text-amber-400 hover:text-amber-300 text-xs font-bold">↗</button>
+            <span class="text-gray-200 break-all">${escaped}</span>
+            <button onclick="pivotToUrlExpander('${item.replace(/'/g, "\\'")}')" class="text-amber-400 hover:text-amber-300 text-xs font-bold">↗</button>
           </span>`;
         }
-        return `<span class="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-200 break-all">${item}</span>`;
+        if (s.kind === "handle") {
+          return `<span class="inline-flex items-center gap-1 bg-gray-800 px-2 py-1 rounded text-xs font-mono">
+            <span class="text-gray-200">@${escaped}</span>
+            <button class="tg-telegram-pivot text-amber-400 hover:text-amber-300 text-xs font-bold" data-handle="${escapeAttr(item)}" title="Look up on this tab">↗</button>
+            <button class="tg-username-pivot text-blue-400 hover:text-blue-300 text-xs font-bold" data-handle="${escapeAttr(item)}" title="Run Username Enumeration">☰</button>
+          </span>`;
+        }
+        return `<span class="bg-gray-800 px-2 py-1 rounded text-xs font-mono text-gray-200 break-all">${escaped}</span>`;
       }).join('');
 
       return `
@@ -1038,51 +1147,33 @@ function renderTelegramIocs(iocs) {
   if (renderedSections.length === 0) {
     return `
       <div class="bg-gray-900 border border-gray-800 rounded p-5">
-        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Aggregated IOCs</h3>
-        <p class="text-sm text-gray-500">No IOCs extracted from the visible message preview.</p>
+        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">IOCs</h3>
+        <p class="text-sm text-gray-500">No IOCs extracted from the bio or visible messages.</p>
       </div>`;
   }
 
   return `
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
-      <h3 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wide">Aggregated IOCs (across all messages)</h3>
+      <h3 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-wide">Extracted IOCs</h3>
       ${renderedSections.join('')}
     </div>`;
 }
 
-function renderTelegramMessages(messages) {
-  if (!messages || messages.length === 0) {
-    return `
-      <div class="bg-gray-900 border border-gray-800 rounded p-5">
-        <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent Messages</h3>
-        <p class="text-sm text-gray-500">No messages in the public preview.</p>
-      </div>`;
-  }
+function pivotToUsernameEnum(handle) {
+  document.getElementById('username-input').value = handle;
+  document.querySelector('[data-tab="username"]').click();
+  document.getElementById('username-btn').click();
+}
 
-  return `
-    <div class="bg-gray-900 border border-gray-800 rounded p-5">
-      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Recent Messages (${messages.length})</h3>
-      <div class="space-y-3">
-        ${messages.slice().reverse().map(m => `
-          <div class="bg-gray-950 rounded p-3 border border-gray-800">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <span class="text-xs text-gray-500">${fmtPHT(m.timestamp)}</span>
-                ${m.views ? `<span class="text-xs text-gray-600">${m.views} views</span>` : ''}
-                ${m.forwarded_from ? `<span class="text-xs text-blue-400">⤴ ${escapeHtml(m.forwarded_from)}</span>` : ''}
-              </div>
-              ${m.link ? `<a href="${m.link}" target="_blank" rel="noopener noreferrer" class="text-xs text-amber-400 hover:text-amber-300">view ↗</a>` : ''}
-            </div>
-            ${m.body ? `<p class="text-sm text-gray-200 whitespace-pre-wrap break-words">${escapeHtml(m.body).slice(0, 800)}${m.body.length > 800 ? '...' : ''}</p>` : ''}
-            ${m.media_descriptions && m.media_descriptions.length ? `
-              <div class="mt-2 text-xs text-gray-500">📎 ${m.media_descriptions.map(escapeHtml).join(' · ')}</div>` : ''}
-            ${m.brands && m.brands.length ? `
-              <div class="mt-2 flex flex-wrap gap-1">
-                ${m.brands.map(b => `<span class="text-xs bg-gray-800 px-2 py-0.5 rounded text-amber-300">${b}</span>`).join('')}
-              </div>` : ''}
-          </div>`).join('')}
-      </div>
-    </div>`;
+function pivotToUrlExpander(url) {
+  document.getElementById('url-input').value = url;
+  document.querySelector('[data-tab="url"]').click();
+  document.getElementById('url-btn').click();
+}
+
+function pivotToTelegram(handle) {
+  document.getElementById('telegram-input').value = handle;
+  document.getElementById('telegram-btn').click();
 }
 
 function escapeHtml(s) {

@@ -25,3 +25,11 @@ REGEX_MAX_BODY_BYTES = 100_000      # regex pass only; 100KB cap prevents comput
 
 ANTHROPIC_API_KEY = getenv_clean("ANTHROPIC_API_KEY")
 URLSCAN_API_KEY = getenv_clean("URLSCAN_API_KEY")
+
+# Telegram Intelligence tab — tier 2 (Bot API) and tier 3 (MTProto/Telethon).
+# Any of these being empty is a normal, expected configuration (graceful
+# per-tier degradation), not an error.
+TELEGRAM_API_ID = getenv_clean("TELEGRAM_API_ID")
+TELEGRAM_API_HASH = getenv_clean("TELEGRAM_API_HASH")
+TELEGRAM_BOT_TOKEN = getenv_clean("TELEGRAM_BOT_TOKEN")
+TELEGRAM_SESSION_PATH = getenv_clean("TELEGRAM_SESSION_PATH")
