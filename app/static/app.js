@@ -4486,7 +4486,15 @@ async function runUsernameScan() {
     }
     renderUsernameResult(resultEl, data);
   } catch (e) {
-    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+    // A SyntaxError here means res.json() choked on a non-JSON body (nginx/CF
+    // gateway error page, plain-text 500, etc.) — show a clean message instead
+    // of the raw parse error.
+    const msg = e instanceof SyntaxError
+      ? (scope === 'full'
+          ? 'Full scan timed out or failed — try Quick scope or retry.'
+          : 'Scan timed out or failed — try again.')
+      : `Request failed: ${escapeHtml(e.message)}`;
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
   } finally {
     btn.disabled = false;
     btn.textContent = origLabel;

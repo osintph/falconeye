@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.12.2] — 2026-07-21
+
+Fixes the Username Enumeration tab's Full scan (~965 sites, ~50s) returning a raw parse error instead of a result. Closes the whole class of "non-JSON reached the frontend," not just the immediate cause, with three independent layers.
+
+### Fixed
+
+- **nginx/gunicorn timeouts were cutting off Full scans.** `proxy_read_timeout`/`proxy_send_timeout` (nginx) and gunicorn's worker `--timeout` are raised 30s/60s → 90s. A Full scan's own hard wall-clock deadline (`app.username.routes._DEADLINE["full"]`, 50s) means the real worst case is ~50-53s regardless of how many individual sites are slow or unresponsive that day — 90s leaves comfortable headroom under Cloudflare's ~100s edge ceiling, so no async job-polling rework was needed. Quick scope (25s deadline) was never affected. Already applied live as routine tuning (commit `886d354`, 2026-07-20); folded into this release's notes for a complete record.
+- **Global JSON exception handler.** Any unhandled exception anywhere in the app previously fell through to Starlette's default `PlainTextResponse("Internal Server Error")` — not JSON, so it broke callers the same way the nginx HTML timeout page did, just with different text. `app/main.py` now registers an app-wide handler that converts any exception without a more specific handler into a JSON 500. Existing explicit error paths (400/429/503, the burst limiter's 429) are untouched — this only catches what previously slipped through uncaught, across every router.
+- **`app.username.store.count_recent` fails closed instead of raising.** The one concrete known gap the global handler above was added to catch: a SQLite read failure in the per-IP scan-rate-limit lookup had no exception handling (unlike the paired `record_event` write). It now logs and returns a large sentinel count on error, so a DB hiccup is treated as "over the limit" — fails closed, the correct default for a rate limiter — instead of a 500.
+- **Frontend guard for any non-JSON scan response.** The Username tab's scan handler now recognizes a JSON-parse failure specifically (`SyntaxError`) and shows "Full scan timed out or failed — try Quick scope or retry" instead of surfacing the raw `Unexpected token '<'...` parse error, regardless of what actually broke upstream.
+
+---
+
 ## [3.12.1] — 2026-07-20
 
 Security release fixing the two unauthenticated denial-of-service findings (M-1, M-2) from the 2026-07-20 assessment, on top of the v3.12.0 framework upgrade. Scoped to just these two.

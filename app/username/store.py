@@ -51,17 +51,28 @@ except Exception as exc:  # pragma: no cover - only when DB path is unwritable a
     log.warning("username: deferred table init (DB not ready at import): %s", exc)
 
 
+# A rate limiter must fail closed: if the count can't be read, report a count
+# above any real cap so the caller's `>=` check blocks the request, rather than
+# silently letting scans through (or raising an unhandled 500) on a DB hiccup.
+_FAIL_CLOSED_COUNT = 10**9
+
+
 def count_recent(scope: str, window_seconds: int) -> int:
     cutoff = int(time.time()) - window_seconds
-    conn = _connect()
+    conn = None
     try:
+        conn = _connect()
         row = conn.execute(
             "SELECT COUNT(*) FROM username_rate_limit WHERE scope = ? AND ts > ?",
             (scope, cutoff),
         ).fetchone()
+        return row[0] if row else 0
+    except Exception as exc:
+        log.error("username rate-limit read failed (failing closed): %s", exc)
+        return _FAIL_CLOSED_COUNT
     finally:
-        conn.close()
-    return row[0] if row else 0
+        if conn is not None:
+            conn.close()
 
 
 def record_event(scope: str) -> None:
