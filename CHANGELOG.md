@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.15.1] — 2026-07-23
+
+Mobile navigation fixes for v3.15.0, found by real-device testing (iOS Safari)
+after simulated-viewport testing missed both.
+
+### Fixed
+
+- **Drawer trigger appeared to do nothing but zoom the page.** `#drawer-search` and `#palette-input` were both 14px (`text-sm`). iOS Safari auto-zooms the viewport when a focused input's font-size is under 16px — a real, well-documented Safari behavior, not a gesture-handling bug. `openDrawer()` focuses `#drawer-search` 50ms after the sheet starts sliding up, so the zoom (a far more visually dominant effect than the slide-up) made it look like the tap did nothing but magnify the page. Both inputs are now `text-base` (16px).
+- Added `touch-manipulation` to the drawer trigger and every sidebar/drawer/launcher-grid button, disabling the double-tap-to-zoom gesture delay on those elements as defense-in-depth.
+- Repositioned the drawer trigger from bottom-right to bottom-center and anchored it with `bottom: calc(20px + env(safe-area-inset-bottom, 0px))` instead of a bare pixel offset, so it clears the home-indicator gesture bar on notched iPhones instead of colliding with Safari's own chrome.
+- Wrapped the sidebar/drawer/launcher-grid render calls in individual `try/catch` so a failure in one can no longer silently cascade and take down the rest of the script (hash routing, drawer/palette wiring) — the Home launcher grid not rendering on the reporting device was not reproducible in code review or in any simulated re-test, so this is defensive rather than a confirmed fix for that specific symptom.
+
+### Known issue (scoped for a follow-up, not built yet)
+
+`/static/*` (`app.js`, `style.css`) is served with `Cache-Control: public, expires 1h` and no cache-busting — filenames never change, so a release that only bumps content requires a manual Cloudflare purge, and a missed or delayed purge produces a confusing half-broken state (fresh `index.html` paired with a stale cached `app.js` that doesn't know about the new markup — plausibly a contributing factor in how the v3.15.0 mobile bugs first presented). Proposed fix, either works: (a) content-hashed filenames (`app.abc123.js`) with `index.html` referencing the current hash, or (b) a version query string tied to the app version (`app.js?v=3.15.1`) so `index.html`'s own cache lifetime — not `app.js`'s — governs staleness. Either makes a deploy self-invalidate without a manual purge step.
+
+---
+
 ## [3.15.0] — 2026-07-23
 
 Navigation rework. The horizontal tab strip had run out of room at 18 tabs

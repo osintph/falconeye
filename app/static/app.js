@@ -80,13 +80,13 @@ function navIconSvg(paths, size) {
 }
 
 function sidebarItemHtml(tab) {
-  return `<button type="button" class="tab-btn sidebar-item border-l-2 border-transparent text-gray-400 hover:text-white text-sm" data-tab="${tab.id}" data-tooltip="${escapeAttr(tab.label)}">
+  return `<button type="button" class="tab-btn sidebar-item border-l-2 border-transparent text-gray-400 hover:text-white text-sm touch-manipulation" data-tab="${tab.id}" data-tooltip="${escapeAttr(tab.label)}">
     ${navIconSvg(tab.icon, 16)}<span class="nav-label truncate">${escapeHtml(tab.label)}</span>
   </button>`;
 }
 
 function drawerItemHtml(tab) {
-  return `<button type="button" class="tab-btn drawer-item border-l-2 border-transparent text-gray-300 hover:bg-gray-900" data-tab="${tab.id}" data-search="${escapeAttr(tab.label.toLowerCase())}">
+  return `<button type="button" class="tab-btn drawer-item border-l-2 border-transparent text-gray-300 hover:bg-gray-900 touch-manipulation" data-tab="${tab.id}" data-search="${escapeAttr(tab.label.toLowerCase())}">
     ${navIconSvg(tab.icon, 18)}<span class="text-sm">${escapeHtml(tab.label)}</span>
   </button>`;
 }
@@ -123,16 +123,21 @@ function renderHomeLauncherGrid() {
   const el = document.getElementById('home-launcher-grid');
   if (!el) return;
   const cards = ALL_NAV_ENTRIES.filter(t => t.id !== 'home').map(t => `
-    <button type="button" class="launcher-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left" data-tab="${t.id}">
+    <button type="button" class="launcher-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left touch-manipulation" data-tab="${t.id}">
       <div class="flex items-center gap-2 mb-1.5 text-amber-400">${navIconSvg(t.icon, 16)}<span class="text-sm font-bold text-white">${escapeHtml(t.label)}</span></div>
       <p class="text-xs text-gray-500">${escapeHtml(t.desc)}</p>
     </button>`).join('');
   el.innerHTML = cards;
 }
 
-renderSidebarNav();
-renderDrawerNav();
-renderHomeLauncherGrid();
+// Each render is isolated: an error thrown by one (a bad tab entry, an
+// unexpected null container) must not stop the *rest* of this file from
+// running — everything below this point (hash routing, the drawer/palette
+// wiring) is a separate top-level statement in the same script, so one
+// uncaught exception here would otherwise silently take all of it down too.
+try { renderSidebarNav(); } catch (e) { console.error('renderSidebarNav failed:', e); }
+try { renderDrawerNav(); } catch (e) { console.error('renderDrawerNav failed:', e); }
+try { renderHomeLauncherGrid(); } catch (e) { console.error('renderHomeLauncherGrid failed:', e); }
 
 // Launcher-grid cards navigate but never prefill/auto-run (unlike
 // .example-card) — delegated, mirrors the .example-card handler's idiom.

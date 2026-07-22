@@ -311,6 +311,19 @@ html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-
   padding: 12px 12px 4px;
 }
 
+/* iOS safe-area insets (v3.15.0 mobile-nav fix). The trigger is
+   `fixed` + `bottom-*` via Tailwind, but a bare pixel offset sits under the
+   iPhone home-indicator gesture bar on notched devices — `env()` adds the
+   device's own reserved bottom inset on top of the visual offset we want.
+   `env(..., 0px)` falls back to a plain 20px on devices/browsers without a
+   safe area (the fallback argument is required by spec, not decorative). */
+#drawer-trigger {
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+}
+#mobile-drawer {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Command palette result row. */
 .palette-item {
   display: flex;
