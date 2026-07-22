@@ -33,3 +33,6 @@ TELEGRAM_API_ID = getenv_clean("TELEGRAM_API_ID")
 TELEGRAM_API_HASH = getenv_clean("TELEGRAM_API_HASH")
 TELEGRAM_BOT_TOKEN = getenv_clean("TELEGRAM_BOT_TOKEN")
 TELEGRAM_SESSION_PATH = getenv_clean("TELEGRAM_SESSION_PATH")
+
+# Breach Check tab (Have I Been Pwned, Core 1 subscription).
+HIBP_API_KEY = getenv_clean("HIBP_API_KEY")

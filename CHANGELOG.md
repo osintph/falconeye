@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.14.0] — 2026-07-22
+
+New tab: **Breach Check**, a Have I Been Pwned integration. Tab count 17 → 18.
+
+### Added
+
+- **Email breach + paste lookup.** Queries HIBP's `breachedaccount` and `pasteaccount` endpoints concurrently, enriches every breach hit with full metadata (title, dates, account count, description, data classes, logo, verified/sensitive/fabricated/retired/spam-list flags) from the free `breach/{name}` endpoint. Results show a summary card (breach/paste counts, earliest/latest breach date, a prominent notice when passwords were exposed), a chronological timeline, per-breach cards with colour-coded data-class chips (passwords red, financial deep red, email-only neutral, everything else amber), and the paste list.
+- **Sensitive breaches redacted by default.** Any HIBP-flagged `IsSensitive` breach (adult/dating sites etc.) renders as a "click to reveal" placeholder in per-target results (email/domain lookups) unless the "Show sensitive breaches" toggle is on — mirrors how the Username tab gates adult platforms. The reference sections (recent breaches, browse all) show a plain sensitivity flag instead, since they aren't tied to a specific person.
+- **Password check via Pwned Passwords K-anonymity — fully client-side.** The browser hashes the password with `crypto.subtle.digest('SHA-1', ...)` and sends only the first 5 hex characters to `api.pwnedpasswords.com`, matching the returned suffix list locally. There is no backend endpoint for this at all: proxying it through our server would break the one property that makes the check trustworthy. Verifiable in DevTools — the only network call is to `api.pwnedpasswords.com`, never to falconeye.
+- **Domain breach lookup** via HIBP's free `breaches?domain=` endpoint, same card format as email results, plus a resolved hosting-IP pivot to the IP Reputation tab.
+- **Recent breaches** (5 most recently added, combining the cached bulk breach list with the fresher `latestbreach` pointer so the top of the list is never more than 1h stale even though the bulk list caches 6h) and a collapsible, lazily-loaded **browse all breaches** reference table (searchable, sortable, cached indefinitely per the corpus not retroactively changing).
+- **Cross-tab pivots:** email local-part → Username Enumeration, email domain → Domain Intelligence, resolved hosting IP → IP Reputation, recent/browse-all breach → the HIBP page for that breach. Reuses the existing global `pivotToUsernameEnum`/`pivotToDomain`/`pivotToIp` helpers rather than adding new ones.
+- **CSV export** for email and domain results, with the HIBP CC BY 4.0 attribution as the first row of the file.
+- New backend package `app/breach/` (`client.py`: safe_fetch-based HIBP client with Retry-After-aware exponential backoff on 429; `store.py`: SQLite cache + rate limiting; `routes.py`: `/api/breach/email`, `/api/breach/domain`, `/api/breach/recent`, `/api/breach/all`, `/api/breach/dataclasses`). Email and domain lookups are POST with a JSON body (never a query string) specifically so the address never lands in an access log.
+
+### Security / privacy
+
+- Emails are **never stored in plaintext** — the cache key is SHA-256(normalized email); the raw address is never persisted, only echoed back in the same request's response.
+- Every HIBP call goes through the `safe_fetch` SSRF guard, matching `app.abuse.lookup`'s policy of one SSRF primitive for the whole app even for fixed, trusted hosts.
+- Per-IP limits (5/hour, 30/day for both email and domain search, well under HIBP's 10 req/min ceiling) plus a 200/day global cap on each, to protect the monthly API budget. A rate-limited request returns HTTP 200 with `{"rate_limited": true}` rather than 429 — a deliberate choice for this endpoint's contract, verified by test.
+- Cache TTLs: email/paste results 24h, domain results 12h, bulk breach list 6h, latest-breach pointer 1h, per-breach metadata and the data-classes list indefinitely (they don't change).
+
+### Notes
+
+- Requires an `HIBP_API_KEY` (HIBP Core 1 subscription) for the email/paste endpoints; domain/recent/browse-all use HIBP's free, unauthenticated endpoints and work without a key.
+- HIBP's CC BY 4.0 licence requires visible attribution on every surface that shows breach data: the tab subtitle, a footer on every result set (email, domain, password, recent, browse-all), the per-breach logo, CSV exports, and the tab's privacy note — all five confirmed present at staging before release.
+- HIBP subscription and this use case confirmed in writing by HIBP support (Bruce); the confirmation email is kept outside the git tree as a compliance record.
+
+---
+
 ## [3.13.0] — 2026-07-21
 
 Telegram Intelligence — full rework of the old Telegram Channel Inspector, which only handled `t.me/s/{channel}` and 404'd on any user, bot, or channel/group without preview enabled. Replaces `app/routers/telegram_inspector.py` + `app/utils/telegram.py` with a new `app/telegram/` package.

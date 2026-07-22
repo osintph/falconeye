@@ -2,7 +2,7 @@
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'url', 'qr', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'username', 'news'];
+const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'url', 'qr', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'username', 'news', 'breach'];
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -33,6 +33,7 @@ function showTab(tabName) {
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   if (tabName === 'news') loadNews(currentNewsCategory);
+  if (tabName === 'breach') loadBreachRecent();
 }
 
 function getTabFromHash() {
@@ -5228,3 +5229,484 @@ function downloadAbusePdf(composed, info) {
     sync();
   });
 })();
+
+// ============================================================================
+//  Breach Check — Have I Been Pwned (v3.14.0)
+// ============================================================================
+//  Pwned Passwords (Section 2) is deliberately the ONLY fetch in this whole
+//  section that does not go to our own /api/breach/* — it calls
+//  api.pwnedpasswords.com directly from the browser so the password never
+//  reaches our server, verifiable in DevTools. Everything else (email/domain
+//  lookups, recent/browse-all reference data) goes through our backend, which
+//  proxies HIBP server-side (see app/breach/).
+
+let breachShowSensitive = false;
+const breachRevealed = new Set();
+let lastBreachEmailData = null;
+let lastBreachEmail = '';
+let lastBreachDomainData = null;
+
+function breachAttribution() {
+  return `<p class="text-sm text-gray-400 mt-3">Data provided by <a href="https://haveibeenpwned.com" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">Have I Been Pwned</a> under CC BY 4.0</p>`;
+}
+
+function breachDcChipClass(dc) {
+  const lower = (dc || '').toLowerCase();
+  if (lower === 'passwords') return 'bg-red-500/15 text-red-400 border-red-500/30';
+  if (['credit card', 'bank account', 'financial', 'payment'].some(k => lower.includes(k))) return 'bg-red-900/40 text-red-300 border-red-800';
+  if (lower === 'email addresses') return 'bg-gray-800 text-gray-400 border-gray-700';
+  return 'bg-amber-500/15 text-amber-400 border-amber-500/30'; // personal data (names, addresses, DOB, ...)
+}
+
+function breachLogoHtml(b) {
+  const safe = b.logo_path && /^https:\/\//i.test(b.logo_path);
+  return safe
+    ? `<img src="${escapeAttr(b.logo_path)}" alt="" class="w-10 h-10 rounded bg-white object-contain flex-shrink-0" onerror="this.style.display='none'" />`
+    : `<div class="w-10 h-10 rounded bg-gray-800 flex items-center justify-center text-amber-400 font-bold flex-shrink-0">${escapeHtml((b.title || b.name || '?').charAt(0).toUpperCase())}</div>`;
+}
+
+function renderBreachCard(b, redactable) {
+  const isRedacted = redactable && b.is_sensitive && !breachShowSensitive && !breachRevealed.has(b.name);
+  if (isRedacted) {
+    return `<div class="bg-gray-900 border border-red-900/50 rounded p-4 flex items-center justify-between gap-3 flex-wrap">
+      <span class="text-sm text-red-300">&#128274; Sensitive breach redacted</span>
+      <button class="breach-reveal-btn text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-3 py-1.5 rounded transition" data-name="${escapeAttr(b.name)}">Click to reveal</button>
+    </div>`;
+  }
+  const chips = (b.data_classes || []).map(dc =>
+    `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${breachDcChipClass(dc)}">${escapeHtml(dc)}</span>`).join(' ');
+  const flags = [];
+  if (b.is_sensitive) flags.push('<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-900/40 text-red-300 border border-red-700">&#9888; sensitive</span>');
+  if (b.is_verified) flags.push('<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-900/20 text-green-400 border border-green-700">verified</span>');
+  if (b.is_fabricated) flags.push('<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">fabricated</span>');
+  if (b.is_spam_list) flags.push('<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">spam list</span>');
+  if (b.is_retired) flags.push('<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">retired</span>');
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-4">
+    <div class="flex items-start gap-3">
+      ${breachLogoHtml(b)}
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 flex-wrap mb-1">
+          <h4 class="text-sm font-bold text-white">${escapeHtml(b.title || b.name || 'Unknown')}</h4>
+          ${flags.join(' ')}
+        </div>
+        <p class="text-xs text-gray-500 mb-2">${escapeHtml(b.breach_date || '?')} &middot; ${(b.pwn_count || 0).toLocaleString()} accounts${b.domain ? ' &middot; ' + escapeHtml(b.domain) : ''}</p>
+        ${b.description ? `<p class="text-xs text-gray-400 mb-2">${escapeHtml(b.description)}</p>` : ''}
+        <div class="flex flex-wrap gap-1.5">${chips}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderBreachTimeline(breaches) {
+  const dated = (breaches || []).filter(b => b.breach_date).slice().sort((a, b) => a.breach_date.localeCompare(b.breach_date));
+  if (!dated.length) return '';
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-4 overflow-x-auto">
+    <p class="text-xs text-gray-500 uppercase tracking-wide mb-4">Timeline</p>
+    <div class="flex items-end gap-6 min-w-max pt-3" style="border-top:2px solid rgb(var(--g700))">
+      ${dated.map(b => `
+        <div class="flex flex-col items-center text-center flex-shrink-0" style="margin-top:-7px" title="${escapeAttr(b.title || b.name || '')}">
+          <div class="w-3 h-3 rounded-full border-2 border-gray-950 ${b.is_sensitive ? 'bg-red-500' : 'bg-amber-400'}"></div>
+          <span class="text-[10px] text-gray-400 mt-1 whitespace-nowrap">${escapeHtml(b.breach_date)}</span>
+          <span class="text-[10px] text-gray-600 whitespace-nowrap max-w-[90px] truncate">${escapeHtml(b.title || b.name || '')}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function wireBreachRevealButtons(el) {
+  el.querySelectorAll('.breach-reveal-btn').forEach(btn => btn.addEventListener('click', () => {
+    breachRevealed.add(btn.dataset.name);
+    if (lastBreachEmailData) renderBreachEmailResult(lastBreachEmailData, lastBreachEmail);
+    if (lastBreachDomainData) renderBreachDomainResult(lastBreachDomainData);
+  }));
+}
+
+document.getElementById('breach-show-sensitive')?.addEventListener('change', (e) => {
+  breachShowSensitive = e.target.checked;
+  if (lastBreachEmailData) renderBreachEmailResult(lastBreachEmailData, lastBreachEmail);
+  if (lastBreachDomainData) renderBreachDomainResult(lastBreachDomainData);
+});
+
+// ---- Section 1: Check an email ----
+
+document.getElementById('breach-email-btn').addEventListener('click', runBreachEmailCheck);
+document.getElementById('breach-email-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runBreachEmailCheck();
+});
+
+async function runBreachEmailCheck() {
+  const input = document.getElementById('breach-email-input');
+  const resultEl = document.getElementById('breach-email-result');
+  const btn = document.getElementById('breach-email-btn');
+  const email = (input.value || '').trim();
+
+  resultEl.classList.remove('hidden');
+  if (!email) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Enter an email address first.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Checking…';
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Checking Have I Been Pwned…</p>';
+
+  try {
+    const res = await fetch('/api/breach/email', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email: email}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Check failed</p>
+        <p class="text-xs text-gray-400">${escapeHtml(data.detail || ('HTTP ' + res.status))}</p></div>`;
+      return;
+    }
+    if (data.rate_limited) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Rate limited</p>
+        <p class="text-xs text-gray-400">${escapeHtml(data.error || 'Try again later.')}</p></div>`;
+      return;
+    }
+    renderBreachEmailResult(data, email);
+  } catch (e) {
+    const msg = e instanceof SyntaxError
+      ? 'Check timed out or failed — try again.'
+      : `Request failed: ${escapeHtml(e.message)}`;
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function renderBreachEmailResult(data, email) {
+  lastBreachEmailData = data;
+  lastBreachEmail = email;
+  const el = document.getElementById('breach-email-result');
+  el.classList.remove('hidden');
+
+  const notice = data.password_exposed_count > 0
+    ? `<div class="bg-red-900/20 border border-red-700/40 rounded p-3 mb-3">
+        <p class="text-sm text-red-300 font-bold">Passwords for this email have been exposed in ${data.password_exposed_count} breach${data.password_exposed_count === 1 ? '' : 'es'}. If any were reused across sites, credentials may still be in circulation.</p>
+      </div>`
+    : '';
+  const cacheBadge = data.cache_hit
+    ? '<span class="text-xs text-gray-500">cached</span>'
+    : '<span class="text-xs text-green-400">fresh</span>';
+
+  const summary = `<div class="bg-gray-900 border border-gray-800 rounded p-5">
+    <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
+      <div class="flex items-center gap-3">
+        <span class="brand-badge text-sm px-3 py-1 font-mono">${escapeHtml(email)}</span>
+        ${cacheBadge}
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="breach-email-pivot-username" class="text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-3 py-1.5 rounded transition">&#8594; Username Enum</button>
+        <button id="breach-email-pivot-domain" class="text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-3 py-1.5 rounded transition">&#8594; Domain Intel</button>
+        <button id="breach-email-csv" class="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded hover:bg-gray-700 transition">Export CSV</button>
+      </div>
+    </div>
+    ${notice}
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+      <div><p class="text-2xl font-bold ${data.breach_count ? 'text-red-400' : 'text-green-400'}">${data.breach_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">breaches</p></div>
+      <div><p class="text-2xl font-bold text-gray-200">${data.paste_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">pastes</p></div>
+      <div><p class="text-sm font-bold text-gray-300 mt-1.5">${escapeHtml(data.earliest_breach_date || '—')}</p><p class="text-xs text-gray-500 uppercase tracking-wide">earliest</p></div>
+      <div><p class="text-sm font-bold text-gray-300 mt-1.5">${escapeHtml(data.latest_breach_date || '—')}</p><p class="text-xs text-gray-500 uppercase tracking-wide">latest</p></div>
+    </div>
+  </div>`;
+
+  const cardsHtml = (data.breaches || []).length
+    ? data.breaches.map(b => renderBreachCard(b, true)).join('')
+    : '<p class="text-sm text-gray-400">No breaches found for this email.</p>';
+
+  el.innerHTML = `
+    ${summary}
+    ${renderBreachTimeline(data.breaches)}
+    <div class="space-y-3">${cardsHtml}</div>
+    ${renderBreachPastes(data.pastes || [])}
+    ${breachAttribution()}
+  `;
+
+  wireBreachRevealButtons(el);
+  document.getElementById('breach-email-pivot-username')?.addEventListener('click', () => pivotToUsernameEnum(email.split('@')[0]));
+  document.getElementById('breach-email-pivot-domain')?.addEventListener('click', () => pivotToDomain(email.split('@')[1] || ''));
+  document.getElementById('breach-email-csv')?.addEventListener('click', () => exportBreachCsv(data.breaches, `falconeye-breach-${email.replace(/[^a-z0-9.]/gi, '_')}.csv`));
+}
+
+function renderBreachPastes(pastes) {
+  if (!pastes.length) return '';
+  const rows = pastes.map(p => `<div class="flex items-center justify-between py-1.5 border-b border-gray-800/60 text-sm gap-3">
+    <span class="text-gray-300 truncate">${escapeHtml(p.source || '?')}${p.title ? ' — ' + escapeHtml(p.title) : ''}</span>
+    <span class="text-xs text-gray-500 flex-shrink-0">${escapeHtml(p.date || '?')} &middot; ${escapeHtml(p.id || '')}</span>
+  </div>`).join('');
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-4">
+    <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Paste appearances (${pastes.length})</p>
+    ${rows}
+  </div>`;
+}
+
+function exportBreachCsv(breaches, filename) {
+  const rows = [
+    ['Data provided by Have I Been Pwned (https://haveibeenpwned.com) under CC BY 4.0'],
+    ['title', 'breach_date', 'pwn_count', 'data_classes', 'is_sensitive'],
+  ];
+  (breaches || []).forEach(b => rows.push([
+    b.title || b.name || '', b.breach_date || '', b.pwn_count || 0, (b.data_classes || []).join('|'), b.is_sensitive,
+  ]));
+  const csv = rows.map(r => r.map(f => `"${String(f).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+
+// ---- Section 2: Check a password (client-side K-anonymity — never proxied) ----
+
+document.getElementById('breach-password-btn').addEventListener('click', runBreachPasswordCheck);
+document.getElementById('breach-password-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runBreachPasswordCheck();
+});
+
+async function runBreachPasswordCheck() {
+  const input = document.getElementById('breach-password-input');
+  const resultEl = document.getElementById('breach-password-result');
+  const btn = document.getElementById('breach-password-btn');
+  const password = input.value || '';
+
+  resultEl.classList.remove('hidden');
+  if (!password) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Enter a password first.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Checking…';
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Hashing locally (SHA-1) and querying the k-anonymity range…</p>';
+
+  try {
+    const enc = new TextEncoder().encode(password);
+    const digestBuf = await crypto.subtle.digest('SHA-1', enc);
+    const hex = Array.from(new Uint8Array(digestBuf)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
+    const prefix = hex.slice(0, 5);
+    const suffix = hex.slice(5);
+
+    // Direct browser -> api.pwnedpasswords.com fetch. Never routed through our
+    // backend — that is the whole point (verify in DevTools Network tab).
+    const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+
+    let count = 0;
+    for (const line of text.split('\n')) {
+      const [sfx, cnt] = line.trim().split(':');
+      if (sfx === suffix) { count = parseInt(cnt, 10) || 0; break; }
+    }
+
+    if (count > 0) {
+      resultEl.innerHTML = `<div class="bg-red-900/20 border border-red-700/40 rounded p-4">
+        <p class="text-red-400 text-sm font-bold">This password has been seen ${count.toLocaleString()} times in known data breaches. Do not use it.</p>
+      </div>`;
+    } else {
+      resultEl.innerHTML = `<div class="bg-green-900/20 border border-green-700/40 rounded p-4">
+        <p class="text-green-400 text-sm font-bold">This password has not appeared in known breaches indexed by HIBP.</p>
+        <p class="text-xs text-gray-400 mt-1">"Not appeared" means "not in this corpus" — it does not mean the password is strong or unique. Use a password manager to generate unique passwords for every service.</p>
+      </div>`;
+    }
+    resultEl.innerHTML += breachAttribution();
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Check failed: ${escapeHtml(e.message)}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+    input.value = ''; // don't leave the password sitting in the DOM longer than needed
+  }
+}
+
+// ---- Section 3: Check a domain ----
+
+document.getElementById('breach-domain-btn').addEventListener('click', runBreachDomainCheck);
+document.getElementById('breach-domain-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runBreachDomainCheck();
+});
+
+async function runBreachDomainCheck() {
+  const input = document.getElementById('breach-domain-input');
+  const resultEl = document.getElementById('breach-domain-result');
+  const btn = document.getElementById('breach-domain-btn');
+  const domain = (input.value || '').trim();
+
+  resultEl.classList.remove('hidden');
+  if (!domain) {
+    resultEl.innerHTML = '<p class="text-red-400 text-sm">Enter a domain first.</p>';
+    return;
+  }
+
+  btn.disabled = true;
+  const orig = btn.textContent;
+  btn.textContent = 'Checking…';
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Checking Have I Been Pwned…</p>';
+
+  try {
+    const res = await fetch('/api/breach/domain', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain: domain}),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Check failed</p>
+        <p class="text-xs text-gray-400">${escapeHtml(data.detail || ('HTTP ' + res.status))}</p></div>`;
+      return;
+    }
+    if (data.rate_limited) {
+      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
+        <p class="text-yellow-400 text-sm font-bold mb-1">Rate limited</p>
+        <p class="text-xs text-gray-400">${escapeHtml(data.error || 'Try again later.')}</p></div>`;
+      return;
+    }
+    renderBreachDomainResult(data);
+  } catch (e) {
+    const msg = e instanceof SyntaxError
+      ? 'Check timed out or failed — try again.'
+      : `Request failed: ${escapeHtml(e.message)}`;
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = orig;
+  }
+}
+
+function renderBreachDomainResult(data) {
+  lastBreachDomainData = data;
+  const el = document.getElementById('breach-domain-result');
+  el.classList.remove('hidden');
+
+  const cardsHtml = (data.breaches || []).length
+    ? data.breaches.map(b => renderBreachCard(b, true)).join('')
+    : '<p class="text-sm text-gray-400">No breaches found for this domain.</p>';
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-center justify-between flex-wrap gap-3 mb-3">
+        <span class="brand-badge text-sm px-3 py-1 font-mono">${escapeHtml(data.domain)}</span>
+        <div class="flex items-center gap-2">
+          ${data.hosting_ip ? `<button id="breach-domain-pivot-ip" class="text-xs bg-gray-800 hover:bg-gray-700 text-amber-300 px-3 py-1.5 rounded transition">&#8594; IP Reputation (${escapeHtml(data.hosting_ip)})</button>` : ''}
+          <button id="breach-domain-csv" class="text-xs bg-gray-800 text-gray-300 px-3 py-1.5 rounded hover:bg-gray-700 transition">Export CSV</button>
+        </div>
+      </div>
+      <p class="text-2xl font-bold ${data.breach_count ? 'text-red-400' : 'text-green-400'}">${data.breach_count} <span class="text-xs text-gray-500 uppercase tracking-wide font-normal">breach${data.breach_count === 1 ? '' : 'es'}</span></p>
+    </div>
+    <div class="space-y-3">${cardsHtml}</div>
+    ${breachAttribution()}
+  `;
+
+  wireBreachRevealButtons(el);
+  document.getElementById('breach-domain-pivot-ip')?.addEventListener('click', () => pivotToIp(data.hosting_ip));
+  document.getElementById('breach-domain-csv')?.addEventListener('click', () => exportBreachCsv(data.breaches, `falconeye-breach-${data.domain}.csv`));
+}
+
+// ---- Section 4: Recent breaches ----
+
+let breachRecentLoaded = false;
+
+async function loadBreachRecent() {
+  if (breachRecentLoaded) return;
+  breachRecentLoaded = true;
+  const el = document.getElementById('breach-recent-result');
+  try {
+    const res = await fetch('/api/breach/recent');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+    const items = data.breaches || [];
+    if (!items.length) {
+      el.innerHTML = '<p class="text-sm text-gray-400">No recent breach data available.</p>';
+      return;
+    }
+    el.innerHTML = `
+      <div class="grid gap-3 sm:grid-cols-2">
+        ${items.map(b => `
+          <a href="https://haveibeenpwned.com/PwnedWebsites#${encodeURIComponent(b.name || '')}" target="_blank" rel="noopener noreferrer"
+             class="bg-gray-900 border border-gray-800 rounded p-4 flex items-start gap-3 hover:border-gray-700 transition">
+            ${breachLogoHtml(b)}
+            <div class="min-w-0">
+              <p class="text-sm font-bold text-white truncate">${escapeHtml(b.title || b.name)}</p>
+              <p class="text-xs text-gray-500 mb-1">Added ${escapeHtml(b.added_date || '?')} &middot; ${(b.pwn_count || 0).toLocaleString()} accounts</p>
+              ${b.description ? `<p class="text-xs text-gray-400 line-clamp-2">${escapeHtml(b.description)}</p>` : ''}
+            </div>
+          </a>`).join('')}
+      </div>
+      ${breachAttribution()}
+    `;
+  } catch (e) {
+    el.innerHTML = `<p class="text-red-400 text-sm">Could not load recent breaches: ${escapeHtml(e.message)}</p>`;
+    breachRecentLoaded = false; // allow a retry on the next tab visit
+  }
+}
+
+// ---- Section 5: Browse all breaches (collapsible, lazy-loaded) ----
+
+let breachAllData = null;
+let breachAllSort = {key: 'added_date', dir: 'desc'};
+
+document.getElementById('breach-all-details').addEventListener('toggle', function () {
+  if (this.open && !breachAllData) loadBreachAll();
+});
+document.getElementById('breach-all-search').addEventListener('input', () => renderBreachAllTable());
+document.querySelectorAll('.breach-all-sort').forEach(th => th.addEventListener('click', () => {
+  const key = th.dataset.sort;
+  if (breachAllSort.key === key) breachAllSort.dir = breachAllSort.dir === 'asc' ? 'desc' : 'asc';
+  else breachAllSort = {key: key, dir: 'asc'};
+  renderBreachAllTable();
+}));
+
+async function loadBreachAll() {
+  const tbody = document.getElementById('breach-all-tbody');
+  tbody.innerHTML = '<tr><td colspan="4" class="py-3 text-gray-500 animate-pulse">Loading…</td></tr>';
+  try {
+    const res = await fetch('/api/breach/all');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || ('HTTP ' + res.status));
+    breachAllData = data.breaches || [];
+    renderBreachAllTable();
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="4" class="py-3 text-red-400">Could not load: ${escapeHtml(e.message)}</td></tr>`;
+  }
+}
+
+function renderBreachAllTable() {
+  if (!breachAllData) return;
+  const q = (document.getElementById('breach-all-search').value || '').trim().toLowerCase();
+  let rows = breachAllData.filter(b =>
+    !q || (b.title || '').toLowerCase().includes(q) || (b.domain || '').toLowerCase().includes(q));
+
+  const {key, dir} = breachAllSort;
+  rows = rows.slice().sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (key === 'pwn_count') { av = av || 0; bv = bv || 0; }
+    else { av = (av || '').toString().toLowerCase(); bv = (bv || '').toString().toLowerCase(); }
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('breach-all-tbody');
+  tbody.innerHTML = rows.length ? rows.map(b => `
+      <tr class="border-b border-gray-800/60">
+        <td class="py-2 pr-3 text-gray-200">${escapeHtml(b.title || b.name || '')}${b.is_sensitive ? ' <span class="text-red-400" title="Sensitive breach">&#9888;</span>' : ''}</td>
+        <td class="py-2 pr-3 text-gray-400">${escapeHtml(b.breach_date || '?')}</td>
+        <td class="py-2 pr-3 text-gray-400">${(b.pwn_count || 0).toLocaleString()}</td>
+        <td class="py-2 pr-3 text-gray-500">${escapeHtml((b.data_classes || []).slice(0, 4).join(', '))}${(b.data_classes || []).length > 4 ? '…' : ''}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="4" class="py-3 text-gray-500">No breaches match.</td></tr>';
+
+  document.getElementById('breach-all-footer').innerHTML =
+    `<p class="text-xs text-gray-500 mb-1">${rows.length} of ${breachAllData.length} breaches</p>${breachAttribution()}`;
+}

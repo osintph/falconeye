@@ -1,8 +1,8 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Seventeen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
+**Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.13.0**
+Current version: **3.14.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -35,6 +35,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Contact** | Feedback form for bug reports, feature requests, and new tab suggestions |
 | **Username** | Check where a username appears across ~950 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **News** | Cyber news RSS aggregator with PH-specific feeds and global outlets |
+| **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
 
 ### LLM-powered tabs
 
@@ -177,6 +178,7 @@ sudo nginx -t && sudo systemctl reload nginx
 | `SEARCHAPI_KEY` | For Prospect and Image tabs | Prospect dossier, Image reverse search | Free trial at searchapi.io |
 | `GREYNOISE_API_KEY` | No | IP Reputation | Community tier is free |
 | `ABUSECH_AUTH_KEY` | No | Sandbox History, IP Reputation | Free at auth.abuse.ch |
+| `HIBP_API_KEY` | For Breach Check | Breach Check (email + paste search) | Have I Been Pwned Core 1 subscription (haveibeenpwned.com/API/Key). Domain/recent/browse-all lookups use HIBP's free endpoints and work without this key. |
 
 If a key is missing, the relevant feature degrades gracefully (returns an error card) without crashing the rest of the tool.
 

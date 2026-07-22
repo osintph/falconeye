@@ -57,7 +57,7 @@
     "name": "FalconEye",
     "alternateName": "FalconEye OSINT Toolkit",
     "url": "https://falconeye.osintph.info/",
-    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram intelligence, IP reputation, email header analysis with BEC detection, Google dork generation, suspicious script deobfuscation, and commercial prospect dossiers into a single interface.",
+    "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram intelligence, IP reputation, email header analysis with BEC detection, Google dork generation, suspicious script deobfuscation, Have I Been Pwned breach checks, and commercial prospect dossiers into a single interface.",
     "applicationCategory": "SecurityApplication",
     "applicationSubCategory": "OSINT Tool",
     "operatingSystem": "Any (web-based)",
@@ -65,8 +65,9 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.13.0",
+    "softwareVersion": "3.14.0",
     "featureList": [
+      "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
       "Light and dark theme with a header toggle",
       "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
       "Client-side PDF export for IP reputation and abuse reports",
@@ -230,6 +231,10 @@
     <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="news">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
       News
+    </button>
+    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="breach">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+      Breach Check
     </button>
   </nav>
 
@@ -983,6 +988,87 @@
       <div id="news-results" class="grid gap-3"></div>
     </div>
 
+    <!-- Breach Check Tab -->
+    <div id="tab-breach" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Breach Check</h2>
+      <p class="text-gray-400 text-sm mb-4">Data source: <a href="https://haveibeenpwned.com" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">Have I Been Pwned</a>. Checks credentials, addresses, and domains against known breach corpora.</p>
+
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> Breach data from Have I Been Pwned. Emails are hashed before caching (never stored plaintext). Passwords are checked via K-anonymity (never leave the browser).</div>
+      </div>
+
+      <!-- Section 1: Check an email -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Check an email</h3>
+      <div class="flex gap-3 mb-3">
+        <input id="breach-email-input" type="email" placeholder="name@example.com"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="breach-email-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
+      </div>
+      <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-3"
+              data-sample="account-exists@hibp-integration-tests.com"
+              data-target="breach-email-input" data-trigger="breach-email-btn">
+        ↳ Try sample (account-exists@hibp-integration-tests.com)
+      </button>
+      <label class="flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 mb-6">
+        <input type="checkbox" id="breach-show-sensitive" class="accent-amber-400"> <span>Show sensitive breaches</span>
+      </label>
+      <div id="breach-email-result" class="hidden mb-8 space-y-4"></div>
+
+      <!-- Section 2: Check a password -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Check a password</h3>
+      <p class="text-xs text-gray-500 mb-2 max-w-2xl">This check uses K-anonymity. Your password is hashed with SHA-1 in your browser, and only the first 5 characters of the hash are sent to Have I Been Pwned. Your actual password never leaves your device. Verify in DevTools if you want to confirm.</p>
+      <div class="flex gap-3 mb-3">
+        <input id="breach-password-input" type="password" placeholder="password to check" autocomplete="off"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="breach-password-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
+      </div>
+      <div id="breach-password-result" class="hidden mb-8"></div>
+
+      <!-- Section 3: Check a domain -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Check a domain</h3>
+      <div class="flex gap-3 mb-3">
+        <input id="breach-domain-input" type="text" placeholder="example.com"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="breach-domain-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
+      </div>
+      <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-2"
+              data-sample="osintph.info" data-target="breach-domain-input" data-trigger="breach-domain-btn">
+        ↳ Try sample (osintph.info)
+      </button>
+      <p class="text-xs text-gray-600 mb-6 max-w-2xl">This lists breaches that included any addresses at this domain. It does not require you to own or verify the domain — anyone can look up any domain.</p>
+      <div id="breach-domain-result" class="hidden mb-8 space-y-4"></div>
+
+      <!-- Section 4: Recent breaches -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Recent breaches</h3>
+      <div id="breach-recent-result" class="mb-8"><p class="text-gray-500 text-sm animate-pulse">Loading…</p></div>
+
+      <!-- Section 5: Browse all breaches -->
+      <details id="breach-all-details" class="bg-gray-900 border border-gray-800 rounded mb-4">
+        <summary class="cursor-pointer px-4 py-3 text-sm font-bold text-gray-200 hover:text-amber-400 select-none">Browse all breaches</summary>
+        <div class="px-4 pb-4">
+          <input id="breach-all-search" type="text" placeholder="Filter by title or domain…"
+            class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-1.5 text-sm mb-3 focus:outline-none focus:border-amber-400" />
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-left text-gray-500 border-b border-gray-800">
+                  <th class="breach-all-sort py-2 pr-3 cursor-pointer hover:text-amber-400" data-sort="title">Title</th>
+                  <th class="breach-all-sort py-2 pr-3 cursor-pointer hover:text-amber-400" data-sort="breach_date">Date</th>
+                  <th class="breach-all-sort py-2 pr-3 cursor-pointer hover:text-amber-400" data-sort="pwn_count">Accounts</th>
+                  <th class="py-2 pr-3">Data classes</th>
+                </tr>
+              </thead>
+              <tbody id="breach-all-tbody">
+                <tr><td colspan="4" class="py-3 text-gray-500">Expand to load…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div id="breach-all-footer" class="mt-3"></div>
+        </div>
+      </details>
+    </div>
+
   </main>
 
   <!-- Data sources footer -->
@@ -1001,6 +1087,7 @@
       <a href="https://urlhaus.abuse.ch/" target="_blank" rel="noopener noreferrer" class="data-source" title="URLhaus by abuse.ch">URLhaus</a>
       <a href="https://bazaar.abuse.ch/" target="_blank" rel="noopener noreferrer" class="data-source" title="MalwareBazaar by abuse.ch">MalwareBazaar</a>
       <a href="https://openphish.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="OpenPhish — phishing URL feed">OpenPhish</a>
+      <a href="https://haveibeenpwned.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="Have I Been Pwned — breach corpus, CC BY 4.0">Have I Been Pwned</a>
     </div>
     <p class="text-center text-xs text-gray-700 mt-4">
       FalconEye is open source · <a href="https://github.com/osintph/falconeye" class="hover:text-amber-400 transition" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>
