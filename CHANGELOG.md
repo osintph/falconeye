@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.15.2] — 2026-07-23
+
+Fixes the root cause noted as a known issue in 3.15.1: `/static/*` had no
+cache-busting, so a deploy depended on remembering a manual Cloudflare purge,
+and even a clean purge couldn't touch a browser's own independent cache of
+the old `app.js`. This surfaced again during 3.15.1 verification — a report
+of "works on iOS Safari, fails on iOS Chrome" looked like a browser-specific
+bug (initially suspected: Chrome's bottom address bar overlapping the drawer
+trigger) but turned out to be Chrome's tab still holding a pre-3.15.0 `app.js`
+that never wired the drawer trigger's handler or populated the Home launcher
+grid, against a freshly loaded HTML. Confirmed by reproducing in Incognito
+(no independent cache): both symptoms disappeared. Same root cause explains
+the 3.15.1 launcher-grid report, which is why code review and simulated
+retests never reproduced it — the code was already correct.
+
+### Fixed
+
+- **`index.html`'s references to `/static/app.js` and `/static/style.css` now carry a `?v=<app version>` query string**, bumped on every release. The query string changes the URL, so both Cloudflare's edge cache and each visitor's browser cache treat a release as a brand-new resource — no manual purge, and no window where fresh `index.html` can pair with a stale cached script. `index.html` itself is not cache-busted (nginx sends no explicit `Cache-Control` for it, so it's effectively revalidated far more often than the hour-long `expires` on `/static/*`), so it's a reliable place to hang the version query string from.
+
+---
+
 ## [3.15.1] — 2026-07-23
 
 Mobile navigation fixes for v3.15.0, found by real-device testing (iOS Safari)
