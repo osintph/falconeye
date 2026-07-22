@@ -212,3 +212,136 @@ html[data-theme="light"] {
   border-radius: 2px;
   box-shadow: 0 4px 24px rgb(var(--shadow) / 0.5);
 }
+
+/* ============================================================================
+   Navigation shell (v3.15.0): responsive sidebar (>=1024px) + mobile bottom-
+   sheet drawer (<1024px) + command palette. Viewport-driven via @media only —
+   deliberately no navigator.userAgent branching anywhere in this feature.
+   UA sniffing breaks on: DevTools docked to the side (narrows the viewport,
+   UA still says desktop), iPad landscape (~1180px, reports mobile but has
+   sidebar-worthy width), foldables (width changes mid-session, no UA change),
+   and browsers actively freezing/reducing UA strings going forward.
+   Breakpoints reuse Tailwind's own defaults (lg=1024px, xl=1280px) via the
+   `lg:`/`xl:` utility classes in index.html; the rules below only add what
+   Tailwind utilities can't express (an explicit collapse override that beats
+   the responsive default, the collapsed-rail tooltip, and the drawer/palette
+   transitions).
+   ============================================================================ */
+
+/* One sidebar nav row, built by app.js from NAV_GROUPS. Border color itself is
+   NOT set here — the item carries Tailwind's own `border-l-2 border-transparent`
+   utility classes so the existing, unmodified showTab() active-state toggle
+   (which adds/removes `border-amber-400`/`border-transparent` by class name)
+   works identically to the old horizontal strip's `border-b-2`, just on the
+   left edge instead of the bottom. */
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 14px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar-item svg { flex-shrink: 0; }
+.sidebar-group-label {
+  display: block;
+  padding: 14px 14px 4px;
+}
+
+/* Icon-only rail: hide text labels + group headers. Two ways this can be
+   true, kept as separate un-nested rules so each stays easy to reason about:
+   (1) the pure-CSS responsive default for 1024-1279px when the user has never
+   toggled, so it stays genuinely live-responsive to a resize with zero JS;
+   (2) the explicit override once the user HAS clicked the collapse toggle,
+   which then applies at any sidebar-eligible width regardless of (1). */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  html:not([data-sidebar-collapsed]) .nav-label,
+  html:not([data-sidebar-collapsed]) .nav-group-label { display: none; }
+}
+html[data-sidebar-collapsed="true"] .nav-label,
+html[data-sidebar-collapsed="true"] .nav-group-label { display: none; }
+
+/* Explicit width override (attribute selector on <html> beats the plain
+   Tailwind utility class on specificity — no !important needed). Pixel values
+   match the Tailwind defaults they override (w-14 = 56px, xl:w-56 = 224px) so
+   toggling never causes a visible size jump. */
+html[data-sidebar-collapsed="true"] #sidebar { width: 56px; }
+html[data-sidebar-collapsed="false"] #sidebar { width: 224px; }
+html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-1); }
+
+/* Collapsed-rail tooltip (v3.15.0). A pure-CSS ::after tooltip was tried first
+   and rejected: #sidebar needs `overflow-y: auto` so a tall grouped list can
+   scroll independently, but per the CSS overflow spec, setting overflow-y to
+   anything but `visible` silently forces overflow-x to `auto` too — so a
+   ::after trying to escape the sidebar via `left: 100%` got clipped at the
+   sidebar's own right edge (confirmed empirically: computed opacity/content
+   were correct, nothing painted). A `position: fixed` tooltip positioned by
+   JS (see app.js's nav-tooltip section) escapes every scrolling ancestor
+   instead, which a clipped-by-design ::after fundamentally cannot. Shown only
+   where hover is meaningful — app.js gates it on (hover:hover) and
+   (pointer:fine), not UA — and only while the sidebar is actually collapsed. */
+#nav-tooltip {
+  position: fixed;
+  background: rgb(var(--g800));
+  color: rgb(var(--g100));
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 80;
+  box-shadow: 0 2px 8px rgb(var(--shadow) / 0.3);
+}
+
+/* Mobile drawer row (same NAV_GROUPS data, drawer-nav container). Border color
+   comes from Tailwind's `border-l-2 border-transparent` utility classes on the
+   element itself — see .sidebar-item's comment above. */
+.drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 4px;
+  text-align: left;
+}
+.drawer-item svg { flex-shrink: 0; }
+.drawer-group-label {
+  padding: 12px 12px 4px;
+}
+
+/* Command palette result row. */
+.palette-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 16px;
+  text-align: left;
+}
+.palette-item svg { flex-shrink: 0; }
+.palette-item[data-active="true"] {
+  background: rgb(var(--am400) / 0.12);
+}
+
+/* Home launcher grid card — same hover-lift as .example-card. */
+.launcher-card { transition: transform 0.15s ease, border-color 0.15s ease; }
+.launcher-card:hover { transform: translateY(-1px); }
+
+/* Bottom-sheet drawer + command palette fade/scale-in. Reuses the same timing
+   as .tab-content's existing fadeIn for a consistent feel. */
+#cmd-palette:not(.hidden) { animation: paletteIn 0.12s ease; }
+@keyframes paletteIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Focus-visible ring for keyboard navigation — sidebar, drawer, palette, and
+   (as a general accessibility improvement) every other interactive element.
+   Only shows for keyboard focus, never for a mouse click, so it doesn't
+   clutter mouse-driven use of the rest of the app. */
+a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid rgb(var(--am400));
+  outline-offset: 2px;
+}

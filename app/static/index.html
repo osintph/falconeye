@@ -15,6 +15,20 @@
     })();
   </script>
 
+  <!-- Sidebar collapse init (v3.15.0): same pattern as theme init. Only sets the
+       attribute when the user has EXPLICITLY toggled before (fe_sidebar_collapsed
+       cookie) — otherwise it's left unset and pure CSS media queries decide the
+       default per breakpoint (expanded >=1280px, collapsed 1024-1279px), which
+       keeps first-time visitors' sidebar genuinely responsive to a live resize. -->
+  <script>
+    (function () {
+      try {
+        var m = document.cookie.match(/(?:^|;\s*)fe_sidebar_collapsed=(true|false)/);
+        if (m) document.documentElement.setAttribute('data-sidebar-collapsed', m[1]);
+      } catch (e) { /* no override: CSS default governs */ }
+    })();
+  </script>
+
   <!-- Primary SEO -->
   <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
   <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram intelligence, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
@@ -65,8 +79,9 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.14.0",
+    "softwareVersion": "3.15.0",
     "featureList": [
+      "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
       "Light and dark theme with a header toggle",
       "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
@@ -162,86 +177,55 @@
     </button>
   </header>
 
-  <!-- Tab nav with inline SVG icons -->
-  <nav class="border-b border-gray-800 px-6 flex gap-1 overflow-x-auto">
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="home">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      Home
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="crypto">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h.01"/><path d="M2 10h20"/></svg>
-      Crypto
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="scanner">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/><path d="M18 8v9a3 3 0 0 0 6 0v-1"/></svg>
-      Phishing
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="domain">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-      Domain
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="telegram">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/></svg>
-      Telegram
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="ip">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 18h.01"/><path d="M10 18h.01"/></svg>
-      IP Reputation
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="sandbox">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v8L4.5 20.5a2.5 2.5 0 0 0 2 3.5h11a2.5 2.5 0 0 0 2-3.5L14 10V2"/><path d="M8 2h8"/><path d="M7 16h10"/></svg>
-      Sandbox
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="url">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-      URL Expander
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="qr">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="4" height="4"/></svg>
-      QR
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="image">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      Image
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="email">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/></svg>
-      Email Header
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="dorks">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-      Dork Gen
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="decoder">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-      Script Decoder
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="prospect">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
-      Company
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="contact">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-      Contact
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="username">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Username
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="news">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/></svg>
-      News
-    </button>
-    <button class="tab-btn py-3 px-3 text-sm border-b-2 border-transparent text-gray-400 hover:text-white flex items-center gap-2 whitespace-nowrap" data-tab="breach">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
-      Breach Check
-    </button>
-  </nav>
+  <!-- Navigation shell (v3.15.0): desktop sidebar (>=1024px, Tailwind `lg`) +
+       mobile bottom-sheet drawer (<1024px). Both render from the same NAV_GROUPS
+       registry in app.js so the tool list/order/labels can never drift between
+       devices — see app.js's "Navigation registry" section. Viewport-driven via
+       CSS only; no user-agent sniffing (see style.css breakpoint comments). -->
+  <div class="flex flex-1 min-h-0">
 
-  <main class="max-w-6xl mx-auto px-6 py-8 w-full flex-grow">
+    <!-- Desktop/tablet sidebar. Width + label visibility default responsively:
+         collapsed icon-rail (~56px) at 1024-1279px, expanded (~208px) >=1280px.
+         An explicit user toggle overrides both via [data-sidebar-collapsed] on
+         <html> (style.css) — an attribute selector beats the plain Tailwind
+         utility class on specificity, no !important needed. Sticky + its own
+         overflow-y so a tall grouped list never fights the page's own scroll. -->
+    <aside id="sidebar" class="hidden lg:flex flex-col w-14 xl:w-56 shrink-0 border-r border-gray-800 sticky top-0 h-screen overflow-y-auto">
+      <div class="px-2.5 pt-3">
+        <button id="sidebar-search-btn" class="w-full flex items-center gap-2 text-gray-500 hover:text-amber-400 border border-gray-800 hover:border-gray-700 rounded px-2.5 py-2 transition" title="Search tools (⌘K)" aria-label="Open command palette">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="nav-label flex-1 text-left text-xs whitespace-nowrap overflow-hidden">Search tools…</span>
+          <span class="nav-label text-[10px] border border-gray-700 rounded px-1 whitespace-nowrap">⌘K</span>
+        </button>
+      </div>
+      <nav id="sidebar-nav" class="flex-1 py-2" aria-label="Tool navigation"></nav>
+      <button id="sidebar-collapse-toggle" class="border-t border-gray-800 py-3 flex items-center justify-center gap-2 text-gray-500 hover:text-amber-400 transition" title="Collapse sidebar" aria-label="Collapse or expand sidebar">
+        <svg id="sidebar-collapse-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="shrink-0"><path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/></svg>
+        <span class="nav-label text-xs whitespace-nowrap">Collapse</span>
+      </button>
+    </aside>
+
+    <!-- Collapsed-rail tooltip: one shared, JS-positioned (fixed) element, not a
+         CSS ::after per item — see style.css's #nav-tooltip comment for why. -->
+    <div id="nav-tooltip" class="hidden" role="tooltip"></div>
+
+    <div class="flex-1 min-w-0 flex flex-col">
+      <!-- Mobile-only "where am I" bar: the drawer isn't persistent on screen
+           like the sidebar is, so the current tool name stays visible here. -->
+      <div id="mobile-tool-bar" class="lg:hidden border-b border-gray-800 px-4 py-2.5 flex items-center justify-between">
+        <span id="mobile-tool-name" class="text-sm font-bold text-white">Home</span>
+      </div>
+
+      <main class="max-w-6xl mx-auto px-6 py-8 w-full flex-grow">
 
     <!-- HOME TAB — default landing -->
     <div id="tab-home" class="tab-content hidden">
+
+      <!-- Launcher grid (v3.15.0): every tool, one click away, icon + name +
+           one-line description. Built from the same NAV_GROUPS registry as the
+           sidebar/drawer (app.js) so it can't drift out of sync with them. This
+           leads the tab per the nav rework — the intro prose below is unchanged. -->
+      <div id="home-launcher-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 mb-8"></div>
 
       <!-- About FalconEye story block -->
       <section class="mb-8">
@@ -1070,6 +1054,45 @@
     </div>
 
   </main>
+    </div>
+  </div>
+
+  <!-- Mobile drawer trigger: bottom-anchored (thumb zone on a 6"+ phone), not a
+       top-left hamburger — the top-left corner needs a hand shuffle to reach. -->
+  <button id="drawer-trigger" class="lg:hidden fixed bottom-5 right-5 z-40 bg-amber-400 text-gray-950 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-black/40" aria-haspopup="true" aria-expanded="false" aria-controls="mobile-drawer" aria-label="Open tool navigation">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
+  </button>
+
+  <!-- Mobile drawer (bottom sheet) + backdrop. Same NAV_GROUPS registry as the
+       sidebar, filtered live by the search field. Focus-trapped while open;
+       focus returns to the trigger on close (app.js). -->
+  <div id="drawer-backdrop" class="hidden lg:hidden fixed inset-0 bg-black/60 z-40"></div>
+  <div id="mobile-drawer" class="hidden lg:hidden fixed inset-x-0 bottom-0 z-50 bg-gray-950 border-t border-gray-800 rounded-t-2xl shadow-2xl translate-y-full transition-transform duration-200 max-h-[85vh] flex flex-col" role="dialog" aria-modal="true" aria-label="Tool navigation" aria-hidden="true" tabindex="-1">
+    <div class="mx-auto mt-2 h-1 w-10 rounded-full bg-gray-700 shrink-0"></div>
+    <div class="flex items-center justify-between px-4 pt-2 pb-2 border-b border-gray-800 shrink-0">
+      <span class="text-sm font-bold text-white">Tools</span>
+      <button id="drawer-close" class="text-gray-400 hover:text-white p-1" aria-label="Close tool navigation">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="px-4 py-2 shrink-0">
+      <input id="drawer-search" type="text" placeholder="Search tools…" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
+    </div>
+    <nav id="drawer-nav" class="overflow-y-auto px-2 pb-4 flex-1" aria-label="Tool list"></nav>
+  </div>
+
+  <!-- Command palette (Cmd/Ctrl+K). Keyboard-only by design — the daily-driver
+       path for anyone who already knows the tool name; no mobile affordance. -->
+  <div id="palette-backdrop" class="hidden fixed inset-0 bg-black/60 z-[60]"></div>
+  <div id="cmd-palette" class="hidden fixed inset-x-0 top-24 z-[70] max-w-lg mx-auto px-4" role="dialog" aria-modal="true" aria-label="Command palette">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl overflow-hidden">
+      <input id="palette-input" type="text" placeholder="Jump to a tool…" class="w-full bg-transparent px-4 py-3 text-sm text-white focus:outline-none border-b border-gray-800" autocomplete="off" />
+      <div id="palette-results" class="max-h-80 overflow-y-auto py-1"></div>
+      <div class="px-4 py-2 text-[10px] text-gray-600 border-t border-gray-800 flex items-center gap-3">
+        <span>↑↓ navigate</span><span>↵ open</span><span>esc close</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Data sources footer -->
   <footer class="border-t border-gray-800 px-6 py-6 mt-8">

@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.15.0] — 2026-07-23
+
+Navigation rework. The horizontal tab strip had run out of room at 18 tabs
+(cut off on a 13" laptop, ~3.5 of 18 visible on mobile requiring blind
+horizontal swiping) and generic pages (Contact, News) sat mid-strip among
+investigation tools. Nav and layout only — no tab panel, endpoint, or
+behavior changes.
+
+### Changed
+
+- **Responsive sidebar (>=1024px) + bottom-sheet drawer (<1024px)**, replacing the horizontal strip entirely. Viewport-driven via CSS media queries and the `(hover: hover)`/`(pointer: fine)` features — deliberately no `navigator.userAgent` branching anywhere, since UA sniffing breaks on a docked DevTools pane (narrows the viewport, UA still says desktop), iPad landscape (~1180px, reports mobile but has sidebar-worthy width), foldables resizing mid-session, and browsers actively freezing/reducing UA strings.
+  - Desktop sidebar: expanded (~224px, labels + group headers) >=1280px, collapsed to an icon-only rail (~56px) at 1024-1279px with hover tooltips (a `position: fixed` tooltip positioned by JS, not a CSS `::after` — the sidebar's own `overflow-y: auto`, needed so a tall list scrolls independently, silently clips a `::after` trying to escape via `left: 100%` per the CSS overflow spec; `position: fixed` escapes every scrolling ancestor instead). Collapse/expand is a manual override on top of the responsive default, persisted in a `fe_sidebar_collapsed` cookie (same pattern as the v3.10.0 `fe_theme` cookie), applied pre-paint so there's no flash of the wrong width.
+  - Mobile drawer: bottom-anchored trigger (thumb zone on a 6"+ phone, not a top-left hamburger), slides up as a sheet with a pinned search field that filters the grouped list live, focus-trapped while open, returns focus to the trigger on close. The current tool's name stays visible in a thin mobile header bar since the drawer isn't persistently on screen the way the sidebar is.
+  - Both surfaces — plus the command palette and the Home launcher grid — render from one JS registry (`NAV_GROUPS`/`UNGROUPED_TABS`/`HOME_TAB` in `app.js`) so the tool list/order/labels/descriptions cannot drift out of sync between devices; reordering or adding a tool (Phone OSINT is flagged as next) means editing that array once.
+- **Tabs regrouped**: IDENTITY (Username, Telegram, Breach Check, Email Header) → INFRASTRUCTURE (Domain, IP Reputation, URL Expander, Phishing) → ARTIFACTS (QR, Image, Script Decoder, Sandbox) → FINANCIAL (Crypto, Company) → TOOLS (Dork Gen) → ungrouped (News, Contact) at the bottom, per the requirement that generic non-investigation pages move off the tool strip. Home sits above all groups.
+- **Command palette** (Cmd+K on Mac, Ctrl+K elsewhere): centered search overlay, type to filter, arrow keys + Enter to jump, Escape to dismiss. Keyboard-only by design — no mobile affordance — the daily-driver path for anyone who already knows the tool name.
+- **Home converted to a launcher grid**: leads with a card per tool (icon, name, one-line description; 2-column mobile, 3-4 column desktop) before the existing intro prose, PH Threat Pulse widget, sample-investigation cards, and news strip, which are otherwise unchanged.
+- Active-tab indicator moved from an amber bottom border to an amber left border in the sidebar/drawer (same underlying `border-amber-400`/`border-transparent` class toggle as before — the existing `showTab()` logic is untouched, only the base border side the toggle applies to changed).
+- Added a global `:focus-visible` outline (amber, keyboard-triggered only) across every interactive element as a general accessibility improvement, plus a focus trap in the drawer and the command palette.
+
+### Compatibility
+
+- Every hash deep-link (`#username`, `#telegram`, …) and every cross-tab pivot (Telegram → Username Enum, Breach Check → Username/Domain/IP, QR → URL Expander, URL Expander → Phishing, abuse cards, etc.) still resolves to the correct tab — verified individually, since the pivots' own logic was intentionally left untouched (they already worked by clicking a `[data-tab="…"]` element or setting `window.location.hash`, which still exist in the new sidebar/drawer markup).
+
+---
+
 ## [3.14.0] — 2026-07-22
 
 New tab: **Breach Check**, a Have I Been Pwned integration. Tab count 17 → 18.

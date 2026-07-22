@@ -1,8 +1,157 @@
+// ============================================================================
+//  Navigation registry (v3.15.0) — SINGLE source of truth for the sidebar,
+//  the mobile drawer, the command palette, and the Home launcher grid. Every
+//  one of those renders from this data, so reordering/regrouping tools (or
+//  adding tool #19 — Phone OSINT is already flagged as next) only means
+//  editing this array once; the four nav surfaces cannot drift out of sync
+//  with each other because none of them hand-maintains its own copy.
+//
+//  Grouping rationale (so a future edit can sanity-check against it): IDENTITY
+//  resolves a person/account, INFRASTRUCTURE resolves infrastructure, ARTIFACTS
+//  analyzes an artifact the investigator already has in hand, FINANCIAL is
+//  wallets/corporate, TOOLS is the research helper, and the two ungrouped
+//  pages (News, Contact) are non-investigation pages, placed last on purpose.
+// ============================================================================
+
+const NAV_GROUPS = [
+  { key: 'identity', label: 'Identity', tabs: [
+    { id: 'username', label: 'Username', desc: 'Find a username across ~950 platforms',
+      icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+    { id: 'telegram', label: 'Telegram', desc: 'Resolve any Telegram user, bot, or channel',
+      icon: '<path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>' },
+    { id: 'breach', label: 'Breach Check', desc: 'Email/password/domain exposure via HIBP',
+      icon: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>' },
+    { id: 'email', label: 'Email Header', desc: 'Auth checks, hop analysis, BEC detection',
+      icon: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>' },
+  ]},
+  { key: 'infrastructure', label: 'Infrastructure', tabs: [
+    { id: 'domain', label: 'Domain', desc: 'RDAP, DNS, certificate transparency, ASN',
+      icon: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>' },
+    { id: 'ip', label: 'IP Reputation', desc: 'Multi-source reputation, consensus verdict',
+      icon: '<rect x="2" y="14" width="20" height="8" rx="2"/><path d="M6 18h.01"/><path d="M10 18h.01"/>' },
+    { id: 'url', label: 'URL Expander', desc: "Follow a short URL's full redirect chain",
+      icon: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>' },
+    { id: 'scanner', label: 'Phishing', desc: 'Fingerprint phishing kits, extract IOCs',
+      icon: '<path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/><path d="M18 8v9a3 3 0 0 0 6 0v-1"/>' },
+  ]},
+  { key: 'artifacts', label: 'Artifacts', tabs: [
+    { id: 'qr', label: 'QR', desc: 'Decode QR codes from an image or data URI',
+      icon: '<rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="4" height="4"/>' },
+    { id: 'image', label: 'Image', desc: 'Reverse image search (Google Lens, Yandex)',
+      icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>' },
+    { id: 'decoder', label: 'Script Decoder', desc: 'Deobfuscate PowerShell, JS, VBA, Base64',
+      icon: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>' },
+    { id: 'sandbox', label: 'Sandbox', desc: 'URLhaus / MalwareBazaar by URL or hash',
+      icon: '<path d="M10 2v8L4.5 20.5a2.5 2.5 0 0 0 2 3.5h11a2.5 2.5 0 0 0 2-3.5L14 10V2"/><path d="M8 2h8"/><path d="M7 16h10"/>' },
+  ]},
+  { key: 'financial', label: 'Financial', tabs: [
+    { id: 'crypto', label: 'Crypto', desc: 'Trace Bitcoin, Ethereum, USDT TRC20 wallets',
+      icon: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h.01"/><path d="M2 10h20"/>' },
+    { id: 'prospect', label: 'Company', desc: 'Identity, news, hiring, ad transparency',
+      icon: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>' },
+  ]},
+  { key: 'tools', label: 'Tools', tabs: [
+    { id: 'dorks', label: 'Dork Gen', desc: 'Google dork queries from plain language',
+      icon: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>' },
+  ]},
+];
+
+const UNGROUPED_TABS = [
+  { id: 'news', label: 'News', desc: 'Cyber news aggregator, PH-focused',
+    icon: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/>' },
+  { id: 'contact', label: 'Contact', desc: 'Report a bug or suggest a feature',
+    icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
+];
+
+const HOME_TAB = { id: 'home', label: 'Home', desc: 'Landing page and tool launcher',
+  icon: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' };
+
+// Flat index (home + every grouped/ungrouped tab), each tagged with its group
+// label — this is what VALID_TABS, the command palette, and the launcher grid
+// all derive from, so there is exactly one place a tab's metadata lives.
+const ALL_NAV_ENTRIES = [
+  { ...HOME_TAB, groupLabel: null },
+  ...NAV_GROUPS.flatMap(g => g.tabs.map(t => ({ ...t, groupLabel: g.label }))),
+  ...UNGROUPED_TABS.map(t => ({ ...t, groupLabel: null })),
+];
+
+function navIconSvg(paths, size) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
+}
+
+function sidebarItemHtml(tab) {
+  return `<button type="button" class="tab-btn sidebar-item border-l-2 border-transparent text-gray-400 hover:text-white text-sm" data-tab="${tab.id}" data-tooltip="${escapeAttr(tab.label)}">
+    ${navIconSvg(tab.icon, 16)}<span class="nav-label truncate">${escapeHtml(tab.label)}</span>
+  </button>`;
+}
+
+function drawerItemHtml(tab) {
+  return `<button type="button" class="tab-btn drawer-item border-l-2 border-transparent text-gray-300 hover:bg-gray-900" data-tab="${tab.id}" data-search="${escapeAttr(tab.label.toLowerCase())}">
+    ${navIconSvg(tab.icon, 18)}<span class="text-sm">${escapeHtml(tab.label)}</span>
+  </button>`;
+}
+
+function renderSidebarNav() {
+  const el = document.getElementById('sidebar-nav');
+  if (!el) return;
+  let html = sidebarItemHtml(HOME_TAB);
+  NAV_GROUPS.forEach(g => {
+    html += `<div class="nav-group-label sidebar-group-label text-[10px] text-gray-600 uppercase tracking-wider">${escapeHtml(g.label)}</div>`;
+    html += g.tabs.map(sidebarItemHtml).join('');
+  });
+  html += '<div class="border-t border-gray-800 my-2"></div>';
+  html += UNGROUPED_TABS.map(sidebarItemHtml).join('');
+  el.innerHTML = html;
+}
+
+function renderDrawerNav() {
+  const el = document.getElementById('drawer-nav');
+  if (!el) return;
+  let html = `<div data-group-wrap>${drawerItemHtml(HOME_TAB)}</div>`;
+  NAV_GROUPS.forEach(g => {
+    html += `<div data-group-wrap>
+      <div class="nav-group-label drawer-group-label text-[10px] text-gray-600 uppercase tracking-wider">${escapeHtml(g.label)}</div>
+      ${g.tabs.map(drawerItemHtml).join('')}
+    </div>`;
+  });
+  html += `<div class="border-t border-gray-800 my-2"></div>`;
+  html += `<div data-group-wrap>${UNGROUPED_TABS.map(drawerItemHtml).join('')}</div>`;
+  el.innerHTML = html;
+}
+
+function renderHomeLauncherGrid() {
+  const el = document.getElementById('home-launcher-grid');
+  if (!el) return;
+  const cards = ALL_NAV_ENTRIES.filter(t => t.id !== 'home').map(t => `
+    <button type="button" class="launcher-card bg-gray-900 border border-gray-800 hover:border-amber-400 rounded p-4 text-left" data-tab="${t.id}">
+      <div class="flex items-center gap-2 mb-1.5 text-amber-400">${navIconSvg(t.icon, 16)}<span class="text-sm font-bold text-white">${escapeHtml(t.label)}</span></div>
+      <p class="text-xs text-gray-500">${escapeHtml(t.desc)}</p>
+    </button>`).join('');
+  el.innerHTML = cards;
+}
+
+renderSidebarNav();
+renderDrawerNav();
+renderHomeLauncherGrid();
+
+// Launcher-grid cards navigate but never prefill/auto-run (unlike
+// .example-card) — delegated, mirrors the .example-card handler's idiom.
+// Deliberately NOT given the .tab-btn class itself (which carries a
+// `background: none` reset elsewhere) so the card's own bg-gray-900 renders.
+document.body.addEventListener('click', (e) => {
+  const card = e.target.closest('.launcher-card');
+  if (!card) return;
+  const tab = card.dataset.tab;
+  if (!tab) return;
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (btn) btn.click();
+});
+
 // ---- Hash-based tab routing ----
 // Tab name <-> URL hash <-> visible tab content
 // Browser back/forward buttons walk through the hash history natively.
 
-const VALID_TABS = ['home', 'crypto', 'scanner', 'domain', 'telegram', 'ip', 'sandbox', 'url', 'qr', 'image', 'email', 'dorks', 'decoder', 'prospect', 'contact', 'username', 'news', 'breach'];
+const VALID_TABS = ALL_NAV_ENTRIES.map(t => t.id);
 const DEFAULT_TAB = 'home';
 
 function showTab(tabName) {
@@ -34,6 +183,17 @@ function showTab(tabName) {
 
   if (tabName === 'news') loadNews(currentNewsCategory);
   if (tabName === 'breach') loadBreachRecent();
+
+  // v3.15.0 nav: the drawer isn't persistent on screen like the sidebar, so
+  // keep the current tool's name visible in the mobile bar; and dismiss the
+  // drawer/palette on navigation (selecting a tab is the natural close action).
+  const mobileName = document.getElementById('mobile-tool-name');
+  if (mobileName) {
+    const entry = ALL_NAV_ENTRIES.find(t => t.id === tabName);
+    mobileName.textContent = entry ? entry.label : 'Home';
+  }
+  closeDrawer();
+  closePalette();
 }
 
 function getTabFromHash() {
@@ -64,6 +224,236 @@ window.addEventListener('hashchange', () => {
 
 // Initial render on page load: read the hash or default to Home.
 showTab(getTabFromHash());
+
+// ============================================================================
+//  Sidebar collapse toggle (v3.15.0)
+// ============================================================================
+
+function isSidebarCollapsed() {
+  const override = document.documentElement.getAttribute('data-sidebar-collapsed');
+  if (override === 'true') return true;
+  if (override === 'false') return false;
+  // No explicit override yet: CSS default is collapsed 1024-1279px, expanded >=1280px.
+  return !window.matchMedia('(min-width: 1280px)').matches;
+}
+
+document.getElementById('sidebar-collapse-toggle')?.addEventListener('click', () => {
+  const next = !isSidebarCollapsed();
+  document.documentElement.setAttribute('data-sidebar-collapsed', String(next));
+  document.cookie = 'fe_sidebar_collapsed=' + next + '; path=/; max-age=' + (365 * 24 * 3600) + '; SameSite=Lax';
+  const toggle = document.getElementById('sidebar-collapse-toggle');
+  if (toggle) toggle.setAttribute('title', next ? 'Expand sidebar' : 'Collapse sidebar');
+});
+
+document.getElementById('sidebar-search-btn')?.addEventListener('click', () => openPalette());
+
+// Collapsed-rail tooltip: a single shared `position: fixed` element positioned
+// by JS on hover, not a per-item CSS ::after. A ::after was tried first and
+// rejected — #sidebar needs `overflow-y: auto` for independent scroll, and
+// per the CSS overflow spec that silently forces overflow-x to `auto` too, so
+// a ::after trying to escape via `left: 100%` got clipped at the sidebar's
+// own edge. `position: fixed` escapes every scrolling ancestor instead. Only
+// wired at all where hover is meaningful (a real pointer, not touch) — gated
+// on the (hover:hover)/(pointer:fine) media features, never on UA.
+if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+  const navTooltip = document.getElementById('nav-tooltip');
+  document.getElementById('sidebar-nav')?.addEventListener('mouseover', (e) => {
+    const item = e.target.closest('.sidebar-item[data-tooltip]');
+    if (!item || !navTooltip || !isSidebarCollapsed()) return;
+    const rect = item.getBoundingClientRect();
+    navTooltip.textContent = item.dataset.tooltip;
+    navTooltip.style.left = (rect.right + 8) + 'px';
+    navTooltip.style.top = (rect.top + rect.height / 2) + 'px';
+    navTooltip.style.transform = 'translateY(-50%)';
+    navTooltip.classList.remove('hidden');
+  });
+  document.getElementById('sidebar-nav')?.addEventListener('mouseout', (e) => {
+    if (e.target.closest('.sidebar-item[data-tooltip]')) navTooltip?.classList.add('hidden');
+  });
+}
+
+// ============================================================================
+//  Mobile bottom-sheet drawer (v3.15.0)
+//  Focus-trapped while open; focus returns to the trigger button on close.
+// ============================================================================
+
+function focusableIn(container) {
+  return Array.from(container.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+    .filter(el => !el.disabled && el.offsetParent !== null);
+}
+
+function trapFocusKeydown(container, e) {
+  if (e.key !== 'Tab') return;
+  const focusables = focusableIn(container);
+  if (!focusables.length) return;
+  const first = focusables[0];
+  const last = focusables[focusables.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+function openDrawer() {
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  const trigger = document.getElementById('drawer-trigger');
+  if (!drawer || drawer.dataset.open === 'true') return;
+  drawer.dataset.open = 'true';
+  drawer.classList.remove('hidden');
+  drawer.setAttribute('aria-hidden', 'false');
+  void drawer.offsetHeight; // force reflow so the slide-up transition actually plays
+  drawer.classList.remove('translate-y-full');
+  backdrop?.classList.remove('hidden');
+  trigger?.setAttribute('aria-expanded', 'true');
+  const search = document.getElementById('drawer-search');
+  if (search) { search.value = ''; renderDrawerFilter(''); }
+  setTimeout(() => search?.focus(), 50);
+}
+
+function closeDrawer() {
+  const drawer = document.getElementById('mobile-drawer');
+  const backdrop = document.getElementById('drawer-backdrop');
+  const trigger = document.getElementById('drawer-trigger');
+  if (!drawer || drawer.dataset.open !== 'true') return;
+  drawer.dataset.open = 'false';
+  drawer.classList.add('translate-y-full');
+  drawer.setAttribute('aria-hidden', 'true');
+  backdrop?.classList.add('hidden');
+  trigger?.setAttribute('aria-expanded', 'false');
+  // Wait for the slide-out transition (duration-200) before removing it from
+  // layout/the a11y tree — removing `hidden` immediately would make it vanish
+  // instead of sliding away, and leaving it un-hidden the whole time would let
+  // a keyboard user tab into off-screen content.
+  setTimeout(() => { if (drawer.dataset.open !== 'true') drawer.classList.add('hidden'); }, 220);
+  // The drawer has exactly one entry point (this trigger button), so — unlike
+  // the command palette, which can open from several places — focus always
+  // returns here rather than to a captured "last focus" (which is fragile:
+  // programmatic vs. real-user clicks don't move DOM focus identically).
+  trigger?.focus();
+}
+
+function renderDrawerFilter(query) {
+  const q = query.trim().toLowerCase();
+  document.querySelectorAll('#drawer-nav [data-group-wrap]').forEach(wrap => {
+    let anyVisible = false;
+    wrap.querySelectorAll('.drawer-item').forEach(item => {
+      const match = !q || (item.dataset.search || '').includes(q);
+      item.classList.toggle('hidden', !match);
+      if (match) anyVisible = true;
+    });
+    const label = wrap.querySelector('.drawer-group-label');
+    if (label) label.classList.toggle('hidden', !anyVisible);
+    wrap.classList.toggle('hidden', !anyVisible);
+  });
+}
+
+document.getElementById('drawer-trigger')?.addEventListener('click', openDrawer);
+document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
+document.getElementById('drawer-backdrop')?.addEventListener('click', closeDrawer);
+document.getElementById('drawer-search')?.addEventListener('input', (e) => renderDrawerFilter(e.target.value));
+document.getElementById('mobile-drawer')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); closeDrawer(); return; }
+  trapFocusKeydown(document.getElementById('mobile-drawer'), e);
+});
+
+// ============================================================================
+//  Command palette (v3.15.0) — Cmd+K (Mac) / Ctrl+K (elsewhere). Keyboard-only
+//  by design: the daily-driver path for anyone who already knows the tool.
+// ============================================================================
+
+let paletteLastFocus = null;
+let paletteActiveIndex = 0;
+let paletteMatches = [];
+
+function paletteResultHtml(entry, active) {
+  const sub = entry.groupLabel ? `<span class="text-gray-600"> · ${escapeHtml(entry.groupLabel)}</span>` : '';
+  return `<button type="button" class="palette-item text-gray-200 hover:bg-gray-800" data-tab="${entry.id}" data-active="${active}">
+    ${navIconSvg(entry.icon, 15)}<span class="text-sm">${escapeHtml(entry.label)}${sub}</span>
+  </button>`;
+}
+
+function renderPaletteResults(query) {
+  const q = query.trim().toLowerCase();
+  paletteMatches = !q ? ALL_NAV_ENTRIES : ALL_NAV_ENTRIES.filter(t =>
+    t.label.toLowerCase().includes(q) || (t.desc || '').toLowerCase().includes(q) || (t.groupLabel || '').toLowerCase().includes(q));
+  paletteActiveIndex = 0;
+  const el = document.getElementById('palette-results');
+  if (!el) return;
+  el.innerHTML = paletteMatches.length
+    ? paletteMatches.map((t, i) => paletteResultHtml(t, i === 0)).join('')
+    : '<p class="text-xs text-gray-500 px-4 py-3">No matching tool.</p>';
+}
+
+function paletteSetActive(index) {
+  const items = document.querySelectorAll('#palette-results .palette-item');
+  if (!items.length) return;
+  paletteActiveIndex = (index + items.length) % items.length;
+  items.forEach((el, i) => el.setAttribute('data-active', String(i === paletteActiveIndex)));
+  items[paletteActiveIndex].scrollIntoView({ block: 'nearest' });
+}
+
+function paletteActivate(index) {
+  const tab = paletteMatches[index]?.id;
+  if (!tab) return;
+  const btn = document.querySelector(`.tab-btn[data-tab="${tab}"]`);
+  if (btn) btn.click();
+  closePalette();
+}
+
+function openPalette() {
+  const palette = document.getElementById('cmd-palette');
+  const backdrop = document.getElementById('palette-backdrop');
+  if (!palette || palette.dataset.open === 'true') return;
+  paletteLastFocus = document.activeElement;
+  palette.dataset.open = 'true';
+  palette.classList.remove('hidden');
+  backdrop?.classList.remove('hidden');
+  const input = document.getElementById('palette-input');
+  if (input) input.value = '';
+  renderPaletteResults('');
+  setTimeout(() => input?.focus(), 20);
+}
+
+function closePalette() {
+  const palette = document.getElementById('cmd-palette');
+  const backdrop = document.getElementById('palette-backdrop');
+  if (!palette || palette.dataset.open !== 'true') return;
+  palette.dataset.open = 'false';
+  palette.classList.add('hidden');
+  backdrop?.classList.add('hidden');
+  paletteLastFocus?.focus();
+}
+
+document.getElementById('palette-backdrop')?.addEventListener('click', closePalette);
+document.getElementById('palette-input')?.addEventListener('input', (e) => renderPaletteResults(e.target.value));
+document.getElementById('palette-results')?.addEventListener('click', (e) => {
+  const item = e.target.closest('.palette-item');
+  if (!item) return;
+  const idx = Array.from(document.querySelectorAll('#palette-results .palette-item')).indexOf(item);
+  paletteActivate(idx);
+});
+document.getElementById('cmd-palette')?.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { e.preventDefault(); closePalette(); }
+  else if (e.key === 'ArrowDown') { e.preventDefault(); paletteSetActive(paletteActiveIndex + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); paletteSetActive(paletteActiveIndex - 1); }
+  else if (e.key === 'Enter') { e.preventDefault(); paletteActivate(paletteActiveIndex); }
+  else { trapFocusKeydown(document.getElementById('cmd-palette'), e); }
+});
+
+// Global shortcut: Cmd+K (Mac) / Ctrl+K (elsewhere). Keyboard-only, no touch
+// affordance by design — matches how power users expect it in other tools.
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    const palette = document.getElementById('cmd-palette');
+    if (palette?.dataset.open === 'true') closePalette();
+    else openPalette();
+  }
+});
 
 // ---- PHT timezone formatter ----
 function fmtPHT(utcString) {
