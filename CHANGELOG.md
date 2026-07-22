@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.15.3] — 2026-07-23
+
+Two CSP directive fixes surfaced by real-browser console errors on the live
+Breach Check password lookup, plus a test-coverage gap they exposed.
+
+### Fixed
+
+- **Breach Check's password lookup was silently broken by CSP.** `runBreachPasswordCheck()` (v3.14.0) deliberately `fetch()`es `https://api.pwnedpasswords.com` directly from the browser — never through our backend — so the password itself never leaves the client, only its 5-char SHA-1 prefix (k-anonymity). `connect-src 'self'` blocked that fetch outright; the browser console showed the exact CSP violation. Added `https://api.pwnedpasswords.com` to `connect-src`.
+- **Cloudflare Web Analytics' auto-injected beacon (`static.cloudflareinsights.com/beacon.min.js`) tripped `script-src` on every page load.** It's cookieless and already enabled by choice, so allow it rather than disable analytics: added `https://static.cloudflareinsights.com` to `script-src`.
+- Applied both directive changes to the live nginx conf and the tracked `nginx/falconeye.conf`, so the fix survives a re-provision (same divergence lesson as the access-log format change).
+
+### Added
+
+- **Structural test guarding this class of bug going forward** (`tests/unit/test_csp_fetch_origins.py`): scans `app/static/app.js` for every direct (non-`/api/*`) `fetch()` target and asserts its origin is present in `nginx/falconeye.conf`'s `connect-src`. A future feature that adds a direct third-party browser request without updating the CSP now fails a test instead of silently breaking in production.
+- The password-check regression this release fixes was previously verified only for request *shape* (that just the prefix, not the password, leaves the browser) — never for the *functional* outcome (that a check actually completes and returns a real breach/no-breach answer). That gap is exactly how a CSP block went unnoticed. Verified live post-deploy in a real browser: a known-breached test password now correctly returns a positive "seen N times" result with no console errors.
+
+---
+
 ## [3.15.2] — 2026-07-23
 
 Fixes the root cause noted as a known issue in 3.15.1: `/static/*` had no
