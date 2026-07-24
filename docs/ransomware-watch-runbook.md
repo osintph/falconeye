@@ -58,6 +58,7 @@ Description=Run the FalconEye Ransomware Watch collector every 30 minutes
 
 [Timer]
 OnBootSec=2min
+OnActiveSec=2min
 OnUnitActiveSec=30min
 RandomizedDelaySec=5min
 Persistent=true
@@ -65,6 +66,23 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 ```
+
+**`OnActiveSec=2min` is required, not optional, on a long-uptime host.**
+`OnBootSec` anchors to the last boot; on a VPS that's been up for days/weeks,
+that instant is long past and won't recur until the next reboot.
+`OnUnitActiveSec` anchors to the service's *last activation*, which doesn't
+exist yet the first time the timer is ever enabled. With only those two, `systemctl list-timers` shows no computed NEXT time at all — the timer is
+enabled but will never fire on its own. `OnActiveSec` anchors to when the
+*timer itself* was activated (i.e. now), giving it a real near-term trigger
+regardless of host uptime; `OnUnitActiveSec` takes over for the recurring
+30-minute cadence once the service has run at least once. Confirmed live at
+first deploy: with only `OnBootSec`+`OnUnitActiveSec`,
+`systemctl list-timers ransomware-collect.timer` printed a blank NEXT/LEFT
+column on a host that had been up 15+ days; adding `OnActiveSec=2min` fixed
+it immediately (`systemctl daemon-reload && systemctl restart
+ransomware-collect.timer`, then a real `collector_runs` row landed ~4
+minutes later, confirmed by polling the database rather than trusting the
+timer's own idea of its schedule).
 
 `RandomizedDelaySec` is the jitter Part 4 of the brief asks for. The timer
 fires roughly every 30 minutes; the script itself decides internally whether
