@@ -371,7 +371,86 @@ def test_watchlist_hits_are_persisted_with_their_tier(tmp_path):
     assert rows == {"BPI": 1, "philippines": 2}
 
 
-# ---------- first_seen_via / permalink (v3.16.0 forward-compat + permalink) ----------
+# ---------- country_coverage / first_seen_via / permalink (forward-compat schema) ----------
+
+def test_country_coverage_stamped_for_standing_scope_countries_with_source_collector():
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/victims/recent" in url:
+            return httpx.Response(200, json={"victims": []})
+        if "/victims/" in url:
+            country = request.url.params.get("country")
+            # Distinct, recognizable counts per country so the assertion below
+            # can't pass by coincidence (e.g. every country defaulting to 0).
+            fake_count = 100 + store.SEA_COUNTRIES.index(country)
+            return httpx.Response(200, json={"victims": [], "count": fake_count})
+        if "/press/recent" in url:
+            return httpx.Response(200, json={"results": []})
+        if url.startswith(collect.RANSOMLOOK_BASE):
+            return httpx.Response(200, json={"posts": []})
+        return httpx.Response(404)
+
+    async def _scenario():
+        async with _client_for(handler) as client:
+            pro = collect.ProClient(TEST_KEY)
+            ransomlook = collect.RansomLookClient()
+            await collect.run_victims_phase(pro, ransomlook, client)
+
+    asyncio.run(_scenario())
+
+    conn = store._connect()
+    try:
+        rows = {r["country"]: (r["victim_count"], r["source"]) for r in conn.execute(
+            "SELECT country, victim_count, source FROM country_coverage"
+        ).fetchall()}
+    finally:
+        conn.close()
+
+    assert set(rows.keys()) == set(store.SEA_COUNTRIES)
+    for i, cc in enumerate(store.SEA_COUNTRIES):
+        assert rows[cc] == (100 + i, "collector")
+
+
+def test_country_coverage_not_overwritten_when_the_call_fails():
+    """A 401/5xx on one country's call must not stamp a false '0 victims,
+    just checked' - it should leave whatever coverage row already existed."""
+    conn = store._connect()
+    try:
+        store.upsert_country_coverage(conn, country="PH", victim_count=42, source="collector", now_iso="2026-07-01T00:00:00Z")
+        conn.commit()
+    finally:
+        conn.close()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if "/victims/recent" in url:
+            return httpx.Response(200, json={"victims": []})
+        if "/victims/" in url and request.url.params.get("country") == "PH":
+            return httpx.Response(401)  # PH specifically fails this run
+        if "/victims/" in url:
+            return httpx.Response(200, json={"victims": [], "count": 1})
+        if "/press/recent" in url:
+            return httpx.Response(200, json={"results": []})
+        if url.startswith(collect.RANSOMLOOK_BASE):
+            return httpx.Response(200, json={"posts": []})
+        return httpx.Response(404)
+
+    async def _scenario():
+        async with _client_for(handler) as client:
+            pro = collect.ProClient(TEST_KEY)
+            ransomlook = collect.RansomLookClient()
+            await collect.run_victims_phase(pro, ransomlook, client)
+
+    asyncio.run(_scenario())
+
+    conn = store._connect()
+    try:
+        row = conn.execute("SELECT victim_count, last_fetched FROM country_coverage WHERE country='PH'").fetchone()
+    finally:
+        conn.close()
+    assert row["victim_count"] == 42  # untouched, not clobbered to a false 0
+    assert row["last_fetched"] == "2026-07-01T00:00:00Z"  # not re-stamped either
+
 
 def test_first_seen_via_set_on_insert_and_never_overwritten_on_update():
     conn = store._connect()

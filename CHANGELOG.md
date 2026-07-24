@@ -98,6 +98,16 @@ with a host+scheme allowlist at write time (`store.safe_permalink()`) and
 again client-side before rendering, since a field that ever pointed at a
 leak site instead would be exactly the risk Part 6 exists to prevent.
 
+### country_coverage (forward-compat, no consumer yet)
+
+A new empty table, added now rather than in the release that first reads it,
+so that release doesn't need a schema migration against a `victims` table
+that will by then be much larger. The collector stamps one row per
+standing-scope country (PH/SG/MY/ID/TH/VN/HK/TW) on every run with the
+upstream's own all-time count for that filter and `source='collector'`; a
+failed per-country call leaves the prior row untouched rather than
+overwriting it with a false zero.
+
 ### Tests
 
 `tests/test_ransomware_collect.py`: the credential write-guard (both the
@@ -109,9 +119,11 @@ database → explicit not-yet-collected state, the watchlist 2-character
 floor, that the API key never appears in a log line or response body under
 any failure path, watchlist tier persistence and the tier-header parsing
 guard, `first_seen_via` set-once-never-overwritten semantics and its
-no-backfill migration behavior against a pre-existing table, and that
+no-backfill migration behavior against a pre-existing table, that
 `safe_permalink()` accepts only `https://(www.)ransomware.live` and rejects
-everything else (including a real captured `.onion` leak-site address).
+everything else (including a real captured `.onion` leak-site address), and
+`country_coverage` stamping (including that a failed per-country call
+doesn't clobber a good prior count with a false zero).
 HTTP calls are faked with `httpx.MockTransport` (already a dependency)
 rather than adding a mocking library.
 

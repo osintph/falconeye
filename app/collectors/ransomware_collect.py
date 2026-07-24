@@ -116,25 +116,30 @@ class ProClient:
         log.warning("ransomware collector: PRO /victims/recent unexpected HTTP %s", resp.status_code)
         return [], "ransomware_live"
 
-    async def victims_by_country(self, client: httpx.AsyncClient, country: str) -> tuple[list[dict], str]:
+    async def victims_by_country(self, client: httpx.AsyncClient, country: str) -> tuple[list[dict], str, int | None]:
+        """Returns (victims, source, api_reported_count). The count is the
+        API's own all-time total for that country filter (used to stamp
+        country_coverage) - None when the call failed, distinct from a
+        genuine zero."""
         try:
             resp = await self._pro_get(client, "/victims/", params={"country": country})
         except httpx.HTTPError as exc:
             log.warning("ransomware collector: PRO /victims/?country=%s request failed (%s)", country, type(exc).__name__)
             self.degraded = True
-            return [], "ransomware_live_v2"
+            return [], "ransomware_live_v2", None
 
         if resp.status_code == 200:
-            return resp.json().get("victims", []), "ransomware_live"
+            data = resp.json()
+            return data.get("victims", []), "ransomware_live", data.get("count")
         if resp.status_code == 401 or resp.status_code >= 500:
             log.warning("ransomware collector: PRO /victims/?country=%s HTTP %s", country, resp.status_code)
             self.degraded = True
             # No per-country filter on the v2 fallback API; skip rather than
             # guess at a shape. The global v2 recent-victims fallback above
             # still covers whatever fraction of these happens to be recent.
-            return [], "ransomware_live_v2"
+            return [], "ransomware_live_v2", None
         log.warning("ransomware collector: PRO /victims/?country=%s unexpected HTTP %s", country, resp.status_code)
-        return [], "ransomware_live"
+        return [], "ransomware_live", None
 
     async def press_recent(self, client: httpx.AsyncClient) -> list[dict]:
         try:
@@ -273,8 +278,15 @@ async def run_victims_phase(pro: ProClient, ransomlook: RansomLookClient, client
         recent, source = await pro.victims_recent(client)
         by_country = []
         for cc in store.SEA_COUNTRIES:
-            rows, _ = await pro.victims_by_country(client, cc)
+            rows, _, api_count = await pro.victims_by_country(client, cc)
             by_country.extend(rows)
+            # Stamp country_coverage regardless of row count (a genuine zero
+            # is still a real, current answer) - but only when the call
+            # actually succeeded (api_count is None on failure, distinct from
+            # a real 0), so a transient failure doesn't overwrite a good
+            # prior count with a false "we checked and it's empty".
+            if api_count is not None:
+                store.upsert_country_coverage(conn, country=cc, victim_count=api_count, source="collector", now_iso=started)
 
         all_raw = recent + by_country
         match_keys_seen = []

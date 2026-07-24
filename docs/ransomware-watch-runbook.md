@@ -246,6 +246,18 @@ review found no reliable way to reconstruct which of the two collector
 ingestion paths (`/victims/recent` vs `/victims/?country=`) first surfaced
 each of the already-live 1,189 rows.
 
+## country_coverage (forward-compat table, no consumer yet)
+
+Created empty in v3.16.0 even though nothing reads it until a later release
+— the point is avoiding a schema migration against a much larger `victims`
+table by then. On every collector run, `run_victims_phase()` stamps one row
+per standing-scope country (`store.SEA_COUNTRIES`: PH, SG, MY, ID, TH, VN,
+HK, TW) with the API's own all-time `count` for that country filter,
+`last_fetched`, and `source='collector'`. A failed per-country call leaves
+the existing row untouched rather than overwriting a good prior count with a
+false "just checked, zero" — `victim_count`/`last_fetched` only update when
+the upstream call actually succeeds that run.
+
 ## Expected behavior: some groups have hundreds of mirror entries
 
 Observed live during development: `lockbit3` alone returned ~640 distinct

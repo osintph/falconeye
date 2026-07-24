@@ -116,6 +116,23 @@ def init_tables() -> None:
         conn.execute("CREATE INDEX IF NOT EXISTS idx_victims_discovered ON victims(discovered)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_victims_group ON victims(group_name)")
 
+        # Forward-compatibility table: created empty in v3.16.0, not consumed
+        # until a later release, specifically so that release doesn't need a
+        # schema migration against a by-then much larger victims table. The
+        # collector stamps one row per standing-scope country (SEA_COUNTRIES)
+        # on every run with source='collector', so a future per-country
+        # on-demand query can check here first before hitting an upstream.
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS country_coverage (
+              country TEXT PRIMARY KEY,
+              last_fetched TEXT NOT NULL,
+              victim_count INTEGER NOT NULL,
+              source TEXT NOT NULL
+            )
+            """
+        )
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS groups (
@@ -319,6 +336,18 @@ def upsert_victim(conn: sqlite3.Connection, *, group_name: str, victim_name: str
          info_count, info_json, safe_link, first_seen_via, now_iso, now_iso),
     )
     return vid
+
+
+def upsert_country_coverage(conn: sqlite3.Connection, *, country: str, victim_count: int, source: str, now_iso: str) -> None:
+    conn.execute(
+        """
+        INSERT INTO country_coverage (country, last_fetched, victim_count, source)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(country) DO UPDATE SET
+          last_fetched=excluded.last_fetched, victim_count=excluded.victim_count, source=excluded.source
+        """,
+        (country, now_iso, victim_count, source),
+    )
 
 
 def mark_corroborated(conn: sqlite3.Connection, match_keys, now_iso: str) -> None:
