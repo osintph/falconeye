@@ -36,3 +36,13 @@ TELEGRAM_SESSION_PATH = getenv_clean("TELEGRAM_SESSION_PATH")
 
 # Breach Check tab (Have I Been Pwned, Core 1 subscription).
 HIBP_API_KEY = getenv_clean("HIBP_API_KEY")
+
+# Ransomware Watch tab. The collector (app/collectors/ransomware_collect.py,
+# run by an out-of-repo systemd timer) is the only thing that ever calls
+# ransomware.live / RansomLook; the tab itself reads RANSOMWARE_DB only.
+RANSOMWARE_LIVE_API_KEY = getenv_clean("RANSOMWARE_LIVE_API_KEY")
+RANSOMWARE_DB = getenv_clean("RANSOMWARE_DB", "/opt/falconeye/data/ransomware.db")
+# PH-relevant search terms, one per line, '#' comments allowed. Kept outside
+# the git tree deliberately (see docs/ransomware-watch-runbook.md) since it's
+# operational config, not application code.
+RANSOMWARE_WATCHLIST_PATH = getenv_clean("RANSOMWARE_WATCHLIST_PATH", "/opt/falconeye/private/ransomware_watchlist.txt")

@@ -7,10 +7,12 @@
 //  with each other because none of them hand-maintains its own copy.
 //
 //  Grouping rationale (so a future edit can sanity-check against it): IDENTITY
-//  resolves a person/account, INFRASTRUCTURE resolves infrastructure, ARTIFACTS
-//  analyzes an artifact the investigator already has in hand, FINANCIAL is
-//  wallets/corporate, TOOLS is the research helper, and the two ungrouped
-//  pages (News, Contact) are non-investigation pages, placed last on purpose.
+//  resolves a person/account, INFRASTRUCTURE resolves infrastructure,
+//  THREAT-INTEL is standing situational awareness rather than a per-target
+//  lookup, ARTIFACTS analyzes an artifact the investigator already has in
+//  hand, FINANCIAL is wallets/corporate, TOOLS is the research helper, and
+//  the two ungrouped pages (News, Contact) are non-investigation pages,
+//  placed last on purpose.
 // ============================================================================
 
 const NAV_GROUPS = [
@@ -33,6 +35,10 @@ const NAV_GROUPS = [
       icon: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>' },
     { id: 'scanner', label: 'Phishing', desc: 'Fingerprint phishing kits, extract IOCs',
       icon: '<path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/><path d="M18 8v9a3 3 0 0 0 6 0v-1"/>' },
+  ]},
+  { key: 'threat-intel', label: 'Threat Intel', tabs: [
+    { id: 'ransomware', label: 'Ransomware Watch', desc: 'Global + PH/SEA ransomware victim tracking',
+      icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/>' },
   ]},
   { key: 'artifacts', label: 'Artifacts', tabs: [
     { id: 'qr', label: 'QR', desc: 'Decode QR codes from an image or data URI',
@@ -188,6 +194,7 @@ function showTab(tabName) {
 
   if (tabName === 'news') loadNews(currentNewsCategory);
   if (tabName === 'breach') loadBreachRecent();
+  if (tabName === 'ransomware') loadRansomwareTab();
 
   // v3.15.0 nav: the drawer isn't persistent on screen like the sidebar, so
   // keep the current tool's name visible in the mobile bar; and dismiss the
@@ -6105,3 +6112,533 @@ function renderBreachAllTable() {
   document.getElementById('breach-all-footer').innerHTML =
     `<p class="text-xs text-gray-500 mb-1">${rows.length} of ${breachAllData.length} breaches</p>${breachAttribution()}`;
 }
+
+// ============================================================================
+//  Ransomware Watch (v3.16.0). Reads app/ransomware/routes.py only — this tab
+//  never calls ransomware.live or RansomLook from the browser (see Part 1 of
+//  the v3.16.0 brief). Every panel carries its own "as of" / staleness line
+//  sourced from the collector_runs metadata each endpoint returns.
+// ============================================================================
+
+var RW_SEA_COUNTRIES = ['PH', 'SG', 'MY', 'ID', 'TH', 'VN', 'HK', 'TW'];
+
+// ISO 3166-1 numeric -> alpha-2, for joining our alpha-2-keyed victim counts
+// to the vendored topojson (whose feature ids are ISO numeric codes).
+var RW_ISO_NUMERIC_TO_ALPHA2 = {"004":"AF","008":"AL","010":"AQ","012":"DZ","016":"AS","020":"AD","024":"AO","028":"AG","031":"AZ","032":"AR","036":"AU","040":"AT","044":"BS","048":"BH","050":"BD","051":"AM","052":"BB","056":"BE","060":"BM","064":"BT","068":"BO","070":"BA","072":"BW","076":"BR","084":"BZ","086":"IO","090":"SB","092":"VG","096":"BN","100":"BG","104":"MM","108":"BI","112":"BY","116":"KH","120":"CM","124":"CA","132":"CV","136":"KY","140":"CF","144":"LK","148":"TD","152":"CL","156":"CN","158":"TW","170":"CO","174":"KM","178":"CG","180":"CD","184":"CK","188":"CR","191":"HR","192":"CU","196":"CY","203":"CZ","204":"BJ","208":"DK","212":"DM","214":"DO","218":"EC","222":"SV","226":"GQ","231":"ET","232":"ER","233":"EE","234":"FO","238":"FK","239":"GS","242":"FJ","246":"FI","248":"AX","250":"FR","258":"PF","260":"TF","262":"DJ","266":"GA","268":"GE","270":"GM","275":"PS","276":"DE","288":"GH","296":"KI","300":"GR","304":"GL","308":"GD","316":"GU","320":"GT","324":"GN","328":"GY","332":"HT","334":"HM","336":"VA","340":"HN","344":"HK","348":"HU","352":"IS","356":"IN","360":"ID","364":"IR","368":"IQ","372":"IE","376":"IL","380":"IT","384":"CI","388":"JM","392":"JP","398":"KZ","400":"JO","404":"KE","408":"KP","410":"KR","414":"KW","417":"KG","418":"LA","422":"LB","426":"LS","428":"LV","430":"LR","434":"LY","438":"LI","440":"LT","442":"LU","446":"MO","450":"MG","454":"MW","458":"MY","462":"MV","466":"ML","470":"MT","478":"MR","480":"MU","484":"MX","492":"MC","496":"MN","498":"MD","499":"ME","500":"MS","504":"MA","508":"MZ","512":"OM","516":"NA","520":"NR","524":"NP","528":"NL","531":"CW","533":"AW","534":"SX","540":"NC","548":"VU","554":"NZ","558":"NI","562":"NE","566":"NG","570":"NU","574":"NF","578":"NO","580":"MP","583":"FM","584":"MH","585":"PW","586":"PK","591":"PA","598":"PG","600":"PY","604":"PE","608":"PH","612":"PN","616":"PL","620":"PT","624":"GW","626":"TL","630":"PR","634":"QA","642":"RO","643":"RU","646":"RW","652":"BL","654":"SH","659":"KN","660":"AI","662":"LC","663":"MF","666":"PM","670":"VC","674":"SM","678":"ST","682":"SA","686":"SN","688":"RS","690":"SC","694":"SL","702":"SG","703":"SK","704":"VN","705":"SI","706":"SO","710":"ZA","716":"ZW","724":"ES","728":"SS","729":"SD","732":"EH","740":"SR","748":"SZ","752":"SE","756":"CH","760":"SY","762":"TJ","764":"TH","768":"TG","776":"TO","780":"TT","784":"AE","788":"TN","792":"TR","795":"TM","796":"TC","800":"UG","804":"UA","807":"MK","818":"EG","826":"GB","831":"GG","832":"JE","833":"IM","834":"TZ","840":"US","850":"VI","854":"BF","858":"UY","860":"UZ","862":"VE","876":"WF","882":"WS","887":"YE","894":"ZM"};
+
+async function rwFetch(path) {
+  try {
+    const resp = await fetch(path);
+    if (!resp.ok) return null;
+    return await resp.json();
+  } catch (e) {
+    console.error('Ransomware Watch fetch failed:', path, e);
+    return null;
+  }
+}
+
+function rwTimeAgo(iso) {
+  if (!iso) return 'unknown';
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return 'unknown';
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+var RW_PHASE_LABEL = {
+  victims_stats: 'Victims/press', group_activity: 'Group activity',
+  mirror_health: 'Leak site health', watchlist: 'Watchlist',
+};
+
+// meta is the panel's own response object - routes.py spreads phase metadata
+// (state/as_of/source_status/source_label/detail/last_attempted_at) onto the
+// top level of every endpoint's JSON, alongside that panel's own data.
+function rwAsOfLine(meta, label) {
+  if (!meta) return '';
+  if (meta.state === 'not_yet_collected') {
+    const attempted = meta.last_attempted_at
+      ? `Last attempted: ${rwTimeAgo(meta.last_attempted_at)}.`
+      : 'No collection has been attempted yet.';
+    return `<span class="text-gray-600">${escapeHtml(label)} &mdash; data collection has not run yet. ${attempted}</span>`;
+  }
+  const src = meta.source_label ? ` via ${escapeHtml(meta.source_label)}` : '';
+  if (meta.source_status === 'ok') {
+    return `<span>${escapeHtml(label)} as of ${rwTimeAgo(meta.as_of)}${src}</span>`;
+  }
+  const word = meta.source_status === 'degraded' ? 'degraded' : 'unavailable';
+  return `<span class="text-amber-500">${escapeHtml(label)} as of ${rwTimeAgo(meta.as_of)}${src} &mdash; ${word}${meta.detail ? ': ' + escapeHtml(meta.detail) : ''}</span>`;
+}
+
+async function loadRwStatusBanner() {
+  const banner = document.getElementById('rw-status-banner');
+  if (!banner) return;
+  const data = await rwFetch('/api/ransomware/status');
+  if (!data) {
+    banner.className = 'mb-4 bg-red-950 border border-red-800 rounded p-3 text-xs text-red-200';
+    banner.innerHTML = 'Could not reach the Ransomware Watch service.';
+    banner.classList.remove('hidden');
+    return;
+  }
+  if (data.state === 'not_yet_collected') {
+    const attempted = data.last_attempted_at
+      ? `Last attempted collection: ${rwTimeAgo(data.last_attempted_at)}.`
+      : 'No collection has been attempted yet.';
+    banner.className = 'mb-4 bg-gray-900 border border-gray-700 rounded p-3 text-xs text-gray-300';
+    banner.innerHTML = `<strong class="text-gray-200">Data collection has not run yet.</strong> Panels below will populate once the scheduled collector completes its first cycle. ${attempted}`;
+    banner.classList.remove('hidden');
+    return;
+  }
+  const degraded = Object.entries(data.phases || {})
+    .filter(([, m]) => m.source_status === 'degraded' || m.source_status === 'error');
+  if (degraded.length) {
+    const lines = degraded.map(([phase, m]) =>
+      `${RW_PHASE_LABEL[phase] || phase}: ${m.source_label || 'source'} ${m.source_status}, last good data ${m.as_of ? rwTimeAgo(m.as_of) : 'unknown'}`);
+    banner.className = 'mb-4 bg-amber-950 border border-amber-800 rounded p-3 text-xs text-amber-200';
+    banner.innerHTML = `<strong class="text-amber-300">Partial data.</strong> ${lines.map(escapeHtml).join(' &middot; ')}`;
+    banner.classList.remove('hidden');
+    return;
+  }
+  banner.classList.add('hidden');
+}
+
+// Part 6: every victim entry is a claim - this label is attached to each
+// individual card/row, not just a page-level footer.
+function rwClaimBadge(corroborated) {
+  if (corroborated) {
+    return `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-green-900 text-green-300" title="This victim listing appears independently in both ransomware.live and RansomLook. Still a claim, not a confirmed fact.">&check; Corroborated claim</span>`;
+  }
+  return `<span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-400" title="Reported by a single source. Not independently verified against the named organization.">&#9888; Single-source claim</span>`;
+}
+
+var _rwInfoSeq = 0;
+function rwInfostealerBadge(count, detail) {
+  if (!count) return '';
+  _rwInfoSeq += 1;
+  const id = `rw-info-${_rwInfoSeq}`;
+  const rows = [];
+  if (detail) {
+    if (detail.employees) rows.push(`Employees: ${detail.employees}${detail.last_employee_compromised ? ' (last seen ' + escapeHtml(String(detail.last_employee_compromised)) + ')' : ''}`);
+    if (detail.users) rows.push(`Users/customers: ${detail.users}${detail.last_user_compromised ? ' (last seen ' + escapeHtml(String(detail.last_user_compromised)) + ')' : ''}`);
+    if (detail.thirdparties) rows.push(`Third parties: ${detail.thirdparties}`);
+  }
+  const detailHtml = `<div id="${id}" class="hidden mt-1 text-[11px] text-gray-400 bg-gray-950 border border-gray-800 rounded p-2 space-y-0.5">
+    ${rows.map(r => `<div>${r}</div>`).join('') || '<div>No further breakdown available.</div>'}
+    <div class="text-gray-600">Source: Hudson Rock infostealer telemetry, via ransomware.live.</div>
+  </div>`;
+  return `<button type="button" class="rw-info-toggle text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-950 text-red-300 hover:bg-red-900 transition" data-target="${id}">${count} credential${count === 1 ? '' : 's'} exposed</button>${detailHtml}`;
+}
+
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.rw-info-toggle');
+  if (!btn) return;
+  const target = document.getElementById(btn.dataset.target);
+  if (target) target.classList.toggle('hidden');
+});
+
+// Defense-in-depth host check, mirroring store.safe_permalink() server-side -
+// this must only ever be ransomware.live's OWN link, never a leak-site URL.
+function rwSafePermalink(url) {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.protocol === 'https:' && (u.hostname === 'ransomware.live' || u.hostname === 'www.ransomware.live')) {
+      return url;
+    }
+  } catch (e) { /* fall through */ }
+  return null;
+}
+
+function rwPermalinkLink(permalink) {
+  const safe = rwSafePermalink(permalink);
+  if (!safe) return '';
+  return `<a href="${escapeAttr(safe)}" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline text-xs">ransomware.live &rarr;</a>`;
+}
+
+function rwVictimCard(v) {
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-3">
+    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mb-1.5">
+      <span class="font-bold text-gray-100">${escapeHtml(v.victim_name || 'unnamed')}</span>
+      <span class="text-gray-600">&middot;</span>
+      <span class="text-gray-300">${escapeHtml(v.group_name || 'unknown group')}</span>
+      <span class="text-gray-600">&middot;</span>
+      <span class="text-gray-400">${escapeHtml(v.country || 'unknown')}</span>
+      <span class="text-gray-600">&middot;</span>
+      <span class="text-gray-400">${escapeHtml(v.sector || 'unknown sector')}</span>
+      <span class="text-gray-600 text-xs ml-auto">${escapeHtml((v.discovered || '').slice(0, 10))}</span>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      ${rwClaimBadge(v.corroborated)}
+      ${rwInfostealerBadge(v.infostealer_count, v.infostealer_detail)}
+      ${rwPermalinkLink(v.permalink)}
+    </div>
+  </div>`;
+}
+
+function rwPhSeaRow(v) {
+  return `<tr class="border-b border-gray-900">
+    <td class="py-2 pr-3 text-gray-200">${escapeHtml(v.victim_name || 'unnamed')}</td>
+    <td class="py-2 pr-3 text-gray-300">${escapeHtml(v.group_name || 'unknown')}</td>
+    <td class="py-2 pr-3 text-gray-400">${escapeHtml(v.country || '')}</td>
+    <td class="py-2 pr-3 text-gray-400">${escapeHtml(v.sector || 'unknown')}</td>
+    <td class="py-2 pr-3 text-gray-500">${escapeHtml((v.discovered || '').slice(0, 10))}</td>
+    <td class="py-2 pr-3">${rwClaimBadge(v.corroborated)}</td>
+    <td class="py-2 pr-3">${rwPermalinkLink(v.permalink)}</td>
+  </tr>`;
+}
+
+function rwPhSeaBars(counts) {
+  if (!counts || !counts.length) return '<p class="text-xs text-gray-600">No data yet.</p>';
+  // Sorted by count so the PH-relative-to-neighbors comparison reads at a glance.
+  const sorted = [...counts].sort((a, b) => b.count - a.count);
+  const max = Math.max(1, ...sorted.map(c => c.count));
+  return sorted.map(c => `
+    <div class="flex items-center gap-2 mb-1.5">
+      <span class="w-9 text-xs text-gray-400 font-bold">${escapeHtml(c.country)}</span>
+      <div class="flex-1 bg-gray-900 rounded h-4 overflow-hidden">
+        <div class="bg-amber-500 h-4" style="width:${Math.max(2, Math.round(100 * c.count / max))}%"></div>
+      </div>
+      <span class="w-10 text-xs text-gray-300 text-right">${c.count}</span>
+    </div>`).join('') + '<p class="text-xs text-gray-600 mt-1">All-time tracked victims per country.</p>';
+}
+
+function rwPhSeaTrendTable(trend) {
+  if (!trend || !trend.length) return '<p class="text-xs text-gray-600">No trend data yet.</p>';
+  const months = [...new Set(trend.map(t => t.month))].sort();
+  const byKey = {};
+  trend.forEach(t => { byKey[`${t.month}|${t.country}`] = t.count; });
+  const header = `<tr class="text-gray-500 border-b border-gray-800"><th class="py-1 pr-2 text-left">Month</th>${RW_SEA_COUNTRIES.map(c => `<th class="py-1 px-2 text-right">${c}</th>`).join('')}</tr>`;
+  const rows = months.map(m => `<tr class="border-b border-gray-900"><td class="py-1 pr-2 text-gray-400">${escapeHtml(m)}</td>${RW_SEA_COUNTRIES.map(c => `<td class="py-1 px-2 text-right text-gray-300">${byKey[`${m}|${c}`] || 0}</td>`).join('')}</tr>`).join('');
+  return `<p class="text-xs text-gray-500 mb-1">Month-over-month (by discovery month)</p><div class="overflow-x-auto"><table class="w-full text-xs"><thead>${header}</thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function rwGroupsTbody(rows) {
+  if (!rows || !rows.length) return '<tr><td colspan="2" class="py-2 text-gray-600">No data.</td></tr>';
+  return rows.map(r => `<tr class="border-b border-gray-900">
+    <td class="py-1.5 pr-3 text-gray-300">${escapeHtml(r.group_name || 'unknown')}</td>
+    <td class="py-1.5 pr-3 text-gray-400">${r.post_count}</td>
+  </tr>`).join('');
+}
+
+function rwMirrorsList(groups) {
+  const names = Object.keys(groups || {}).sort();
+  if (!names.length) return '<p class="text-gray-500 text-sm">No mirror health data yet.</p>';
+  return names.map(name => {
+    const g = groups[name];
+    const chips = g.mirrors.map(m => {
+      const apiPart = m.uptime_30d != null ? `${m.uptime_30d}% (API, 30d)` : 'no API figure';
+      const compPart = m.uptime_computed != null ? ` &middot; ${m.uptime_computed}% (computed, ${m.computed_window_days}d)` : '';
+      return `<span class="inline-block bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-300 mr-1.5 mb-1.5">${escapeHtml(m.label)}: ${apiPart}${compPart}</span>`;
+    }).join('');
+    const hiddenNote = g.hidden_count ? `<span class="text-gray-600 text-[11px]">+${g.hidden_count} more mirror(s) with historical/offline entries, not shown</span>` : '';
+    return `<div class="bg-gray-900 border border-gray-800 rounded p-3">
+      <div class="font-bold text-gray-200 text-sm mb-1.5">${escapeHtml(name)}</div>
+      <div class="flex flex-wrap items-center">${chips}${hiddenNote}</div>
+    </div>`;
+  }).join('');
+}
+
+function rwTierBadge(tier) {
+  if (tier === 1) return '<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-950 text-amber-300">Tier 1</span>';
+  if (tier === 2) return '<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-500" title="Broad geographic term - logged for review only, never alerts">Tier 2</span>';
+  return '<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-600" title="Recorded before tiering existed">Legacy</span>';
+}
+
+function rwWatchlistTbody(hits) {
+  if (!hits || !hits.length) return '<tr><td colspan="5" class="py-2 text-gray-600">No hits yet.</td></tr>';
+  return hits.map(h => `<tr class="border-b border-gray-900${h.tier === 2 ? ' opacity-70' : ''}">
+    <td class="py-1.5 pr-3">${rwTierBadge(h.tier)}</td>
+    <td class="py-1.5 pr-3 text-gray-300">${escapeHtml(h.term)}</td>
+    <td class="py-1.5 pr-3 text-gray-400">${escapeHtml(h.match_type)}${h.matched_name ? ': ' + escapeHtml(h.matched_name) : ''}</td>
+    <td class="py-1.5 pr-3 text-gray-400">${escapeHtml(h.group_name || '')}</td>
+    <td class="py-1.5 pr-3 text-gray-500">${escapeHtml((h.found_at || '').slice(0, 16).replace('T', ' '))}</td>
+  </tr>`).join('');
+}
+
+// ---- World map (D3 choropleth, vendored topojson - see Part 1/5 of the brief) ----
+
+function rwCssVarRgb(name) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const parts = v.split(/\s+/).map(Number);
+  return parts.length === 3 && parts.every(n => !Number.isNaN(n)) ? parts : [107, 114, 128];
+}
+function rwCssVarRgbCss(name) { return `rgb(${rwCssVarRgb(name).join(' ')})`; }
+
+function rwMapColor(count, maxCount) {
+  if (!count) return rwCssVarRgbCss('--g800');
+  const t = maxCount > 0 ? Math.log(count + 1) / Math.log(maxCount + 1) : 0;
+  const lo = rwCssVarRgb('--am700');
+  const hi = rwCssVarRgb('--rd600');
+  const mix = lo.map((c, i) => Math.round(c + (hi[i] - c) * t));
+  return `rgb(${mix.join(' ')})`;
+}
+
+var _rwTopoCache = null;
+var _rwLastMapCounts = null;
+
+async function renderRansomwareMap(countries) {
+  _rwLastMapCounts = countries;
+  const container = document.getElementById('rw-map-container');
+  if (!container) return;
+  if (!countries || !countries.length) {
+    container.innerHTML = '<p class="text-gray-500 text-sm p-4">No geographic data yet.</p>';
+    return;
+  }
+  if (!window.d3 || !window.topojson) {
+    container.innerHTML = '<p class="text-gray-500 text-sm p-4">Map library did not load.</p>';
+    return;
+  }
+  if (!_rwTopoCache) {
+    try {
+      const resp = await fetch('/static/vendor/world-countries-50m.json');
+      _rwTopoCache = await resp.json();
+    } catch (e) {
+      container.innerHTML = '<p class="text-gray-500 text-sm p-4">Could not load map data.</p>';
+      return;
+    }
+  }
+  const topo = _rwTopoCache;
+  const geo = topojson.feature(topo, topo.objects.countries);
+
+  const counts = {};
+  let maxCount = 0;
+  for (const c of countries) {
+    counts[c.country] = c.count;
+    if (c.count > maxCount) maxCount = c.count;
+  }
+
+  const width = container.clientWidth || 800;
+  const height = 340;
+  container.innerHTML = '';
+  container.style.position = 'relative';
+
+  const svg = d3.select(container).append('svg')
+    .attr('viewBox', `0 0 ${width} ${height}`).attr('width', '100%').attr('height', '100%');
+  const projection = d3.geoNaturalEarth1().fitSize([width, height], geo);
+  const path = d3.geoPath(projection);
+
+  const tooltip = d3.select(container).append('div')
+    .style('position', 'absolute').style('pointer-events', 'none').style('opacity', 0)
+    .style('background', rwCssVarRgbCss('--g900')).style('color', rwCssVarRgbCss('--g100'))
+    .style('border', `1px solid ${rwCssVarRgbCss('--g700')}`).style('border-radius', '4px')
+    .style('padding', '4px 8px').style('font-size', '11px').style('z-index', 10).style('transition', 'opacity 0.1s');
+
+  svg.selectAll('path')
+    .data(geo.features)
+    .join('path')
+    .attr('d', path)
+    .attr('fill', d => {
+      const a2 = RW_ISO_NUMERIC_TO_ALPHA2[String(d.id).padStart(3, '0')];
+      return rwMapColor(a2 ? (counts[a2] || 0) : 0, maxCount);
+    })
+    .attr('stroke', rwCssVarRgbCss('--g950'))
+    .attr('stroke-width', 0.4)
+    .on('mousemove', function (event, d) {
+      const a2 = RW_ISO_NUMERIC_TO_ALPHA2[String(d.id).padStart(3, '0')];
+      const count = a2 ? (counts[a2] || 0) : 0;
+      const name = (d.properties && d.properties.name) || 'Unknown';
+      const rect = container.getBoundingClientRect();
+      tooltip.style('opacity', 1)
+        .html(`<strong>${escapeHtml(name)}</strong>: ${count} victim${count === 1 ? '' : 's'}`)
+        .style('left', (event.clientX - rect.left + 12) + 'px')
+        .style('top', (event.clientY - rect.top + 12) + 'px');
+    })
+    .on('mouseleave', () => tooltip.style('opacity', 0));
+
+  const legend = document.getElementById('rw-map-legend');
+  if (legend) {
+    legend.innerHTML = `<span>0</span><span class="inline-block w-24 h-2 rounded" style="background:linear-gradient(to right, ${rwCssVarRgbCss('--am700')}, ${rwCssVarRgbCss('--rd600')})"></span><span>${maxCount}</span><span class="text-gray-600 ml-2">victims, all-time observed</span>`;
+  }
+}
+
+// Re-render with cached data on theme toggle so map colors track the CSS vars.
+(function rwWireThemeMapRerender() {
+  const btn = document.getElementById('theme-toggle');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    if (_rwLastMapCounts) renderRansomwareMap(_rwLastMapCounts);
+  });
+})();
+
+// ---- panel loaders ----
+
+var _rwData = {};
+
+async function loadRwPulse() {
+  const el = document.getElementById('rw-pulse');
+  const asOf = document.getElementById('rw-pulse-asof');
+  const data = await rwFetch('/api/ransomware/pulse');
+  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.pulse = data;
+  if (data.state === 'not_yet_collected') {
+    el.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
+    asOf.innerHTML = rwAsOfLine(data, 'Global pulse');
+    return;
+  }
+  const tiles = [
+    ['Victims YTD', data.victims_ytd], ['Active groups (30d)', data.active_groups],
+    ['Countries hit', data.countries_hit], ['Total tracked', data.total_victims_tracked],
+  ];
+  el.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">${tiles.map(([label, val]) => `
+    <div class="bg-gray-900 border border-gray-800 rounded p-3 text-center">
+      <div class="text-2xl font-bold text-amber-400">${val == null ? '&mdash;' : val}</div>
+      <div class="text-xs text-gray-500 mt-1">${label}</div>
+    </div>`).join('')}</div>
+    ${data.infostealer_sample_line ? `<p class="text-xs text-gray-400 mt-3">${escapeHtml(data.infostealer_sample_line)}</p>` : ''}`;
+  asOf.innerHTML = rwAsOfLine(data, 'Global pulse');
+}
+
+async function loadRwMap() {
+  const asOf = document.getElementById('rw-map-asof');
+  const data = await rwFetch('/api/ransomware/map');
+  if (!data) return;
+  _rwData.map = data;
+  asOf.innerHTML = rwAsOfLine(data, 'World map');
+  await renderRansomwareMap(data.countries || []);
+}
+
+async function loadRwPhSea() {
+  const bars = document.getElementById('rw-phsea-bars');
+  const trend = document.getElementById('rw-phsea-trend');
+  const tbody = document.getElementById('rw-phsea-victims-tbody');
+  const asOf = document.getElementById('rw-phsea-asof');
+  const data = await rwFetch('/api/ransomware/ph-sea');
+  if (!data) { bars.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.phsea = data;
+  if (data.state === 'not_yet_collected') {
+    bars.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
+    asOf.innerHTML = rwAsOfLine(data, 'PH & SEA');
+    return;
+  }
+  bars.innerHTML = rwPhSeaBars(data.counts || []);
+  trend.innerHTML = rwPhSeaTrendTable(data.trend || []);
+  tbody.innerHTML = (data.victims || []).map(rwPhSeaRow).join('') || '<tr><td colspan="7" class="py-2 text-gray-600">No victims recorded yet.</td></tr>';
+  asOf.innerHTML = rwAsOfLine(data, 'PH & SEA');
+}
+
+async function loadRwLatest() {
+  const el = document.getElementById('rw-latest-list');
+  const asOf = document.getElementById('rw-latest-asof');
+  const data = await rwFetch('/api/ransomware/latest');
+  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.latest = data;
+  if (data.state === 'not_yet_collected') {
+    el.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
+    asOf.innerHTML = rwAsOfLine(data, 'Latest victims');
+    return;
+  }
+  el.innerHTML = (data.victims || []).map(rwVictimCard).join('') || '<p class="text-gray-500 text-sm">No victims recorded yet.</p>';
+  asOf.innerHTML = rwAsOfLine(data, 'Latest victims');
+}
+
+async function loadRwGroups() {
+  const t7 = document.getElementById('rw-groups-7d-tbody');
+  const t30 = document.getElementById('rw-groups-30d-tbody');
+  const asOf = document.getElementById('rw-groups-asof');
+  const data = await rwFetch('/api/ransomware/groups');
+  if (!data) return;
+  _rwData.groups = data;
+  t7.innerHTML = rwGroupsTbody(data.groups_7d);
+  t30.innerHTML = rwGroupsTbody(data.groups_30d);
+  asOf.innerHTML = rwAsOfLine(data, 'Group activity');
+}
+
+async function loadRwMirrors() {
+  const el = document.getElementById('rw-mirrors-list');
+  const asOf = document.getElementById('rw-mirrors-asof');
+  const data = await rwFetch('/api/ransomware/mirrors');
+  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.mirrors = data;
+  el.innerHTML = rwMirrorsList(data.groups);
+  asOf.innerHTML = rwAsOfLine(data, 'Leak site health');
+}
+
+async function loadRwWatchlist() {
+  const tbody = document.getElementById('rw-watchlist-tbody');
+  const asOf = document.getElementById('rw-watchlist-asof');
+  const data = await rwFetch('/api/ransomware/watchlist');
+  if (!data) return;
+  _rwData.watchlist = data;
+  tbody.innerHTML = rwWatchlistTbody(data.hits);
+  asOf.innerHTML = rwAsOfLine(data, 'Watchlist');
+}
+
+var _rwLastLoadedAt = 0;
+function loadRansomwareTab() {
+  const now = Date.now();
+  if (now - _rwLastLoadedAt < 2 * 60 * 1000) return; // avoid refetch spam on rapid tab switching
+  _rwLastLoadedAt = now;
+  loadRwStatusBanner();
+  loadRwPulse();
+  loadRwMap();
+  loadRwPhSea();
+  loadRwLatest();
+  loadRwGroups();
+  loadRwMirrors();
+  loadRwWatchlist();
+}
+
+// ---- PDF export ----
+
+function downloadRansomwarePdf() {
+  try {
+    if (!fePdfReady()) { alert('PDF library did not load — reload the page and try again.'); return; }
+    const st = fePdfNew();
+    const stamp = fePdfUtcStamp();
+    feBrandHeader(st, 'Ransomware Watch Report', [
+      'Generated ' + stamp,
+      'Every entry below is a claim posted by a ransomware group, not a confirmed fact. Verify independently before acting.',
+    ]);
+
+    const pulse = _rwData.pulse;
+    if (pulse && pulse.state !== 'not_yet_collected') {
+      feHeading(st, 'Global Pulse');
+      feKeyVal(st, 'Victims YTD', pulse.victims_ytd);
+      feKeyVal(st, 'Active groups (30d)', pulse.active_groups);
+      feKeyVal(st, 'Countries hit', pulse.countries_hit);
+      feKeyVal(st, 'Total tracked', pulse.total_victims_tracked);
+      if (pulse.infostealer_sample_line) feKeyVal(st, 'Credential exposure', pulse.infostealer_sample_line);
+    }
+
+    const phsea = _rwData.phsea;
+    if (phsea && phsea.state !== 'not_yet_collected' && (phsea.counts || []).length) {
+      feHeading(st, 'Philippines and Southeast Asia');
+      for (const c of phsea.counts) feKeyVal(st, c.country, String(c.count));
+    }
+
+    const latest = _rwData.latest;
+    if (latest && latest.state !== 'not_yet_collected' && (latest.victims || []).length) {
+      feHeading(st, 'Latest Victims (claims, not confirmed)');
+      for (const v of latest.victims.slice(0, 25)) {
+        const line = (v.victim_name || 'unknown') + ' - ' + (v.group_name || 'unknown group') + ' - ' +
+          (v.country || '?') + ' - ' + (v.discovered || '').slice(0, 10) +
+          (v.corroborated ? ' [corroborated]' : ' [single-source]');
+        feText(st, line, { size: 8.5, mono: true });
+      }
+    }
+
+    const groups = _rwData.groups;
+    if (groups && (groups.groups_7d || []).length) {
+      feHeading(st, 'Group Activity, 7 days');
+      for (const g of groups.groups_7d.slice(0, 15)) feKeyVal(st, g.group_name, String(g.post_count));
+    }
+
+    feFooterAll(st, [
+      'Victim/group/press data: ransomware.live (non-commercial attribution). Mirror/activity/watchlist data: RansomLook, CC BY 4.0.',
+      'Generated by FalconEye - falconeye.osintph.info - ' + stamp,
+    ]);
+
+    st.doc.save('falconeye-ransomware-watch-' + fePdfDate() + '.pdf');
+  } catch (e) {
+    console.error('Ransomware Watch PDF failed:', e);
+    alert('Could not generate the PDF: ' + e.message);
+  }
+}
+
+(function wireRansomwarePdfButton() {
+  const btn = document.getElementById('rw-pdf-btn');
+  if (btn) btn.addEventListener('click', downloadRansomwarePdf);
+})();

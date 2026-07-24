@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.15.3",
+    "softwareVersion": "3.16.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -146,7 +146,9 @@
     })();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.15.3" />
+  <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
+  <script src="/static/vendor/topojson-client.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css?v=3.16.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1053,6 +1055,119 @@
       </details>
     </div>
 
+    <!-- Ransomware Watch Tab (v3.16.0) -->
+    <div id="tab-ransomware" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Ransomware Watch</h2>
+      <p class="text-gray-400 text-sm mb-4">
+        Data sources: <a href="https://ransomware.live" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">ransomware.live</a>
+        and <a href="https://www.ransomlook.io" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">RansomLook</a>.
+        Collected on a schedule and served from a local cache &mdash; this tab never queries either service directly from your browser.
+      </p>
+
+      <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Every victim entry here is a claim, not a confirmed fact.</strong> Ransomware operators post victim names to leak sites to pressure payment. Neither ransomware.live nor RansomLook independently verifies these claims against the named organization, and neither do we. Treat every entry as an allegation to verify, never as proof.</div>
+      </div>
+
+      <div id="rw-status-banner" class="hidden mb-4"></div>
+
+      <!-- 1. Global pulse -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Global Pulse</h3>
+      <div id="rw-pulse" class="mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+      <p id="rw-pulse-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- 2. World map -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">World Map</h3>
+      <div id="rw-map-wrap" class="bg-gray-900 border border-gray-800 rounded p-2 mb-2">
+        <div id="rw-map-container" style="height:340px;"></div>
+      </div>
+      <div id="rw-map-legend" class="flex items-center gap-2 text-xs text-gray-500 mb-1"></div>
+      <p id="rw-map-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- 3. PH and SEA -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Philippines &amp; Southeast Asia</h3>
+      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count &mdash; where the Philippines sits relative to its neighbors is the finding worth seeing.</p>
+      <div id="rw-phsea-bars" class="mb-4"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+      <div id="rw-phsea-trend" class="mb-4"></div>
+      <div class="overflow-x-auto mb-1">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-gray-800">
+              <th class="py-2 pr-3">Victim</th>
+              <th class="py-2 pr-3">Group</th>
+              <th class="py-2 pr-3">Country</th>
+              <th class="py-2 pr-3">Sector</th>
+              <th class="py-2 pr-3">Date</th>
+              <th class="py-2 pr-3">Status</th>
+              <th class="py-2 pr-3">Link</th>
+            </tr>
+          </thead>
+          <tbody id="rw-phsea-victims-tbody"></tbody>
+        </table>
+      </div>
+      <p id="rw-phsea-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- 4. Latest victims, global -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Latest Victims, Global</h3>
+      <div id="rw-latest-list" class="space-y-2 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+      <p id="rw-latest-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- 5. Group activity -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Group Activity</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-1">
+        <div>
+          <p class="text-xs text-gray-500 mb-2">Last 7 days</p>
+          <table class="w-full text-xs">
+            <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
+            <tbody id="rw-groups-7d-tbody"></tbody>
+          </table>
+        </div>
+        <div>
+          <p class="text-xs text-gray-500 mb-2">Last 30 days</p>
+          <table class="w-full text-xs">
+            <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
+            <tbody id="rw-groups-30d-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+      <p id="rw-groups-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- 6. Leak site health -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Leak Site Health</h3>
+      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Mirrors are shown as positional labels only (Mirror 1, Mirror 2, &hellip;) &mdash; never a URL. Uptime marked "API" is RansomLook's own 30-day figure; uptime marked "computed" is derived locally from a longer observation window when one is available.</p>
+      <div id="rw-mirrors-list" class="space-y-3 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+      <p id="rw-mirrors-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- 8. Watchlist -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Watchlist</h3>
+      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Hits from RansomLook's search against a curated list of PH-relevant terms, checked on the same schedule as the rest of this tab. <strong class="text-gray-400">Tier 1</strong> is high-precision named organizations. <strong class="text-gray-400">Tier 2</strong> is broad geographic terms (philippines, manila, .ph, &hellip;) &mdash; logged here for manual review, deliberately noisier, and never feeds an alert.</p>
+      <div class="overflow-x-auto mb-1">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-gray-800">
+              <th class="py-2 pr-3">Tier</th>
+              <th class="py-2 pr-3">Term</th>
+              <th class="py-2 pr-3">Match</th>
+              <th class="py-2 pr-3">Group</th>
+              <th class="py-2 pr-3">Found</th>
+            </tr>
+          </thead>
+          <tbody id="rw-watchlist-tbody"></tbody>
+        </table>
+      </div>
+      <p id="rw-watchlist-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <div class="flex items-center gap-3 mb-4">
+        <button id="rw-pdf-btn" class="bg-gray-800 text-amber-300 border border-gray-700 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Download as PDF</button>
+      </div>
+
+      <p class="text-xs text-gray-500 border-t border-gray-800 pt-3">
+        Victim, group, and press data from <a href="https://ransomware.live" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">ransomware.live</a> (used under its non-commercial attribution terms).
+        Mirror health, group activity, threat actor, and watchlist data from <a href="https://www.ransomlook.io" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">RansomLook</a>, licensed CC BY 4.0.
+        FalconEye is a free, open-source, non-commercial project.
+      </p>
+    </div>
+
   </main>
     </div>
   </div>
@@ -1322,6 +1437,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.15.3"></script>
+  <script src="/static/app.js?v=3.16.0"></script>
 </body>
 </html>

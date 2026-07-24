@@ -5,6 +5,118 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.16.0] — 2026-07-24
+
+New tab: Ransomware Watch. Global ransomware victim tracking with a
+Philippines/Southeast Asia focus (PH, SG, MY, ID, TH, VN, HK, TW), built on
+ransomware.live PRO (`RANSOMWARE_LIVE_API_KEY`) and RansomLook (keyless).
+
+### Architecture
+
+The tab never calls either upstream from the browser. A new scheduled
+collector, `app/collectors/ransomware_collect.py`, is the sole caller — it
+writes to a dedicated SQLite database (`ransomware.db`, outside the git
+tree, same convention as `falconeye.db`) on a systemd timer (the first timer
+in this repo; unit/timer files are deployed outside the tree, see
+`docs/ransomware-watch-runbook.md`). `app/ransomware/routes.py` only reads
+that database. Victims/press/group-activity/watchlist refresh on a ~30
+minute jittered cadence; leak-site mirror health refreshes every ~6 hours,
+scoped to PH/SEA-relevant and globally active groups rather than RansomLook's
+full ~588-group roster, to stay a polite consumer of a free single-operator
+service. ransomware.live PRO 401/5xx falls back to its keyless v2 API rather
+than failing the tab; a RansomLook outage degrades only the panels sourced
+from it (group activity, mirror health, watchlist) while ransomware.live-
+sourced panels keep rendering. Every panel carries its own "data as of"
+timestamp and names which source is degraded/stale when applicable. A fresh
+or reset database renders an explicit "data collection has not run yet"
+state (with the last attempted run time, if any) rather than a hang or a
+500.
+
+### Credential handling
+
+RansomLook's mirror-health endpoint returns the raw mirror URL, and for some
+groups that URL embeds a live, working leak-site credential
+(`scheme://user:pass@host` — confirmed on a real group during development).
+The collector hashes the slug the instant it's received and never lets the
+raw string reach a variable that outlives that line — not the database, not
+a log line, not an exception message. `store.upsert_mirror()` independently
+refuses to persist anything that still matches a credential-bearing URI
+pattern, as a backstop against a future call site skipping the hash. The
+Leak Site Health panel shows positional labels only ("Mirror 1", "Mirror
+2", …), never a URL or hostname — some groups have hundreds of historical
+mirror entries (one observed with ~640), so the panel also ranks by uptime
+and caps what's shown rather than dumping the full list.
+
+### Panels
+
+Global pulse (victims YTD, active groups, countries hit, credential-exposure
+ratio across the most recent 100 victims), a world map choropleth (D3,
+already CSP-allowlisted since v3.5.2; topojson vendored locally, not a CDN),
+a PH/SEA regional comparison with month-over-month trend and full victim
+list, latest victims globally with cross-source corroboration flags, group
+activity straight from RansomLook's `/api/hot/{7,30}` (no local ranking
+logic), leak site health, and a PH-relevant watchlist (config file outside
+the git tree; terms under 2 characters are rejected before any outbound
+call). The Hudson Rock infostealer data ransomware.live embeds on victim
+records is a badge on each victim card ("N credentials exposed", expanding
+to detail on click) rather than a standalone panel, since it isn't a
+separate dataset.
+
+### UI requirements
+
+Every victim entry carries a claim/corroborated badge on its own card, not
+just a page footer — ransomware.live and RansomLook both track what's
+publicly claimed on a leak site, not what's confirmed by the named
+organization. Metadata only (victim name, group, country, sector, date) is
+persisted or rendered — no screenshots, no leak-site links, no raw mirror
+URLs. Dual attribution (ransomware.live's non-commercial terms, RansomLook's
+CC BY 4.0) appears as a tab subtitle, a footer on every result set, and in
+the PDF export. Light/dark parity via the existing CSS-variable theme system
+(the map recolors on theme toggle); sidebar + mobile drawer entry under a
+new "Threat Intel" nav group.
+
+### Watchlist: two tiers, not one flat list
+
+Split into `[tier1]` (high-precision named orgs — government/health where
+actual PH incidents have landed, financial institutions, major
+conglomerates/telecoms/infrastructure) and `[tier2]` (broad geographic terms:
+philippines, manila, cebu, davao, makati, .ph — logged for manual review,
+deliberately noisier, never alerts). `BDO Unibank` rather than bare `bdo`
+(also a global accounting network, confident false positives otherwise);
+bare `maya` dropped entirely (too common a word). `.ph` confirmed live
+against `/api/search?q=.ph` before inclusion — it does match domain
+fragments. `watchlist_hits` gained a `tier` column (additive migration,
+pre-existing hits keep `tier=NULL`, not backfilled) and the tab renders tier
+2 hits visibly distinct from tier 1.
+
+### Permalink
+
+Every victim entry now links out to ransomware.live's own hosted page for
+that claim (`victims.permalink`, from PRO's `permalink` field only — never
+`post_url`/`claim_url`/`url`, which are the raw leak-site address). Enforced
+with a host+scheme allowlist at write time (`store.safe_permalink()`) and
+again client-side before rendering, since a field that ever pointed at a
+leak site instead would be exactly the risk Part 6 exists to prevent.
+
+### Tests
+
+`tests/test_ransomware_collect.py`: the credential write-guard (both the
+hash-on-ingest path and a direct-insert rejection test, the latter verified
+red-before-green by temporarily disabling the guard), victim dedupe,
+cross-source corroboration, PRO 401 → v2 fallback with per-source
+degradation, a RansomLook outage leaving ransomware.live panels intact, cold
+database → explicit not-yet-collected state, the watchlist 2-character
+floor, that the API key never appears in a log line or response body under
+any failure path, watchlist tier persistence and the tier-header parsing
+guard, `first_seen_via` set-once-never-overwritten semantics and its
+no-backfill migration behavior against a pre-existing table, and that
+`safe_permalink()` accepts only `https://(www.)ransomware.live` and rejects
+everything else (including a real captured `.onion` leak-site address).
+HTTP calls are faked with `httpx.MockTransport` (already a dependency)
+rather than adding a mocking library.
+
+---
+
 ## [3.15.3] — 2026-07-23
 
 Two CSP directive fixes surfaced by real-browser console errors on the live
