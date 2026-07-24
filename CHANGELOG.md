@@ -5,6 +5,71 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.19.0] — 2026-07-24
+
+Ransomware Watch: time framing and a proper country selector.
+
+### Every number now states its window, in the heading
+
+Previously several panels showed a count with no stated window at all (the
+world map's "all-time observed" caption, the PH/SEA bar chart's "All-time
+tracked victims per country"), and two panels that looked like they shared a
+window actually didn't: the PH/SEA bar chart was genuinely all-time while
+the month-over-month table next to it was silently capped to the last 6
+months. Every panel heading now states its real window in the heading text
+itself, not a grey caption underneath: `{range label} ({start} to {end})`,
+e.g. "Last 12 months (2025-07-24 to 2026-07-24)". The one place this
+tab already showed something close to all-time — the Global Pulse "Total
+tracked" tile — keeps its all-time value but its label is now `All tracked
+victims, {start} to {end}` with a real lower bound, not the word "all-time"
+on its own. That lower bound is `MIN(discovered)` read from the local
+database, never a hardcoded date.
+
+### Tab-level time range selector
+
+One `<select>` (Last 30 days / Last 90 days / Last 12 months / Year to date
+/ All time) above the sub-view nav, applying to Global Pulse, the World Map,
+the PH/SEA bar chart + month table + victim list, Latest Victims, and
+Watchlist. Defaults to **Last 12 months**, not All — a group that died in
+2022 sitting in the same bar chart as one active this week flattens the
+thing actually worth seeing. Group Activity keeps its own fixed 7d/30d
+windows (that's what RansomLook's hot-groups endpoint hands the collector;
+there's no local data to reslice it from) but now shows its real computed
+dates too, independent of the selector. Leak Site Health is untouched — it's
+about current mirror uptime, not a victim count over time.
+
+Switching range never calls the backend: aggregate panels (pulse, map,
+PH/SEA counts + trend) get all 5 windows computed server-side in one
+response per panel load; list panels (Latest Victims, PH/SEA victims,
+Watchlist) ship one generously-capped row list that the frontend filters
+locally by `discovered`. The range persists in the URL hash alongside the
+sub-view (`#ransomware/{view}/{range}`), so a direct link or a page reload
+lands on the same window, not silently back on the default. "All time"
+double-checked to be byte-identical in coverage to the pre-v3.19.0
+unfiltered queries — including watchlist hits with no `discovered` date at
+all, which only "All time" can honestly include.
+
+Global Pulse's "Active groups" tile changes definition here, out of
+necessity: the old figure came from RansomLook's own 30-day hot list, which
+only exists at that one fixed granularity locally and can't be recomputed
+for "Last 90 days" or "Year to date." It's now "distinct groups with a
+victim discovered in the selected range," computed from FalconEye's own
+victims table — the only definition that's honestly reslice-able to an
+arbitrary local window. Group Activity's own top-10 table (a different,
+RansomLook-sourced ranking) is unaffected by this.
+
+### Country selector
+
+The Country Lookup quick-buttons-plus-input-plus-Check-button UI is now one
+`<select>`, two `<optgroup>`s ("Continuously monitored": PH/SG/MY/ID/TH/VN/
+HK/TW; "All countries": everything else), ISO code plus name. Selecting
+fires the lookup immediately. Country names are read from the same vendored
+topojson the World Map already uses, rather than hand-maintaining a second
+country list. The underlying hybrid logic (standing-scope countries never go
+upstream; others take the existing 24h-TTL on-demand path) is unchanged.
+
+---
+
 ## [3.18.0] — 2026-07-24
 
 Ransomware Watch: layout restructuring. Pure UI change — no data layer,

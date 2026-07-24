@@ -14,7 +14,7 @@ rather than an empty-but-normal-looking payload.
 import json
 import re
 import sqlite3
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
@@ -33,6 +33,38 @@ COUNTRY_ONDEMAND_PER_DAY = 100
 SEARCH_MIN_CHARS = 3
 SEARCH_PER_MINUTE = 10
 SEARCH_PER_HOUR = 100
+
+# v3.19.0 tab-level time range selector. Every listed panel (Part 1 of the
+# brief) is re-sliceable to any of these 5 windows with zero extra upstream
+# or backend calls: list-style panels (Latest Victims, PH/SEA victims,
+# Watchlist) ship one generously-capped row list that the frontend filters
+# locally by `discovered`; aggregate panels (Global Pulse, World Map, PH/SEA
+# counts + monthly trend) get all 5 windows computed server-side in one
+# response, since an aggregate can't be honestly recomputed client-side from
+# a capped row list without risking an undercount.
+RW_RANGE_KEYS = ("30d", "90d", "12mo", "ytd", "all")
+# Generous enough to cover the tab's full history today without real
+# pagination; revisit if total tracked victims grows well past this.
+RW_LIST_CAP = 2000
+RW_WATCHLIST_CAP = 1000
+
+
+def _range_bounds(conn: sqlite3.Connection) -> tuple[str, str, dict]:
+    """(data_start, as_of_date, bounds) - bounds maps each RW_RANGE_KEYS entry
+    to a (start, end) YYYY-MM-DD pair. data_start is the true MIN(discovered)
+    in the local DB (Part 1: "derive the lower bound... rather than
+    hardcoding it"), never a literal date constant."""
+    today = datetime.now(timezone.utc).date()
+    end = today.isoformat()
+    data_start = store.min_discovered_date(conn) or end
+    bounds = {
+        "30d": ((today - timedelta(days=30)).isoformat(), end),
+        "90d": ((today - timedelta(days=90)).isoformat(), end),
+        "12mo": ((today - timedelta(days=365)).isoformat(), end),
+        "ytd": (date(today.year, 1, 1).isoformat(), end),
+        "all": (data_start, end),
+    }
+    return data_start, end, bounds
 
 _PHASE_SOURCE_LABEL = {
     "ransomware_live": "ransomware.live",
@@ -82,7 +114,7 @@ def _cold_response(meta: dict, **extra) -> dict:
 async def pulse(request: Request, conn: sqlite3.Connection = Depends(_db)):
     meta = _phase_meta(conn, "victims_stats")
     if meta["state"] == "not_yet_collected":
-        return _cold_response(meta)
+        return _cold_response(meta, data_start=None, as_of_date=None, ranges={})
 
     stats = store.pulse_stats(conn)
     sample_n = stats["infostealer_sample_size"]
@@ -90,11 +122,16 @@ async def pulse(request: Request, conn: sqlite3.Connection = Depends(_db)):
     infostealer_line = (
         f"{sample_hits} of last {sample_n} victims show credential exposure" if sample_n else None
     )
+    data_start, as_of_date, bounds = _range_bounds(conn)
+    ranges = {}
+    for key, (start, end) in bounds.items():
+        range_stats = store.victims_stats_in_range(conn, start, end)
+        ranges[key] = {"start": start, "end": end, **range_stats}
     return {
         **meta,
-        "victims_ytd": stats["victims_ytd"],
-        "active_groups": stats["active_groups"],
-        "countries_hit": stats["countries_hit"],
+        "data_start": data_start,
+        "as_of_date": as_of_date,
+        "ranges": ranges,
         "total_victims_tracked": stats["total_victims_tracked"],
         "infostealer_sample_line": infostealer_line,
         "infostealer_sample_size": sample_n,
@@ -109,8 +146,13 @@ async def pulse(request: Request, conn: sqlite3.Connection = Depends(_db)):
 async def world_map(request: Request, conn: sqlite3.Connection = Depends(_db)):
     meta = _phase_meta(conn, "victims_stats")
     if meta["state"] == "not_yet_collected":
-        return _cold_response(meta, countries=[])
-    return {**meta, "countries": store.map_counts(conn)}
+        return _cold_response(meta, data_start=None, as_of_date=None, ranges={})
+    data_start, as_of_date, bounds = _range_bounds(conn)
+    ranges = {
+        key: {"start": start, "end": end, "countries": store.map_counts_in_range(conn, start, end)}
+        for key, (start, end) in bounds.items()
+    }
+    return {**meta, "data_start": data_start, "as_of_date": as_of_date, "ranges": ranges}
 
 
 # ---------- 3. PH and SEA ----------
@@ -120,12 +162,26 @@ async def world_map(request: Request, conn: sqlite3.Connection = Depends(_db)):
 async def ph_sea(request: Request, conn: sqlite3.Connection = Depends(_db)):
     meta = _phase_meta(conn, "victims_stats")
     if meta["state"] == "not_yet_collected":
-        return _cold_response(meta, counts=[], trend=[], victims=[])
+        return _cold_response(meta, data_start=None, as_of_date=None, ranges={}, victims=[])
+    data_start, as_of_date, bounds = _range_bounds(conn)
+    ranges = {}
+    for key, (start, end) in bounds.items():
+        ranges[key] = {
+            "start": start,
+            "end": end,
+            "counts": store.ph_sea_counts_in_range(conn, start, end),
+            "trend": store.ph_sea_monthly_trend_in_range(conn, start, end),
+        }
     return {
         **meta,
-        "counts": store.ph_sea_counts(conn),
-        "trend": store.ph_sea_monthly_trend(conn),
-        "victims": store.ph_sea_victims(conn),
+        "data_start": data_start,
+        "as_of_date": as_of_date,
+        "ranges": ranges,
+        # One shared, generously-capped row list (Part 3: "no upstream calls,
+        # no refetch on change") - the frontend filters this locally by
+        # `discovered` per selected range; the accurate per-range TOTAL comes
+        # from summing ranges[key].counts above, not len() of this list.
+        "victims": store.ph_sea_victims(conn, limit=RW_LIST_CAP),
     }
 
 
@@ -136,9 +192,16 @@ async def ph_sea(request: Request, conn: sqlite3.Connection = Depends(_db)):
 async def latest(request: Request, conn: sqlite3.Connection = Depends(_db)):
     meta = _phase_meta(conn, "victims_stats")
     if meta["state"] == "not_yet_collected":
-        return _cold_response(meta, victims=[])
+        return _cold_response(meta, data_start=None, as_of_date=None, ranges={}, victims=[])
 
-    rows = store.latest_victims(conn, limit=50)
+    data_start, as_of_date, bounds = _range_bounds(conn)
+    ranges = {key: {"start": start, "end": end} for key, (start, end) in bounds.items()}
+
+    # One shared, generously-capped row list, sorted discovered DESC - the
+    # frontend filters this locally per selected range (Part 3: zero refetch
+    # on range change). No per-range count needed server-side here since the
+    # cap comfortably covers the tab's full history today.
+    rows = store.latest_victims(conn, limit=RW_LIST_CAP)
     victims = []
     for r in rows:
         info = None
@@ -158,7 +221,7 @@ async def latest(request: Request, conn: sqlite3.Connection = Depends(_db)):
             "infostealer_detail": info,
             "permalink": r["permalink"],
         })
-    return {**meta, "victims": victims}
+    return {**meta, "data_start": data_start, "as_of_date": as_of_date, "ranges": ranges, "victims": victims}
 
 
 # ---------- 5. Group activity ----------
@@ -194,8 +257,20 @@ async def mirrors(request: Request, conn: sqlite3.Connection = Depends(_db)):
 async def watchlist(request: Request, conn: sqlite3.Connection = Depends(_db)):
     meta = _phase_meta(conn, "watchlist")
     if meta["state"] == "not_yet_collected":
-        return _cold_response(meta, hits=[])
-    return {**meta, "hits": store.watchlist_hits(conn)}
+        return _cold_response(meta, data_start=None, as_of_date=None, ranges={}, hits=[])
+    data_start, as_of_date, bounds = _range_bounds(conn)
+    ranges = {key: {"start": start, "end": end} for key, (start, end) in bounds.items()}
+    return {
+        **meta,
+        "data_start": data_start,
+        "as_of_date": as_of_date,
+        "ranges": ranges,
+        # Shared, generously-capped list; frontend filters by `discovered`
+        # locally per range. Hits with a NULL discovered (some watchlist
+        # matches aren't tied to a single named victim) are only shown under
+        # "all", matching pre-v3.19.0 behavior exactly for that range.
+        "hits": store.watchlist_hits(conn, limit=RW_WATCHLIST_CAP),
+    }
 
 
 # ---------- v3.17.0: country filter (hybrid: standing scope + TTL cache + on-demand) ----------

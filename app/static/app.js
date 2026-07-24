@@ -174,6 +174,22 @@ const DEFAULT_TAB = 'home';
 const RW_SUBVIEWS = ['overview', 'regional', 'feed', 'groups', 'watchlist'];
 const RW_DEFAULT_SUBVIEW = 'overview';
 
+// v3.19.0 tab-level time range selector. Same hoisting-safety reasoning as
+// RW_SUBVIEWS above - declared here because getRwRangeFromHash() is reached
+// synchronously from showTab() at the bottom of this routing block.
+const RW_RANGES = ['30d', '90d', '12mo', 'ytd', 'all'];
+const RW_DEFAULT_RANGE = '12mo';
+const RW_RANGE_LABELS = { '30d': 'Last 30 days', '90d': 'Last 90 days', '12mo': 'Last 12 months', 'ytd': 'Year to date', 'all': 'All time' };
+
+// Panel data cache (fetched once per load, re-rendered per range change
+// without a refetch) - declared here, not down with the rest of the
+// ransomware code, for the same hoisting reason as RW_SUBVIEWS/RW_RANGES
+// above: rwApplyRange() reads this synchronously from the initial
+// showTab(getTabFromHash()) call at the bottom of this file's routing
+// block, which runs before a `var` declared later would have its
+// assignment executed yet.
+var _rwData = {};
+
 function showTab(tabName) {
   if (!VALID_TABS.includes(tabName)) {
     tabName = DEFAULT_TAB;
@@ -203,7 +219,12 @@ function showTab(tabName) {
 
   if (tabName === 'news') loadNews(currentNewsCategory);
   if (tabName === 'breach') loadBreachRecent();
-  if (tabName === 'ransomware') { showRwSubview(getRwSubviewFromHash()); loadRansomwareTab(); }
+  if (tabName === 'ransomware') {
+    showRwSubview(getRwSubviewFromHash());
+    syncRwRangeSelect();
+    rwApplyRange(getRwRangeFromHash()); // re-render from cache if already loaded; no-op before first load
+    loadRansomwareTab();
+  }
 
   // v3.15.0 nav: the drawer isn't persistent on screen like the sidebar, so
   // keep the current tool's name visible in the mobile bar; and dismiss the
@@ -6148,6 +6169,17 @@ function getRwSubviewFromHash() {
   return RW_SUBVIEWS.includes(parts[1]) ? parts[1] : RW_DEFAULT_SUBVIEW;
 }
 
+// Third hash segment (#ransomware/{view}/{range}) - defaults to 12 months
+// (Part 3: "twelve months is the window that actually reflects current
+// activity"), including for pre-v3.19.0 bookmarks/links that only have
+// the view segment.
+function getRwRangeFromHash() {
+  const hash = window.location.hash.replace(/^#/, '').toLowerCase().trim();
+  const parts = hash.split('/');
+  if (parts[0] !== 'ransomware') return RW_DEFAULT_RANGE;
+  return RW_RANGES.includes(parts[2]) ? parts[2] : RW_DEFAULT_RANGE;
+}
+
 function showRwSubview(view) {
   if (!RW_SUBVIEWS.includes(view)) view = RW_DEFAULT_SUBVIEW;
   document.querySelectorAll('.rw-subview').forEach(el => {
@@ -6164,12 +6196,27 @@ function showRwSubview(view) {
   });
 }
 
+function syncRwRangeSelect() {
+  const sel = document.getElementById('rw-range-select');
+  if (sel) sel.value = getRwRangeFromHash();
+}
+
 function switchRwSubview(view) {
-  const targetHash = '#ransomware/' + view;
+  const targetHash = '#ransomware/' + view + '/' + getRwRangeFromHash();
   if (window.location.hash.toLowerCase() !== targetHash) {
     window.location.hash = targetHash; // hashchange -> showTab -> showRwSubview
   } else {
     showRwSubview(view);
+  }
+}
+
+function switchRwRange(range) {
+  if (!RW_RANGES.includes(range)) range = RW_DEFAULT_RANGE;
+  const targetHash = '#ransomware/' + getRwSubviewFromHash() + '/' + range;
+  if (window.location.hash.toLowerCase() !== targetHash) {
+    window.location.hash = targetHash; // hashchange -> showTab -> rwApplyRange (no fetch, loadRansomwareTab is throttled)
+  } else {
+    rwApplyRange(range);
   }
 }
 
@@ -6181,6 +6228,12 @@ function switchRwSubview(view) {
     if (!btn) return;
     switchRwSubview(btn.dataset.subview);
   });
+})();
+
+(function wireRwRangeSelect() {
+  const sel = document.getElementById('rw-range-select');
+  if (!sel) return;
+  sel.addEventListener('change', () => switchRwRange(sel.value));
 })();
 
 // ISO 3166-1 numeric -> alpha-2, for joining our alpha-2-keyed victim counts
@@ -6363,7 +6416,7 @@ function rwPhSeaBars(counts) {
         <div class="bg-amber-500 h-4" style="width:${Math.max(2, Math.round(100 * c.count / max))}%"></div>
       </div>
       <span class="w-10 text-xs text-gray-300 text-right">${c.count}</span>
-    </div>`).join('') + '<p class="text-xs text-gray-600 mt-1">All-time tracked victims per country.</p>';
+    </div>`).join('');
 }
 
 function rwPhSeaTrendTable(trend) {
@@ -6474,9 +6527,11 @@ function rwMapColor(count, maxCount) {
 
 var _rwTopoCache = null;
 var _rwLastMapCounts = null;
+var _rwLastMapRangeText = '';
 
-async function renderRansomwareMap(countries) {
+async function renderRansomwareMap(countries, rangeText) {
   _rwLastMapCounts = countries;
+  if (rangeText !== undefined) _rwLastMapRangeText = rangeText;
   const container = document.getElementById('rw-map-container');
   if (!container) return;
   if (!countries || !countries.length) {
@@ -6546,7 +6601,8 @@ async function renderRansomwareMap(countries) {
 
   const legend = document.getElementById('rw-map-legend');
   if (legend) {
-    legend.innerHTML = `<span>0</span><span class="inline-block w-24 h-2 rounded" style="background:linear-gradient(to right, ${rwCssVarRgbCss('--am700')}, ${rwCssVarRgbCss('--rd600')})"></span><span>${maxCount}</span><span class="text-gray-600 ml-2">victims, all-time observed</span>`;
+    const rangeText = _rwLastMapRangeText || 'selected range';
+    legend.innerHTML = `<span>0</span><span class="inline-block w-24 h-2 rounded" style="background:linear-gradient(to right, ${rwCssVarRgbCss('--am700')}, ${rwCssVarRgbCss('--rd600')})"></span><span>${maxCount}</span><span class="text-gray-600 ml-2">victims, ${escapeHtml(rangeText)}</span>`;
   }
 }
 
@@ -6555,68 +6611,120 @@ async function renderRansomwareMap(countries) {
   const btn = document.getElementById('theme-toggle');
   if (!btn) return;
   btn.addEventListener('click', () => {
-    if (_rwLastMapCounts) renderRansomwareMap(_rwLastMapCounts);
+    if (_rwLastMapCounts) renderRansomwareMap(_rwLastMapCounts, _rwLastMapRangeText);
   });
 })();
 
 // ---- panel loaders ----
+//
+// v3.19.0: every panel below now has a load*() (fetch once, cache to
+// _rwData, render) and a render*() (pure re-render from cache, no fetch)
+// pair. The tab-level range selector's onchange handler (rwApplyRange, near
+// loadRansomwareTab below) calls only the render*() half - switching range
+// never re-fetches (Part 3's "no upstream calls, no refetch on change").
+// _rwData itself is declared near RW_SUBVIEWS/RW_RANGES at the top of this
+// file, not here - see the comment there (rwApplyRange is reached
+// synchronously from the initial showTab() call before this line runs).
 
-var _rwData = {};
+function currentRwRange() {
+  return getRwRangeFromHash();
+}
 
-async function loadRwPulse() {
+// "Last 12 months (2025-07-24 to 2026-07-24)" - the one shared format used
+// in every range-scoped heading (Part 1), so a bar chart and the table next
+// to it always show the identical string when they're on the same window.
+function rwFormatRangeLabel(range, start, end) {
+  const label = RW_RANGE_LABELS[range] || range;
+  if (!start || !end) return label;
+  return `${label} (${start} to ${end})`;
+}
+
+function rwSetRangeLabel(elId, range, bucket) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.textContent = (bucket && bucket.start) ? `— ${rwFormatRangeLabel(range, bucket.start, bucket.end)}` : '';
+}
+
+function rwDiscoveredInRange(discovered, start, end) {
+  if (!discovered) return false;
+  const d = discovered.slice(0, 10);
+  return d >= start && d <= end;
+}
+
+function renderRwPulse(data, range) {
   const el = document.getElementById('rw-pulse');
   const asOf = document.getElementById('rw-pulse-asof');
-  const data = await rwFetch('/api/ransomware/pulse');
-  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
-  _rwData.pulse = data;
+  if (!data) return;
   if (data.state === 'not_yet_collected') {
     el.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
     asOf.innerHTML = rwAsOfLine(data, 'Global pulse');
+    rwSetRangeLabel('rw-pulse-range-label', range, null);
     return;
   }
+  const bucket = (data.ranges && data.ranges[range]) || {};
+  rwSetRangeLabel('rw-pulse-range-label', range, bucket);
+  const allTimeLabel = `All tracked victims, ${data.data_start || '?'} to ${data.as_of_date || '?'}`;
   const tiles = [
-    ['Victims YTD', data.victims_ytd], ['Active groups (30d)', data.active_groups],
-    ['Countries hit', data.countries_hit], ['Total tracked', data.total_victims_tracked],
+    ['Victims', bucket.victims], ['Active groups', bucket.active_groups],
+    ['Countries hit', bucket.countries_hit], [allTimeLabel, data.total_victims_tracked],
   ];
   el.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">${tiles.map(([label, val]) => `
     <div class="bg-gray-900 border border-gray-800 rounded p-3 text-center">
       <div class="text-2xl font-bold text-amber-400">${val == null ? '&mdash;' : val}</div>
-      <div class="text-xs text-gray-500 mt-1">${label}</div>
+      <div class="text-xs text-gray-500 mt-1">${escapeHtml(label)}</div>
     </div>`).join('')}</div>
     ${data.infostealer_sample_line ? `<p class="text-xs text-gray-400 mt-3">${escapeHtml(data.infostealer_sample_line)}</p>` : ''}`;
   asOf.innerHTML = rwAsOfLine(data, 'Global pulse');
 }
 
-async function loadRwMap() {
+async function loadRwPulse() {
+  const el = document.getElementById('rw-pulse');
+  const data = await rwFetch('/api/ransomware/pulse');
+  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.pulse = data;
+  renderRwPulse(data, currentRwRange());
+}
+
+function renderRwMap(data, range) {
   const asOf = document.getElementById('rw-map-asof');
+  if (!data) return;
+  asOf.innerHTML = rwAsOfLine(data, 'World map');
+  const bucket = (data.ranges && data.ranges[range]) || {};
+  rwSetRangeLabel('rw-map-range-label', range, bucket);
+  const rangeText = bucket.start ? rwFormatRangeLabel(range, bucket.start, bucket.end) : 'selected range';
+  renderRansomwareMap(bucket.countries || [], rangeText);
+}
+
+async function loadRwMap() {
   const data = await rwFetch('/api/ransomware/map');
   if (!data) return;
   _rwData.map = data;
-  asOf.innerHTML = rwAsOfLine(data, 'World map');
-  await renderRansomwareMap(data.countries || []);
+  renderRwMap(data, currentRwRange());
 }
 
 var RW_PHSEA_VICTIMS_INITIAL = 15;
 var RW_LATEST_VICTIMS_INITIAL = 15;
 
-async function loadRwPhSea() {
+function renderRwPhSea(data, range) {
   const bars = document.getElementById('rw-phsea-bars');
   const trend = document.getElementById('rw-phsea-trend');
   const tbody = document.getElementById('rw-phsea-victims-tbody');
   const showMoreBtn = document.getElementById('rw-phsea-showmore');
   const asOf = document.getElementById('rw-phsea-asof');
-  const data = await rwFetch('/api/ransomware/ph-sea');
-  if (!data) { bars.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
-  _rwData.phsea = data;
+  if (!data) return;
   if (data.state === 'not_yet_collected') {
     bars.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
     showMoreBtn.classList.add('hidden');
     asOf.innerHTML = rwAsOfLine(data, 'PH & SEA');
+    rwSetRangeLabel('rw-phsea-range-label', range, null);
     return;
   }
-  bars.innerHTML = rwPhSeaBars(data.counts || []);
-  trend.innerHTML = rwPhSeaTrendTable(data.trend || []);
-  const victims = data.victims || [];
+  const bucket = (data.ranges && data.ranges[range]) || {};
+  rwSetRangeLabel('rw-phsea-range-label', range, bucket);
+  bars.innerHTML = rwPhSeaBars(bucket.counts || []);
+  trend.innerHTML = rwPhSeaTrendTable(bucket.trend || []);
+  const allVictims = data.victims || [];
+  const victims = bucket.start ? allVictims.filter(v => rwDiscoveredInRange(v.discovered, bucket.start, bucket.end)) : allVictims;
   if (!victims.length) {
     tbody.innerHTML = '<tr><td colspan="7" class="py-2 text-gray-600">No victims recorded yet.</td></tr>';
     showMoreBtn.classList.add('hidden');
@@ -6626,20 +6734,30 @@ async function loadRwPhSea() {
   asOf.innerHTML = rwAsOfLine(data, 'PH & SEA');
 }
 
-async function loadRwLatest() {
+async function loadRwPhSea() {
+  const bars = document.getElementById('rw-phsea-bars');
+  const data = await rwFetch('/api/ransomware/ph-sea');
+  if (!data) { bars.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.phsea = data;
+  renderRwPhSea(data, currentRwRange());
+}
+
+function renderRwLatest(data, range) {
   const el = document.getElementById('rw-latest-list');
   const showMoreBtn = document.getElementById('rw-latest-showmore');
   const asOf = document.getElementById('rw-latest-asof');
-  const data = await rwFetch('/api/ransomware/latest');
-  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
-  _rwData.latest = data;
+  if (!data) return;
   if (data.state === 'not_yet_collected') {
     el.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
     showMoreBtn.classList.add('hidden');
     asOf.innerHTML = rwAsOfLine(data, 'Latest victims');
+    rwSetRangeLabel('rw-latest-range-label', range, null);
     return;
   }
-  const victims = data.victims || [];
+  const bucket = (data.ranges && data.ranges[range]) || {};
+  rwSetRangeLabel('rw-latest-range-label', range, bucket);
+  const allVictims = data.victims || [];
+  const victims = bucket.start ? allVictims.filter(v => rwDiscoveredInRange(v.discovered, bucket.start, bucket.end)) : allVictims;
   if (!victims.length) {
     el.innerHTML = '<p class="text-gray-500 text-sm">No victims recorded yet.</p>';
     showMoreBtn.classList.add('hidden');
@@ -6649,21 +6767,51 @@ async function loadRwLatest() {
   asOf.innerHTML = rwAsOfLine(data, 'Latest victims');
 }
 
-async function loadRwGroups() {
+async function loadRwLatest() {
+  const el = document.getElementById('rw-latest-list');
+  const data = await rwFetch('/api/ransomware/latest');
+  if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
+  _rwData.latest = data;
+  renderRwLatest(data, currentRwRange());
+}
+
+// Group Activity keeps its own fixed 7d/30d windows regardless of the
+// tab-level range selector (Part 1 still requires real dates in the
+// heading, just not driven by the selector - RansomLook only ever hands the
+// collector these two fixed windows, so there's no local data to reslice a
+// "last 90 days" group-activity ranking from).
+function rwDateNDaysAgo(anchorIso, days) {
+  const anchor = anchorIso ? new Date(anchorIso) : new Date();
+  if (Number.isNaN(anchor.getTime())) return null;
+  return new Date(anchor.getTime() - days * 86400000).toISOString().slice(0, 10);
+}
+
+function renderRwGroups(data) {
   const t7 = document.getElementById('rw-groups-7d-tbody');
   const t30 = document.getElementById('rw-groups-30d-tbody');
   const more7 = document.getElementById('rw-groups-7d-more');
   const more30 = document.getElementById('rw-groups-30d-more');
   const asOf = document.getElementById('rw-groups-asof');
-  const data = await rwFetch('/api/ransomware/groups');
+  const label7 = document.getElementById('rw-groups-7d-range-label');
+  const label30 = document.getElementById('rw-groups-30d-range-label');
   if (!data) return;
-  _rwData.groups = data;
   const g7 = data.groups_7d || [], g30 = data.groups_30d || [];
   t7.innerHTML = rwGroupsTbody(g7);
   t30.innerHTML = rwGroupsTbody(g30);
   more7.textContent = g7.length > RW_GROUP_ACTIVITY_CAP ? `+${g7.length - RW_GROUP_ACTIVITY_CAP} more not shown` : '';
   more30.textContent = g30.length > RW_GROUP_ACTIVITY_CAP ? `+${g30.length - RW_GROUP_ACTIVITY_CAP} more not shown` : '';
+  const anchor = data.as_of || null;
+  const end = (anchor || new Date().toISOString()).slice(0, 10);
+  if (label7) { const s = rwDateNDaysAgo(anchor, 7); label7.textContent = s ? `(${s} to ${end})` : ''; }
+  if (label30) { const s = rwDateNDaysAgo(anchor, 30); label30.textContent = s ? `(${s} to ${end})` : ''; }
   asOf.innerHTML = rwAsOfLine(data, 'Group activity');
+}
+
+async function loadRwGroups() {
+  const data = await rwFetch('/api/ransomware/groups');
+  if (!data) return;
+  _rwData.groups = data;
+  renderRwGroups(data);
 }
 
 async function loadRwMirrors() {
@@ -6680,18 +6828,22 @@ async function loadRwMirrors() {
   asOf.innerHTML = rwAsOfLine(data, 'Leak site health');
 }
 
-async function loadRwWatchlist() {
+function renderRwWatchlist(data, range) {
   const tier1Tbody = document.getElementById('rw-watchlist-tier1-tbody');
   const tier2Tbody = document.getElementById('rw-watchlist-tier2-tbody');
   const tier2Toggle = document.getElementById('rw-watchlist-tier2-toggle');
   const asOf = document.getElementById('rw-watchlist-asof');
-  const data = await rwFetch('/api/ransomware/watchlist');
   if (!data) return;
-  _rwData.watchlist = data;
-  const hits = data.hits || [];
-  // Legacy (pre-tiering, tier is NULL) hits are rare and shown alongside
-  // tier 1 - they're not the noisy broad-term case tier 2 collapsing exists
-  // for, and a hit that predates tiering shouldn't disappear from view.
+  const bucket = (data.ranges && data.ranges[range]) || {};
+  rwSetRangeLabel('rw-watchlist-range-label', range, bucket);
+  const allHits = data.hits || [];
+  // "all" keeps every hit including those with no discovered date (some
+  // watchlist matches aren't tied to a single named victim) - identical to
+  // pre-v3.19.0 coverage. Narrower ranges can only honestly include hits
+  // with a discovered date that actually falls inside the window.
+  const hits = (bucket.start && range !== 'all')
+    ? allHits.filter(h => rwDiscoveredInRange(h.discovered, bucket.start, bucket.end))
+    : allHits;
   const tier1 = hits.filter(h => h.tier !== 2);
   const tier2 = hits.filter(h => h.tier === 2);
   tier1Tbody.innerHTML = tier1.map(rwWatchlistRow).join('') || '<tr><td colspan="4" class="py-2 text-gray-600">No hits yet.</td></tr>';
@@ -6700,12 +6852,31 @@ async function loadRwWatchlist() {
   asOf.innerHTML = rwAsOfLine(data, 'Watchlist');
 }
 
+async function loadRwWatchlist() {
+  const data = await rwFetch('/api/ransomware/watchlist');
+  if (!data) return;
+  _rwData.watchlist = data;
+  renderRwWatchlist(data, currentRwRange());
+}
+
 (function wireRwWatchlistTier2Toggle() {
   const btn = document.getElementById('rw-watchlist-tier2-toggle');
   const wrap = document.getElementById('rw-watchlist-tier2-wrap');
   if (!btn || !wrap) return;
   btn.addEventListener('click', () => wrap.classList.toggle('hidden'));
 })();
+
+// Range-change handler: re-renders every already-fetched panel against the
+// newly selected range. Deliberately does NOT call rwFetch anywhere - the
+// panels' load*() functions (called once by loadRansomwareTab below) are
+// the only place that talks to the network.
+function rwApplyRange(range) {
+  if (_rwData.pulse) renderRwPulse(_rwData.pulse, range);
+  if (_rwData.map) renderRwMap(_rwData.map, range);
+  if (_rwData.phsea) renderRwPhSea(_rwData.phsea, range);
+  if (_rwData.latest) renderRwLatest(_rwData.latest, range);
+  if (_rwData.watchlist) renderRwWatchlist(_rwData.watchlist, range);
+}
 
 var _rwLastLoadedAt = 0;
 function loadRansomwareTab() {
@@ -6734,26 +6905,35 @@ function downloadRansomwarePdf() {
       'Every entry below is a claim posted by a ransomware group, not a confirmed fact. Verify independently before acting.',
     ]);
 
+    const range = currentRwRange();
+    const rangeLabel = RW_RANGE_LABELS[range] || range;
+
     const pulse = _rwData.pulse;
     if (pulse && pulse.state !== 'not_yet_collected') {
-      feHeading(st, 'Global Pulse');
-      feKeyVal(st, 'Victims YTD', pulse.victims_ytd);
-      feKeyVal(st, 'Active groups (30d)', pulse.active_groups);
-      feKeyVal(st, 'Countries hit', pulse.countries_hit);
-      feKeyVal(st, 'Total tracked', pulse.total_victims_tracked);
+      const bucket = (pulse.ranges && pulse.ranges[range]) || {};
+      feHeading(st, 'Global Pulse (' + rangeLabel + (bucket.start ? ', ' + bucket.start + ' to ' + bucket.end : '') + ')');
+      feKeyVal(st, 'Victims', bucket.victims);
+      feKeyVal(st, 'Active groups', bucket.active_groups);
+      feKeyVal(st, 'Countries hit', bucket.countries_hit);
+      feKeyVal(st, 'All tracked victims, ' + (pulse.data_start || '?') + ' to ' + (pulse.as_of_date || '?'), pulse.total_victims_tracked);
       if (pulse.infostealer_sample_line) feKeyVal(st, 'Credential exposure', pulse.infostealer_sample_line);
     }
 
     const phsea = _rwData.phsea;
-    if (phsea && phsea.state !== 'not_yet_collected' && (phsea.counts || []).length) {
-      feHeading(st, 'Philippines and Southeast Asia');
-      for (const c of phsea.counts) feKeyVal(st, c.country, String(c.count));
+    const phseaBucket = phsea && phsea.ranges ? phsea.ranges[range] : null;
+    if (phsea && phsea.state !== 'not_yet_collected' && phseaBucket && (phseaBucket.counts || []).length) {
+      feHeading(st, 'Philippines and Southeast Asia (' + rangeLabel + ', ' + phseaBucket.start + ' to ' + phseaBucket.end + ')');
+      for (const c of phseaBucket.counts) feKeyVal(st, c.country, String(c.count));
     }
 
     const latest = _rwData.latest;
-    if (latest && latest.state !== 'not_yet_collected' && (latest.victims || []).length) {
-      feHeading(st, 'Latest Victims (claims, not confirmed)');
-      for (const v of latest.victims.slice(0, 25)) {
+    const latestBucket = latest && latest.ranges ? latest.ranges[range] : null;
+    const latestVictims = latest && latestBucket && latestBucket.start
+      ? (latest.victims || []).filter(v => rwDiscoveredInRange(v.discovered, latestBucket.start, latestBucket.end))
+      : (latest ? (latest.victims || []) : []);
+    if (latest && latest.state !== 'not_yet_collected' && latestVictims.length) {
+      feHeading(st, 'Latest Victims (claims, not confirmed) - ' + rangeLabel);
+      for (const v of latestVictims.slice(0, 25)) {
         const line = (v.victim_name || 'unknown') + ' - ' + (v.group_name || 'unknown group') + ' - ' +
           (v.country || '?') + ' - ' + (v.discovered || '').slice(0, 10) +
           (v.corroborated ? ' [corroborated]' : ' [single-source]');
@@ -6897,24 +7077,61 @@ async function runRwCountryLookup(cc) {
   tbody.innerHTML = data.victims.map(rwPhSeaRow).join('');
 }
 
-(function wireRwCountryLookup() {
-  const quickWrap = document.getElementById('rw-country-quick-sea');
-  const input = document.getElementById('rw-country-input');
-  const btn = document.getElementById('rw-country-btn');
-  if (!quickWrap || !input || !btn) return;
+// v3.19.0: single <select> replaces the old quick-buttons + text input +
+// Check button. Two <optgroup>s (Continuously monitored / All countries),
+// ISO code plus name; selecting fires the lookup immediately. Names are
+// pulled from the same vendored topojson the World Map already uses (via
+// RW_ISO_NUMERIC_TO_ALPHA2) rather than hand-maintaining a second country
+// list - falls back to the code alone if the topojson fetch ever fails, so
+// the monitored group (the one item 4 requires to always work) still
+// degrades to something usable.
+var RW_SEA_COUNTRY_FALLBACK_NAMES = {
+  PH: 'Philippines', SG: 'Singapore', MY: 'Malaysia', ID: 'Indonesia',
+  TH: 'Thailand', VN: 'Vietnam', HK: 'Hong Kong', TW: 'Taiwan',
+};
 
-  quickWrap.innerHTML = RW_SEA_COUNTRIES.map(cc =>
-    `<button type="button" class="rw-country-quick-btn bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-2.5 py-1 rounded transition" data-cc="${cc}">${cc}</button>`
+async function rwEnsureTopoLoaded() {
+  if (_rwTopoCache) return _rwTopoCache;
+  try {
+    const resp = await fetch('/static/vendor/world-countries-50m.json');
+    _rwTopoCache = await resp.json();
+  } catch (e) { /* leave null - callers degrade gracefully */ }
+  return _rwTopoCache;
+}
+
+async function rwBuildCountrySelectOptions() {
+  const select = document.getElementById('rw-country-select');
+  if (!select) return;
+  const topo = await rwEnsureTopoLoaded();
+  const names = {};
+  if (topo && topo.objects && topo.objects.countries) {
+    for (const geom of topo.objects.countries.geometries) {
+      const a2 = RW_ISO_NUMERIC_TO_ALPHA2[String(geom.id).padStart(3, '0')];
+      const name = geom.properties && geom.properties.name;
+      if (a2 && name) names[a2] = name;
+    }
+  }
+  const monitoredHtml = RW_SEA_COUNTRIES.map(cc =>
+    `<option value="${cc}">${escapeHtml(cc)} — ${escapeHtml(names[cc] || RW_SEA_COUNTRY_FALLBACK_NAMES[cc] || cc)}</option>`
   ).join('');
+  const otherCodes = Object.keys(names)
+    .filter(cc => !RW_SEA_COUNTRIES.includes(cc))
+    .sort((a, b) => names[a].localeCompare(names[b]));
+  const othersHtml = otherCodes.map(cc =>
+    `<option value="${cc}">${escapeHtml(cc)} — ${escapeHtml(names[cc])}</option>`
+  ).join('');
+  const current = select.value;
+  select.innerHTML = '<option value="">Select a country&hellip;</option>' +
+    `<optgroup label="Continuously monitored">${monitoredHtml}</optgroup>` +
+    `<optgroup label="All countries">${othersHtml}</optgroup>`;
+  if (current) select.value = current;
+}
 
-  quickWrap.addEventListener('click', (e) => {
-    const b = e.target.closest('.rw-country-quick-btn');
-    if (!b) return;
-    input.value = b.dataset.cc;
-    runRwCountryLookup(b.dataset.cc);
-  });
-  btn.addEventListener('click', () => runRwCountryLookup(input.value));
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') runRwCountryLookup(input.value);
+(function wireRwCountryLookup() {
+  const select = document.getElementById('rw-country-select');
+  if (!select) return;
+  rwBuildCountrySelectOptions();
+  select.addEventListener('change', () => {
+    if (select.value) runRwCountryLookup(select.value);
   });
 })();

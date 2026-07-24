@@ -494,16 +494,12 @@ def has_any_data(conn: sqlite3.Connection) -> bool:
 
 
 def pulse_stats(conn: sqlite3.Connection) -> dict:
-    year = conn.execute("SELECT strftime('%Y', 'now')").fetchone()[0]
-    ytd = conn.execute(
-        "SELECT COUNT(*) FROM victims WHERE substr(discovered, 1, 4) = ?", (year,)
-    ).fetchone()[0]
-    active_groups = conn.execute(
-        "SELECT COUNT(DISTINCT group_name) FROM groups WHERE window_days = 30"
-    ).fetchone()[0]
-    countries_hit = conn.execute(
-        "SELECT COUNT(DISTINCT country) FROM victims WHERE country IS NOT NULL AND country != ''"
-    ).fetchone()[0]
+    """All-time / range-independent figures only. Victims/active-groups/
+    countries-hit moved to victims_stats_in_range() (v3.19.0) so they can be
+    recomputed locally for any of the tab's 5 selectable ranges - total
+    tracked and the infostealer sample are deliberately NOT range-scoped
+    (Total tracked is the tab's one permanently-all-time figure; the
+    infostealer sample is "last 100 victims", not a date window)."""
     total_recent = conn.execute("SELECT COUNT(*) FROM victims").fetchone()[0]
 
     recent_100 = conn.execute(
@@ -513,45 +509,73 @@ def pulse_stats(conn: sqlite3.Connection) -> dict:
     with_infostealer = sum(1 for r in recent_100 if r["infostealer_count"] > 0)
 
     return {
-        "victims_ytd": ytd,
-        "active_groups": active_groups,
-        "countries_hit": countries_hit,
         "total_victims_tracked": total_recent,
         "infostealer_sample_size": sample_n,
         "infostealer_sample_hits": with_infostealer,
     }
 
 
-def map_counts(conn: sqlite3.Connection) -> list[dict]:
+def min_discovered_date(conn: sqlite3.Connection) -> str | None:
+    """True lower bound of local data (v3.19.0 Part 1) - never hardcoded.
+    Returns a YYYY-MM-DD date, or None if the victims table is empty."""
+    row = conn.execute(
+        "SELECT MIN(discovered) FROM victims WHERE discovered IS NOT NULL AND discovered != ''"
+    ).fetchone()
+    val = row[0] if row else None
+    return val[:10] if val else None
+
+
+def victims_stats_in_range(conn: sqlite3.Connection, start: str, end: str) -> dict:
+    """Global Pulse's three range-scoped tiles. 'Active groups' is
+    deliberately redefined here from the old RansomLook-hot-list-derived
+    figure to 'distinct groups with a victim discovered in this range' -
+    the only definition that can be honestly recomputed for an arbitrary
+    local range without a second upstream-shaped dataset (see the v3.19.0
+    CHANGELOG entry)."""
+    row = conn.execute(
+        """
+        SELECT COUNT(*) AS n,
+               COUNT(DISTINCT group_name) AS groups,
+               COUNT(DISTINCT NULLIF(country, '')) AS countries
+        FROM victims WHERE substr(discovered, 1, 10) BETWEEN ? AND ?
+        """,
+        (start, end),
+    ).fetchone()
+    return {"victims": row["n"], "active_groups": row["groups"], "countries_hit": row["countries"]}
+
+
+def map_counts_in_range(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
     rows = conn.execute(
         "SELECT country, COUNT(*) as count FROM victims WHERE country IS NOT NULL AND country != '' "
-        "GROUP BY country ORDER BY count DESC"
+        "AND substr(discovered, 1, 10) BETWEEN ? AND ? GROUP BY country ORDER BY count DESC",
+        (start, end),
     ).fetchall()
     return [{"country": r["country"], "count": r["count"]} for r in rows]
 
 
-def ph_sea_counts(conn: sqlite3.Connection) -> list[dict]:
+def ph_sea_counts_in_range(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
     placeholders = ",".join("?" for _ in SEA_COUNTRIES)
     rows = conn.execute(
-        f"SELECT country, COUNT(*) as count FROM victims WHERE country IN ({placeholders}) GROUP BY country",
-        SEA_COUNTRIES,
+        f"SELECT country, COUNT(*) as count FROM victims WHERE country IN ({placeholders}) "
+        f"AND substr(discovered, 1, 10) BETWEEN ? AND ? GROUP BY country",
+        SEA_COUNTRIES + [start, end],
     ).fetchall()
     counts = {r["country"]: r["count"] for r in rows}
     return [{"country": c, "count": counts.get(c, 0)} for c in SEA_COUNTRIES]
 
 
-def ph_sea_monthly_trend(conn: sqlite3.Connection, months: int = 6) -> list[dict]:
+def ph_sea_monthly_trend_in_range(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
     placeholders = ",".join("?" for _ in SEA_COUNTRIES)
     rows = conn.execute(
         f"""
         SELECT substr(discovered, 1, 7) as ym, country, COUNT(*) as count
         FROM victims
         WHERE country IN ({placeholders}) AND discovered IS NOT NULL
+          AND substr(discovered, 1, 10) BETWEEN ? AND ?
         GROUP BY ym, country
-        ORDER BY ym DESC
-        LIMIT ?
+        ORDER BY ym
         """,
-        SEA_COUNTRIES + [months * len(SEA_COUNTRIES)],
+        SEA_COUNTRIES + [start, end],
     ).fetchall()
     return [{"month": r["ym"], "country": r["country"], "count": r["count"]} for r in rows]
 

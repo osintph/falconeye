@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.18.0",
+    "softwareVersion": "3.19.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -148,7 +148,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.18.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.19.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1084,13 +1084,28 @@
         </div>
       </div>
 
+      <!-- Tab-level time range selector (v3.19.0). Outside every .rw-subview
+           div so it survives sub-view switches; applies to every view below,
+           filtered entirely from data already fetched once per panel - no
+           refetch on change (app.js). -->
+      <div class="mb-4 flex items-center gap-2 flex-wrap">
+        <label for="rw-range-select" class="text-xs text-gray-500 font-bold uppercase tracking-wide">Time range</label>
+        <select id="rw-range-select" class="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-amber-400">
+          <option value="30d">Last 30 days</option>
+          <option value="90d">Last 90 days</option>
+          <option value="12mo" selected>Last 12 months</option>
+          <option value="ytd">Year to date</option>
+          <option value="all">All time</option>
+        </select>
+      </div>
+
       <!-- ============ Overview: Global pulse, world map ============ -->
       <div id="rw-subview-overview" class="rw-subview">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Global Pulse</h3>
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Global Pulse <span id="rw-pulse-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
         <div id="rw-pulse" class="mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
         <p id="rw-pulse-asof" class="text-xs text-gray-600 mb-6"></p>
 
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">World Map</h3>
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">World Map <span id="rw-map-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
         <div id="rw-map-wrap" class="bg-gray-900 border border-gray-800 rounded p-2 mb-2">
           <div id="rw-map-container" style="height:280px;"></div>
         </div>
@@ -1100,8 +1115,8 @@
 
       <!-- ============ Regional: PH & SEA comparison + victim list ============ -->
       <div id="rw-subview-regional" class="rw-subview hidden">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Philippines &amp; Southeast Asia</h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count &mdash; where the Philippines sits relative to its neighbors is the finding worth seeing.</p>
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Philippines &amp; Southeast Asia <span id="rw-phsea-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count &mdash; where the Philippines sits relative to its neighbors is the finding worth seeing. Bars, month table, and victim list below all share this same window.</p>
         <div id="rw-phsea-bars" class="mb-4"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
         <div id="rw-phsea-trend" class="mb-4"></div>
         <div class="overflow-x-auto mb-1">
@@ -1126,7 +1141,7 @@
 
       <!-- ============ Feed: latest victims, company search, country filter ============ -->
       <div id="rw-subview-feed" class="rw-subview hidden">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Latest Victims, Global</h3>
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Latest Victims, Global <span id="rw-latest-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
         <div id="rw-latest-list" class="space-y-2 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
         <button id="rw-latest-showmore" class="hidden text-xs text-amber-400 hover:text-amber-300 transition mb-1"></button>
         <p id="rw-latest-asof" class="text-xs text-gray-600 mb-6"></p>
@@ -1139,15 +1154,10 @@
         <div id="rw-search-results" class="space-y-2 mb-8"></div>
 
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Country Lookup</h3>
-        <p class="text-xs text-gray-500 mb-2 max-w-2xl">PH/SEA above is continuously collected. Any other country can be checked on demand, cached 24 hours after the first check.</p>
-        <p class="text-xs text-gray-600 mb-1">Continuously monitored</p>
-        <div id="rw-country-quick-sea" class="flex flex-wrap gap-1.5 mb-3"></div>
-        <p class="text-xs text-gray-600 mb-1">Other country</p>
-        <div class="flex gap-2 items-center mb-2">
-          <input id="rw-country-input" type="text" maxlength="2" placeholder="ISO code, e.g. US"
-            class="w-28 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm uppercase focus:outline-none focus:border-amber-400 font-mono" />
-          <button id="rw-country-btn" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
-        </div>
+        <p class="text-xs text-gray-500 mb-2 max-w-2xl">PH/SEA below is continuously collected. Any other country is checked on demand, cached 24 hours after the first check.</p>
+        <select id="rw-country-select" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400">
+          <option value="">Select a country&hellip;</option>
+        </select>
         <div id="rw-country-status" class="text-xs text-gray-600 mb-2"></div>
         <div class="overflow-x-auto mb-1">
           <table class="w-full text-xs">
@@ -1173,7 +1183,7 @@
         <p class="text-xs text-gray-500 mb-3 max-w-2xl">Top 10 per window, straight from RansomLook &mdash; no local ranking.</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-1">
           <div>
-            <p class="text-xs text-gray-500 mb-2">Last 7 days</p>
+            <p class="text-xs text-gray-500 mb-2">Last 7 days <span id="rw-groups-7d-range-label" class="text-gray-600"></span></p>
             <table class="w-full text-xs">
               <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
               <tbody id="rw-groups-7d-tbody"></tbody>
@@ -1181,7 +1191,7 @@
             <p id="rw-groups-7d-more" class="text-xs text-gray-600 mt-1"></p>
           </div>
           <div>
-            <p class="text-xs text-gray-500 mb-2">Last 30 days</p>
+            <p class="text-xs text-gray-500 mb-2">Last 30 days <span id="rw-groups-30d-range-label" class="text-gray-600"></span></p>
             <table class="w-full text-xs">
               <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
               <tbody id="rw-groups-30d-tbody"></tbody>
@@ -1200,7 +1210,7 @@
 
       <!-- ============ Watchlist ============ -->
       <div id="rw-subview-watchlist" class="rw-subview hidden">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Watchlist</h3>
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Watchlist <span id="rw-watchlist-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
         <p class="text-xs text-gray-500 mb-3 max-w-2xl">Hits from RansomLook's search against a curated list of PH-relevant terms, checked on the same schedule as the rest of this tab. <strong class="text-gray-400">Tier 1</strong> is high-precision named organizations, shown below. <strong class="text-gray-400">Tier 2</strong> is broad geographic terms (philippines, manila, .ph, &hellip;) &mdash; noisy by design, logged for manual review, never feeds an alert, and collapsed by default.</p>
 
         <p class="text-xs text-gray-600 mb-1">Tier 1</p>
@@ -1515,6 +1525,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.18.0"></script>
+  <script src="/static/app.js?v=3.19.0"></script>
 </body>
 </html>
