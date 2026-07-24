@@ -5,6 +5,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.18.0] — 2026-07-24
+
+Ransomware Watch: layout restructuring. Pure UI change — no data layer,
+route, or schema touched; the tab's 8 panels (now including v3.17.0's search
+and country lookup) were a single long scroll, which had become unwieldy.
+
+Split into 5 sub-views behind a segmented control: **Overview** (Global
+Pulse, World Map), **Regional** (PH/SEA comparison bars, trend table, victim
+list), **Feed** (Latest Victims, Company Search, Country Lookup — search and
+country filter sit with the feed since all three answer "show me victims"),
+**Groups** (Group Activity, Leak Site Health), **Watchlist** (tier 1/tier 2
+hits). Routed via a compound URL hash (`#ransomware/{view}`, e.g.
+`#ransomware/groups`) layered on the existing tab-hash mechanism — direct
+load of a sub-view hash renders that view immediately, no flash of the
+default. Switching sub-views is a pure DOM toggle; it never re-fetches, since
+all 5 views share data already loaded for the tab.
+
+Row caps added to keep every sub-view to roughly two screens: Latest Victims
+15/50 with a "Show N more (total)" expander, Regional victim list capped the
+same way, Group Activity top-10 per window (7d/30d) with a "+N more not
+shown" note, Leak Site Health mirrors-within-group capped at 8 with a
+same-style note and groups themselves capped at 20, Watchlist tier 2
+(broad geographic terms — noisy by design) collapsed behind a toggle showing
+the hit count up front instead of dumping dozens of rows by default. The
+world map's container height is now a fixed CSS value instead of scaling
+with viewport, so it can't balloon on tall/narrow screens.
+
+Verified: all 5 sub-views fit their target screen budget on desktop and on a
+380px-equivalent mobile width; hash routing confirmed on direct load, not
+just in-app navigation; zero `fetch()` calls across sub-view switches
+(monkey-patched and counted); light/dark parity holds since the segmented
+control and row-cap UI reuse existing component styles. Existing tests
+unaffected — this release touches no backend file.
+
+---
+
 ## [3.17.0] — 2026-07-24
 
 Ransomware Watch: company search and on-demand country lookup. Both are

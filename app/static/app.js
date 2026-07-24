@@ -165,6 +165,15 @@ document.body.addEventListener('click', (e) => {
 const VALID_TABS = ALL_NAV_ENTRIES.map(t => t.id);
 const DEFAULT_TAB = 'home';
 
+// v3.18.0 Ransomware Watch sub-view routing. Declared here (not down with
+// the rest of the ransomware code) because showTab(getTabFromHash()) at the
+// bottom of this routing block runs before the script reaches line ~6000+ -
+// a `var` declared down there is still undefined at that point (hoisting
+// only lifts the name, not the assignment), which threw
+// "Cannot read properties of undefined (reading 'includes')" on page load.
+const RW_SUBVIEWS = ['overview', 'regional', 'feed', 'groups', 'watchlist'];
+const RW_DEFAULT_SUBVIEW = 'overview';
+
 function showTab(tabName) {
   if (!VALID_TABS.includes(tabName)) {
     tabName = DEFAULT_TAB;
@@ -194,7 +203,7 @@ function showTab(tabName) {
 
   if (tabName === 'news') loadNews(currentNewsCategory);
   if (tabName === 'breach') loadBreachRecent();
-  if (tabName === 'ransomware') loadRansomwareTab();
+  if (tabName === 'ransomware') { showRwSubview(getRwSubviewFromHash()); loadRansomwareTab(); }
 
   // v3.15.0 nav: the drawer isn't persistent on screen like the sidebar, so
   // keep the current tool's name visible in the mobile bar; and dismiss the
@@ -210,7 +219,10 @@ function showTab(tabName) {
 
 function getTabFromHash() {
   const hash = window.location.hash.replace(/^#/, '').toLowerCase().trim();
-  return hash || DEFAULT_TAB;
+  // Ransomware Watch uses a compound hash (#ransomware/feed) for sub-view
+  // routing (v3.18.0) - only the part before '/' identifies the tab.
+  const tabPart = hash.split('/')[0];
+  return tabPart || DEFAULT_TAB;
 }
 
 // Tab button clicks: update the hash. The hashchange event handler renders the tab.
@@ -6122,6 +6134,55 @@ function renderBreachAllTable() {
 
 var RW_SEA_COUNTRIES = ['PH', 'SG', 'MY', 'ID', 'TH', 'VN', 'HK', 'TW'];
 
+// ---- v3.18.0: sub-view routing (Overview/Regional/Feed/Groups/Watchlist) ----
+// Pure render switch - no fetch call anywhere in this block. Data is already
+// local (loaded once by loadRansomwareTab()); switching sub-views only
+// toggles which already-populated DOM subtree is visible.
+// RW_SUBVIEWS/RW_DEFAULT_SUBVIEW are declared near VALID_TABS at the top of
+// this file - see the comment there for why.
+
+function getRwSubviewFromHash() {
+  const hash = window.location.hash.replace(/^#/, '').toLowerCase().trim();
+  const parts = hash.split('/');
+  if (parts[0] !== 'ransomware') return RW_DEFAULT_SUBVIEW;
+  return RW_SUBVIEWS.includes(parts[1]) ? parts[1] : RW_DEFAULT_SUBVIEW;
+}
+
+function showRwSubview(view) {
+  if (!RW_SUBVIEWS.includes(view)) view = RW_DEFAULT_SUBVIEW;
+  document.querySelectorAll('.rw-subview').forEach(el => {
+    el.classList.toggle('hidden', el.id !== 'rw-subview-' + view);
+  });
+  document.querySelectorAll('.rw-subview-btn').forEach(btn => {
+    const active = btn.dataset.subview === view;
+    btn.classList.toggle('bg-amber-400', active);
+    btn.classList.toggle('text-gray-950', active);
+    btn.classList.toggle('bg-gray-800', !active);
+    btn.classList.toggle('text-gray-300', !active);
+    btn.classList.toggle('hover:bg-gray-700', !active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+}
+
+function switchRwSubview(view) {
+  const targetHash = '#ransomware/' + view;
+  if (window.location.hash.toLowerCase() !== targetHash) {
+    window.location.hash = targetHash; // hashchange -> showTab -> showRwSubview
+  } else {
+    showRwSubview(view);
+  }
+}
+
+(function wireRwSubviewNav() {
+  const nav = document.getElementById('rw-subview-nav');
+  if (!nav) return;
+  nav.addEventListener('click', (e) => {
+    const btn = e.target.closest('.rw-subview-btn');
+    if (!btn) return;
+    switchRwSubview(btn.dataset.subview);
+  });
+})();
+
 // ISO 3166-1 numeric -> alpha-2, for joining our alpha-2-keyed victim counts
 // to the vendored topojson (whose feature ids are ISO numeric codes).
 var RW_ISO_NUMERIC_TO_ALPHA2 = {"004":"AF","008":"AL","010":"AQ","012":"DZ","016":"AS","020":"AD","024":"AO","028":"AG","031":"AZ","032":"AR","036":"AU","040":"AT","044":"BS","048":"BH","050":"BD","051":"AM","052":"BB","056":"BE","060":"BM","064":"BT","068":"BO","070":"BA","072":"BW","076":"BR","084":"BZ","086":"IO","090":"SB","092":"VG","096":"BN","100":"BG","104":"MM","108":"BI","112":"BY","116":"KH","120":"CM","124":"CA","132":"CV","136":"KY","140":"CF","144":"LK","148":"TD","152":"CL","156":"CN","158":"TW","170":"CO","174":"KM","178":"CG","180":"CD","184":"CK","188":"CR","191":"HR","192":"CU","196":"CY","203":"CZ","204":"BJ","208":"DK","212":"DM","214":"DO","218":"EC","222":"SV","226":"GQ","231":"ET","232":"ER","233":"EE","234":"FO","238":"FK","239":"GS","242":"FJ","246":"FI","248":"AX","250":"FR","258":"PF","260":"TF","262":"DJ","266":"GA","268":"GE","270":"GM","275":"PS","276":"DE","288":"GH","296":"KI","300":"GR","304":"GL","308":"GD","316":"GU","320":"GT","324":"GN","328":"GY","332":"HT","334":"HM","336":"VA","340":"HN","344":"HK","348":"HU","352":"IS","356":"IN","360":"ID","364":"IR","368":"IQ","372":"IE","376":"IL","380":"IT","384":"CI","388":"JM","392":"JP","398":"KZ","400":"JO","404":"KE","408":"KP","410":"KR","414":"KW","417":"KG","418":"LA","422":"LB","426":"LS","428":"LV","430":"LR","434":"LY","438":"LI","440":"LT","442":"LU","446":"MO","450":"MG","454":"MW","458":"MY","462":"MV","466":"ML","470":"MT","478":"MR","480":"MU","484":"MX","492":"MC","496":"MN","498":"MD","499":"ME","500":"MS","504":"MA","508":"MZ","512":"OM","516":"NA","520":"NR","524":"NP","528":"NL","531":"CW","533":"AW","534":"SX","540":"NC","548":"VU","554":"NZ","558":"NI","562":"NE","566":"NG","570":"NU","574":"NF","578":"NO","580":"MP","583":"FM","584":"MH","585":"PW","586":"PK","591":"PA","598":"PG","600":"PY","604":"PE","608":"PH","612":"PN","616":"PL","620":"PT","624":"GW","626":"TL","630":"PR","634":"QA","642":"RO","643":"RU","646":"RW","652":"BL","654":"SH","659":"KN","660":"AI","662":"LC","663":"MF","666":"PM","670":"VC","674":"SM","678":"ST","682":"SA","686":"SN","688":"RS","690":"SC","694":"SL","702":"SG","703":"SK","704":"VN","705":"SI","706":"SO","710":"ZA","716":"ZW","724":"ES","728":"SS","729":"SD","732":"EH","740":"SR","748":"SZ","752":"SE","756":"CH","760":"SY","762":"TJ","764":"TH","768":"TG","776":"TO","780":"TT","784":"AE","788":"TN","792":"TR","795":"TM","796":"TC","800":"UG","804":"UA","807":"MK","818":"EG","826":"GB","831":"GG","832":"JE","833":"IM","834":"TZ","840":"US","850":"VI","854":"BF","858":"UY","860":"UZ","862":"VE","876":"WF","882":"WS","887":"YE","894":"ZM"};
@@ -6315,30 +6376,43 @@ function rwPhSeaTrendTable(trend) {
   return `<p class="text-xs text-gray-500 mb-1">Month-over-month (by discovery month)</p><div class="overflow-x-auto"><table class="w-full text-xs"><thead>${header}</thead><tbody>${rows}</tbody></table></div>`;
 }
 
+// v3.18.0: row caps. GROUP_ACTIVITY_CAP matches "top 10 per window" (Part 2);
+// data arrives pre-sorted by post_count DESC from the collector (no local
+// ranking added here - just a slice). MIRROR_GROUPS_CAP extends the same
+// treatment the lockbit3 fix already gave the mirrors-within-a-group list to
+// the group list itself, alphabetical since there's no activity signal to
+// rank groups by without touching the data layer.
+var RW_GROUP_ACTIVITY_CAP = 10;
+var RW_MIRROR_GROUPS_CAP = 20;
+
 function rwGroupsTbody(rows) {
   if (!rows || !rows.length) return '<tr><td colspan="2" class="py-2 text-gray-600">No data.</td></tr>';
-  return rows.map(r => `<tr class="border-b border-gray-900">
+  const shown = rows.slice(0, RW_GROUP_ACTIVITY_CAP);
+  return shown.map(r => `<tr class="border-b border-gray-900">
     <td class="py-1.5 pr-3 text-gray-300">${escapeHtml(r.group_name || 'unknown')}</td>
     <td class="py-1.5 pr-3 text-gray-400">${r.post_count}</td>
   </tr>`).join('');
 }
 
+function rwMirrorGroupCard(name, g) {
+  const chips = g.mirrors.map(m => {
+    const apiPart = m.uptime_30d != null ? `${m.uptime_30d}% (API, 30d)` : 'no API figure';
+    const compPart = m.uptime_computed != null ? ` &middot; ${m.uptime_computed}% (computed, ${m.computed_window_days}d)` : '';
+    return `<span class="inline-block bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-300 mr-1.5 mb-1.5">${escapeHtml(m.label)}: ${apiPart}${compPart}</span>`;
+  }).join('');
+  const hiddenNote = g.hidden_count ? `<span class="text-gray-600 text-[11px]">+${g.hidden_count} more mirror(s) with historical/offline entries, not shown</span>` : '';
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-3">
+    <div class="font-bold text-gray-200 text-sm mb-1.5">${escapeHtml(name)}</div>
+    <div class="flex flex-wrap items-center">${chips}${hiddenNote}</div>
+  </div>`;
+}
+
 function rwMirrorsList(groups) {
   const names = Object.keys(groups || {}).sort();
-  if (!names.length) return '<p class="text-gray-500 text-sm">No mirror health data yet.</p>';
-  return names.map(name => {
-    const g = groups[name];
-    const chips = g.mirrors.map(m => {
-      const apiPart = m.uptime_30d != null ? `${m.uptime_30d}% (API, 30d)` : 'no API figure';
-      const compPart = m.uptime_computed != null ? ` &middot; ${m.uptime_computed}% (computed, ${m.computed_window_days}d)` : '';
-      return `<span class="inline-block bg-gray-950 border border-gray-800 rounded px-2 py-1 text-[11px] text-gray-300 mr-1.5 mb-1.5">${escapeHtml(m.label)}: ${apiPart}${compPart}</span>`;
-    }).join('');
-    const hiddenNote = g.hidden_count ? `<span class="text-gray-600 text-[11px]">+${g.hidden_count} more mirror(s) with historical/offline entries, not shown</span>` : '';
-    return `<div class="bg-gray-900 border border-gray-800 rounded p-3">
-      <div class="font-bold text-gray-200 text-sm mb-1.5">${escapeHtml(name)}</div>
-      <div class="flex flex-wrap items-center">${chips}${hiddenNote}</div>
-    </div>`;
-  }).join('');
+  if (!names.length) return { html: '<p class="text-gray-500 text-sm">No mirror health data yet.</p>', shown: 0, total: 0 };
+  const shownNames = names.slice(0, RW_MIRROR_GROUPS_CAP);
+  const html = shownNames.map(name => rwMirrorGroupCard(name, groups[name])).join('');
+  return { html, shown: shownNames.length, total: names.length };
 }
 
 function rwTierBadge(tier) {
@@ -6347,15 +6421,37 @@ function rwTierBadge(tier) {
   return '<span class="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-800 text-gray-600" title="Recorded before tiering existed">Legacy</span>';
 }
 
-function rwWatchlistTbody(hits) {
-  if (!hits || !hits.length) return '<tr><td colspan="5" class="py-2 text-gray-600">No hits yet.</td></tr>';
-  return hits.map(h => `<tr class="border-b border-gray-900${h.tier === 2 ? ' opacity-70' : ''}">
-    <td class="py-1.5 pr-3">${rwTierBadge(h.tier)}</td>
-    <td class="py-1.5 pr-3 text-gray-300">${escapeHtml(h.term)}</td>
+// Tier is implicit from which tbody a row lands in (tier1/tier2 render into
+// separate tables - see index.html) so the row itself no longer needs a
+// tier column; "legacy" (pre-tiering) hits still show a badge since they
+// can't cleanly join either table.
+function rwWatchlistRow(h) {
+  const legacyBadge = (h.tier !== 1 && h.tier !== 2) ? rwTierBadge(h.tier) + ' ' : '';
+  return `<tr class="border-b border-gray-900">
+    <td class="py-1.5 pr-3 text-gray-300">${legacyBadge}${escapeHtml(h.term)}</td>
     <td class="py-1.5 pr-3 text-gray-400">${escapeHtml(h.match_type)}${h.matched_name ? ': ' + escapeHtml(h.matched_name) : ''}</td>
     <td class="py-1.5 pr-3 text-gray-400">${escapeHtml(h.group_name || '')}</td>
     <td class="py-1.5 pr-3 text-gray-500">${escapeHtml((h.found_at || '').slice(0, 16).replace('T', ' '))}</td>
-  </tr>`).join('');
+  </tr>`;
+}
+
+// Generic "show first N, reveal the rest on click" - shared by Latest
+// Victims and the Regional victim list (Part 2). Pure client-side slice of
+// data that's already been fetched - never triggers a second request.
+function rwSetupShowMore(buttonEl, allItems, applyFn, initialCount) {
+  const shown = Math.min(initialCount, allItems.length);
+  applyFn(allItems.slice(0, shown));
+  const remaining = allItems.length - shown;
+  if (remaining > 0) {
+    buttonEl.classList.remove('hidden');
+    buttonEl.textContent = `Show ${remaining} more (${allItems.length} total)`;
+    buttonEl.onclick = () => {
+      applyFn(allItems);
+      buttonEl.classList.add('hidden');
+    };
+  } else {
+    buttonEl.classList.add('hidden');
+  }
 }
 
 // ---- World map (D3 choropleth, vendored topojson - see Part 1/5 of the brief) ----
@@ -6411,7 +6507,7 @@ async function renderRansomwareMap(countries) {
   }
 
   const width = container.clientWidth || 800;
-  const height = 340;
+  const height = container.clientHeight || 280; // fixed by CSS (index.html), read here so there's one source of truth
   container.innerHTML = '';
   container.style.position = 'relative';
 
@@ -6500,71 +6596,116 @@ async function loadRwMap() {
   await renderRansomwareMap(data.countries || []);
 }
 
+var RW_PHSEA_VICTIMS_INITIAL = 15;
+var RW_LATEST_VICTIMS_INITIAL = 15;
+
 async function loadRwPhSea() {
   const bars = document.getElementById('rw-phsea-bars');
   const trend = document.getElementById('rw-phsea-trend');
   const tbody = document.getElementById('rw-phsea-victims-tbody');
+  const showMoreBtn = document.getElementById('rw-phsea-showmore');
   const asOf = document.getElementById('rw-phsea-asof');
   const data = await rwFetch('/api/ransomware/ph-sea');
   if (!data) { bars.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
   _rwData.phsea = data;
   if (data.state === 'not_yet_collected') {
     bars.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
+    showMoreBtn.classList.add('hidden');
     asOf.innerHTML = rwAsOfLine(data, 'PH & SEA');
     return;
   }
   bars.innerHTML = rwPhSeaBars(data.counts || []);
   trend.innerHTML = rwPhSeaTrendTable(data.trend || []);
-  tbody.innerHTML = (data.victims || []).map(rwPhSeaRow).join('') || '<tr><td colspan="7" class="py-2 text-gray-600">No victims recorded yet.</td></tr>';
+  const victims = data.victims || [];
+  if (!victims.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="py-2 text-gray-600">No victims recorded yet.</td></tr>';
+    showMoreBtn.classList.add('hidden');
+  } else {
+    rwSetupShowMore(showMoreBtn, victims, (rows) => { tbody.innerHTML = rows.map(rwPhSeaRow).join(''); }, RW_PHSEA_VICTIMS_INITIAL);
+  }
   asOf.innerHTML = rwAsOfLine(data, 'PH & SEA');
 }
 
 async function loadRwLatest() {
   const el = document.getElementById('rw-latest-list');
+  const showMoreBtn = document.getElementById('rw-latest-showmore');
   const asOf = document.getElementById('rw-latest-asof');
   const data = await rwFetch('/api/ransomware/latest');
   if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
   _rwData.latest = data;
   if (data.state === 'not_yet_collected') {
     el.innerHTML = '<p class="text-gray-500 text-sm">Not collected yet.</p>';
+    showMoreBtn.classList.add('hidden');
     asOf.innerHTML = rwAsOfLine(data, 'Latest victims');
     return;
   }
-  el.innerHTML = (data.victims || []).map(rwVictimCard).join('') || '<p class="text-gray-500 text-sm">No victims recorded yet.</p>';
+  const victims = data.victims || [];
+  if (!victims.length) {
+    el.innerHTML = '<p class="text-gray-500 text-sm">No victims recorded yet.</p>';
+    showMoreBtn.classList.add('hidden');
+  } else {
+    rwSetupShowMore(showMoreBtn, victims, (rows) => { el.innerHTML = rows.map(rwVictimCard).join(''); }, RW_LATEST_VICTIMS_INITIAL);
+  }
   asOf.innerHTML = rwAsOfLine(data, 'Latest victims');
 }
 
 async function loadRwGroups() {
   const t7 = document.getElementById('rw-groups-7d-tbody');
   const t30 = document.getElementById('rw-groups-30d-tbody');
+  const more7 = document.getElementById('rw-groups-7d-more');
+  const more30 = document.getElementById('rw-groups-30d-more');
   const asOf = document.getElementById('rw-groups-asof');
   const data = await rwFetch('/api/ransomware/groups');
   if (!data) return;
   _rwData.groups = data;
-  t7.innerHTML = rwGroupsTbody(data.groups_7d);
-  t30.innerHTML = rwGroupsTbody(data.groups_30d);
+  const g7 = data.groups_7d || [], g30 = data.groups_30d || [];
+  t7.innerHTML = rwGroupsTbody(g7);
+  t30.innerHTML = rwGroupsTbody(g30);
+  more7.textContent = g7.length > RW_GROUP_ACTIVITY_CAP ? `+${g7.length - RW_GROUP_ACTIVITY_CAP} more not shown` : '';
+  more30.textContent = g30.length > RW_GROUP_ACTIVITY_CAP ? `+${g30.length - RW_GROUP_ACTIVITY_CAP} more not shown` : '';
   asOf.innerHTML = rwAsOfLine(data, 'Group activity');
 }
 
 async function loadRwMirrors() {
   const el = document.getElementById('rw-mirrors-list');
+  const moreEl = document.getElementById('rw-mirrors-groups-more');
   const asOf = document.getElementById('rw-mirrors-asof');
   const data = await rwFetch('/api/ransomware/mirrors');
   if (!data) { el.innerHTML = '<p class="text-red-400 text-sm">Could not load.</p>'; return; }
   _rwData.mirrors = data;
-  el.innerHTML = rwMirrorsList(data.groups);
+  const result = rwMirrorsList(data.groups);
+  el.innerHTML = result.html;
+  const hiddenGroups = result.total - result.shown;
+  moreEl.textContent = hiddenGroups > 0 ? `+${hiddenGroups} more group(s) not shown` : '';
   asOf.innerHTML = rwAsOfLine(data, 'Leak site health');
 }
 
 async function loadRwWatchlist() {
-  const tbody = document.getElementById('rw-watchlist-tbody');
+  const tier1Tbody = document.getElementById('rw-watchlist-tier1-tbody');
+  const tier2Tbody = document.getElementById('rw-watchlist-tier2-tbody');
+  const tier2Toggle = document.getElementById('rw-watchlist-tier2-toggle');
   const asOf = document.getElementById('rw-watchlist-asof');
   const data = await rwFetch('/api/ransomware/watchlist');
   if (!data) return;
   _rwData.watchlist = data;
-  tbody.innerHTML = rwWatchlistTbody(data.hits);
+  const hits = data.hits || [];
+  // Legacy (pre-tiering, tier is NULL) hits are rare and shown alongside
+  // tier 1 - they're not the noisy broad-term case tier 2 collapsing exists
+  // for, and a hit that predates tiering shouldn't disappear from view.
+  const tier1 = hits.filter(h => h.tier !== 2);
+  const tier2 = hits.filter(h => h.tier === 2);
+  tier1Tbody.innerHTML = tier1.map(rwWatchlistRow).join('') || '<tr><td colspan="4" class="py-2 text-gray-600">No hits yet.</td></tr>';
+  tier2Tbody.innerHTML = tier2.map(rwWatchlistRow).join('') || '<tr><td colspan="4" class="py-2 text-gray-600">No hits yet.</td></tr>';
+  tier2Toggle.textContent = `Tier 2 - ${tier2.length} hit${tier2.length === 1 ? '' : 's'} (noisy by design) - click to expand`;
   asOf.innerHTML = rwAsOfLine(data, 'Watchlist');
 }
+
+(function wireRwWatchlistTier2Toggle() {
+  const btn = document.getElementById('rw-watchlist-tier2-toggle');
+  const wrap = document.getElementById('rw-watchlist-tier2-wrap');
+  if (!btn || !wrap) return;
+  btn.addEventListener('click', () => wrap.classList.toggle('hidden'));
+})();
 
 var _rwLastLoadedAt = 0;
 function loadRansomwareTab() {

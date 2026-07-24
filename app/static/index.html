@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.17.0",
+    "softwareVersion": "3.18.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -148,7 +148,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.17.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.18.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1055,7 +1055,7 @@
       </details>
     </div>
 
-    <!-- Ransomware Watch Tab (v3.16.0) -->
+    <!-- Ransomware Watch Tab (v3.16.0; sub-view layout v3.18.0) -->
     <div id="tab-ransomware" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Ransomware Watch</h2>
       <p class="text-gray-400 text-sm mb-4">
@@ -1071,128 +1071,169 @@
 
       <div id="rw-status-banner" class="hidden mb-4"></div>
 
-      <!-- Company Search (v3.17.0) -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Company Search</h3>
-      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live directly, live &mdash; not the local cache below, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
-      <input id="rw-search-input" type="text" placeholder="Company name or domain&hellip;" autocomplete="off"
-        class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400" />
-      <div id="rw-search-status" class="text-xs text-gray-600 mb-2"></div>
-      <div id="rw-search-results" class="space-y-2 mb-8"></div>
-
-      <!-- 1. Global pulse -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Global Pulse</h3>
-      <div id="rw-pulse" class="mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
-      <p id="rw-pulse-asof" class="text-xs text-gray-600 mb-6"></p>
-
-      <!-- 2. World map -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">World Map</h3>
-      <div id="rw-map-wrap" class="bg-gray-900 border border-gray-800 rounded p-2 mb-2">
-        <div id="rw-map-container" style="height:340px;"></div>
-      </div>
-      <div id="rw-map-legend" class="flex items-center gap-2 text-xs text-gray-500 mb-1"></div>
-      <p id="rw-map-asof" class="text-xs text-gray-600 mb-6"></p>
-
-      <!-- 3. PH and SEA -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Philippines &amp; Southeast Asia</h3>
-      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count &mdash; where the Philippines sits relative to its neighbors is the finding worth seeing.</p>
-      <div id="rw-phsea-bars" class="mb-4"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
-      <div id="rw-phsea-trend" class="mb-4"></div>
-      <div class="overflow-x-auto mb-1">
-        <table class="w-full text-xs">
-          <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-800">
-              <th class="py-2 pr-3">Victim</th>
-              <th class="py-2 pr-3">Group</th>
-              <th class="py-2 pr-3">Country</th>
-              <th class="py-2 pr-3">Sector</th>
-              <th class="py-2 pr-3">Date</th>
-              <th class="py-2 pr-3">Status</th>
-              <th class="py-2 pr-3">Link</th>
-            </tr>
-          </thead>
-          <tbody id="rw-phsea-victims-tbody"></tbody>
-        </table>
-      </div>
-      <p id="rw-phsea-asof" class="text-xs text-gray-600 mb-6"></p>
-
-      <!-- Country Lookup (v3.17.0) -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Country Lookup</h3>
-      <p class="text-xs text-gray-500 mb-2 max-w-2xl">PH/SEA above is continuously collected. Any other country can be checked on demand, cached 24 hours after the first check.</p>
-      <p class="text-xs text-gray-600 mb-1">Continuously monitored</p>
-      <div id="rw-country-quick-sea" class="flex flex-wrap gap-1.5 mb-3"></div>
-      <p class="text-xs text-gray-600 mb-1">Other country</p>
-      <div class="flex gap-2 items-center mb-2">
-        <input id="rw-country-input" type="text" maxlength="2" placeholder="ISO code, e.g. US"
-          class="w-28 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm uppercase focus:outline-none focus:border-amber-400 font-mono" />
-        <button id="rw-country-btn" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
-      </div>
-      <div id="rw-country-status" class="text-xs text-gray-600 mb-2"></div>
-      <div class="overflow-x-auto mb-8">
-        <table class="w-full text-xs">
-          <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-800">
-              <th class="py-2 pr-3">Victim</th>
-              <th class="py-2 pr-3">Group</th>
-              <th class="py-2 pr-3">Country</th>
-              <th class="py-2 pr-3">Sector</th>
-              <th class="py-2 pr-3">Date</th>
-              <th class="py-2 pr-3">Status</th>
-              <th class="py-2 pr-3">Link</th>
-            </tr>
-          </thead>
-          <tbody id="rw-country-results-tbody"></tbody>
-        </table>
-      </div>
-
-      <!-- 4. Latest victims, global -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Latest Victims, Global</h3>
-      <div id="rw-latest-list" class="space-y-2 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
-      <p id="rw-latest-asof" class="text-xs text-gray-600 mb-6"></p>
-
-      <!-- 5. Group activity -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Group Activity</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-1">
-        <div>
-          <p class="text-xs text-gray-500 mb-2">Last 7 days</p>
-          <table class="w-full text-xs">
-            <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
-            <tbody id="rw-groups-7d-tbody"></tbody>
-          </table>
-        </div>
-        <div>
-          <p class="text-xs text-gray-500 mb-2">Last 30 days</p>
-          <table class="w-full text-xs">
-            <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
-            <tbody id="rw-groups-30d-tbody"></tbody>
-          </table>
+      <!-- Sub-view segmented control. Horizontal scroll strip rather than
+           wrapping/shrinking, so it holds up in the mobile drawer at ~380px
+           without overflowing the viewport. -->
+      <div class="mb-4 -mx-1 overflow-x-auto">
+        <div id="rw-subview-nav" class="inline-flex gap-1 px-1 whitespace-nowrap" role="tablist" aria-label="Ransomware Watch views">
+          <button type="button" class="rw-subview-btn bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-bold px-3 py-1.5 rounded transition" data-subview="overview">Overview</button>
+          <button type="button" class="rw-subview-btn bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-bold px-3 py-1.5 rounded transition" data-subview="regional">Regional</button>
+          <button type="button" class="rw-subview-btn bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-bold px-3 py-1.5 rounded transition" data-subview="feed">Feed</button>
+          <button type="button" class="rw-subview-btn bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-bold px-3 py-1.5 rounded transition" data-subview="groups">Groups</button>
+          <button type="button" class="rw-subview-btn bg-gray-800 text-gray-300 hover:bg-gray-700 text-xs font-bold px-3 py-1.5 rounded transition" data-subview="watchlist">Watchlist</button>
         </div>
       </div>
-      <p id="rw-groups-asof" class="text-xs text-gray-600 mb-6"></p>
 
-      <!-- 6. Leak site health -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Leak Site Health</h3>
-      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Mirrors are shown as positional labels only (Mirror 1, Mirror 2, &hellip;) &mdash; never a URL. Uptime marked "API" is RansomLook's own 30-day figure; uptime marked "computed" is derived locally from a longer observation window when one is available.</p>
-      <div id="rw-mirrors-list" class="space-y-3 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
-      <p id="rw-mirrors-asof" class="text-xs text-gray-600 mb-6"></p>
+      <!-- ============ Overview: Global pulse, world map ============ -->
+      <div id="rw-subview-overview" class="rw-subview">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Global Pulse</h3>
+        <div id="rw-pulse" class="mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+        <p id="rw-pulse-asof" class="text-xs text-gray-600 mb-6"></p>
 
-      <!-- 8. Watchlist -->
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Watchlist</h3>
-      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Hits from RansomLook's search against a curated list of PH-relevant terms, checked on the same schedule as the rest of this tab. <strong class="text-gray-400">Tier 1</strong> is high-precision named organizations. <strong class="text-gray-400">Tier 2</strong> is broad geographic terms (philippines, manila, .ph, &hellip;) &mdash; logged here for manual review, deliberately noisier, and never feeds an alert.</p>
-      <div class="overflow-x-auto mb-1">
-        <table class="w-full text-xs">
-          <thead>
-            <tr class="text-left text-gray-500 border-b border-gray-800">
-              <th class="py-2 pr-3">Tier</th>
-              <th class="py-2 pr-3">Term</th>
-              <th class="py-2 pr-3">Match</th>
-              <th class="py-2 pr-3">Group</th>
-              <th class="py-2 pr-3">Found</th>
-            </tr>
-          </thead>
-          <tbody id="rw-watchlist-tbody"></tbody>
-        </table>
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">World Map</h3>
+        <div id="rw-map-wrap" class="bg-gray-900 border border-gray-800 rounded p-2 mb-2">
+          <div id="rw-map-container" style="height:280px;"></div>
+        </div>
+        <div id="rw-map-legend" class="flex items-center gap-2 text-xs text-gray-500 mb-1"></div>
+        <p id="rw-map-asof" class="text-xs text-gray-600 mb-6"></p>
       </div>
-      <p id="rw-watchlist-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- ============ Regional: PH & SEA comparison + victim list ============ -->
+      <div id="rw-subview-regional" class="rw-subview hidden">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Philippines &amp; Southeast Asia</h3>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count &mdash; where the Philippines sits relative to its neighbors is the finding worth seeing.</p>
+        <div id="rw-phsea-bars" class="mb-4"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+        <div id="rw-phsea-trend" class="mb-4"></div>
+        <div class="overflow-x-auto mb-1">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-gray-800">
+                <th class="py-2 pr-3">Victim</th>
+                <th class="py-2 pr-3">Group</th>
+                <th class="py-2 pr-3">Country</th>
+                <th class="py-2 pr-3">Sector</th>
+                <th class="py-2 pr-3">Date</th>
+                <th class="py-2 pr-3">Status</th>
+                <th class="py-2 pr-3">Link</th>
+              </tr>
+            </thead>
+            <tbody id="rw-phsea-victims-tbody"></tbody>
+          </table>
+        </div>
+        <button id="rw-phsea-showmore" class="hidden text-xs text-amber-400 hover:text-amber-300 transition mb-1"></button>
+        <p id="rw-phsea-asof" class="text-xs text-gray-600 mb-6"></p>
+      </div>
+
+      <!-- ============ Feed: latest victims, company search, country filter ============ -->
+      <div id="rw-subview-feed" class="rw-subview hidden">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Latest Victims, Global</h3>
+        <div id="rw-latest-list" class="space-y-2 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+        <button id="rw-latest-showmore" class="hidden text-xs text-amber-400 hover:text-amber-300 transition mb-1"></button>
+        <p id="rw-latest-asof" class="text-xs text-gray-600 mb-6"></p>
+
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Company Search</h3>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live directly, live &mdash; not the local cache above, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
+        <input id="rw-search-input" type="text" placeholder="Company name or domain&hellip;" autocomplete="off"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400" />
+        <div id="rw-search-status" class="text-xs text-gray-600 mb-2"></div>
+        <div id="rw-search-results" class="space-y-2 mb-8"></div>
+
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Country Lookup</h3>
+        <p class="text-xs text-gray-500 mb-2 max-w-2xl">PH/SEA above is continuously collected. Any other country can be checked on demand, cached 24 hours after the first check.</p>
+        <p class="text-xs text-gray-600 mb-1">Continuously monitored</p>
+        <div id="rw-country-quick-sea" class="flex flex-wrap gap-1.5 mb-3"></div>
+        <p class="text-xs text-gray-600 mb-1">Other country</p>
+        <div class="flex gap-2 items-center mb-2">
+          <input id="rw-country-input" type="text" maxlength="2" placeholder="ISO code, e.g. US"
+            class="w-28 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm uppercase focus:outline-none focus:border-amber-400 font-mono" />
+          <button id="rw-country-btn" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
+        </div>
+        <div id="rw-country-status" class="text-xs text-gray-600 mb-2"></div>
+        <div class="overflow-x-auto mb-1">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-gray-800">
+                <th class="py-2 pr-3">Victim</th>
+                <th class="py-2 pr-3">Group</th>
+                <th class="py-2 pr-3">Country</th>
+                <th class="py-2 pr-3">Sector</th>
+                <th class="py-2 pr-3">Date</th>
+                <th class="py-2 pr-3">Status</th>
+                <th class="py-2 pr-3">Link</th>
+              </tr>
+            </thead>
+            <tbody id="rw-country-results-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ============ Groups: group activity, leak site health ============ -->
+      <div id="rw-subview-groups" class="rw-subview hidden">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Group Activity</h3>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Top 10 per window, straight from RansomLook &mdash; no local ranking.</p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-1">
+          <div>
+            <p class="text-xs text-gray-500 mb-2">Last 7 days</p>
+            <table class="w-full text-xs">
+              <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
+              <tbody id="rw-groups-7d-tbody"></tbody>
+            </table>
+            <p id="rw-groups-7d-more" class="text-xs text-gray-600 mt-1"></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 mb-2">Last 30 days</p>
+            <table class="w-full text-xs">
+              <thead><tr class="text-left text-gray-500 border-b border-gray-800"><th class="py-1.5 pr-3">Group</th><th class="py-1.5 pr-3">Posts</th></tr></thead>
+              <tbody id="rw-groups-30d-tbody"></tbody>
+            </table>
+            <p id="rw-groups-30d-more" class="text-xs text-gray-600 mt-1"></p>
+          </div>
+        </div>
+        <p id="rw-groups-asof" class="text-xs text-gray-600 mb-6"></p>
+
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Leak Site Health</h3>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Mirrors are shown as positional labels only (Mirror 1, Mirror 2, &hellip;) &mdash; never a URL. Uptime marked "API" is RansomLook's own 30-day figure; uptime marked "computed" is derived locally from a longer observation window when one is available.</p>
+        <div id="rw-mirrors-list" class="space-y-3 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
+        <p id="rw-mirrors-groups-more" class="text-xs text-gray-600 mb-1"></p>
+        <p id="rw-mirrors-asof" class="text-xs text-gray-600 mb-6"></p>
+      </div>
+
+      <!-- ============ Watchlist ============ -->
+      <div id="rw-subview-watchlist" class="rw-subview hidden">
+        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Watchlist</h3>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Hits from RansomLook's search against a curated list of PH-relevant terms, checked on the same schedule as the rest of this tab. <strong class="text-gray-400">Tier 1</strong> is high-precision named organizations, shown below. <strong class="text-gray-400">Tier 2</strong> is broad geographic terms (philippines, manila, .ph, &hellip;) &mdash; noisy by design, logged for manual review, never feeds an alert, and collapsed by default.</p>
+
+        <p class="text-xs text-gray-600 mb-1">Tier 1</p>
+        <div class="overflow-x-auto mb-4">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-gray-800">
+                <th class="py-2 pr-3">Term</th>
+                <th class="py-2 pr-3">Match</th>
+                <th class="py-2 pr-3">Group</th>
+                <th class="py-2 pr-3">Found</th>
+              </tr>
+            </thead>
+            <tbody id="rw-watchlist-tier1-tbody"></tbody>
+          </table>
+        </div>
+
+        <button id="rw-watchlist-tier2-toggle" type="button" class="text-xs font-bold text-gray-400 hover:text-amber-400 transition mb-1">Tier 2 &mdash; 0 hits (noisy by design) &middot; click to expand</button>
+        <div id="rw-watchlist-tier2-wrap" class="hidden overflow-x-auto mb-1">
+          <table class="w-full text-xs">
+            <thead>
+              <tr class="text-left text-gray-500 border-b border-gray-800">
+                <th class="py-2 pr-3">Term</th>
+                <th class="py-2 pr-3">Match</th>
+                <th class="py-2 pr-3">Group</th>
+                <th class="py-2 pr-3">Found</th>
+              </tr>
+            </thead>
+            <tbody id="rw-watchlist-tier2-tbody"></tbody>
+          </table>
+        </div>
+        <p id="rw-watchlist-asof" class="text-xs text-gray-600 mb-6"></p>
+      </div>
 
       <div class="flex items-center gap-3 mb-4">
         <button id="rw-pdf-btn" class="bg-gray-800 text-amber-300 border border-gray-700 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Download as PDF</button>
@@ -1474,6 +1515,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.17.0"></script>
+  <script src="/static/app.js?v=3.18.0"></script>
 </body>
 </html>
