@@ -6642,3 +6642,138 @@ function downloadRansomwarePdf() {
   const btn = document.getElementById('rw-pdf-btn');
   if (btn) btn.addEventListener('click', downloadRansomwarePdf);
 })();
+
+// ============================================================================
+//  v3.17.0: company search + country lookup. Both call live FalconEye
+//  endpoints that themselves call ransomware.live PRO on demand (guarded,
+//  cached, rate-limited server-side) - unlike every panel above, which is
+//  collector-only. Both render through the SAME rwVictimCard()/rwPhSeaRow()
+//  used elsewhere - no new card/row variants (Part 3 of the brief).
+// ============================================================================
+
+function rwDebounce(fn, ms) {
+  var t = null;
+  return function () {
+    var args = arguments;
+    clearTimeout(t);
+    t = setTimeout(function () { fn.apply(null, args); }, ms);
+  };
+}
+
+// ---- Company search ----
+
+async function runRwSearch(q) {
+  const statusEl = document.getElementById('rw-search-status');
+  const resultsEl = document.getElementById('rw-search-results');
+  const trimmed = (q || '').trim();
+  if (trimmed.length < 3) {
+    statusEl.textContent = '';
+    resultsEl.innerHTML = '';
+    return;
+  }
+  statusEl.textContent = 'Searching ransomware.live…';
+  const data = await rwFetch('/api/ransomware/search?q=' + encodeURIComponent(trimmed));
+  if (!data) {
+    statusEl.innerHTML = '<span class="text-red-400">Search failed. Try again.</span>';
+    resultsEl.innerHTML = '';
+    return;
+  }
+  if (data.rate_limited) {
+    statusEl.innerHTML = '<span class="text-amber-500">Search rate limit reached. Wait a moment and try again.</span>';
+    resultsEl.innerHTML = '';
+    return;
+  }
+  let statusHtml = '';
+  if (data.degraded) {
+    statusHtml = '<span class="text-amber-500">' + escapeHtml(data.degraded_note || 'ransomware.live is unavailable; showing local partial cache.') + '</span>';
+  } else if (data.cache_hit) {
+    statusHtml = '<span class="text-gray-600">Cached result (searched again within the last hour).</span>';
+  } else {
+    statusHtml = '<span class="text-gray-600">Live result from ransomware.live.</span>';
+  }
+  if (data.truncated) {
+    statusHtml += ' <span class="text-gray-600">Showing first 100 results.</span>';
+  }
+  statusEl.innerHTML = statusHtml;
+
+  if (data.zero_result_note) {
+    resultsEl.innerHTML = '<p class="text-gray-500 text-sm">' + escapeHtml(data.zero_result_note) + '</p>';
+    return;
+  }
+  resultsEl.innerHTML = (data.victims || []).map(rwVictimCard).join('');
+}
+
+(function wireRwSearch() {
+  const input = document.getElementById('rw-search-input');
+  if (!input) return;
+  const debounced = rwDebounce(function () { runRwSearch(input.value); }, 400);
+  input.addEventListener('input', debounced);
+})();
+
+// ---- Country lookup ----
+
+function rwCountryProvenanceLine(data) {
+  if (data.coverage_state === 'standing_scope') {
+    return data.last_fetched
+      ? '<span>Continuously collected · as of ' + rwTimeAgo(data.last_fetched) + '</span>'
+      : '<span class="text-gray-600">Continuously collected · collector has not run yet</span>';
+  }
+  if (data.coverage_state === 'not_yet_queried') {
+    let note = '<span class="text-gray-600">Not yet queried.</span>';
+    if (data.rate_limited) note += ' <span class="text-amber-500">Rate limit reached, try again shortly.</span>';
+    if (data.upstream_status === 'unavailable') note += ' <span class="text-amber-500">ransomware.live is currently unreachable.</span>';
+    return note;
+  }
+  // cached | fetched_now
+  const verb = data.coverage_state === 'fetched_now' ? 'Fetched just now, on demand' : 'Fetched on demand';
+  let line = '<span>' + verb + (data.last_fetched ? (' · ' + rwTimeAgo(data.last_fetched)) : '') + '</span>';
+  if (data.rate_limited) line += ' <span class="text-amber-500">(showing cached data — rate limit reached)</span>';
+  if (data.upstream_status === 'unavailable') line += ' <span class="text-amber-500">(showing cached data — ransomware.live unavailable)</span>';
+  return line;
+}
+
+async function runRwCountryLookup(cc) {
+  const statusEl = document.getElementById('rw-country-status');
+  const tbody = document.getElementById('rw-country-results-tbody');
+  cc = (cc || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(cc)) {
+    statusEl.innerHTML = '<span class="text-red-400">Enter a 2-letter ISO country code.</span>';
+    return;
+  }
+  statusEl.textContent = 'Checking ' + cc + '…';
+  tbody.innerHTML = '';
+  const data = await rwFetch('/api/ransomware/country/' + encodeURIComponent(cc));
+  if (!data) {
+    statusEl.innerHTML = '<span class="text-red-400">Lookup failed. Try again.</span>';
+    return;
+  }
+  statusEl.innerHTML = rwCountryProvenanceLine(data);
+  if (!data.victims || !data.victims.length) {
+    const emptyMsg = data.coverage_state === 'not_yet_queried' ? 'Not yet queried.' : 'Checked — zero victims found.';
+    tbody.innerHTML = '<tr><td colspan="7" class="py-2 text-gray-600">' + escapeHtml(emptyMsg) + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.victims.map(rwPhSeaRow).join('');
+}
+
+(function wireRwCountryLookup() {
+  const quickWrap = document.getElementById('rw-country-quick-sea');
+  const input = document.getElementById('rw-country-input');
+  const btn = document.getElementById('rw-country-btn');
+  if (!quickWrap || !input || !btn) return;
+
+  quickWrap.innerHTML = RW_SEA_COUNTRIES.map(cc =>
+    `<button type="button" class="rw-country-quick-btn bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-gray-300 text-xs font-bold px-2.5 py-1 rounded transition" data-cc="${cc}">${cc}</button>`
+  ).join('');
+
+  quickWrap.addEventListener('click', (e) => {
+    const b = e.target.closest('.rw-country-quick-btn');
+    if (!b) return;
+    input.value = b.dataset.cc;
+    runRwCountryLookup(b.dataset.cc);
+  });
+  btn.addEventListener('click', () => runRwCountryLookup(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') runRwCountryLookup(input.value);
+  });
+})();

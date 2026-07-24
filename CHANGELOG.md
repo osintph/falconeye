@@ -5,6 +5,93 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.17.0] — 2026-07-24
+
+Ransomware Watch: company search and on-demand country lookup. Both are
+guarded exceptions to v3.16.0's "collector-only, never an upstream call from
+a request-serving path" rule — everything else in the tab is still
+collector-only.
+
+### Company search
+
+`GET /api/ransomware/search?q=` — always live against ransomware.live PRO's
+`/victims/search`, never served from the local collector cache as primary,
+since local coverage (~1,189 victims, regional/recent) is a small fraction
+of upstream (~29,951, global/complete) and a cache there would produce
+confident false negatives. Minimum 3 characters enforced server-side before
+any outbound call; 400ms client debounce; rate-limited tighter than other
+tabs (10/minute, 100/hour per IP); server-side result cache keyed on the
+normalized query, TTL 1 hour, deliberately **in-memory only, never a SQLite
+table** — the search string itself is never persisted anywhere or logged,
+only IP+timestamp in the rate-limit table. Capped at 100 results with a
+truncation note. Zero results render "No entries in tracked leak sites" plus
+a one-line note that neither source claims complete coverage — never
+language implying clean/unaffected/not breached. Results write back into
+`victims` with `first_seen_via='search'`, deduplicating against
+collector-stamped rows via the existing id hash (a row that already exists
+keeps its original `first_seen_via`, never overwritten). On a PRO outage,
+falls back to a local `LIKE` scan against the partial cache, explicitly
+labelled as such — a deliberate, labelled exception to "always upstream,"
+not silent degradation.
+
+Also discovered along the way: PRO's `/victims/search` uses different field
+names than `/victims/recent` and `/victims/?country=`
+(`post_title`/`group_name`/`published` vs `victim`/`group`/`attackdate`) —
+confirmed live, not a one-off. `live.extract_pro_victim_fields()` checks
+both.
+
+### Country lookup
+
+`GET /api/ransomware/country/{cc}` — hybrid. The 8 standing-scope countries
+(PH/SG/MY/ID/TH/VN/HK/TW) are always served from the collector's local data
+and **never** trigger an upstream call, regardless of `country_coverage`
+row state (`country_coverage` is the v3.16.0 collector's table — this
+endpoint reads it, never seeds it, for those 8). Any other country: served
+from cache if a coverage row is within 24h TTL; otherwise one upstream call,
+gated by its own rate limit (20/hour, 100/day per IP), writing results back
+with `first_seen_via='country_filter'` and stamping `country_coverage` with
+`source='on_demand'` — collector-stamped rows for the standing-scope
+countries are never touched by this path. A country with no coverage row
+("not yet queried") is rendered distinctly from a country with a coverage
+row and zero victims ("checked, zero found") — conflating the two would be
+a false negative that reads as authoritative. On a PRO outage, falls back
+to whatever's cached for that country, or the honest not-yet-queried state
+— never a 500.
+
+### Presentation
+
+Both features render through the existing `rwVictimCard()`/`rwPhSeaRow()` —
+no new card/row variants. Same claim badge, corroboration badge, infostealer
+expand, and permalink as everywhere else. No screenshot rendering anywhere,
+per the standing rule.
+
+### Tests
+
+`tests/test_ransomware_search.py`, 12 cases: standing-scope countries never
+trigger upstream (verified red-before-green by temporarily breaking the
+guard), out-of-scope TTL caching, the never-fetched-vs-fetched-empty
+distinction, on-demand writes not clobbering collector rows, the 3-character
+floor rejected before any outbound call, identical-query cache hits, search
+write-back dedup against collector rows, the zero-result wording (present
+and absent terms both checked), PRO 401 degradation on both paths (labelled
+fallback, never a 500), and that neither the search string nor the API key
+ever appears in a persisted table or a log line under any failure path
+(also verified red-before-green — a deliberately injected debug log line
+of the raw query was caught by the test before being reverted).
+
+### Staging verification against real upstream
+
+A cold country outside standing scope (JP: 316 real victims fetched live,
+`source=on_demand`), a repeat of the same country (served from cache, no
+second upstream call), a repeat search (`hospital`: 100 results truncated,
+second call `cache_hit=true`), a sub-3-character search (400, no outbound
+call), and a forced 401 on both paths via a temporary invalid-key instance
+(country: not-yet-queried for a country with no prior coverage, cached data
+for one that had it; search: labelled local-fallback with the zero-result
+note correctly co-rendered when the local cache also had no match).
+
+---
+
 ## [3.16.0] — 2026-07-24
 
 New tab: Ransomware Watch. Global ransomware victim tracking with a

@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Nineteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a curated cyber news aggregator with a Philippines-focused threat pulse. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.16.0**
+Current version: **3.17.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -36,7 +36,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Username** | Check where a username appears across ~950 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **News** | Cyber news RSS aggregator with PH-specific feeds and global outlets |
 | **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
-| **Ransomware Watch** | Global + PH/SEA ransomware victim tracking: world map, regional (PH/SG/MY/ID/TH/VN/HK/TW) comparison with month-over-month trend, latest victims with cross-source corroboration flags, group activity, leak-site mirror health, and a PH-relevant watchlist. Reads a locally scheduled collector's cache only — never queries an upstream from the browser. Every entry is labelled a claim, never a confirmed fact. Requires a `RANSOMWARE_LIVE_API_KEY` (ransomware.live PRO); RansomLook needs no key. Data attributed to ransomware.live (non-commercial terms) and RansomLook (CC BY 4.0). |
+| **Ransomware Watch** | Global + PH/SEA ransomware victim tracking: world map, regional (PH/SG/MY/ID/TH/VN/HK/TW) comparison with month-over-month trend, latest victims with cross-source corroboration flags, group activity, leak-site mirror health, and a PH-relevant watchlist. Reads a locally scheduled collector's cache only for its core panels — never queries an upstream from the browser there. Two guarded exceptions: a company search (always live against ransomware.live, min 3 characters, rate-limited, degrades to a local partial-cache fallback if upstream is down) and an on-demand country lookup for any country outside the continuously-collected PH/SEA set (cached 24h, rate-limited). Every entry is labelled a claim, never a confirmed fact. Requires a `RANSOMWARE_LIVE_API_KEY` (ransomware.live PRO); RansomLook needs no key. Data attributed to ransomware.live (non-commercial terms) and RansomLook (CC BY 4.0). |
 
 ### LLM-powered tabs
 

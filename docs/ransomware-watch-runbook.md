@@ -287,3 +287,50 @@ history. This is expected, not a bug. `store.mirrors_by_group()` ranks by
 historical/offline entries, not shown" note for the rest — if a group's
 Leak Site Health card looks capped, that's the cap working as intended, not
 missing data.
+
+## v3.17.0: company search and on-demand country lookup
+
+Two guarded exceptions to "collector-only" — see CHANGELOG.md `[3.17.0]`
+for the full design. Operationally:
+
+**Force a re-fetch for an on-demand country** (clear its 24h cache before
+TTL expires — e.g. to pick up a correction, or to re-test after an upstream
+outage):
+
+```bash
+sqlite3 /opt/falconeye/data/ransomware.db "DELETE FROM country_coverage WHERE country = 'US';"
+```
+
+Only removes the coverage/freshness marker, not the `victims` rows already
+written back — those stay (still real, still attributed), they just won't
+block the next lookup for that country from hitting upstream again. Never
+run this for a standing-scope country (PH/SG/MY/ID/TH/VN/HK/TW) — it's a
+no-op for them either way, since that branch never consults
+`country_coverage` to decide whether to call upstream.
+
+**Clear the search result cache.** It's deliberately in-memory only
+(`app/ransomware/live.py`'s `_search_cache` dict) — not a database table, so
+there's nothing to `DELETE FROM`. The only way to clear it is a process
+restart:
+
+```bash
+sudo systemctl restart falconeye
+```
+
+This is a heavier hammer than a targeted cache clear, so don't reach for it
+casually — the cache is 1-hour TTL anyway, so a stale search result self-
+corrects within the hour without any operator action. Restart only if you
+need it cleared *now* (e.g. verifying a fix to a specific query's results).
+
+**Rate limits** for both on-demand paths live in
+`ransomware_country_ondemand_rate_limit` and `ransomware_search_rate_limit`
+(same `source_ip` + `called_at`, 48h retention shape as every other rate
+limit table in the app — the daily operator report needs no changes).
+Neither table ever holds a country code or a search string, only IP and
+timestamp — reset a specific IP's limit early (rare, only if a real user
+got legitimately rate-limited and needs unblocking sooner than the window
+would otherwise clear) with:
+
+```bash
+sqlite3 /opt/falconeye/data/ransomware.db "DELETE FROM ransomware_search_rate_limit WHERE source_ip = '1.2.3.4';"
+```

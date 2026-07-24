@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.16.0",
+    "softwareVersion": "3.17.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -148,7 +148,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.16.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.17.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1071,6 +1071,14 @@
 
       <div id="rw-status-banner" class="hidden mb-4"></div>
 
+      <!-- Company Search (v3.17.0) -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Company Search</h3>
+      <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live directly, live &mdash; not the local cache below, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
+      <input id="rw-search-input" type="text" placeholder="Company name or domain&hellip;" autocomplete="off"
+        class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400" />
+      <div id="rw-search-status" class="text-xs text-gray-600 mb-2"></div>
+      <div id="rw-search-results" class="space-y-2 mb-8"></div>
+
       <!-- 1. Global pulse -->
       <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Global Pulse</h3>
       <div id="rw-pulse" class="mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
@@ -1106,6 +1114,35 @@
         </table>
       </div>
       <p id="rw-phsea-asof" class="text-xs text-gray-600 mb-6"></p>
+
+      <!-- Country Lookup (v3.17.0) -->
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Country Lookup</h3>
+      <p class="text-xs text-gray-500 mb-2 max-w-2xl">PH/SEA above is continuously collected. Any other country can be checked on demand, cached 24 hours after the first check.</p>
+      <p class="text-xs text-gray-600 mb-1">Continuously monitored</p>
+      <div id="rw-country-quick-sea" class="flex flex-wrap gap-1.5 mb-3"></div>
+      <p class="text-xs text-gray-600 mb-1">Other country</p>
+      <div class="flex gap-2 items-center mb-2">
+        <input id="rw-country-input" type="text" maxlength="2" placeholder="ISO code, e.g. US"
+          class="w-28 bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm uppercase focus:outline-none focus:border-amber-400 font-mono" />
+        <button id="rw-country-btn" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Check</button>
+      </div>
+      <div id="rw-country-status" class="text-xs text-gray-600 mb-2"></div>
+      <div class="overflow-x-auto mb-8">
+        <table class="w-full text-xs">
+          <thead>
+            <tr class="text-left text-gray-500 border-b border-gray-800">
+              <th class="py-2 pr-3">Victim</th>
+              <th class="py-2 pr-3">Group</th>
+              <th class="py-2 pr-3">Country</th>
+              <th class="py-2 pr-3">Sector</th>
+              <th class="py-2 pr-3">Date</th>
+              <th class="py-2 pr-3">Status</th>
+              <th class="py-2 pr-3">Link</th>
+            </tr>
+          </thead>
+          <tbody id="rw-country-results-tbody"></tbody>
+        </table>
+      </div>
 
       <!-- 4. Latest victims, global -->
       <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Latest Victims, Global</h3>
@@ -1437,6 +1474,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.16.0"></script>
+  <script src="/static/app.js?v=3.17.0"></script>
 </body>
 </html>

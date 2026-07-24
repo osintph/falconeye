@@ -212,6 +212,34 @@ def init_tables() -> None:
             """
         )
         conn.execute("CREATE INDEX IF NOT EXISTS idx_collector_runs_phase ON collector_runs(phase, finished_at)")
+
+        # v3.17.0 on-demand paths (country filter, company search). Same
+        # table pattern as the rest of the app (mirrors routers/dork_generator.py:
+        # source_ip + called_at, 48h retention) so the daily operator report
+        # needs no changes. IP + timestamp only - never the query itself
+        # (see Part 2's "no query logging" requirement).
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ransomware_country_ondemand_rate_limit (
+              source_ip TEXT NOT NULL,
+              called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_rw_country_rl_ip ON ransomware_country_ondemand_rate_limit(source_ip, called_at)"
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ransomware_search_rate_limit (
+              source_ip TEXT NOT NULL,
+              called_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_rw_search_rl_ip ON ransomware_search_rate_limit(source_ip, called_at)"
+        )
         conn.commit()
     finally:
         conn.close()
@@ -619,5 +647,71 @@ def watchlist_hits(conn: sqlite3.Connection, limit: int = 100) -> list[dict]:
         "SELECT term, tier, match_type, matched_name, group_name, discovered, found_at "
         "FROM watchlist_hits ORDER BY found_at DESC LIMIT ?",
         (limit,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+# ---------- v3.17.0: country filter + company search ----------
+
+_RW_ONDEMAND_RATE_TABLES = {
+    "ransomware_country_ondemand_rate_limit",
+    "ransomware_search_rate_limit",
+}
+
+
+def check_rate_limit_window(conn: sqlite3.Connection, table: str, source_ip: str, window_seconds: int, cap: int) -> tuple[bool, int]:
+    """Returns (allowed, calls_used_in_window). *table* must be one of the
+    tables above - never touches the query/country string, only source_ip."""
+    assert table in _RW_ONDEMAND_RATE_TABLES
+    row = conn.execute(
+        f"SELECT COUNT(*) FROM {table} WHERE source_ip = ? AND called_at > datetime('now', ?)",
+        (source_ip, f"-{window_seconds} seconds"),
+    ).fetchone()
+    count = row[0]
+    return (count < cap, count)
+
+
+def record_rate_limit_event(conn: sqlite3.Connection, table: str, source_ip: str) -> None:
+    assert table in _RW_ONDEMAND_RATE_TABLES
+    try:
+        conn.execute(f"INSERT INTO {table} (source_ip) VALUES (?)", (source_ip,))
+        conn.execute(f"DELETE FROM {table} WHERE called_at < datetime('now', '-48 hours')")
+        conn.commit()
+    except Exception as exc:
+        log.error("ransomware: rate-limit write failed on %s: %s", table, exc)
+
+
+def get_country_coverage(conn: sqlite3.Connection, country: str) -> sqlite3.Row | None:
+    """Read-only - country_coverage is maintained by the collector (standing
+    scope) and the on-demand country endpoint (everything else). Never
+    seeded speculatively by a read path."""
+    return conn.execute("SELECT * FROM country_coverage WHERE country = ?", (country,)).fetchone()
+
+
+def victims_for_country(conn: sqlite3.Connection, country: str, limit: int = 200) -> list[dict]:
+    rows = conn.execute(
+        """
+        SELECT victim_name, group_name, country, sector, discovered, corroborated,
+               infostealer_count, infostealer_json, permalink
+        FROM victims WHERE country = ? ORDER BY discovered DESC LIMIT ?
+        """,
+        (country, limit),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def search_victims_local(conn: sqlite3.Connection, query: str, limit: int = 100) -> list[dict]:
+    """Degraded-mode fallback only (PRO unreachable) - a plain LIKE scan of
+    the local partial cache. `query` is used as a bound SQL parameter only,
+    never logged or persisted."""
+    like = f"%{query}%"
+    rows = conn.execute(
+        """
+        SELECT victim_name, group_name, country, sector, discovered, corroborated,
+               infostealer_count, infostealer_json, permalink
+        FROM victims WHERE victim_name LIKE ? OR group_name LIKE ?
+        ORDER BY discovered DESC LIMIT ?
+        """,
+        (like, like, limit),
     ).fetchall()
     return [dict(r) for r in rows]
