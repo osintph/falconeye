@@ -5,6 +5,42 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.23.0] — 2026-07-25
+
+Sandbox tab removed; its one non-redundant capability — MalwareBazaar / URLhaus
+**file-hash reputation** — moved inline into the two flows that actually produce
+hashes. Closes the last item of the 2026-07 review (the Sandbox removal was held
+in v3.20.1 because P1 escaped the XSS in place instead of deleting the tab).
+
+### Changed
+
+- **File-hash reputation is now inline in Email Header and Script Decoder.** The
+  SHA-256 hashes surfaced by Email Header and the file hashes extracted by Script
+  Decoder each get a click-to-check button that queries URLhaus + MalwareBazaar
+  and renders the result inline (reusing the existing payload/MalwareBazaar
+  renderers, which carry the v3.20.1 escaping). The former per-hash
+  "pivot to Sandbox" buttons are replaced by this.
+
+### Removed
+
+- **Sandbox tab deleted** (nav entry, markup, `runSandboxLookup`,
+  `renderSandboxResult`, the redundant URLhaus **URL** renderer, and
+  `pivotToSandbox`). It was quadruply redundant for URL reputation — the IP
+  Reputation tab, PH Threat Pulse, and ThreatFox already cover abuse.ch URL/host
+  data — and its only unique capability (hash reputation) is now inline. The
+  backend `GET /api/sandbox/lookup` endpoint is **kept** as the service the
+  inline lookup calls (now hash-only in practice); privacy disclosure and the
+  JSON-LD feature list updated to reflect the move.
+
+### Notes
+
+- Verified: the `/api/sandbox/lookup` endpoint returns the `urlhaus_payload` /
+  `malwarebazaar` shape the inline flow consumes, the wiring calls
+  `checkHashReputation` from both flows, `app.js` parses, and index.html has no
+  dangling Sandbox markup. Full suite green (462 passed).
+
+---
+
 ## [3.22.0] — 2026-07-25
 
 Internal dedup pass (2026-07 review P4). No user-facing behavior change; the

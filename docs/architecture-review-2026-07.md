@@ -221,11 +221,11 @@ ships separately after that.
       (Sandbox, IP `urlhaus_host`, Threat Pulse feed). ThreatFox left in
       `ip_sources` (SourceResult contract).
 
-### Follow-up: Sandbox tab removal (migration-first)
-- [ ] Move MalwareBazaar hash reputation inline into Email Header / Script
-      Decoder (using the new `abusech` client), verify hash lookup from both
-      flows, then delete the Sandbox tab and its dangling pivots. Scheduled as
-      the release after P4 (the `abusech` client is now in place for it).
+### Follow-up: Sandbox tab removal (migration-first) — **shipped v3.23.0**
+- [x] Moved MalwareBazaar/URLhaus hash reputation inline into Email Header and
+      Script Decoder (`checkHashReputation`, reusing the kept payload/MB
+      renderers), then deleted the Sandbox tab, the redundant URL renderer, and
+      `pivotToSandbox`. Backend `/api/sandbox/lookup` kept as the inline service.
 
 ### Explicitly not doing this pass
 - No shared upstream-source layer; no RIPEstat/RDAP client unification; no
@@ -306,6 +306,19 @@ ships separately after that.
   **Fixed in P2.**
 - `docs/fastapi-upgrade-plan.md` presents completed work as pending — should be
   marked done (or archived).
+
+## Known sharp edge: shared-DB self-init tests
+
+Some regression tests (e.g. `tests/abuse/test_ip_intel_regression.py`) prove a
+router self-creates its SQLite table by **dropping the table and re-running the
+init**, against a DB **shared across the whole test run**. That pattern is a
+landmine for refactors: during P4, renaming `ip_intel._init_cache` made its
+`_init_cache()` call raise `AttributeError` *after* the drop, so the table was
+left missing and **five unrelated tests cascaded to failure** from that one
+error. It was fixed by keeping `_init_cache` as a shim, but the pattern will
+bite again on the next refactor that touches a self-init entry point. Recorded,
+not fixed now — the durable fix is either per-test DB isolation or a
+drop-and-restore that doesn't depend on a specific private function name.
 
 ## Deploy mechanism (corrected & normalized 2026-07-25)
 

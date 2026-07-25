@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.22.0",
+    "softwareVersion": "3.23.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -93,7 +93,7 @@
       "Domain intelligence with RDAP, DNS, and CT logs",
       "Telegram Intelligence — tiered entity resolution (t.me scrape, Bot API, MTProto) for users, bots, channels, and groups",
       "IP reputation with Shodan and GreyNoise",
-      "URL and file hash sandbox lookup",
+      "File-hash reputation (URLhaus / MalwareBazaar) inline in Email Header and Script Decoder",
       "Email header analyzer with BEC and scam detection",
       "Google dork generator (LLM-powered)",
       "Suspicious script decoder (LLM-powered)",
@@ -148,7 +148,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.22.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.23.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -498,27 +498,6 @@
       <div id="ip-result" class="hidden space-y-4"></div>
     </div>
 
-    <!-- Sandbox Tab -->
-    <div id="tab-sandbox" class="tab-content hidden">
-      <h2 class="text-lg font-bold mb-1">File & URL Sandbox History</h2>
-      <p class="text-gray-400 text-sm mb-6">Paste a URL or a file hash (MD5, SHA1, SHA256) to query URLhaus and MalwareBazaar for community threat intel. Results cached for 6 hours.</p>
-
-      <div class="flex gap-3 mb-3">
-        <input id="sandbox-input" type="text" placeholder="URL or hash..."
-          class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
-        <button id="sandbox-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
-          Lookup
-        </button>
-      </div>
-      <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition mb-6"
-              data-sample="44d88612fea8a8f36de82e1278abb02f"
-              data-target="sandbox-input"
-              data-trigger="sandbox-btn">
-        ↳ Try sample (EICAR test hash)
-      </button>
-
-      <div id="sandbox-result" class="hidden space-y-4"></div>
-    </div>
 
     <!-- URL EXPANDER TAB -->
     <div id="tab-url" class="tab-content hidden">
@@ -1427,8 +1406,8 @@
                   <td class="py-2">Mailgun (email delivery to the recipient abuse desk)</td>
                 </tr>
                 <tr class="border-b border-gray-800">
-                  <td class="py-2">Sandbox History</td>
-                  <td class="py-2 font-mono">URL or file hash</td>
+                  <td class="py-2">Hash reputation (Email Header / Script Decoder)</td>
+                  <td class="py-2 font-mono">file hash</td>
                   <td class="py-2">URLhaus, MalwareBazaar (abuse.ch)</td>
                 </tr>
                 <tr class="border-b border-gray-800">
@@ -1512,6 +1491,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.22.0"></script>
+  <script src="/static/app.js?v=3.23.0"></script>
 </body>
 </html>

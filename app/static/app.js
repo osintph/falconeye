@@ -47,8 +47,6 @@ const NAV_GROUPS = [
       icon: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>' },
     { id: 'decoder', label: 'Script Decoder', desc: 'Deobfuscate PowerShell, JS, VBA, Base64',
       icon: '<polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>' },
-    { id: 'sandbox', label: 'Sandbox', desc: 'URLhaus / MalwareBazaar by URL or hash',
-      icon: '<path d="M10 2v8L4.5 20.5a2.5 2.5 0 0 0 2 3.5h11a2.5 2.5 0 0 0 2-3.5L14 10V2"/><path d="M8 2h8"/><path d="M7 16h10"/>' },
   ]},
   { key: 'financial', label: 'Financial', tabs: [
     { id: 'crypto', label: 'Crypto', desc: 'Trace Bitcoin, Ethereum, USDT TRC20 wallets',
@@ -2062,98 +2060,30 @@ function renderIpUrlhaus(uh) {
     </div>`;
 }
 
-// ---- Sandbox History ----
+// ---- Inline hash reputation (URLhaus payload + MalwareBazaar) ----
+// Replaces the former Sandbox tab: the hash-reputation capability moved inline
+// into Email Header and Script Decoder. Reuses renderUrlhausPayload /
+// renderMalwarebazaar below. The backend /api/sandbox/lookup endpoint is
+// unchanged — now called only with hashes from those two flows.
 
-document.getElementById('sandbox-btn').addEventListener('click', runSandboxLookup);
-document.getElementById('sandbox-input').addEventListener('keydown', e => {
-  if (e.key === 'Enter') runSandboxLookup();
-});
-
-async function runSandboxLookup() {
-  const raw = document.getElementById('sandbox-input').value.trim();
-  const resultEl = document.getElementById('sandbox-result');
-
-  if (!raw) return;
-
-  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Querying URLhaus and MalwareBazaar...</p>';
-  resultEl.classList.remove('hidden');
-
+async function checkHashReputation(hash, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<p class="text-gray-400 text-xs animate-pulse">Checking URLhaus / MalwareBazaar…</p>';
   try {
-    const res = await fetch(`/api/sandbox/lookup?indicator=${encodeURIComponent(raw)}`);
+    const res = await fetch(`/api/sandbox/lookup?indicator=${encodeURIComponent(hash)}`);
     const data = await res.json();
-
     if (!res.ok) {
-      resultEl.innerHTML = `<div class="bg-yellow-900/20 border border-yellow-700/30 rounded p-4">
-        <p class="text-yellow-400 text-sm font-bold mb-1">Lookup failed</p>
-        <p class="text-xs text-gray-400">${data.detail}</p>
-      </div>`;
+      el.innerHTML = `<p class="text-red-400 text-xs">Lookup failed: ${escapeHtml(data.detail || 'error')}</p>`;
       return;
     }
-
-    renderSandboxResult(resultEl, data);
+    const body = renderUrlhausPayload(data.urlhaus_payload) + renderMalwarebazaar(data.malwarebazaar);
+    el.innerHTML = body.trim()
+      ? `<div class="space-y-3 mt-2">${body}</div>`
+      : '<p class="text-xs text-gray-500 mt-2">Hash not found in URLhaus or MalwareBazaar.</p>';
   } catch (e) {
-    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
+    el.innerHTML = `<p class="text-red-400 text-xs">Request failed: ${escapeHtml(e.message)}</p>`;
   }
-}
-
-function renderSandboxResult(el, data) {
-  const cacheBadge = data.cache_hit
-    ? '<span class="text-xs text-gray-500">cached</span>'
-    : '<span class="text-xs text-green-400">fresh</span>';
-
-  el.innerHTML = `
-    <div class="bg-gray-900 border border-gray-800 rounded p-5">
-      <div class="flex items-center justify-between mb-2">
-        <div class="flex items-center gap-3">
-          <span class="brand-badge text-sm px-3 py-1">${data.indicator_type.toUpperCase()}</span>
-          <span class="text-xs text-gray-400 break-all">${data.indicator}</span>
-        </div>
-        ${cacheBadge}
-      </div>
-    </div>
-    ${renderUrlhausUrl(data.urlhaus_url)}
-    ${renderUrlhausPayload(data.urlhaus_payload)}
-    ${renderMalwarebazaar(data.malwarebazaar)}
-  `;
-}
-
-function renderUrlhausUrl(uh) {
-  if (!uh || uh.query_status !== "ok") {
-    if (uh && uh.query_status === "no_results") {
-      return `
-        <div class="bg-gray-900 border border-gray-800 rounded p-5">
-          <h3 class="text-sm font-bold text-gray-300 mb-2 uppercase tracking-wide">URLhaus URL Lookup</h3>
-          <p class="text-sm text-gray-500">URL not present in URLhaus database.</p>
-        </div>`;
-    }
-    return '';
-  }
-
-  const payloads = uh.payloads || [];
-  const tags = uh.tags || [];
-  const blacklists = uh.blacklists || {};
-
-  return `
-    <div class="bg-gray-900 border border-gray-800 rounded p-5">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus URL Match</h3>
-        ${uh.urlhaus_reference ? `<a href="${escapeAttr(uh.urlhaus_reference)}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
-      </div>
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Status</p>
-          <p class="text-${uh.url_status === 'online' ? 'green' : 'gray'}-400 font-bold uppercase text-sm">${uh.url_status || 'unknown'}</p>
-        </div>
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Threat</p>
-          <p class="text-red-300 text-sm">${uh.threat || 'unknown'}</p>
-        </div>
-        ${uh.date_added ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Reported</p><p class="text-amber-300 text-sm">${fmtPHT(uh.date_added)}</p></div>` : ''}
-      </div>
-      ${tags.length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tags</p><div class="flex flex-wrap gap-1">${tags.map(t => `<span class="text-xs bg-gray-800 text-amber-300 px-2 py-0.5 rounded">${t}</span>`).join('')}</div></div>` : ''}
-      ${Object.keys(blacklists).length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Blacklists</p><div class="flex flex-wrap gap-2">${Object.entries(blacklists).map(([k, v]) => `<span class="text-xs bg-red-900/20 border border-red-700/30 px-2 py-1 rounded text-red-300">${k}: ${v}</span>`).join('')}</div></div>` : ''}
-      ${payloads.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Associated Payloads (${payloads.length})</p><div class="space-y-2">${payloads.slice(0, 5).map(p => `<div class="bg-gray-950 border border-gray-800 rounded p-2"><p class="text-xs text-amber-300 font-mono break-all">${p.response_sha256 || p.response_md5 || ''}</p><p class="text-xs text-gray-400 mt-1">${p.file_type || '?'} · ${p.signature || 'no signature'}</p></div>`).join('')}</div></div>` : ''}
-    </div>`;
 }
 
 function renderUrlhausPayload(uh) {
@@ -2710,13 +2640,15 @@ function renderEmailHeaderResult(d) {
         ` : ''}
         ${iocs.sha256?.length ? `
           <div class="mb-3">
-            <p class="text-xs text-gray-500 uppercase mb-2">SHA256 hashes (${iocs.sha256.length})</p>
+            <p class="text-xs text-gray-500 uppercase mb-2">SHA256 hashes (${iocs.sha256.length}) — click to check reputation</p>
             <div class="flex flex-wrap gap-2">
               ${iocs.sha256.map(h => `
                 <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
-                        onclick="pivotToSandbox('${escapeAttr(h)}')">${escapeHtml(h.slice(0, 16) + '...')}</button>
+                        title="Check URLhaus / MalwareBazaar"
+                        onclick="checkHashReputation('${escapeAttr(h)}', 'emailhdr-hashrep')">${escapeHtml(h.slice(0, 16) + '…')} ⌕</button>
               `).join('')}
             </div>
+            <div id="emailhdr-hashrep" class="mt-2"></div>
           </div>
         ` : ''}
       </div>
@@ -2802,19 +2734,6 @@ function pivotToIp(ip) {
     const btn = document.getElementById('ip-btn');
     if (input && btn) {
       input.value = ip;
-      btn.click();
-    }
-  }, 200);
-}
-
-
-function pivotToSandbox(value) {
-  window.location.hash = '#sandbox';
-  setTimeout(() => {
-    const input = document.getElementById('sandbox-input');
-    const btn = document.getElementById('sandbox-btn');
-    if (input && btn) {
-      input.value = value;
       btn.click();
     }
   }, 200);
@@ -3407,7 +3326,7 @@ function renderDecoderResult(d) {
     {key: 'urls', label: 'URLs', pivot: 'scanner'},
     {key: 'ips', label: 'IPs', pivot: 'ip'},
     {key: 'domains', label: 'Domains', pivot: 'domain'},
-    {key: 'hashes', label: 'File hashes', pivot: 'sandbox'},
+    {key: 'hashes', label: 'File hashes', pivot: 'hash'},
     {key: 'file_paths', label: 'File paths', pivot: null},
     {key: 'registry_keys', label: 'Registry keys', pivot: null},
     {key: 'commands', label: 'Commands', pivot: null},
@@ -3427,13 +3346,15 @@ function renderDecoderResult(d) {
           html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToIp('${escapeAttr(item)}')">${escapeHtml(item)}</button>`;
         } else if (cat.pivot === 'domain') {
           html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToDomain('${escapeAttr(item)}')">${escapeHtml(item)}</button>`;
-        } else if (cat.pivot === 'sandbox') {
-          html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" onclick="pivotToSandbox('${escapeAttr(item)}')">${escapeHtml(item.slice(0, 16) + '...')}</button>`;
+        } else if (cat.pivot === 'hash') {
+          html += `<button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition" title="Check URLhaus / MalwareBazaar" onclick="checkHashReputation('${escapeAttr(item)}', 'decoder-hashrep')">${escapeHtml(item.slice(0, 16) + '…')} ⌕</button>`;
         } else {
           html += `<span class="bg-gray-800 text-gray-300 text-xs font-mono px-2 py-1 rounded">${escapeHtml(display)}</span>`;
         }
       });
-      html += '</div></div>';
+      html += '</div>';
+      if (cat.pivot === 'hash') html += '<div id="decoder-hashrep" class="mt-2"></div>';
+      html += '</div>';
     });
     html += '</div>';
   }
