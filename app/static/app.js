@@ -2015,7 +2015,7 @@ function renderIpClassification(gn) {
       <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">GreyNoise Classification</h3>
       <div class="flex items-center gap-3 mb-2">
         <span class="${classColor} border px-3 py-1 rounded text-xs font-bold uppercase">${classification}</span>
-        ${gn.name && gn.name !== 'unknown' ? `<span class="text-sm text-gray-200">${gn.name}</span>` : ''}
+        ${gn.name && gn.name !== 'unknown' ? `<span class="text-sm text-gray-200">${escapeHtml(gn.name)}</span>` : ''}
       </div>
       ${tags.length ? `<p class="text-xs text-gray-400 mt-2">${tags.join(' · ')}</p>` : ''}
       ${gn.last_seen ? `<p class="text-xs text-gray-500 mt-1">Last seen: ${gn.last_seen}</p>` : ''}
@@ -2096,7 +2096,7 @@ function renderIpUrlhaus(uh) {
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus History</h3>
-        ${uh.urlhaus_reference ? `<a href="${uh.urlhaus_reference}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
+        ${uh.urlhaus_reference ? `<a href="${escapeAttr(uh.urlhaus_reference)}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
       </div>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
         <div>
@@ -2106,7 +2106,7 @@ function renderIpUrlhaus(uh) {
         ${firstseen ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen</p><p class="text-amber-300 text-sm">${fmtPHT(firstseen)}</p></div>` : ''}
       </div>
       ${Object.keys(blacklists).length ? `<div class="mb-3"><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Blacklist Status</p><div class="flex flex-wrap gap-2">${Object.entries(blacklists).map(([k, v]) => `<span class="text-xs bg-red-900/20 border border-red-700/30 px-2 py-1 rounded text-red-300">${k}: ${v}</span>`).join('')}</div></div>` : ''}
-      ${urls.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent URLs (${Math.min(urls.length, 15)} of ${urls.length})</p><div class="space-y-1">${urls.slice(0, 15).map(u => `<div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-2"><span class="text-xs text-amber-300 font-mono break-all flex-1">${u.url}</span><span class="text-xs ${u.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(u.url_status || 'unknown').toUpperCase()}</span></div>`).join('')}</div></div>` : ''}
+      ${urls.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Recent URLs (${Math.min(urls.length, 15)} of ${urls.length})</p><div class="space-y-1">${urls.slice(0, 15).map(u => `<div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-2"><span class="text-xs text-amber-300 font-mono break-all flex-1">${escapeHtml(u.url)}</span><span class="text-xs ${u.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(u.url_status || 'unknown').toUpperCase()}</span></div>`).join('')}</div></div>` : ''}
     </div>`;
 }
 
@@ -2185,7 +2185,7 @@ function renderUrlhausUrl(uh) {
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus URL Match</h3>
-        ${uh.urlhaus_reference ? `<a href="${uh.urlhaus_reference}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
+        ${uh.urlhaus_reference ? `<a href="${escapeAttr(uh.urlhaus_reference)}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">View on URLhaus ↗</a>` : ''}
       </div>
       <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
         <div>
@@ -2213,7 +2213,7 @@ function renderUrlhausPayload(uh) {
     <div class="bg-gray-900 border border-gray-800 rounded p-5">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide">URLhaus Hash Match</h3>
-        ${uh.urlhaus_download ? `<a href="${uh.urlhaus_download}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">Sample on URLhaus ↗</a>` : ''}
+        ${uh.urlhaus_download ? `<a href="${escapeAttr(uh.urlhaus_download)}" target="_blank" rel="noopener" class="text-xs text-amber-400 hover:text-amber-300">Sample on URLhaus ↗</a>` : ''}
       </div>
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
         <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">File Type</p><p class="text-amber-300 text-sm">${uh.file_type || 'unknown'}</p></div>
@@ -2221,7 +2221,7 @@ function renderUrlhausPayload(uh) {
         <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Signature</p><p class="text-red-300 text-sm">${uh.signature || 'none'}</p></div>
         ${uh.firstseen ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Seen</p><p class="text-gray-300 text-xs">${fmtPHT(uh.firstseen)}</p></div>` : ''}
       </div>
-      ${urls.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Distribution URLs (${urls.length})</p><div class="space-y-1">${urls.slice(0, 10).map(u => `<div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-2"><span class="text-xs text-amber-300 font-mono break-all flex-1">${u.url}</span><span class="text-xs ${u.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(u.url_status || 'unknown').toUpperCase()}</span></div>`).join('')}</div></div>` : ''}
+      ${urls.length ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Distribution URLs (${urls.length})</p><div class="space-y-1">${urls.slice(0, 10).map(u => `<div class="bg-gray-950 border border-gray-800 rounded p-2 flex items-center justify-between gap-2"><span class="text-xs text-amber-300 font-mono break-all flex-1">${escapeHtml(u.url)}</span><span class="text-xs ${u.url_status === 'online' ? 'text-green-400' : 'text-gray-500'} font-bold">${(u.url_status || 'unknown').toUpperCase()}</span></div>`).join('')}</div></div>` : ''}
     </div>`;
 }
 

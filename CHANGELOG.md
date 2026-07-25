@@ -5,6 +5,36 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.20.1] — 2026-07-25
+
+Security patch. Ships on its own, ahead of the wider remediation batch.
+
+### Security
+
+- **DOM XSS closed in the URLhaus render paths (IP Reputation and Sandbox
+  tabs).** Attacker-controlled URLhaus values — the malware URL strings
+  (`u.url`) and the reference/download links — were interpolated into
+  `innerHTML` without escaping, so a hostile URL recorded by URLhaus could
+  inject markup when the result rendered. Six sinks now pass through the same
+  `escapeHtml`/`escapeAttr` helpers already used by the PH Threat Pulse widget:
+  `renderIpUrlhaus` (`app.js` reference href + Recent URLs text), the GreyNoise
+  name field in the same IP result, and Sandbox's `renderUrlhausUrl` /
+  `renderUrlhausPayload` (reference href, sample-download href, Distribution
+  URLs text).
+- **Scope note:** the original report placed all five listed sinks in the
+  Sandbox tab and proposed deleting that tab to retire them. In the code, two of
+  the five (plus the GreyNoise sibling) live in the IP Reputation tab's render
+  path, which is not being removed — so deleting Sandbox would have left the
+  IP-tab XSS live. The fix escapes the sinks wherever they are; the separate
+  question of removing the Sandbox tab is handled as scope reduction in a later
+  release, decoupled from this security patch. This supersedes the earlier
+  belief that the app's XSS surface was fully closed (that pass covered the
+  Telegram, RDAP, and RSS render paths but not URLhaus).
+- Static-asset cache-bust (`?v=3.20.1`) bumped so browsers and the edge fetch
+  the corrected `app.js` without a manual purge.
+
+---
+
 ## [3.20.0] — 2026-07-25
 
 IP Reputation: ASN Intelligence — the pivot from one abusive IP to the operator's whole announced footprint.
