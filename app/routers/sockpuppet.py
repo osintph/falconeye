@@ -322,10 +322,13 @@ def _pick_postcode(cc: str, locale: str | None) -> str:
 
 
 def _career(age_val: int, birth_year: int) -> tuple[int, int]:
-    """Career start year and years of experience, derived together so tenure can
-    never contradict the age (no senior with two years, no negative experience)."""
+    """Career start year and years of experience, derived from the same start year
+    so tenure can never contradict the age or the start year (no senior with two
+    years, no negative experience, and "since YEAR" always equals "N years")."""
+    from datetime import date
     start_age = min(random.randint(18, 25), max(16, age_val))
-    return birth_year + start_age, max(0, age_val - start_age)
+    start_year = birth_year + start_age
+    return start_year, max(0, date.today().year - start_year)
 
 
 def _persona_iban(cc: str, locale: str | None) -> str:

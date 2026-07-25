@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.25.2] - 2026-07-25
+
+Sock Puppet: derive years of experience from the career start year and the
+current year, so "since YEAR" and "N years of experience" always agree. Fixes an
+off-by-one where the age-vs-birth-year offset could make tenure disagree with the
+start year by a year (for example "0 years, since 2025" in 2026).
+
 ## [3.25.1] - 2026-07-25
 
 Sock Puppet Legend: constrain the supplied city to the persona's own country, not
