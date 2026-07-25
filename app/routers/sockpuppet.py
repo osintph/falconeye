@@ -50,7 +50,13 @@ router = APIRouter(prefix="/api/sockpuppet", tags=["sockpuppet"])
 limiter = Limiter(key_func=get_client_ip_key)
 
 LLM_SOCKPUPPET_ENABLED = getenv_clean("LLM_SOCKPUPPET_ENABLED", "true").lower() == "true"
-SOCKPUPPET_LLM_PER_DAY = 5
+# Per-IP daily Legend cap. Raised from 5 to 25 now that the Legend-off Cover is
+# strong on its own (real city, correct timezone), so hitting the cap is no longer
+# a visible downgrade. Operator can override via env without a code change.
+try:
+    SOCKPUPPET_LLM_PER_DAY = max(1, int(getenv_clean("SOCKPUPPET_LLM_PER_DAY", "25")))
+except ValueError:
+    SOCKPUPPET_LLM_PER_DAY = 25
 _RL_TABLE = "sockpuppet_llm_calls"
 rate_limit.init_table(_RL_TABLE)
 
@@ -111,6 +117,10 @@ JOB_DEPT = dict(JOB_ROLES)
 VEHICLES = [
     "Toyota Corolla", "Honda Civic", "Hyundai Accent", "Ford Ranger", "Nissan Almera",
     "Mitsubishi Mirage", "Volkswagen Golf", "Kia Picanto", "Suzuki Swift", "no vehicle",
+    "Toyota Hilux", "Mazda 3", "Renault Clio", "Peugeot 208", "Fiat Punto",
+    "Chevrolet Onix", "Skoda Octavia", "Toyota RAV4", "Honda CR-V", "Hyundai Tucson",
+    "Dacia Sandero", "Opel Corsa", "Nissan Qashqai", "Volkswagen Polo", "Ford Focus",
+    "no vehicle", "relies on public transport",
 ]
 COLORS = ["blue", "green", "grey", "black", "red", "teal", "navy", "maroon", "olive", "purple"]
 
@@ -134,6 +144,228 @@ US_STATE_TZ = {
     "Utah": "America/Denver", "Vermont": "America/New_York", "Virginia": "America/New_York",
     "Washington": "America/Los_Angeles", "West Virginia": "America/New_York",
     "Wisconsin": "America/Chicago", "Wyoming": "America/Denver",
+}
+
+# Curated (city, region, IANA timezone) triples for multi-zone countries and
+# city-states. Picking one triple keeps city, region, and timezone mutually
+# consistent offline (no Legend needed), and the timezone is the region's real
+# zone, not pytz.country_timezones[cc][0]. Single-zone countries are NOT listed;
+# their one country zone is already correct.
+GEO = {
+    "US": [
+        ("New York", "New York", "America/New_York"),
+        ("Philadelphia", "Pennsylvania", "America/New_York"),
+        ("Miami", "Florida", "America/New_York"),
+        ("Atlanta", "Georgia", "America/New_York"),
+        ("Boston", "Massachusetts", "America/New_York"),
+        ("Detroit", "Michigan", "America/Detroit"),
+        ("Chicago", "Illinois", "America/Chicago"),
+        ("Houston", "Texas", "America/Chicago"),
+        ("Dallas", "Texas", "America/Chicago"),
+        ("San Antonio", "Texas", "America/Chicago"),
+        ("Minneapolis", "Minnesota", "America/Chicago"),
+        ("Denver", "Colorado", "America/Denver"),
+        ("Salt Lake City", "Utah", "America/Denver"),
+        ("Phoenix", "Arizona", "America/Phoenix"),
+        ("Los Angeles", "California", "America/Los_Angeles"),
+        ("San Diego", "California", "America/Los_Angeles"),
+        ("Seattle", "Washington", "America/Los_Angeles"),
+        ("Las Vegas", "Nevada", "America/Los_Angeles"),
+        ("Anchorage", "Alaska", "America/Anchorage"),
+        ("Honolulu", "Hawaii", "Pacific/Honolulu"),
+    ],
+    "AU": [
+        ("Sydney", "New South Wales", "Australia/Sydney"),
+        ("Newcastle", "New South Wales", "Australia/Sydney"),
+        ("Melbourne", "Victoria", "Australia/Melbourne"),
+        ("Geelong", "Victoria", "Australia/Melbourne"),
+        ("Brisbane", "Queensland", "Australia/Brisbane"),
+        ("Townsville", "Queensland", "Australia/Brisbane"),
+        ("Perth", "Western Australia", "Australia/Perth"),
+        ("Adelaide", "South Australia", "Australia/Adelaide"),
+        ("Hobart", "Tasmania", "Australia/Hobart"),
+        ("Darwin", "Northern Territory", "Australia/Darwin"),
+        ("Canberra", "Australian Capital Territory", "Australia/Sydney"),
+    ],
+    "BR": [
+        ("Sao Paulo", "Sao Paulo", "America/Sao_Paulo"),
+        ("Rio de Janeiro", "Rio de Janeiro", "America/Sao_Paulo"),
+        ("Belo Horizonte", "Minas Gerais", "America/Sao_Paulo"),
+        ("Curitiba", "Parana", "America/Sao_Paulo"),
+        ("Porto Alegre", "Rio Grande do Sul", "America/Sao_Paulo"),
+        ("Salvador", "Bahia", "America/Bahia"),
+        ("Fortaleza", "Ceara", "America/Fortaleza"),
+        ("Recife", "Pernambuco", "America/Recife"),
+        ("Manaus", "Amazonas", "America/Manaus"),
+        ("Cuiaba", "Mato Grosso", "America/Cuiaba"),
+        ("Campo Grande", "Mato Grosso do Sul", "America/Campo_Grande"),
+        ("Belem", "Para", "America/Belem"),
+        ("Rio Branco", "Acre", "America/Rio_Branco"),
+    ],
+    "CA": [
+        ("Toronto", "Ontario", "America/Toronto"),
+        ("Ottawa", "Ontario", "America/Toronto"),
+        ("Montreal", "Quebec", "America/Toronto"),
+        ("Quebec City", "Quebec", "America/Toronto"),
+        ("Vancouver", "British Columbia", "America/Vancouver"),
+        ("Victoria", "British Columbia", "America/Vancouver"),
+        ("Calgary", "Alberta", "America/Edmonton"),
+        ("Edmonton", "Alberta", "America/Edmonton"),
+        ("Winnipeg", "Manitoba", "America/Winnipeg"),
+        ("Regina", "Saskatchewan", "America/Regina"),
+        ("Halifax", "Nova Scotia", "America/Halifax"),
+        ("Fredericton", "New Brunswick", "America/Moncton"),
+        ("St. John's", "Newfoundland and Labrador", "America/St_Johns"),
+        ("Whitehorse", "Yukon", "America/Whitehorse"),
+        ("Yellowknife", "Northwest Territories", "America/Yellowknife"),
+        ("Iqaluit", "Nunavut", "America/Iqaluit"),
+    ],
+    "RU": [
+        ("Moscow", "Moscow", "Europe/Moscow"),
+        ("Saint Petersburg", "Saint Petersburg", "Europe/Moscow"),
+        ("Kaliningrad", "Kaliningrad Oblast", "Europe/Kaliningrad"),
+        ("Samara", "Samara Oblast", "Europe/Samara"),
+        ("Yekaterinburg", "Sverdlovsk Oblast", "Asia/Yekaterinburg"),
+        ("Chelyabinsk", "Chelyabinsk Oblast", "Asia/Yekaterinburg"),
+        ("Omsk", "Omsk Oblast", "Asia/Omsk"),
+        ("Novosibirsk", "Novosibirsk Oblast", "Asia/Novosibirsk"),
+        ("Krasnoyarsk", "Krasnoyarsk Krai", "Asia/Krasnoyarsk"),
+        ("Irkutsk", "Irkutsk Oblast", "Asia/Irkutsk"),
+        ("Yakutsk", "Sakha Republic", "Asia/Yakutsk"),
+        ("Vladivostok", "Primorsky Krai", "Asia/Vladivostok"),
+    ],
+    "MX": [
+        ("Mexico City", "Mexico City", "America/Mexico_City"),
+        ("Guadalajara", "Jalisco", "America/Mexico_City"),
+        ("Puebla", "Puebla", "America/Mexico_City"),
+        ("Monterrey", "Nuevo Leon", "America/Monterrey"),
+        ("Tijuana", "Baja California", "America/Tijuana"),
+        ("Mexicali", "Baja California", "America/Tijuana"),
+        ("Hermosillo", "Sonora", "America/Hermosillo"),
+        ("Culiacan", "Sinaloa", "America/Mazatlan"),
+        ("Cancun", "Quintana Roo", "America/Cancun"),
+        ("Chihuahua", "Chihuahua", "America/Chihuahua"),
+    ],
+    "ID": [
+        ("Jakarta", "Jakarta", "Asia/Jakarta"),
+        ("Surabaya", "East Java", "Asia/Jakarta"),
+        ("Bandung", "West Java", "Asia/Jakarta"),
+        ("Medan", "North Sumatra", "Asia/Jakarta"),
+        ("Semarang", "Central Java", "Asia/Jakarta"),
+        ("Denpasar", "Bali", "Asia/Makassar"),
+        ("Makassar", "South Sulawesi", "Asia/Makassar"),
+        ("Balikpapan", "East Kalimantan", "Asia/Makassar"),
+        ("Manado", "North Sulawesi", "Asia/Makassar"),
+        ("Jayapura", "Papua", "Asia/Jayapura"),
+        ("Ambon", "Maluku", "Asia/Jayapura"),
+    ],
+    "AR": [
+        ("Buenos Aires", "Buenos Aires", "America/Argentina/Buenos_Aires"),
+        ("La Plata", "Buenos Aires Province", "America/Argentina/Buenos_Aires"),
+        ("Cordoba", "Cordoba", "America/Argentina/Cordoba"),
+        ("Rosario", "Santa Fe", "America/Argentina/Cordoba"),
+        ("Mendoza", "Mendoza", "America/Argentina/Mendoza"),
+        ("Salta", "Salta", "America/Argentina/Salta"),
+        ("San Miguel de Tucuman", "Tucuman", "America/Argentina/Tucuman"),
+        ("Ushuaia", "Tierra del Fuego", "America/Argentina/Ushuaia"),
+    ],
+    "KZ": [
+        ("Almaty", "Almaty", "Asia/Almaty"),
+        ("Astana", "Akmola Region", "Asia/Almaty"),
+        ("Shymkent", "Turkistan Region", "Asia/Almaty"),
+        ("Aktobe", "Aktobe Region", "Asia/Aqtobe"),
+        ("Atyrau", "Atyrau Region", "Asia/Atyrau"),
+        ("Oral", "West Kazakhstan Region", "Asia/Oral"),
+    ],
+    "CL": [
+        ("Santiago", "Santiago Metropolitan", "America/Santiago"),
+        ("Valparaiso", "Valparaiso", "America/Santiago"),
+        ("Concepcion", "Biobio", "America/Santiago"),
+        ("Punta Arenas", "Magallanes", "America/Punta_Arenas"),
+    ],
+    "EC": [
+        ("Quito", "Pichincha", "America/Guayaquil"),
+        ("Guayaquil", "Guayas", "America/Guayaquil"),
+        ("Cuenca", "Azuay", "America/Guayaquil"),
+        ("Puerto Baquerizo Moreno", "Galapagos", "Pacific/Galapagos"),
+    ],
+    "PT": [
+        ("Lisbon", "Lisbon", "Europe/Lisbon"),
+        ("Porto", "Porto", "Europe/Lisbon"),
+        ("Coimbra", "Coimbra", "Europe/Lisbon"),
+        ("Ponta Delgada", "Azores", "Atlantic/Azores"),
+        ("Funchal", "Madeira", "Atlantic/Madeira"),
+    ],
+    "ES": [
+        ("Madrid", "Madrid", "Europe/Madrid"),
+        ("Barcelona", "Catalonia", "Europe/Madrid"),
+        ("Valencia", "Valencia", "Europe/Madrid"),
+        ("Seville", "Andalusia", "Europe/Madrid"),
+        ("Las Palmas", "Canary Islands", "Atlantic/Canary"),
+    ],
+    "NZ": [
+        ("Auckland", "Auckland", "Pacific/Auckland"),
+        ("Wellington", "Wellington", "Pacific/Auckland"),
+        ("Christchurch", "Canterbury", "Pacific/Auckland"),
+    ],
+    "MN": [
+        ("Ulaanbaatar", "Ulaanbaatar", "Asia/Ulaanbaatar"),
+        ("Darkhan", "Darkhan-Uul", "Asia/Ulaanbaatar"),
+        ("Khovd", "Khovd", "Asia/Hovd"),
+    ],
+    "CD": [
+        ("Kinshasa", "Kinshasa", "Africa/Kinshasa"),
+        ("Lubumbashi", "Haut-Katanga", "Africa/Lubumbashi"),
+        ("Goma", "North Kivu", "Africa/Lubumbashi"),
+    ],
+    "GL": [
+        ("Nuuk", "Sermersooq", "America/Nuuk"),
+    ],
+    # City-states and micro-territories: the city itself, never a subdivision code.
+    "SG": [("Singapore", "Singapore", "Asia/Singapore")],
+    "HK": [("Hong Kong", "Hong Kong", "Asia/Hong_Kong")],
+    "MO": [("Macau", "Macau", "Asia/Macau")],
+    "MC": [("Monaco", "Monaco", "Europe/Monaco")],
+    "VA": [("Vatican City", "Vatican City", "Europe/Vatican")],
+    "LI": [("Vaduz", "Liechtenstein", "Europe/Vaduz")],
+    "GI": [("Gibraltar", "Gibraltar", "Europe/Gibraltar")],
+    "SM": [("San Marino", "San Marino", "Europe/San_Marino")],
+    "AD": [("Andorra la Vella", "Andorra", "Europe/Andorra")],
+    "MT": [("Valletta", "Malta", "Europe/Malta")],
+    "LU": [("Luxembourg", "Luxembourg", "Europe/Luxembourg")],
+    "BH": [("Manama", "Capital Governorate", "Asia/Bahrain")],
+    "QA": [("Doha", "Doha", "Asia/Qatar")],
+}
+
+# Real capital / major city per country for the Legend-off fallback when a country
+# is single-zone and not in GEO. City name only; the region stays a real
+# subdivision and the Legend co-locates them. Keeps a subdivision code out of the
+# City field. Only consulted for Tier B/C (Tier A gets a real city from Faker).
+CAPITAL = {
+    "NG": "Abuja", "KE": "Nairobi", "GH": "Accra", "ET": "Addis Ababa",
+    "UG": "Kampala", "TZ": "Dodoma", "RW": "Kigali", "SN": "Dakar",
+    "CI": "Abidjan", "CM": "Yaounde", "ZM": "Lusaka", "ZW": "Harare",
+    "MZ": "Maputo", "AO": "Luanda", "BW": "Gaborone", "NA": "Windhoek",
+    "MW": "Lilongwe", "MG": "Antananarivo", "SD": "Khartoum", "SS": "Juba",
+    "SO": "Mogadishu", "LY": "Tripoli", "ML": "Bamako", "BF": "Ouagadougou",
+    "NE": "Niamey", "TD": "N'Djamena", "GN": "Conakry", "BJ": "Cotonou",
+    "TG": "Lome", "SL": "Freetown", "LR": "Monrovia", "MR": "Nouakchott",
+    "GA": "Libreville", "CG": "Brazzaville", "GM": "Banjul", "GW": "Bissau",
+    "SA": "Riyadh", "AE": "Abu Dhabi", "KW": "Kuwait City", "OM": "Muscat",
+    "JO": "Amman", "LB": "Beirut", "YE": "Sanaa", "IQ": "Baghdad",
+    "SY": "Damascus", "IL": "Tel Aviv", "PS": "Ramallah",
+    "PK": "Islamabad", "BD": "Dhaka", "LK": "Colombo", "NP": "Kathmandu",
+    "MM": "Yangon", "KH": "Phnom Penh", "LA": "Vientiane", "BT": "Thimphu",
+    "MV": "Male", "BN": "Bandar Seri Begawan", "AF": "Kabul", "TM": "Ashgabat",
+    "TJ": "Dushanbe", "KG": "Bishkek", "UZ": "Tashkent",
+    "BO": "La Paz", "PY": "Asuncion", "UY": "Montevideo", "PE": "Lima",
+    "VE": "Caracas", "CO": "Bogota", "GT": "Guatemala City", "HN": "Tegucigalpa",
+    "NI": "Managua", "SV": "San Salvador", "PA": "Panama City", "CR": "San Jose",
+    "DO": "Santo Domingo", "CU": "Havana", "JM": "Kingston", "TT": "Port of Spain",
+    "IS": "Reykjavik", "AL": "Tirana", "MK": "Skopje", "ME": "Podgorica",
+    "MD": "Chisinau", "GE": "Tbilisi", "AM": "Yerevan", "AZ": "Baku",
+    "FJ": "Suva", "PG": "Port Moresby", "WS": "Apia", "TO": "Nuku'alofa",
+    "VU": "Port Vila", "SB": "Honiara",
 }
 
 
@@ -321,6 +553,21 @@ def _pick_postcode(cc: str, locale: str | None) -> str:
     return f"{random.randint(1000, 99999):05d}"
 
 
+def _real_city(locale: str | None) -> str:
+    """A real city NAME (never a subdivision code) for the Legend-off fallback when
+    a country is not in GEO and has no CAPITAL entry."""
+    for loc in (locale, "en_US"):
+        if not loc:
+            continue
+        try:
+            c = _oneline(Faker(loc).city()).strip()
+            if c:
+                return c
+        except Exception:
+            continue
+    return "Central District"
+
+
 def _career(age_val: int, birth_year: int) -> tuple[int, int]:
     """Career start year and years of experience, derived from the same start year
     so tenure can never contradict the age or the start year (no senior with two
@@ -353,19 +600,22 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
     dob_iso, age_val = _dob_for(age)
     birth_year = int(dob_iso[:4])
 
-    # --- Build in dependency order, never field-by-field independently. ---
-    # 1. region is the geography anchor. A subdivision if the country has them,
-    #    else the country itself (correct for city-states, coarse-but-consistent
-    #    for the handful of others).
-    region = random.choice(meta["subdivisions"]) if meta["subdivisions"] else display_country
-    # 2. job -> department are a fixed pair.
+    # --- Geography as one consistent (region, city, timezone) unit. ---
+    # For multi-zone countries and city-states a curated triple keeps all three
+    # mutually consistent AND gives the region's real timezone (not the arbitrary
+    # pytz.country_timezones[cc][0]). Otherwise a real subdivision is the region.
+    geo_triple = random.choice(GEO[cc]) if cc in GEO else None
+    if geo_triple:
+        geo_city, region, tz = geo_triple
+    else:
+        geo_city = None
+        region = random.choice(meta["subdivisions"]) if meta["subdivisions"] else display_country
+        tz = US_STATE_TZ.get(region, meta["timezone"]) if cc == "US" else meta["timezone"]
+
+    # job -> department are a fixed pair; career start -> years of experience.
     job_title, department = random.choice(JOB_ROLES)
-    # 3. career start -> years of experience, derived from age.
     career_start_year, years_experience = _career(age_val, birth_year)
 
-    # The city is always derived from the region (offline baseline == the region),
-    # and the Legend refines it to a real city located inside that region. It is
-    # never an independent draw, so city and region can never disagree.
     name_source, city_source, need_llm_identity = "faker", "legend", False
 
     if tier == "A":
@@ -373,8 +623,10 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         first, last = _faker_name(fake, gender)
         full_name = f"{first} {last}"
         street = _oneline(fake.street_address())
-        if hasattr(fake, "administrative_unit"):
+        if not geo_triple and hasattr(fake, "administrative_unit"):
             region = fake.administrative_unit()
+            if cc == "US":
+                tz = US_STATE_TZ.get(region, tz)
         try:
             color = fake.color_name()
         except Exception:
@@ -394,7 +646,18 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         color = random.choice(COLORS)
         employer = f"{display_country} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
 
-    city = region  # offline baseline; Legend replaces with a real city in the region
+    # City: the curated city when we have one, else a real city NAME. Never the
+    # ISO subdivision code, so the Legend-off Cover reads plausibly on its own.
+    if geo_city:
+        city = geo_city
+    elif tier == "A":
+        city = _oneline(fake.city())
+    elif cc in CAPITAL:
+        # Anchor the region on the capital so the two are co-located, not the
+        # capital dropped into an unrelated random subdivision.
+        city = region = CAPITAL[cc]
+    else:
+        city = _real_city(locale)
     postal = _pick_postcode(cc, locale)
 
     # Offline name fallbacks so the Cover is complete even with no LLM.
@@ -407,10 +670,6 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         first, last = parts[0], (parts[-1] if len(parts) > 1 else parts[0])
     if not employer:
         employer = f"{display_country} Services"
-
-    tz = meta["timezone"]
-    if cc == "US":
-        tz = US_STATE_TZ.get(region, tz)
 
     # Latin twins (offline baseline; the Legend overrides with natural romanization).
     # The job title is already a clean English role, so it is its own roman twin.
@@ -480,7 +739,7 @@ PERSONA_SYSTEM_PROMPT = """You write a fictional cover-identity back-story, a le
 
 The persona is entirely fictional. Never base it on, resemble, or impersonate a real, identifiable person. Do not add real contact details, real handles, or real companies.
 
-You receive a fully reconciled Cover: country, name, region, employer, job title, department, age, career start year, and years of experience. These are FIXED. Use these exact values in the back-story. Do NOT introduce a second region, a different tenure, a different employer, a different job, a different department, or a different age. The one field you must supply is the city: give a real city that is located INSIDE the given region AND inside the given country (never a city in a different region, and never a city in a neighbouring or different country); if the region name is itself a city, you may use that city. Use the city consistently everywhere. When the name is marked PROVIDE, invent one that is fictional but culturally plausible for the stated country and gender, then use it consistently.
+You receive a fully reconciled Cover: country, name, region, employer, job title, department, age, career start year, and years of experience. These are FIXED. Use these exact values in the back-story. Do NOT introduce a second region, a different tenure, a different employer, a different job, a different department, or a different age. A city is also given: if it is a real city located inside the given region and country, KEEP it exactly; only if it is a placeholder, a code, or a city in a different region or country, replace it with a real city inside the given region and country. If the region name is itself a city, you may use that city. Use the final city consistently everywhere. When the name is marked PROVIDE, invent one that is fictional but culturally plausible for the stated country and gender, then use it consistently.
 
 For the name, city, region, street, and employer, also return an accurate, natural Latin romanization (the roman twin). For an Arabic, Thai, or CJK value, romanize it the way a person would write it in Latin script (for example a natural Given Family spelling), not a letter-by-letter transliteration. The output must contain no non-Latin characters. If a value is already Latin, echo it unchanged.
 
@@ -495,7 +754,7 @@ Return ONLY valid JSON in this exact shape, no markdown or preamble:
 {
   "full_name": "the native full name (echo the given one, or invent only if it was PROVIDE)",
   "name_roman": "natural Latin romanization of the full name",
-  "city": "a real city located inside the given region",
+  "city": "the given city if it is real for the region and country, else a real city inside them",
   "city_roman": "natural Latin romanization of the city",
   "region_roman": "natural Latin romanization of the region",
   "street_roman": "natural Latin romanization of the street",
@@ -524,7 +783,7 @@ async def _llm_persona(cover: dict) -> dict | None:
         f"Country: {a['country']}\n"
         f"Full name (native): {name_field}\n"
         f"Region (native): {a['region']}\n"
-        f"City: PROVIDE a real city located inside the region above\n"
+        f"City (keep if real for this region and country, else replace): {a['city']}\n"
         f"Street (native): {a['street']}\n"
         f"Employer (native): {pr['employer']}\n"
         f"Job title: {pr['job_title']}\n"

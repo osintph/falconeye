@@ -5,6 +5,38 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.26.0] - 2026-07-25
+
+Sock Puppet geography and timezone coherence (audit pass 3, on three hand-checked
+PDFs).
+
+### Fixed
+
+- **Timezone now derives from the region, not a country-level draw.** Multi-zone
+  countries returned pytz.country_timezones[cc][0] regardless of region, so every
+  Australian persona read Australia/Lord_Howe, every Brazilian America/Noronha,
+  every Russian Europe/Kaliningrad, every Canadian America/St_Johns. A curated
+  (city, region, timezone) table for the multi-zone countries (US, AU, BR, CA, RU,
+  MX, ID, AR, KZ, CL, EC, PT, ES, NZ, MN, CD, GL) and city-states makes the zone
+  the region's real zone. Verified 0 region-to-zone mismatches over 200 draws each
+  for US, AU, BR, CA, RU, MX, ID.
+- **Legend-off geography no longer shows a subdivision name as the city.** The
+  deterministic core previously set city == region, producing "Parana, Brazil"
+  and "South West, Singapore" (a state or district as a city). Now the city is a
+  real city: the curated city for multi-zone countries and city-states, a real
+  Faker city for Tier A, and a capital fallback (co-located with its region) for
+  higher-traffic Tier B/C. Across all 249 countries with the Legend off,
+  region-as-city dropped from 249/249 to 0/249.
+- City-states (SG, MC, VA, HK, MO, GI, ...) resolve to the city name, never an
+  ISO subdivision code.
+
+### Changed
+
+- **Legend daily cap is now configurable and defaults to 25** (was a hard-coded
+  5). With the Legend-off Cover now strong on its own, hitting the cap is no
+  longer a visible downgrade. Set SOCKPUPPET_LLM_PER_DAY to override.
+- Widened the vehicle pool from 10 to 27 to reduce repeats across personas.
+
 ## [3.25.2] - 2026-07-25
 
 Sock Puppet: derive years of experience from the career start year and the
