@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.27.0] - 2026-07-25
+
+Sock Puppet: avatar sourcing guidance, a starting-point disclaimer, and a
+persisted Legend audit harness.
+
+### Added
+
+- **Avatar sourcing guidance** on the tab and in the exported PDF: never reuse a
+  real person's photo, generate a synthetic face and inspect it for artifacts,
+  where to generate one (thispersondoesnotexist.com, generated.photos, a local or
+  hosted model you control), and match the face to the Cover's age, gender, and
+  region.
+- **Starting-point disclaimer** on the tab intro and directly under the PDF
+  page-1 header: the dossier is scaffolding to review and adjust, not a finished
+  identity, and operationally-relied-on details should be verified.
+- `scripts/sockpuppet_legend_audit.py`, a test harness that drives the Legend
+  path and checks Legend-vs-Cover agreement (exonym-aware: normalized token
+  overlap plus a known-exonym and endonym map so Moskva/Moscow and Krung
+  Thep/Bangkok count as matches) and residual non-Latin in every _roman field.
+
+### Fixed
+
+- README: the Legend cap is documented as per-IP-per-24h, default 25, configurable
+  via `SOCKPUPPET_LLM_PER_DAY` (was the stale hard-coded 5).
+
 ## [3.26.3] - 2026-07-25
 
 Sock Puppet: the offline employer name can no longer be the persona's own surname.

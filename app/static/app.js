@@ -5136,7 +5136,17 @@ const SP_OPSEC = [
   "Age the account with light normal activity before operational use.",
   "Keep the DOB identical across every platform. Never reuse one persona across unrelated cases. Never mix in any of your own real data.",
 ];
-const SP_AVATAR = "Do not embed or fetch a real photo. Generate an AI face separately from a this-person-does-not-exist style source, then inspect it for the usual flaws around ears, eyes, teeth, jewelry, and background before use.";
+const SP_AVATAR = {
+  intro: "This dossier does not include a photo, by design. Never reuse a real person's photo for a persona: it is the fastest way to burn the puppet and it can harm the real individual. Generate a synthetic face instead, then inspect it for the usual artifacts around ears, teeth, eyes, hairlines, jewelry, and background before use, and crop or lightly edit out anything that looks off.",
+  whereHeading: "Where to generate one:",
+  sources: [
+    "thispersondoesnotexist.com (refresh for a new StyleGAN face each load; note it does not let you steer age, gender, or ethnicity, so refresh until the face fits this persona's gender, age, and region)",
+    "Generated Photos (generated.photos) for filterable synthetic faces where you need a specific age or gender",
+    "Any local or hosted image model you control, if you need tight control over the face and want to avoid a shared public pool",
+  ],
+  match: "Match the face to the Cover: the apparent age, gender, and regional appearance should line up with this persona's stated details.",
+};
+const SP_STARTING_POINT = "This dossier is a generated starting point, not a finished identity. Fields are produced from locale data and an AI back-story and will not all be perfect out of the box. Serious investigators should treat it as useful scaffolding and review, adjust, add, or remove details so the persona holds together for the specific platform and investigation it is built for. Verify anything you will rely on operationally: the street, the employer, the timing, and the way the legend reads against the target community.";
 const SP_TIER_NOTE = {
   A: "Full local data: name, address, and phone format are native to this country.",
   B: "Local name. Address, phone, timezone, and currency come from offline country metadata. The city is written by the Legend pass, or a region fallback if the Legend is off.",
@@ -5266,7 +5276,11 @@ function renderSockpuppet(el, data) {
     html += spCard('Legend (back-story)', `<p class="text-sm text-gray-400">${escapeHtml(lg.message || 'Legend not generated. The Cover above is complete.')}</p>`);
   }
 
-  html += spCard('Avatar', `<p class="text-sm text-gray-300">${escapeHtml(SP_AVATAR)}</p>`);
+  html += spCard('Avatar',
+    `<p class="text-sm text-gray-300">${escapeHtml(SP_AVATAR.intro)}</p>` +
+    `<p class="text-sm text-gray-400 mt-2">${escapeHtml(SP_AVATAR.whereHeading)}</p>` +
+    `<ul class="list-disc pl-5 space-y-1 text-sm text-gray-300 mt-1">${SP_AVATAR.sources.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>` +
+    `<p class="text-sm text-gray-300 mt-2">${escapeHtml(SP_AVATAR.match)}</p>`);
   html += spCard('Operator OPSEC checklist',
     `<ul class="list-disc pl-5 space-y-1.5 text-sm text-gray-300">${SP_OPSEC.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`);
   html += `<div class="flex justify-end"><button onclick="downloadSockpuppetPdf()" class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-4 py-2 rounded text-sm transition">Download dossier PDF</button></div>`;
@@ -5306,6 +5320,7 @@ function downloadSockpuppetPdf() {
     _spLastData.disclaimer || 'Research persona. Fictional. Not for impersonation of any real individual.',
     'Generated ' + fePdfUtcStamp(),
   ]);
+  feText(st, SP_STARTING_POINT, { size: 9, color: FE_PDF.muted });
   // Roman twins so no field renders blank in the Latin-1 PDF.
   feHeading(st, 'Personal');
   feKeyVal(st, 'Full name', p.name_roman || p.full_name);
@@ -5363,7 +5378,10 @@ function downloadSockpuppetPdf() {
     feText(st, lg.message || 'Legend not generated. The Cover is complete.', { size: 10, color: FE_PDF.muted });
   }
   feHeading(st, 'Avatar');
-  feText(st, SP_AVATAR, { size: 10 });
+  feText(st, SP_AVATAR.intro, { size: 10 });
+  feText(st, SP_AVATAR.whereHeading, { size: 10 });
+  SP_AVATAR.sources.forEach(s => feText(st, '- ' + s, { size: 9.5 }));
+  feText(st, SP_AVATAR.match, { size: 10 });
   feHeading(st, 'Operator OPSEC checklist');
   SP_OPSEC.forEach(item => feText(st, '- ' + item, { size: 9.5 }));
   feFooterAll(st, ['FalconEye Sock Puppet Generator', 'Fictional research persona. Not for impersonation.']);

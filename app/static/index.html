@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.26.3",
+    "softwareVersion": "3.27.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -149,7 +149,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.26.3" />
+  <link rel="stylesheet" href="/static/style.css?v=3.27.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -906,7 +906,8 @@
     <!-- Sock Puppet Generator Tab -->
     <div id="tab-sockpuppet" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Sock Puppet Generator</h2>
-      <p class="text-gray-400 text-sm mb-4">Build a coherent fictional research persona: a Cover of structured surface fields and an optional Legend, the back-story that supports it. Fictional personas only, never impersonation of a real person. Authorized OSINT investigative use only.</p>
+      <p class="text-gray-400 text-sm mb-1">Build a coherent fictional research persona: a Cover of structured surface fields and an optional Legend, the back-story that supports it. Fictional personas only, never impersonation of a real person. Authorized OSINT investigative use only.</p>
+      <p class="text-gray-500 text-xs mb-4">This dossier is a generated starting point, not a finished identity. Fields are produced from locale data and an AI back-story and will not all be perfect out of the box. Serious investigators should treat it as useful scaffolding and review, adjust, add, or remove details so the persona holds together for the specific platform and investigation it is built for. Verify anything you will rely on operationally: the street, the employer, the timing, and the way the legend reads against the target community.</p>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
         <div>
           <label class="block text-xs text-gray-500 uppercase mb-1">Gender</label>
@@ -1528,6 +1529,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.26.3"></script>
+  <script src="/static/app.js?v=3.27.0"></script>
 </body>
 </html>

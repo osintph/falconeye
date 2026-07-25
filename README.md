@@ -39,7 +39,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 
 ### LLM-powered tabs
 
-Four tabs use Anthropic's Claude Haiku 4.5: **Email Header**, **Dork Generator**, **Script Decoder**, and **Sock Puppet Generator** (the Legend back-story). The model is hardcoded in each router (not a configuration variable) and protected by four cost safeguards (the Sock Puppet Legend is capped at 5 calls per IP per 24 hours rather than 10, since bulk legend generation is its abuse case):
+Four tabs use Anthropic's Claude Haiku 4.5: **Email Header**, **Dork Generator**, **Script Decoder**, and **Sock Puppet Generator** (the Legend back-story). The model is hardcoded in each router (not a configuration variable) and protected by four cost safeguards (the Sock Puppet Legend is capped per IP per 24 hours, default 25, configurable via `SOCKPUPPET_LLM_PER_DAY`, since bulk legend generation is its abuse case):
 
 1. Anthropic Console spend limits at the API account level
 2. Per-feature, per-IP daily rate limits (10 calls per 24-hour rolling window), keyed on `CF-Connecting-IP` so limits track real users behind Cloudflare, not edge nodes
