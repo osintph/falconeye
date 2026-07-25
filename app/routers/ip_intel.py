@@ -14,7 +14,7 @@ from slowapi import Limiter
 
 from app.config import DB_PATH, GREYNOISE_API_KEY, ABUSECH_AUTH_KEY
 from app.database import get_db
-from app.ip_sources import reputation
+from app.ip_sources import reputation, asn_intel
 from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/ip", tags=["ip"])
@@ -261,9 +261,13 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         # v3.9.0: five reputation sources fetched concurrently with the core ones,
         # so total latency is bounded by the slowest source, not the sum.
         reputation_task = reputation.fetch_sources(validated, client)
+        # v3.20.0: ASN identity + announced prefixes, folded into this same
+        # request per the brief (no second round-trip on render). Peers/
+        # upstreams are expand-to-load, see the /asn/{asn}/routing endpoint.
+        asn_task = asn_intel.fetch(client, db, validated)
 
-        shodan, greynoise, ripestat, urlhaus, ptr, rep_sources = await asyncio.gather(
-            shodan_task, greynoise_task, ripestat_task, urlhaus_task, ptr_task, reputation_task,
+        shodan, greynoise, ripestat, urlhaus, ptr, rep_sources, asn_block = await asyncio.gather(
+            shodan_task, greynoise_task, ripestat_task, urlhaus_task, ptr_task, reputation_task, asn_task,
             return_exceptions=True,
         )
 
@@ -273,6 +277,7 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         if isinstance(urlhaus, Exception): urlhaus = None
         if isinstance(ptr, Exception): ptr = []
         if isinstance(rep_sources, Exception) or not isinstance(rep_sources, dict): rep_sources = {}
+        if isinstance(asn_block, Exception) or not isinstance(asn_block, dict): asn_block = {"available": False}
 
         cve_details = {}
         if shodan and shodan.get("vulns"):
@@ -303,8 +308,24 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         "reverse_dns": ptr,
         "cve_details": cve_details,
         "reputation": reputation_block,
+        "asn_intel": asn_block,
         "cache_hit": False,
     }
 
     store_cache(db, validated, response)
     return response
+
+
+# ---- ASN routing relationships (v3.20.0) ----
+# Expand-to-load only: peers/upstreams cost several extra RIPEstat calls
+# (asn-neighbours plus name resolution for the shown subset), so unlike the
+# core ASN block above this is a deliberate second round-trip, fired only
+# when the user opens the routing section in the UI - never on page load.
+
+@router.get("/asn/{asn}/routing")
+@limiter.limit("20/minute")
+async def asn_routing(request: Request, asn: int, db: sqlite3.Connection = Depends(get_db)):
+    if asn <= 0 or asn > 4294967295:
+        raise HTTPException(status_code=400, detail="Invalid ASN.")
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        return await asn_intel.fetch_routing(client, db, asn)

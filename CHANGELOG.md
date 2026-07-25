@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.20.0] — 2026-07-25
+
+IP Reputation: ASN Intelligence — the pivot from one abusive IP to the operator's whole announced footprint.
+
+### The source pivot the brief didn't expect
+
+This was originally briefed against BGPview (`api.bgpview.io`). Before writing any code, a live check found BGPview shut down permanently on 2025-11-26 — `api.bgpview.io` no longer resolves in DNS at all. Its community-suggested replacement, bgp.tools, turned out not to be a drop-in either: no per-IP or per-ASN REST lookup, just a WHOIS interface and full BGP table dumps, and no peers/upstreams/downstreams data of any kind.
+
+So this ships entirely on RIPEstat instead — already integrated elsewhere in the IP Reputation tab, free, no-auth, reliable. Two changes from the original brief that follow directly from that:
+
+- **No cross-source disagreement flagging.** The brief wanted BGPview and RIPEstat's prefix lists shown "both flagged" when they disagreed. With a single source there's nothing to cross-check, so that's gone. On the upside, RIPEstat's `announced-prefixes` measures *actual live BGP visibility* via RIS, not a registration superset — no "treat as unverified" caveat needed, unlike what BGPview would have required.
+- **No "across Y countries."** BGPview's per-ASN prefix list came with a country code per prefix for free. RIPEstat's doesn't, and geolocating thousands of prefixes per ASN just to build a diversity count wasn't worth the extra calls. The summary line states prefix count instead — the number that actually carries the investigative payoff.
+
+### What's in the block
+
+A collapsible **ASN Intelligence** panel under the existing IP result: ASN, org name, holder description, the covering prefix, and a one-line summary ("This IP sits in AS13335, Cloudflare, which currently announces 5,287 prefixes..."). Announced prefixes list is capped at 15 with show-more, same pattern as Leak Site Health.
+
+**Routing relationships (upstream-side / downstream-side) are expand-to-load**, not part of the default lookup — RIPEstat's `asn-neighbours` has no clean peer/upstream/downstream split (it classifies by BGP path position relative to route collectors: left/right/uncertain), so this is labelled honestly as RIPE-inferred, not verified peering data, and only fetched when the routing section is opened. Keeps the default lookup at 3 RIPEstat calls (network-info, as-overview, announced-prefixes); opening routing adds one more plus up to 30 name-resolution calls for the top 15 shown per side.
+
+Cached per-ASN for 24 hours minimum, shared across every IP lookup that resolves into the same ASN, independent of the outer 6-hour per-IP cache — a popular ASN only costs RIPEstat one fresh call a day regardless of lookup volume. Degrades cleanly: any RIPEstat failure renders the rest of the IP Reputation result unchanged and the ASN block as unavailable, never a 500 or a blank tab.
+
+No privacy policy change needed — RIPEstat was already disclosed in the IP Reputation row of the third-party table (and the footer already describes it as "ASN and routing data").
+
+---
+
 ## [3.19.0] — 2026-07-24
 
 Ransomware Watch: time framing and a proper country selector.

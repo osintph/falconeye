@@ -40,12 +40,15 @@ def test_endpoint_all_sources_ok(monkeypatch):
             "threatfox": _src("threatfox", True, "not_found", matched=False, iocs=[]),
         }
 
+    async def asn(client, db, ip): return {"available": False}
+
     monkeypatch.setattr(ip_intel, "fetch_shodan_internetdb", shodan)
     monkeypatch.setattr(ip_intel, "fetch_greynoise", gn)
     monkeypatch.setattr(ip_intel, "fetch_ripestat", ripe)
     monkeypatch.setattr(ip_intel, "fetch_urlhaus_host", uh)
     monkeypatch.setattr(ip_intel, "fetch_reverse_dns", ptr)
     monkeypatch.setattr(ip_intel.reputation, "fetch_sources", repsrc)
+    monkeypatch.setattr(ip_intel.asn_intel, "fetch", asn)
 
     r = _client().get("/api/ip/lookup/62.60.130.193")
     assert r.status_code == 200
@@ -72,6 +75,7 @@ def test_endpoint_200_when_sources_partially_fail(monkeypatch):
         monkeypatch.setattr(ip_intel, name, boom)
     monkeypatch.setattr(ip_intel, "fetch_reverse_dns", ptr_boom)
     monkeypatch.setattr(ip_intel.reputation, "fetch_sources", repsrc)
+    monkeypatch.setattr(ip_intel.asn_intel, "fetch", boom)
 
     r = _client().get("/api/ip/lookup/8.8.8.8")
     assert r.status_code == 200                            # never 500 on failure
@@ -79,6 +83,7 @@ def test_endpoint_200_when_sources_partially_fail(monkeypatch):
     assert rep["verdict"]["verdict"] == "MALICIOUS"        # VirusTotal alone still fires
     assert rep["sources"]["abuseipdb"]["state"] == "error"
     assert rep["sources"]["censys"]["state"] == "no_key"
+    assert r.json()["asn_intel"] == {"available": False}   # ASN intel raising must not 500 either
 
 
 def test_endpoint_200_when_reputation_fetch_raises(monkeypatch):
@@ -90,6 +95,7 @@ def test_endpoint_200_when_reputation_fetch_raises(monkeypatch):
         monkeypatch.setattr(ip_intel, name, none_fetch)
     monkeypatch.setattr(ip_intel, "fetch_reverse_dns", ptr)
     monkeypatch.setattr(ip_intel.reputation, "fetch_sources", rep_boom)
+    monkeypatch.setattr(ip_intel.asn_intel, "fetch", none_fetch)
 
     r = _client().get("/api/ip/lookup/8.8.8.8")
     assert r.status_code == 200                            # reputation blowing up must not 500

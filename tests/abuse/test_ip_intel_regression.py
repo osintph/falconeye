@@ -53,6 +53,7 @@ def test_ip_lookup_endpoint_returns_200_on_fresh_db(monkeypatch):
     monkeypatch.setattr(ip_intel, "fetch_ripestat", _none)
     monkeypatch.setattr(ip_intel, "fetch_urlhaus_host", _none)
     monkeypatch.setattr(ip_intel, "fetch_reverse_dns", _empty)
+    monkeypatch.setattr(ip_intel.asn_intel, "fetch", _none)
 
     # ensure the table is present (as it is at import)
     ip_intel._init_cache()

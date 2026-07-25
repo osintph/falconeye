@@ -1719,6 +1719,7 @@ function renderIpResult(el, data) {
     </div>
     ${renderReputationVerdict(data.reputation)}
     ${renderIpSummary(data, cacheBadge)}
+    ${renderAsnIntel(data.asn_intel)}
     ${renderIpClassification(data.greynoise)}
     ${renderReputationPorts(data.reputation, data.shodan, data.cve_details)}
     ${renderReputationSources(data.reputation)}
@@ -1726,6 +1727,120 @@ function renderIpResult(el, data) {
   `;
   const dlBtn = el.querySelector('.ip-download-pdf');
   if (dlBtn) dlBtn.addEventListener('click', () => downloadIpReportPdf(data));
+  wireAsnIntel(el, data.asn_intel);
+}
+
+// ---- v3.20.0 ASN intelligence: identity + announced prefixes come with the
+// lookup; peers/upstreams ("routing relationships") are expand-to-load, see
+// wireAsnIntel below. Source is RIPEstat only - see app/ip_sources/asn_intel.py
+// for why (BGPview, the originally-briefed source, shut down 2025-11-26).
+function renderAsnIntel(asn) {
+  if (!asn) return '';
+  if (!asn.available) {
+    return `<div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
+      <h3 class="text-sm font-bold text-gray-300 mb-1 uppercase tracking-wide">ASN Intelligence</h3>
+      <p class="text-xs text-gray-500">Unavailable — RIPEstat ASN lookup failed or the IP has no announced ASN.</p>
+    </div>`;
+  }
+
+  const p = asn.prefixes || {list: [], count: 0, truncated: false};
+  const orgLabel = [asn.name, asn.description].filter(Boolean).join(' — ') || `AS${asn.asn}`;
+  const truncNote = p.truncated
+    ? `<p class="text-xs text-amber-400/80 mt-2">Showing the first ${p.list.length.toLocaleString()} of ${p.count.toLocaleString()} prefixes — list capped for display.</p>`
+    : '';
+
+  return `
+    <details class="bg-gray-900 border border-gray-800 rounded mb-4">
+      <summary class="cursor-pointer px-5 py-3 text-sm font-bold text-gray-300 hover:text-amber-400 transition select-none">
+        ASN Intelligence — AS${asn.asn} ${escapeHtml(orgLabel)}
+      </summary>
+      <div class="px-5 pb-5">
+        <p class="text-sm text-gray-300 mb-4">${escapeHtml(asn.summary)}</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+          <div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">ASN</p><p class="text-amber-300 text-sm">AS${asn.asn}</p></div>
+          ${asn.name ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Name</p><p class="text-gray-200 text-sm">${escapeHtml(asn.name)}</p></div>` : ''}
+          ${asn.description ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Org</p><p class="text-gray-200 text-sm">${escapeHtml(asn.description)}</p></div>` : ''}
+          ${asn.covering_prefix ? `<div><p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Covering Prefix</p><p class="text-gray-200 text-sm font-mono">${escapeHtml(asn.covering_prefix)}</p></div>` : ''}
+        </div>
+
+        <div class="border-t border-gray-800 pt-4">
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Announced Prefixes (${p.count.toLocaleString()})</p>
+          <div id="asn-prefix-list" class="font-mono text-xs text-gray-300 space-y-0.5 max-h-64 overflow-y-auto"></div>
+          <button id="asn-prefix-showmore" class="hidden mt-2 text-xs text-amber-400 hover:text-amber-300"></button>
+          ${truncNote}
+        </div>
+
+        <div class="border-t border-gray-800 pt-4 mt-4">
+          <details id="asn-routing-details">
+            <summary class="cursor-pointer text-xs text-amber-400 hover:text-amber-300 select-none">Load routing relationships (upstreams / peers) &#8594;</summary>
+            <div id="asn-routing-body" class="mt-3"></div>
+          </details>
+        </div>
+      </div>
+    </details>`;
+}
+
+function wireAsnIntel(el, asn) {
+  if (!asn || !asn.available) return;
+
+  const listEl = el.querySelector('#asn-prefix-list');
+  const moreBtn = el.querySelector('#asn-prefix-showmore');
+  if (listEl && moreBtn) {
+    const prefixes = (asn.prefixes && asn.prefixes.list) || [];
+    rwSetupShowMore(moreBtn, prefixes, (rows) => {
+      listEl.innerHTML = rows.length
+        ? rows.map(pfx => `<div>${escapeHtml(pfx)}</div>`).join('')
+        : '<p class="text-gray-500">No prefixes returned.</p>';
+    }, 15);
+  }
+
+  const routingDetails = el.querySelector('#asn-routing-details');
+  if (routingDetails) {
+    routingDetails.addEventListener('toggle', function onToggle() {
+      if (!this.open) return;
+      this.removeEventListener('toggle', onToggle);
+      loadAsnRouting(asn.asn, el.querySelector('#asn-routing-body'));
+    });
+  }
+}
+
+async function loadAsnRouting(asnNum, bodyEl) {
+  if (!bodyEl) return;
+  bodyEl.innerHTML = '<p class="text-gray-400 text-xs animate-pulse">Loading routing relationships…</p>';
+  try {
+    const res = await fetch(`/api/ip/asn/${encodeURIComponent(asnNum)}/routing`);
+    const data = await res.json();
+    if (!res.ok || !data.available) {
+      bodyEl.innerHTML = '<p class="text-xs text-gray-500">Routing data unavailable.</p>';
+      return;
+    }
+    bodyEl.innerHTML = renderAsnRouting(data);
+  } catch (e) {
+    bodyEl.innerHTML = `<p class="text-xs text-red-400">Request failed: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function renderAsnRouting(data) {
+  const fmtBucket = (bucket) => (bucket.shown || []).map(n =>
+    `<div class="flex items-center justify-between gap-3 py-1 border-b border-gray-800/50 last:border-0">
+      <span class="text-gray-200 truncate">${n.name ? escapeHtml(n.name) + ' ' : ''}<span class="text-gray-500 font-mono text-xs">AS${n.asn}</span></span>
+      <span class="text-gray-600 text-xs flex-shrink-0">power ${n.power != null ? n.power : '?'}</span>
+    </div>`).join('') || '<p class="text-gray-500 text-xs">None observed.</p>';
+
+  return `
+    <p class="text-xs text-gray-500 mb-3">${escapeHtml(data.caveat || '')}</p>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Upstream-side (${data.upstream_side.total.toLocaleString()})</p>
+        ${fmtBucket(data.upstream_side)}
+      </div>
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Downstream-side (${data.downstream_side.total.toLocaleString()})</p>
+        ${fmtBucket(data.downstream_side)}
+      </div>
+    </div>
+    ${data.uncertain_count ? `<p class="text-xs text-gray-600 mt-3">${data.uncertain_count.toLocaleString()} additional relationships RIPE could not confidently classify.</p>` : ''}
+  `;
 }
 
 // ---- v3.9.0 multi-source reputation rendering ----
