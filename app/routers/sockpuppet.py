@@ -421,6 +421,18 @@ def _is_latin(text) -> bool:
     return all(ord(c) < 0x250 for c in str(text or ""))
 
 
+def _strip_residual_nonlatin(text: str) -> str:
+    """Transliterate only leftover source-script characters (Cyrillic, Greek,
+    Arabic, CJK, Thai, ...) in place, leaving already-Latin characters (including
+    accented Latin like the a in Sao Paulo) untouched. For cleaning an LLM
+    romanization that left a few stray non-Latin characters behind (the
+    'Shveytsar' with a trailing Cyrillic pair class)."""
+    if _is_latin(text):
+        return text or ""
+    cleaned = "".join(ch if ord(ch) < 0x250 else unidecode(ch) for ch in str(text))
+    return re.sub(r"\s+", " ", cleaned).strip()
+
+
 def _clean_handle(s: str) -> str:
     return re.sub(r"[^a-z0-9]", "", (s or "").lower())
 
@@ -996,9 +1008,10 @@ def _fold_legend(cover: dict, result: dict, cc: str, country_name: str) -> None:
     ]
     for value, section, key, native in twin_map:
         r = _strip_dashes(value).strip() if value else _roman(native)
-        if not _is_latin(r):
-            r = _roman(r)
-        section[key] = r
+        # Clean only leftover source-script characters, keep the correct Latin parts.
+        section[key] = _strip_residual_nonlatin(r)
+    # job_title_roman is the English role (already Latin), swept for completeness.
+    cover["professional"]["job_title_roman"] = _strip_residual_nonlatin(cover["professional"]["job_title_roman"])
     cover["romanization_approximate"] = False
 
     # Rebuild handles/stem/email/social from the natural roman name.

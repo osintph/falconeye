@@ -5,6 +5,19 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.26.2] - 2026-07-25
+
+Sock Puppet: precise residual non-Latin sweep on the Legend romanization path.
+
+### Fixed
+
+- When the Legend left a few source-script characters in a _roman field (the
+  "Shveytsar" with a trailing Cyrillic pair class), the sweep re-romanized the
+  whole field, which also stripped legitimate accented Latin (Sao Paulo). Now only
+  the leftover non-Latin characters are transliterated in place; already-correct
+  Latin, including accents, is untouched. Applied to name, street, city, region,
+  employer, and job title roman twins.
+
 ## [3.26.1] - 2026-07-25
 
 Sock Puppet quality pass (audit pass 4, two hand-checked PDFs: FI, CZ).
