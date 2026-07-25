@@ -26,6 +26,7 @@ from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import safe_str, validate_findings_list
 
 LLM_DORKGEN_ENABLED = os.getenv("LLM_DORKGEN_ENABLED", "true").lower() == "true"
+CACHE_TTL_HOURS = 24  # dork_gen_cache entries older than this are regenerated, not served
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -280,8 +281,8 @@ async def generate(req: DorkGenRequest, request: Request):
     cache_id = _cache_key(goal, target)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
-        "SELECT response_json, fetched_at FROM dork_gen_cache WHERE id = ?",
-        (cache_id,),
+        "SELECT response_json, fetched_at FROM dork_gen_cache WHERE id = ? AND fetched_at > datetime('now', ?)",
+        (cache_id, f"-{CACHE_TTL_HOURS} hours"),
     )
     row = cur.fetchone()
     conn.close()

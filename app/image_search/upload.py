@@ -44,8 +44,16 @@ def _sniff_mime(data: bytes):
     return None
 
 
+class ImageUploadNotConfigured(RuntimeError):
+    """Raised when IMAGE_UPLOAD_SECRET is not set. A registered exception handler
+    converts it to a clean 503, replacing the old os.environ[...] KeyError -> 500."""
+
+
 def _get_secret() -> bytes:
-    return os.environ["IMAGE_UPLOAD_SECRET"].encode()
+    secret = os.getenv("IMAGE_UPLOAD_SECRET")
+    if not secret:
+        raise ImageUploadNotConfigured("IMAGE_UPLOAD_SECRET is not configured")
+    return secret.encode()
 
 
 def save_upload(file_bytes: bytes, declared_mime: str) -> tuple:

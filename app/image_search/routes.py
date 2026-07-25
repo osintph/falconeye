@@ -13,7 +13,7 @@ from slowapi import Limiter
 
 from app.image_search.exif import extract_exif
 from app.utils.client_ip import get_client_ip_key
-from app.utils.ssrf import validate_url
+from app.utils.safe_fetch import resolve_and_check, SafeFetchError
 from app.image_search.service import search_image
 from app.image_search.upload import (
     _UPLOAD_DIR,
@@ -112,9 +112,13 @@ async def image_search_endpoint(request: Request, body: SearchRequest):
     if not is_upload:
         if not image_url.startswith("https://"):
             raise HTTPException(status_code=400, detail="image_url must use https://")
-        safe, reason = validate_url(image_url)
-        if not safe:
-            raise HTTPException(status_code=400, detail=f"image_url blocked: {reason}")
+        # image_url is handed to SearchAPI, not fetched by us — validate its host
+        # against the canonical guard (reject private/reserved targets) rather
+        # than using the safe_fetch fetcher.
+        try:
+            resolve_and_check(urlparse(image_url).hostname or "")
+        except SafeFetchError as exc:
+            raise HTTPException(status_code=400, detail=f"image_url blocked: {exc}")
 
     if is_upload:
         try:

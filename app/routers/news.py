@@ -1,5 +1,6 @@
 import sqlite3
 import feedparser
+import httpx
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
@@ -53,7 +54,17 @@ def refresh_category(db: sqlite3.Connection, category: str) -> None:
 
     for feed in feeds:
         try:
-            parsed = feedparser.parse(feed["url"])
+            # Bound the per-feed fetch: feedparser.parse(url) does its own network
+            # I/O with NO timeout, so a hung feed host blocks the worker (the home
+            # news strip hits this same path, so deleting the News tab does not
+            # retire it). Fetch with an explicit timeout, then parse the bytes
+            # (parse-on-content does no network I/O).
+            resp = httpx.get(
+                feed["url"], timeout=10.0, follow_redirects=True,
+                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+            )
+            resp.raise_for_status()
+            parsed = feedparser.parse(resp.content)
             if parsed.bozo and not parsed.entries:
                 log.warning(f"Feed parse failed for {feed['name']}: {parsed.get('bozo_exception')}")
                 continue

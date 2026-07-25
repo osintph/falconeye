@@ -5,6 +5,67 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.21.0] — 2026-07-25
+
+Hardening batch plus one scope cut (News tab), from the 2026-07 architecture
+review. No new features.
+
+### Security
+
+- **M-5 — the weak second SSRF guard is gone.** `app/utils/ssrf.py`
+  (`validate_url`, an incomplete resolve-then-return blocklist missing CGNAT /
+  NAT64 / 0.0.0.0-8 / IPv4-mapped / multicast) is **deleted**. Its two callers,
+  `crypto` and `image_search`, now validate through the canonical
+  `safe_fetch.resolve_and_check`. Note: neither is a server-side fetch of an
+  attacker URL in the SSRF sense — crypto hits fixed hosts with a
+  strictly-format-validated address in the path, and image_search hands its URL
+  to SearchAPI rather than fetching it — so this uses the canonical guard's
+  host-validation primitive, not the `safe_fetch` fetcher (whose own docstring
+  says fixed-host calls should use httpx directly).
+- **Reproducible install (Fable I-1) — `requirements.txt` was missing two
+  runtime deps.** Added `anthropic==0.119.0` (the three LLM tabs could not boot
+  from a clean install) and `extract-msg==0.56.0` (the `.msg` email-upload path
+  silently degraded to "contact the operator"). Pinned `pydantic==2.13.4` (was
+  unpinned/transitive) and raised `Pillow>=10.0.0` → `>=10.3.0` (**closes M-7**,
+  the QR/decompression-bomb advisory). Verified by building from a clean venv
+  against `requirements.txt` alone: the app and all three LLM routers import.
+
+### Fixed
+
+- **LLM response caches no longer serve stale results forever.** The dork
+  generator, script decoder, and email-header analyzer read their cache with no
+  age check — a wrong or degraded model verdict for a given input hash was
+  served permanently. All three now enforce a 24h TTL (email-header had a
+  `CACHE_TTL_HOURS = 24` constant defined but never read; the other two had no
+  TTL at all and one was introduced).
+- **`SEARCHAPI_KEY` / `IMAGE_UPLOAD_SECRET` unset now returns a clean 503, not a
+  500.** Both were read via `os.environ[...]`, so a missing key raised
+  `KeyError` → HTTP 500. They are now read via `os.getenv` at call time and a
+  deep-raised `NotConfigured` exception is converted to 503 by an app-level
+  handler (which — unlike a route pre-check — never fires when the service layer
+  is mocked in tests).
+- **SearchAPI 429 handling could hang a worker indefinitely.** The retry loop
+  never incremented its counter on a 429, so the backoff stayed at 1s and
+  retried forever against a persistent upstream throttle. 429s are now capped
+  like 5xx (3 retries, 2→4→8s, then give up) — a real exhaustion path with only
+  3 workers.
+- **News feed fetch is now time-bounded.** `feedparser.parse(url)` does its own
+  network I/O with no timeout, so a hung feed host blocked the worker. Each feed
+  is now fetched with a 10s `httpx` timeout and parsed from bytes. (This is the
+  real fix for the worker-block — deleting the News tab does **not** retire it,
+  because the home-page news strip hits the same `/api/news` endpoint.)
+- **`docs/abuse-reporting.md`** no longer claims `/api/abuse/send` is
+  unthrottled — corrected to describe the M-1 rate limiting (v3.12.1).
+
+### Removed
+
+- **News tab deleted.** It was an RSS reader over 13 feeds where every source is
+  one click away, duplicating the home-page news strip. The tab (nav entry,
+  markup, and `loadNews`) is gone; the **home-page news strip is kept**, and the
+  `/api/news` endpoint stays (the strip uses it, now with the timeout above).
+
+---
+
 ## [3.20.1] — 2026-07-25
 
 Security patch. Ships on its own, ahead of the wider remediation batch.

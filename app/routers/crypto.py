@@ -5,9 +5,11 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request
 from slowapi import Limiter
 
+from urllib.parse import urlparse
+
 from app.config import HTTPX_TIMEOUT
 from app.utils.client_ip import get_client_ip_key
-from app.utils.ssrf import validate_url
+from app.utils.safe_fetch import resolve_and_check, SafeFetchError
 
 log = logging.getLogger(__name__)
 
@@ -18,6 +20,20 @@ BLOCKSTREAM_BASE = "https://blockstream.info/api"
 BLOCKCYPHER_ETH_BASE = "https://api.blockcypher.com/v1/eth/main/addrs"
 TRONGRID_BASE = "https://api.trongrid.io"
 USDT_TRC20_CONTRACT = "TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t"
+
+
+def _validate_host(url: str) -> None:
+    """Validate a fetch URL's resolved host against the canonical SSRF guard.
+
+    These are fixed-host APIs with a strictly format-validated address in the
+    path (no host injection reachable), so this is defense-in-depth routed
+    through the single guard (resolve_and_check) rather than the safe_fetch
+    fetcher — the fetcher is for attacker-controlled URLs, not fixed hosts.
+    """
+    try:
+        resolve_and_check(urlparse(url).hostname or "")
+    except SafeFetchError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid URL: {exc}")
 
 
 def detect_chain(address: str) -> str:
@@ -56,9 +72,7 @@ async def lookup_btc(address: str) -> dict:
     txs_url = f"{BLOCKSTREAM_BASE}/address/{address}/txs"
 
     for url in (info_url, txs_url):
-        ok, reason = validate_url(url)
-        if not ok:
-            raise HTTPException(status_code=400, detail=f"Invalid URL: {reason}")
+        _validate_host(url)
 
     try:
         async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
@@ -142,9 +156,7 @@ async def lookup_btc(address: str) -> dict:
 
 async def lookup_eth(address: str) -> dict:
     url = f"{BLOCKCYPHER_ETH_BASE}/{address}"
-    ok, reason = validate_url(url)
-    if not ok:
-        raise HTTPException(status_code=400, detail=f"Invalid URL: {reason}")
+    _validate_host(url)
 
     try:
         async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
@@ -198,9 +210,7 @@ async def lookup_trc20(address: str) -> dict:
     tx_url = f"{TRONGRID_BASE}/v1/accounts/{address}/transactions/trc20"
 
     for url in (acc_url, tx_url):
-        ok, reason = validate_url(url)
-        if not ok:
-            raise HTTPException(status_code=400, detail=f"Invalid URL: {reason}")
+        _validate_host(url)
 
     try:
         async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:

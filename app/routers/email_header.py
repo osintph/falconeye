@@ -1049,8 +1049,8 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
 
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
-        "SELECT response_json, fetched_at FROM email_header_cache WHERE id = ?",
-        (header_id,),
+        "SELECT response_json, fetched_at FROM email_header_cache WHERE id = ? AND fetched_at > datetime('now', ?)",
+        (header_id, f"-{CACHE_TTL_HOURS} hours"),
     )
     row = cur.fetchone()
     conn.close()

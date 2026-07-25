@@ -32,6 +32,7 @@ router = APIRouter()
 
 MAX_INPUT_CHARS = 100000
 MIN_INPUT_CHARS = 20
+CACHE_TTL_HOURS = 24  # script_decoder_cache entries older than this are regenerated, not served
 
 
 class DecodeRequest(BaseModel):
@@ -279,8 +280,8 @@ async def decode(req: DecodeRequest, request: Request):
     cache_id = _cache_key(code, hint)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.execute(
-        "SELECT response_json, fetched_at FROM script_decoder_cache WHERE id = ?",
-        (cache_id,),
+        "SELECT response_json, fetched_at FROM script_decoder_cache WHERE id = ? AND fetched_at > datetime('now', ?)",
+        (cache_id, f"-{CACHE_TTL_HOURS} hours"),
     )
     row = cur.fetchone()
     conn.close()

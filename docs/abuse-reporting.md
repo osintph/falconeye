@@ -146,9 +146,17 @@ under the form.
 
 ### 5. Rate limits
 
-**Send is not rate-limited** (as of v3.8.3). It is admin-authenticated and
-single-user, so a rate limit added no protection and only created debugging
-friction. Send is protected instead by admin credentials, the RDAP-recipient
+**Send is rate-limited** (reinstated in v3.12.1, security finding M-1). Because
+`/api/abuse/send` runs `bcrypt.checkpw` on every call and always returns HTTP 200,
+an unthrottled endpoint was both an unauthenticated bcrypt CPU-exhaustion primitive
+and an unthrottled online password-guessing oracle. It now enforces — all **before**
+bcrypt runs — a per-IP burst cap (5/min), a per-IP hourly cap (20/hr), and a global
+hourly ceiling (60/hr), plus exponential backoff on consecutive failed auth from the
+same IP (first 3 failures free; each further failure requires a cooldown that doubles
+2→4→8… seconds up to 5 minutes, reset on a successful auth). A throttled or
+backed-off request returns the structured `{"sent": false, "rate_limited": true, …}`
+at HTTP 200 (never 401). A real operator sending a handful of reports never hits the
+limit. Send is additionally protected by admin credentials, the RDAP-recipient
 allowlist, and the append-only audit log.
 
 The public, unauthenticated endpoints **are** rate-limited as load protection:

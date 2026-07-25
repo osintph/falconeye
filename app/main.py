@@ -14,6 +14,8 @@ from app.username import routes as username_routes
 from app.telegram import routes as telegram_routes
 from app.breach import routes as breach_routes
 from app.ransomware import routes as ransomware_routes
+from app.prospect.client import SearchAPINotConfigured
+from app.image_search.upload import ImageUploadNotConfigured
 
 log = logging.getLogger("falconeye")
 
@@ -23,7 +25,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.20.1",
+    version="3.21.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -38,6 +40,19 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
     # same way an HTML error page does: every client on this API expects JSON.
     log.exception("Unhandled exception on %s %s", request.method, request.url.path)
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+
+
+async def _not_configured_handler(request: Request, exc: Exception) -> JSONResponse:
+    # A required API key (SEARCHAPI_KEY / IMAGE_UPLOAD_SECRET) is unset. Convert the
+    # deep-raised NotConfigured exception into a clean 503 instead of a 500 — and,
+    # unlike a route-level pre-check, this never fires when the service layer is
+    # mocked in tests, only when a real client construction is actually attempted.
+    log.warning("Feature not configured on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(status_code=503, content={"detail": "This feature is not configured on the server."})
+
+
+app.add_exception_handler(SearchAPINotConfigured, _not_configured_handler)
+app.add_exception_handler(ImageUploadNotConfigured, _not_configured_handler)
 
 app.include_router(crypto.router)
 app.include_router(scanner.router)
@@ -64,7 +79,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.20.1"}
+    return {"status": "ok", "version": "3.21.0"}
 
 
 @app.get("/")

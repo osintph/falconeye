@@ -184,26 +184,32 @@ ships separately after that.
       Sandbox decision, which is why this is the escape path, security-only, not
       bundled with the Sandbox deletion.)
 
-### Priority 2 — this week
-- [ ] Delete `app/utils/ssrf.py`; route `crypto` + `image_search` through
-      `safe_fetch`. Closes M-5.
-- [ ] Fix `requirements.txt`: add `anthropic` + `extract-msg`; pin `pydantic` and
-      `Pillow>=10.3.0` (also closes M-7). Verify from a clean venv against
-      `requirements.txt` alone.
-- [ ] Enforce the existing `CACHE_TTL_HOURS` on dork, script_decoder,
-      email_header caches.
-- [ ] `getenv` + 503 for `SEARCHAPI_KEY` and `IMAGE_UPLOAD_SECRET` (replace the
-      `os.environ[...]` KeyError-500).
-- [ ] Cap SearchAPI 429 retries the way 5xx is capped.
-- [ ] Fix `docs/abuse-reporting.md:149` — it still says `/send` is unthrottled,
-      which M-1 made false.
+### Priority 2 — this week — **shipped v3.21.0**
+- [x] Delete `app/utils/ssrf.py`; route `crypto` + `image_search` through the
+      canonical guard (`resolve_and_check`, not the fetcher — see the changelog).
+      Closes M-5.
+- [x] Fix `requirements.txt`: add `anthropic==0.119.0` + `extract-msg==0.56.0`;
+      pin `pydantic==2.13.4` and `Pillow>=10.3.0` (also closes M-7). Verified
+      from a clean venv against `requirements.txt` alone.
+- [x] Enforce a 24h TTL on dork, script_decoder, email_header caches (only
+      email_header had the constant; introduced it for the other two).
+- [x] `getenv` + 503 for `SEARCHAPI_KEY` and `IMAGE_UPLOAD_SECRET` (replaced the
+      `os.environ[...]` KeyError-500 with a call-time getenv + app-level 503
+      handler).
+- [x] Cap SearchAPI 429 retries the way 5xx is capped.
+- [x] Fix `docs/abuse-reporting.md` — corrected the stale "unthrottled" `/send`
+      claim to describe the M-1 rate limiting.
 
-### Priority 3 — scope reduction (ships with P2)
-- [ ] Delete the News tab; keep the home news strip.
-- [ ] Delete the Sandbox tab (moved here from P1: it is scope reduction, not the
-      security fix, and P1 stays unbundled). Move MalwareBazaar hash reputation
-      inline into Email Header / Script Decoder, remove the dangling pivots,
-      confirm nav registry and PDF export unaffected.
+### Priority 3 — scope reduction — **News shipped v3.21.0; Sandbox held**
+- [x] Delete the News tab; keep the home news strip. Also added a 10s per-feed
+      fetch timeout in `news.py` — the real fix for the feedparser worker-block,
+      which deleting the tab does **not** retire (the kept home strip uses the
+      same `/api/news` endpoint).
+- [ ] **Sandbox tab — held pending an explicit decision.** The XSS is already
+      fixed in place (v3.20.1), so removing the tab is now pure scope reduction,
+      and it would drop MalwareBazaar hash reputation (the one capability the IP
+      tab does not already cover) until that is migrated inline. Not deleted
+      without a go-ahead, since it removes a capability.
 
 ### Priority 4 — dedupe (separate release, after P1–P3 deployed)
 - [ ] Extract one shared module for cache-with-TTL and rate limiting; migrate the

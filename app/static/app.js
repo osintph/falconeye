@@ -63,8 +63,6 @@ const NAV_GROUPS = [
 ];
 
 const UNGROUPED_TABS = [
-  { id: 'news', label: 'News', desc: 'Cyber news aggregator, PH-focused',
-    icon: '<path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6z"/>' },
   { id: 'contact', label: 'Contact', desc: 'Report a bug or suggest a feature',
     icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
 ];
@@ -217,7 +215,6 @@ function showTab(tabName) {
   // Scroll to top so a user who scrolled down on a long result doesn't land mid-page on the next tab
   window.scrollTo({ top: 0, behavior: 'instant' });
 
-  if (tabName === 'news') loadNews(currentNewsCategory);
   if (tabName === 'breach') loadBreachRecent();
   if (tabName === 'ransomware') {
     showRwSubview(getRwSubviewFromHash());
@@ -1040,22 +1037,6 @@ function pushToTab(tabName, inputId, triggerId, value) {
   if (trigger) trigger.click();
 }
 
-// ---- News ----
-let currentNewsCategory = 'global_cyber';
-
-document.querySelectorAll('.news-cat-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.news-cat-btn').forEach(b => {
-      b.classList.remove('active-news', 'bg-amber-400', 'text-gray-950', 'font-bold');
-      b.classList.add('bg-gray-800', 'text-gray-300');
-    });
-    btn.classList.add('active-news', 'bg-amber-400', 'text-gray-950', 'font-bold');
-    btn.classList.remove('bg-gray-800', 'text-gray-300');
-    currentNewsCategory = btn.dataset.cat;
-    loadNews(currentNewsCategory);
-  });
-});
-
 // ---- Domain Intelligence ----
 
 document.getElementById('domain-btn').addEventListener('click', runDomainLookup);
@@ -1311,35 +1292,6 @@ function renderSubdomainsCard(ct) {
     </div>`;
 }
 
-async function loadNews(category) {
-  const el = document.getElementById('news-results');
-  el.innerHTML = '<p class="text-gray-400 text-sm animate-pulse col-span-2">Loading feed...</p>';
-
-  try {
-    const res = await fetch(`/api/news/${category}`);
-    const data = await res.json();
-
-    if (data.length === 0) {
-      el.innerHTML = '<p class="text-gray-500 text-sm">No articles found.</p>';
-      return;
-    }
-
-    el.innerHTML = data.map(item => {
-      const safeUrl = /^https?:\/\//i.test(item.url) ? item.url : '#';
-      return `
-      <a href="${escapeAttr(safeUrl)}" target="_blank" rel="noopener noreferrer" class="news-card block">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-xs text-amber-400 font-bold">${escapeHtml(item.feed_source)}</span>
-          <span class="text-xs text-gray-600">${fmtPHT(item.published_at)}</span>
-        </div>
-        <p class="text-sm text-white leading-snug mb-1">${escapeHtml(item.title)}</p>
-        ${item.summary ? `<p class="text-xs text-gray-500 leading-relaxed line-clamp-2">${escapeHtml(item.summary)}</p>` : ''}
-      </a>`;
-    }).join('');
-  } catch (e) {
-    el.innerHTML = `<p class="text-red-400 text-sm">Load failed: ${e.message}</p>`;
-  }
-}
 
 // ---- Telegram Intelligence ----
 

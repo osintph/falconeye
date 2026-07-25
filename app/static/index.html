@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.20.1",
+    "softwareVersion": "3.21.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -148,7 +148,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.20.1" />
+  <link rel="stylesheet" href="/static/style.css?v=3.21.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -960,19 +960,6 @@
       <div id="username-result" class="hidden"></div>
     </div>
 
-    <!-- News Tab -->
-    <div id="tab-news" class="tab-content hidden">
-      <h2 class="text-lg font-bold mb-1">Cyber News</h2>
-      <p class="text-gray-400 text-sm mb-6">Aggregated from global and Philippine cybersecurity sources. Refreshed every 30 minutes.</p>
-
-      <div class="flex gap-3 mb-6">
-        <button class="news-cat-btn active-news bg-amber-400 text-gray-950 font-bold px-4 py-1.5 rounded text-xs" data-cat="global_cyber">Global Cyber</button>
-        <button class="news-cat-btn bg-gray-800 text-gray-300 px-4 py-1.5 rounded text-xs hover:bg-gray-700" data-cat="ph_cyber">PH Cyber</button>
-        <button class="news-cat-btn bg-gray-800 text-gray-300 px-4 py-1.5 rounded text-xs hover:bg-gray-700" data-cat="ph_tech">PH Tech</button>
-      </div>
-
-      <div id="news-results" class="grid gap-3"></div>
-    </div>
 
     <!-- Breach Check Tab -->
     <div id="tab-breach" class="tab-content hidden">
@@ -1525,6 +1512,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.20.1"></script>
+  <script src="/static/app.js?v=3.21.0"></script>
 </body>
 </html>
