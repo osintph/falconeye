@@ -5,6 +5,34 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.26.1] - 2026-07-25
+
+Sock Puppet quality pass (audit pass 4, two hand-checked PDFs: FI, CZ).
+
+### Fixed
+
+- **LLM handle enrichment is now validated and rejected on failure.** The extra
+  handles from the Legend were folded in with no checks, producing foreign words
+  (a Czech persona got "lubos_vezeni", vezeni meaning prison), a third language
+  ("amministrador_north"), and wrong numbers ("hruby_admin1992" for a 2000 birth).
+  Each LLM handle is now kept only if every word is one of the persona's own
+  tokens (roman name, English job words, city or region) and every digit run is
+  the birth year or the age; anything else is dropped and the deterministic set
+  keeps the list full. The prompt was tightened to match and no longer derives
+  handles from hobbies.
+- **Offline employer templates widened.** The bare single-token employer ("Salo",
+  also a real Finnish town) now reads as a company: a thin Faker company name gets
+  a sector and the country's legal form ("Salo Analytics Oy"), and the Tier B/C
+  templates use the same "Name + sector + legal form" shape ("Singapore Consulting
+  Pte Ltd", "Janeckova Engineering s.r.o.") with per-country legal forms.
+
+### Changed
+
+- **Default age floor raised 22 to 27** so default personas are mid-career rather
+  than brand-new graduates; years of experience now rarely lands at 0 unless a
+  young age is explicitly requested (0 years remains correct for a requested young
+  persona).
+
 ## [3.26.0] - 2026-07-25
 
 Sock Puppet geography and timezone coherence (audit pass 3, on three hand-checked

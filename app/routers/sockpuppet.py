@@ -124,6 +124,29 @@ VEHICLES = [
 ]
 COLORS = ["blue", "green", "grey", "black", "red", "teal", "navy", "maroon", "olive", "purple"]
 
+# Offline employer building: a sector word plus the country's common private-company
+# legal form, so a templated (or thin single-token) employer reads as a company and
+# not a bare surname or town.
+COMPANY_SECTOR = [
+    "Logistics", "Trading", "Technologies", "Consulting", "Systems", "Industries",
+    "Solutions", "Foods", "Construction", "Analytics", "Partners", "Materials",
+    "Retail", "Engineering", "Media",
+]
+LEGAL_FORM = {
+    "CZ": "s.r.o.", "SK": "s.r.o.", "DE": "GmbH", "AT": "GmbH", "CH": "AG", "LI": "AG",
+    "FR": "SARL", "BE": "SPRL", "LU": "S.a r.l.", "IT": "S.r.l.", "ES": "S.L.",
+    "PT": "Lda.", "NL": "B.V.", "PL": "Sp. z o.o.", "FI": "Oy", "EE": "OU", "SE": "AB",
+    "NO": "AS", "DK": "ApS", "IS": "ehf.", "RU": "OOO", "UA": "TOV", "BY": "OOO",
+    "BG": "OOD", "RO": "S.R.L.", "HU": "Kft.", "GR": "E.P.E.", "HR": "d.o.o.",
+    "SI": "d.o.o.", "RS": "d.o.o.", "LT": "UAB", "LV": "SIA", "BR": "Ltda.",
+    "MX": "S.A. de C.V.", "AR": "S.A.", "CL": "SpA", "CO": "S.A.S.", "PE": "S.A.C.",
+    "JP": "K.K.", "CN": "Co., Ltd.", "KR": "Co., Ltd.", "TW": "Co., Ltd.", "HK": "Ltd",
+    "IN": "Pvt Ltd", "ID": "PT", "MY": "Sdn Bhd", "SG": "Pte Ltd", "TH": "Co., Ltd.",
+    "VN": "JSC", "PH": "Inc.", "AU": "Pty Ltd", "NZ": "Ltd", "GB": "Ltd", "IE": "Ltd",
+    "US": "LLC", "CA": "Inc.", "SA": "LLC", "AE": "LLC", "QA": "W.L.L.", "KW": "W.L.L.",
+    "TR": "A.S.", "IL": "Ltd", "EG": "S.A.E.", "ZA": "(Pty) Ltd", "NG": "Ltd", "KE": "Ltd",
+}
+
 US_STATE_TZ = {
     "Alabama": "America/Chicago", "Alaska": "America/Anchorage", "Arizona": "America/Phoenix",
     "Arkansas": "America/Chicago", "California": "America/Los_Angeles", "Colorado": "America/Denver",
@@ -439,6 +462,39 @@ def _build_handles(first_roman: str, last_roman: str, birth_year: int, age: int,
     return handles[:8], primary
 
 
+def _handle_tokens(cover: dict) -> set[str]:
+    """The only alphabetic tokens an enriched handle may be built from: the roman
+    name, the English job words, and the city or region. Anything else is a foreign
+    or invented word and is rejected."""
+    toks: set[str] = set()
+    for src in (cover["personal"]["name_roman"], cover["professional"]["job_title_roman"],
+                cover["address"]["city_roman"], cover["address"]["region_roman"]):
+        for w in re.findall(r"[a-z]+", (src or "").lower()):
+            if len(w) >= 2:
+                toks.add(w)
+    cc = (cover.get("country_code") or "").lower()
+    if cc:
+        toks.add(cc)
+    return toks
+
+
+def _accept_handle(h: str, toks: set[str], birth_year: int, age: int) -> str | None:
+    """Keep an LLM handle only if every digit run is the birth year or age and every
+    word is one of the persona's own tokens (or a prefix of one). Else drop it."""
+    h = re.sub(r"[^a-z0-9._]", "", (h or "").lower())
+    if not (3 <= len(h) <= 30):
+        return None
+    ok_nums = {str(birth_year), str(birth_year)[-2:], str(age)}
+    if any(n not in ok_nums for n in re.findall(r"\d+", h)):
+        return None
+    for w in re.findall(r"[a-z]+", h):
+        if len(w) < 2:
+            continue
+        if not any(w.startswith(t) or t.startswith(w) for t in toks if len(t) >= 2):
+            return None
+    return h
+
+
 def _apply_identity(cover: dict, first_roman: str, last_roman: str, birth_year: int,
                     age: int, cc: str, job_title_roman: str, region_roman: str) -> None:
     handles, primary = _build_handles(first_roman, last_roman, birth_year, age, cc, job_title_roman, region_roman)
@@ -488,7 +544,7 @@ def _dob_for(age):
     from datetime import date
     f = Faker("en_US")
     dob = f.date_of_birth(minimum_age=int(age), maximum_age=int(age)) if age is not None \
-        else f.date_of_birth(minimum_age=22, maximum_age=58)
+        else f.date_of_birth(minimum_age=27, maximum_age=58)
     today = date.today()
     return dob.isoformat(), today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
@@ -568,6 +624,24 @@ def _real_city(locale: str | None) -> str:
     return "Central District"
 
 
+def _legal_form(cc: str) -> str:
+    return LEGAL_FORM.get(cc, "Ltd")
+
+
+def _templated_company(base: str, cc: str) -> str:
+    """A full 'Name + sector + legal form' company, e.g. 'Bartova Trading s.r.o.'."""
+    base = (base or "").strip() or "Meridian"
+    return f"{base} {random.choice(COMPANY_SECTOR)} {_legal_form(cc)}"
+
+
+def _enrich_company(name: str, cc: str) -> str:
+    """fake.company() is usually a full company name; only a thin single-token
+    output (a bare surname or town, like 'Salo') gets a sector and legal form so it
+    reads as a company."""
+    name = (name or "").strip()
+    return name if len(name.split()) >= 2 else _templated_company(name, cc)
+
+
 def _career(age_val: int, birth_year: int) -> tuple[int, int]:
     """Career start year and years of experience, derived from the same start year
     so tenure can never contradict the age or the start year (no senior with two
@@ -631,20 +705,20 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
             color = fake.color_name()
         except Exception:
             color = random.choice(COLORS)
-        employer = fake.company()
+        employer = _enrich_company(fake.company(), cc)
     elif tier == "B":
         fake = Faker(locale)
         first, last = _faker_name(fake, gender)
         full_name = f"{first} {last}"
         street = "[street to be set by the operator]"
         color = random.choice(COLORS)
-        employer = f"{last} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
+        employer = _templated_company(last, cc)
     else:  # Tier C
         first, last, full_name = "", "", ""
         name_source, need_llm_identity = "legend", True
         street = "[street to be set by the operator]"
         color = random.choice(COLORS)
-        employer = f"{display_country} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
+        employer = _templated_company(display_country, cc)
 
     # City: the curated city when we have one, else a real city NAME. Never the
     # ISO subdivision code, so the Legend-off Cover reads plausibly on its own.
@@ -669,7 +743,7 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         parts = full_name.split()
         first, last = parts[0], (parts[-1] if len(parts) > 1 else parts[0])
     if not employer:
-        employer = f"{display_country} Services"
+        employer = _templated_company(display_country, cc)
 
     # Latin twins (offline baseline; the Legend overrides with natural romanization).
     # The job title is already a clean English role, so it is its own roman twin.
@@ -745,7 +819,7 @@ For the name, city, region, street, and employer, also return an accurate, natur
 
 Also return a postal_code in the real format for that country, plausible for the city and region.
 
-Also propose three extra handle ideas in the style a real person of this occupation and country might pick, lowercase, ASCII, no leetspeak, derived from the roman name and the hobbies. Any number in a handle must be the birth year or the age, never random.
+Also propose three extra handle ideas a real person of this occupation might pick: lowercase, ASCII, no leetspeak, built ONLY from the roman name, the English job words, or the city or region. Do NOT use a word from another language, a translated word, or an invented word. Any number must be exactly the birth year or the age, never any other number.
 
 Write in plain English. Do NOT use em dashes or en dashes; use commas, periods, or the word "to" for ranges. No fancy quotation marks.
 
@@ -936,11 +1010,16 @@ def _fold_legend(cover: dict, result: dict, cc: str, country_name: str) -> None:
     _apply_identity(cover, fr, lr, birth_year, cover["personal"]["age"], cc,
                     cover["professional"]["job_title_roman"], cover["address"]["region_roman"])
 
-    # Extra handles from the LLM (additive), deduped against the deterministic set.
+    # Extra handles from the LLM (additive), but only ones built from the persona's
+    # own tokens with a birth-year/age number. Foreign words ("vezeni"), invented
+    # tokens ("admin"), and wrong numbers ("1992" for a 2000 birth) are dropped; the
+    # deterministic set already keeps the list full.
+    toks = _handle_tokens(cover)
+    age = cover["personal"]["age"]
     cur = cover["contact"]["username_suggestions"]
     for h in (result.get("extra_handles") or []):
-        hh = re.sub(r"[^a-z0-9._]", "", str(h).lower())
-        if hh and len(hh) >= 3 and hh not in cur:
+        hh = _accept_handle(str(h), toks, birth_year, age)
+        if hh and hh not in cur:
             cur.append(hh)
     cover["contact"]["username_suggestions"] = cur[:11]
 
