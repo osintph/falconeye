@@ -176,7 +176,7 @@ Priority 1 ships on its own, immediately. Priorities 2–3 ship together. Priori
 ships separately after that.
 
 ### Priority 1 — today, own release
-- [ ] Escape the URLhaus DOM-XSS sinks. **Scope corrected:** IP tab
+- [x] Escape the URLhaus DOM-XSS sinks — **shipped v3.20.1.** **Scope corrected:** IP tab
       `renderIpUrlhaus` (`app.js:2099` href, `2109` text) + GreyNoise sibling
       (`2018`) **and** Sandbox `renderUrlhausUrl`/`renderUrlhausPayload`
       (`2188` href, `2216` href, `2224` text). Use `escapeHtml`/`escapeAttr` as
@@ -290,3 +290,25 @@ ships separately after that.
   **Fixed in P2.**
 - `docs/fastapi-upgrade-plan.md` presents completed work as pending — should be
   marked done (or archived).
+
+## Deploy mechanism (corrected & normalized 2026-07-25)
+
+The production box does **not** deploy via `git pull`, contrary to how the
+remediation briefs described it. The real mechanism — author on the Mac, push to
+GitHub from the Mac, `rsync` files to the box — is now written up in
+[`docs/deploy-runbook.md`](deploy-runbook.md).
+
+Root cause of the confusion: the `/opt/falconeye/app_src` directories were owned
+by uid **501** (the Mac account), a leftover from an `rsync` as root whose
+follow-up `chown` was skipped, so `ubuntu` could edit existing files but not
+create/delete them — which broke `git pull`/`reset --hard` and forced ad-hoc
+in-place file overwrites, while the git checkout silently drifted two releases
+behind (HEAD at v3.19.0 while the box ran v3.20.x).
+
+Normalized on 2026-07-25: full tarball backup → committed two **box-only** site
+assets that were never in git (`favicon-32x32.png`, `og-image.png`, referenced by
+tracked `index.html`) → reconciled the working tree to `origin/main` → ran
+`sudo chown -R ubuntu:ubuntu /opt/falconeye/app_src`. `git reset --hard
+origin/main` now works cleanly and the documented sequence matches the real one.
+The invariant to keep: `app_src` stays `ubuntu:ubuntu`; if an `rsync`-as-root
+deploy ever reintroduces uid-501 on a directory, re-run the chown.
