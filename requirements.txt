@@ -20,3 +20,8 @@ bcrypt==5.0.0
 telethon==1.44.0
 anthropic==0.119.0
 extract-msg==0.56.0
+Faker==40.36.0
+pycountry==26.2.16
+phonenumbers==9.0.34
+pytz==2026.2
+Babel==2.18.0

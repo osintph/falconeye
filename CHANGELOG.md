@@ -5,6 +5,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.24.0] — 2026-07-25
+
+New tab: **Sock Puppet Generator** in the Identity cluster. Builds a coherent
+fictional research persona for authorized OSINT use, framed as tradecraft: a
+Cover (structured surface fields) and an optional Legend (the back-story that
+supports it). Fictional personas only, never impersonation of a real person.
+
+### Added
+
+- **Full ISO 3166 country coverage, not Faker's locale subset.** The country
+  picker is the complete pycountry list plus Random. Coherence is anchored on the
+  country code via a bundled offline metadata layer (no runtime cost): pycountry
+  (name, ISO codes, subdivisions), Babel (currency), phonenumbers (calling code
+  and an example phone format, masked to a non dialable placeholder), pytz
+  (timezone; the US is refined by state so a Texas legend does not read as
+  Eastern).
+- **Tiered generation so every country produces a coherent persona.**
+  Tier A (54 countries, full Faker locale): Faker does name, street, city,
+  region, postcode. Tier B (15, Faker name only): Faker name, structural fields
+  from metadata, city from the Legend pass or a region fallback. Tier C (180, no
+  Faker locale): name and city from the Legend pass constrained to the country,
+  structural fields from metadata, with an offline fallback so the Cover never
+  fails without the LLM.
+- **Cover (deterministic, always runs, no LLM).** Personal, Address, Contact,
+  Professional, Additional groups with per field copy buttons; a fictional social
+  header; and an optional, off by default financial group of Faker test-only
+  values (Luhn valid but not real, clearly labelled). Hard coherence: age derived
+  from DOB, timezone matched to location, handle derived from the name stem,
+  email and phone are non dialable placeholders the operator registers later.
+- **Legend (LLM, layered on top).** One Claude Haiku 4.5 call (hardcoded,
+  function local) writes occupation context, education, hobbies, a life history
+  with no loose ends, and a writing voice note, built on the Cover so it cannot
+  contradict it. Kill switch `LLM_SOCKPUPPET_ENABLED` (default on), SQLite table
+  `sockpuppet_llm_calls`, capped 5 per IP per 24h (bulk legend generation is the
+  abuse case). Disabled or capped still returns the full Cover with the Legend
+  marked unavailable, never a 500.
+- **Dossier PDF** through the existing jsPDF path (auto Latin-1 sanitized), plus
+  an operator OPSEC checklist and avatar guidance (generate an AI face
+  separately, inspect it, do not embed a real photo). Every persona is stamped
+  "Research persona. Fictional. Not for impersonation of any real individual."
+- New runtime deps: `Faker`, `pycountry`, `phonenumbers`, `pytz`, `Babel`.
+  Reuses the existing Anthropic client and key, and the shared `rate_limit` store.
+
+### Docs
+
+- README module count and table brought current: removed the retired News
+  (v3.21.0) and Sandbox (v3.23.0) tabs, added Sock Puppet Generator, and updated
+  the LLM-tab list to four.
+
+---
+
 ## [3.23.0] — 2026-07-25
 
 Sandbox tab removed; its one non-redundant capability — MalwareBazaar / URLhaus

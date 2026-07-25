@@ -25,6 +25,8 @@ const NAV_GROUPS = [
       icon: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>' },
     { id: 'email', label: 'Email Header', desc: 'Auth checks, hop analysis, BEC detection',
       icon: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m2 7 10 6 10-6"/>' },
+    { id: 'sockpuppet', label: 'Sock Puppet Generator', desc: 'Build a fictional research persona and dossier',
+      icon: '<path d="M2 12s3-5 10-5 10 5 10 5"/><circle cx="8.5" cy="12" r="1.6"/><circle cx="15.5" cy="12" r="1.6"/>' },
   ]},
   { key: 'infrastructure', label: 'Infrastructure', tabs: [
     { id: 'domain', label: 'Domain', desc: 'RDAP, DNS, certificate transparency, ASN',
@@ -214,6 +216,7 @@ function showTab(tabName) {
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   if (tabName === 'breach') loadBreachRecent();
+  if (tabName === 'sockpuppet') initSockpuppet();
   if (tabName === 'ransomware') {
     showRwSubview(getRwSubviewFromHash());
     syncRwRangeSelect();
@@ -5120,6 +5123,241 @@ function usernamePivotTelegram(handle) {
 //  scales to Letter height on print, so it reads cleanly on both. Prose is
 //  Helvetica; technical data (IPs, hashes, headers, ports) is Courier.
 // ============================================================================
+
+// ---- Sock Puppet Generator ----
+
+const SP_OPSEC = [
+  "Create the account off your home network. Some platforms flag VPN egress, so a separate public connection is often better than a datacenter VPN IP for signup.",
+  "If the persona will interact, verify with a temporary number first, then switch the account to a more permanent controlled number. Expect VoIP numbers to be blocked on signup.",
+  "Match the VPN or exit region to the persona's stated location and timezone. A Toronto legend logging in from Manila egress is the classic tell.",
+  "Choose the email provider to fit the persona's sophistication.",
+  "Lock privacy settings to minimum exposure immediately after creation.",
+  "Turn on 2FA on the controlled number.",
+  "Age the account with light normal activity before operational use.",
+  "Keep the DOB identical across every platform. Never reuse one persona across unrelated cases. Never mix in any of your own real data.",
+];
+const SP_AVATAR = "Do not embed or fetch a real photo. Generate an AI face separately from a this-person-does-not-exist style source, then inspect it for the usual flaws around ears, eyes, teeth, jewelry, and background before use.";
+const SP_TIER_NOTE = {
+  A: "Full local data: name, address, and phone format are native to this country.",
+  B: "Local name. Address, phone, timezone, and currency come from offline country metadata. The city is written by the Legend pass, or a region fallback if the Legend is off.",
+  C: "No local name library for this country. The name and city come from the Legend pass constrained to the country, with an offline fallback if the Legend is off.",
+};
+let _spCountriesLoaded = false;
+const _spTierByCode = {};
+let _spLastData = null;
+
+document.getElementById('sp-btn').addEventListener('click', generateSockpuppet);
+
+async function initSockpuppet() {
+  if (_spCountriesLoaded) return;
+  try {
+    const res = await fetch('/api/sockpuppet/countries');
+    const data = await res.json();
+    const sel = document.getElementById('sp-country');
+    sel.innerHTML = '<option value="random">Random country</option>' +
+      (data.countries || []).map(c => {
+        _spTierByCode[c.code] = c.tier;
+        return `<option value="${escapeAttr(c.code)}">${escapeHtml(c.name)}</option>`;
+      }).join('');
+    _spCountriesLoaded = true;
+    updateSpCountryNote();
+  } catch (e) { /* keep the fallback option */ }
+}
+
+function updateSpCountryNote() {
+  const code = document.getElementById('sp-country').value;
+  const note = document.getElementById('sp-country-note');
+  if (!code || code === 'random') { note.textContent = 'A random ISO country will be chosen.'; return; }
+  note.textContent = SP_TIER_NOTE[_spTierByCode[code] || 'A'];
+}
+
+function spCopy(btn) {
+  navigator.clipboard.writeText(btn.dataset.copy || '').then(() => {
+    const t = btn.textContent; btn.textContent = 'copied'; setTimeout(() => { btn.textContent = t; }, 1200);
+  });
+}
+
+function spField(label, value) {
+  const blank = (value === null || value === undefined || value === '');
+  const v = blank ? '(to be set by the operator)' : String(value);
+  return `<div class="flex items-start justify-between gap-3 py-1.5 border-b border-gray-800/60">
+      <div class="min-w-0">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">${escapeHtml(label)}</p>
+        <p class="text-sm text-gray-100 break-words">${escapeHtml(v)}</p>
+      </div>
+      <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition shrink-0" data-copy="${escapeAttr(v)}" onclick="spCopy(this)">copy</button>
+    </div>`;
+}
+
+function spCard(title, rowsHtml, extraClass) {
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-5 ${extraClass || ''}">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">${escapeHtml(title)}</h3>
+      ${rowsHtml}
+    </div>`;
+}
+
+function renderSockpuppet(el, data) {
+  const cov = data.cover || {};
+  const p = cov.personal || {}, a = cov.address || {}, ct = cov.contact || {}, pr = cov.professional || {}, ad = cov.additional || {}, so = cov.social || {};
+  const tierLabel = { A: 'Tier A (full local data)', B: 'Tier B (local name, metadata address)', C: 'Tier C (AI name and city)' }[cov.tier] || '';
+
+  let html = `<div class="bg-amber-400/10 border border-amber-500/40 rounded p-3 flex items-center justify-between gap-3">
+      <p class="text-xs text-amber-300">${escapeHtml(data.disclaimer || 'Research persona. Fictional. Not for impersonation of any real individual.')}</p>
+      <span class="text-xs text-gray-500 shrink-0">${escapeHtml(tierLabel)}</span>
+    </div>`;
+
+  html += spCard('Personal',
+    spField('Full name', p.full_name) + spField('Date of birth', p.date_of_birth) +
+    spField('Age', p.age) + spField('Gender', p.gender) + spField('Nationality', p.nationality));
+
+  html += spCard('Address',
+    spField('Street', a.street) + spField('City', a.city) + spField('Region', a.region) +
+    spField('Postal code', a.postal_code) + spField('Country', a.country));
+
+  html += spCard('Contact',
+    spField('Username stem', ct.username_stem) + spField('Email (placeholder)', ct.email_placeholder) +
+    spField('Phone (placeholder)', ct.phone_placeholder));
+
+  html += spCard('Professional',
+    spField('Employer', pr.employer) + spField('Job title', pr.job_title) +
+    spField('Department', pr.department) + spField('Years of experience', pr.years_experience));
+
+  html += spCard('Additional',
+    spField('Timezone', ad.timezone) + spField('Currency', ad.currency) + spField('Calling code', ad.calling_code) +
+    spField('Favorite color', ad.favorite_color) + spField('Vehicle', ad.vehicle));
+
+  html += spCard('Fictional social header',
+    spField('Handle', so.handle) + spField('Bio', so.bio) +
+    spField('Followers', so.followers) + spField('Following', so.following) + spField('Posts', so.posts) +
+    `<p class="text-xs text-gray-500 mt-2">${escapeHtml(so.note || '')}</p>`);
+
+  if (cov.financial) {
+    const fi = cov.financial;
+    html += spCard('Financial filler (test-only)',
+      spField('Card number', fi.card_number) + spField('Provider', fi.provider) +
+      spField('Expiry', fi.expiry) + spField('IBAN', fi.iban) +
+      `<p class="text-xs text-red-300/80 mt-2">${escapeHtml(fi.note || '')}</p>`);
+  }
+
+  const lg = data.legend || {};
+  if (lg.available && lg.content) {
+    const c = lg.content;
+    const para = (label, val) => val ? `<div class="mb-2"><p class="text-xs text-gray-500 uppercase">${escapeHtml(label)}</p><p class="text-sm text-gray-200">${escapeHtml(val)}</p></div>` : '';
+    html += spCard('Legend (back-story)',
+      para('Occupation context', c.occupation_context) + para('Education', c.education) +
+      para('Hobbies and interests', c.hobbies) + para('Life history', c.life_history) +
+      para('Writing voice', c.writing_voice) +
+      `<p class="text-xs text-gray-500 mt-1">${escapeHtml(c._source_note || '')}</p>`);
+  } else {
+    html += spCard('Legend (back-story)',
+      `<p class="text-sm text-gray-400">${escapeHtml(lg.message || 'Legend not generated. The Cover above is complete.')}</p>`);
+  }
+
+  html += spCard('Avatar', `<p class="text-sm text-gray-300">${escapeHtml(SP_AVATAR)}</p>`);
+
+  html += spCard('Operator OPSEC checklist',
+    `<ul class="list-disc pl-5 space-y-1.5 text-sm text-gray-300">${SP_OPSEC.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`);
+
+  html += `<div class="flex justify-end"><button onclick="downloadSockpuppetPdf()" class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-4 py-2 rounded text-sm transition">Download dossier PDF</button></div>`;
+
+  el.innerHTML = html;
+}
+
+async function generateSockpuppet() {
+  const el = document.getElementById('sp-result');
+  const body = {
+    gender: document.getElementById('sp-gender').value,
+    country: document.getElementById('sp-country').value || 'random',
+    include_financial: document.getElementById('sp-financial').checked,
+    include_legend: document.getElementById('sp-legend').checked,
+  };
+  const ageVal = document.getElementById('sp-age').value.trim();
+  if (ageVal) body.age = parseInt(ageVal, 10);
+  el.classList.remove('hidden');
+  el.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Building persona...</p>';
+  try {
+    const res = await fetch('/api/sockpuppet/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) { el.innerHTML = `<p class="text-red-400 text-sm">${escapeHtml(data.detail || 'Generation failed')}</p>`; return; }
+    _spLastData = data;
+    renderSockpuppet(el, data);
+  } catch (e) {
+    el.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+  }
+}
+
+function downloadSockpuppetPdf() {
+  if (!_spLastData) return;
+  if (!fePdfReady()) { alert('PDF library not loaded.'); return; }
+  const data = _spLastData;
+  const cov = data.cover || {};
+  const p = cov.personal || {}, a = cov.address || {}, ct = cov.contact || {}, pr = cov.professional || {}, ad = cov.additional || {}, so = cov.social || {};
+  const st = fePdfNew();
+  feBrandHeader(st, 'FalconEye Sock Puppet Dossier', [
+    data.disclaimer || 'Research persona. Fictional. Not for impersonation of any real individual.',
+    'Generated ' + fePdfUtcStamp(),
+  ]);
+  feHeading(st, 'Personal');
+  feKeyVal(st, 'Full name', p.full_name);
+  feKeyVal(st, 'Date of birth', p.date_of_birth);
+  feKeyVal(st, 'Age', String(p.age));
+  feKeyVal(st, 'Gender', p.gender);
+  feKeyVal(st, 'Nationality', p.nationality);
+  feHeading(st, 'Address');
+  feKeyVal(st, 'Street', a.street);
+  feKeyVal(st, 'City', a.city);
+  feKeyVal(st, 'Region', a.region);
+  feKeyVal(st, 'Postal code', a.postal_code);
+  feKeyVal(st, 'Country', a.country);
+  feHeading(st, 'Contact');
+  feKeyVal(st, 'Username stem', ct.username_stem);
+  feKeyVal(st, 'Email placeholder', ct.email_placeholder);
+  feKeyVal(st, 'Phone placeholder', ct.phone_placeholder);
+  feHeading(st, 'Professional');
+  feKeyVal(st, 'Employer', pr.employer);
+  feKeyVal(st, 'Job title', pr.job_title);
+  feKeyVal(st, 'Department', pr.department);
+  feKeyVal(st, 'Years of experience', String(pr.years_experience));
+  feHeading(st, 'Additional');
+  feKeyVal(st, 'Timezone', ad.timezone);
+  feKeyVal(st, 'Currency', ad.currency);
+  feKeyVal(st, 'Calling code', ad.calling_code);
+  feKeyVal(st, 'Favorite color', ad.favorite_color);
+  feKeyVal(st, 'Vehicle', ad.vehicle);
+  feHeading(st, 'Fictional social header');
+  feKeyVal(st, 'Handle', so.handle);
+  feKeyVal(st, 'Bio', so.bio);
+  feKeyVal(st, 'Followers / Following / Posts', so.followers + ' / ' + so.following + ' / ' + so.posts);
+  if (cov.financial) {
+    const fi = cov.financial;
+    feHeading(st, 'Financial filler (test-only)');
+    feKeyVal(st, 'Card number', fi.card_number);
+    feKeyVal(st, 'Provider', fi.provider);
+    feKeyVal(st, 'Expiry', fi.expiry);
+    feKeyVal(st, 'IBAN', fi.iban);
+    feText(st, fi.note, { size: 8.5, color: FE_PDF.muted });
+  }
+  const lg = data.legend || {};
+  feHeading(st, 'Legend (back-story)');
+  if (lg.available && lg.content) {
+    const c = lg.content;
+    const row = (label, val) => { if (val) { feText(st, label, { size: 9, style: 'bold', color: FE_PDF.muted }); feText(st, val, { size: 10 }); } };
+    row('Occupation context', c.occupation_context);
+    row('Education', c.education);
+    row('Hobbies and interests', c.hobbies);
+    row('Life history', c.life_history);
+    row('Writing voice', c.writing_voice);
+  } else {
+    feText(st, lg.message || 'Legend not generated. The Cover is complete.', { size: 10, color: FE_PDF.muted });
+  }
+  feHeading(st, 'Avatar');
+  feText(st, SP_AVATAR, { size: 10 });
+  feHeading(st, 'Operator OPSEC checklist');
+  SP_OPSEC.forEach(item => feText(st, '- ' + item, { size: 9.5 }));
+  feFooterAll(st, ['FalconEye Sock Puppet Generator', 'Fictional research persona. Not for impersonation.']);
+  st.doc.save('falconeye-sockpuppet-' + (feSanitizeName(p.full_name) || 'persona') + '-' + fePdfDate() + '.pdf');
+}
+
 
 const FE_PDF = {
   M: 18,

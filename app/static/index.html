@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.23.0",
+    "softwareVersion": "3.24.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -98,7 +98,8 @@
       "Google dork generator (LLM-powered)",
       "Suspicious script decoder (LLM-powered)",
       "Company dossier (Google identity, Ads Transparency, Meta Ad Library, hiring signals, recent news)",
-      "Cyber news aggregator",
+      "Sock Puppet Generator: fictional OSINT research personas across all ISO countries, with a Cover, an AI Legend back-story, and dossier export",
+      "Home page PH threat pulse and curated cyber news strip",
       "URL expander and redirect chain analyzer",
       "QR code analyzer"
     ]
@@ -148,7 +149,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.23.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.24.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -902,6 +903,42 @@
       <div id="prospect-result" class="hidden space-y-4"></div>
     </div>
 
+    <!-- Sock Puppet Generator Tab -->
+    <div id="tab-sockpuppet" class="tab-content hidden">
+      <h2 class="text-lg font-bold mb-1">Sock Puppet Generator</h2>
+      <p class="text-gray-400 text-sm mb-4">Build a coherent fictional research persona: a Cover of structured surface fields and an optional Legend, the back-story that supports it. Fictional personas only, never impersonation of a real person. Authorized OSINT investigative use only.</p>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+        <div>
+          <label class="block text-xs text-gray-500 uppercase mb-1">Gender</label>
+          <select id="sp-gender" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+            <option value="random">Random</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="non-binary">Non-binary</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 uppercase mb-1">Country</label>
+          <select id="sp-country" onchange="updateSpCountryNote()" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
+            <option value="random">Random country</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs text-gray-500 uppercase mb-1">Preferred age</label>
+          <input id="sp-age" type="number" min="13" max="100" placeholder="natural range" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
+        </div>
+        <div class="flex items-end">
+          <button id="sp-btn" class="w-full bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Generate persona</button>
+        </div>
+      </div>
+      <p id="sp-country-note" class="text-xs text-gray-500 mb-3">A random ISO country will be chosen.</p>
+      <div class="flex flex-wrap gap-5 mb-4 text-xs text-gray-400">
+        <label class="flex items-center gap-2"><input id="sp-legend" type="checkbox" checked class="accent-amber-400" /> Write the Legend back-story (AI)</label>
+        <label class="flex items-center gap-2"><input id="sp-financial" type="checkbox" class="accent-amber-400" /> Include financial filler (test-only, off by default)</label>
+      </div>
+      <div id="sp-result" class="hidden space-y-4"></div>
+    </div>
+
     <!-- Username Enumeration Tab -->
     <div id="tab-username" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Username Enumeration</h2>
@@ -1491,6 +1528,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.23.0"></script>
+  <script src="/static/app.js?v=3.24.0"></script>
 </body>
 </html>
