@@ -5234,7 +5234,8 @@ function renderSockpuppet(el, data) {
 
   html += spCard('Professional',
     spTwin('Employer', pr.employer, pr.employer_roman) + spTwin('Job title', pr.job_title, pr.job_title_roman) +
-    spField('Department', pr.department) + spField('Years of experience', pr.years_experience));
+    spField('Department', pr.department) + spField('Years of experience', pr.years_experience) +
+    spField('Career since', pr.career_start_year));
 
   html += spCard('Additional',
     spField('Timezone', ad.timezone) + spField('Currency', ad.currency) + spField('Calling code', ad.calling_code) +
@@ -5328,6 +5329,7 @@ function downloadSockpuppetPdf() {
   feKeyVal(st, 'Job title', pr.job_title_roman || pr.job_title);
   feKeyVal(st, 'Department', pr.department);
   feKeyVal(st, 'Years of experience', String(pr.years_experience));
+  feKeyVal(st, 'Career since', String(pr.career_start_year));
   feHeading(st, 'Additional');
   feKeyVal(st, 'Timezone', ad.timezone);
   feKeyVal(st, 'Currency', ad.currency);

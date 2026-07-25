@@ -88,18 +88,26 @@ def _tier(cc: str) -> str:
     return "C"
 
 
-DEPARTMENTS = [
-    "Operations", "Marketing", "Sales", "Finance", "Human Resources", "Engineering",
-    "Product", "Customer Support", "Logistics", "Research and Development",
-    "Legal and Compliance", "Procurement", "Administration", "Quality Assurance",
+# Job title and its department are a fixed pair, never drawn independently.
+JOB_ROLES = [
+    ("Operations coordinator", "Operations"),
+    ("Marketing specialist", "Marketing"),
+    ("Account manager", "Sales"),
+    ("Financial analyst", "Finance"),
+    ("HR generalist", "Human Resources"),
+    ("Software engineer", "Engineering"),
+    ("Product manager", "Product"),
+    ("Customer support lead", "Customer Support"),
+    ("Logistics planner", "Logistics"),
+    ("Research assistant", "Research and Development"),
+    ("Compliance officer", "Legal and Compliance"),
+    ("Procurement specialist", "Procurement"),
+    ("Office administrator", "Administration"),
+    ("Quality analyst", "Quality Assurance"),
+    ("Sales representative", "Sales"),
+    ("Data analyst", "Research and Development"),
 ]
-JOB_TITLES = [
-    "Operations coordinator", "Marketing specialist", "Account manager",
-    "Financial analyst", "HR generalist", "Software engineer", "Product manager",
-    "Customer support lead", "Logistics planner", "Research assistant",
-    "Compliance officer", "Procurement specialist", "Office administrator",
-    "Quality analyst", "Sales representative", "Data analyst",
-]
+JOB_DEPT = dict(JOB_ROLES)
 VEHICLES = [
     "Toyota Corolla", "Honda Civic", "Hyundai Accent", "Ford Ranger", "Nissan Almera",
     "Mitsubishi Mirage", "Volkswagen Golf", "Kia Picanto", "Suzuki Swift", "no vehicle",
@@ -266,43 +274,127 @@ def _faker_name(fake: Faker, gender: str) -> tuple[str, str]:
     return fake.first_name(), fake.last_name()
 
 
+# ISO long names -> common display names. pycountry.common_name covers many; the
+# explicit map handles the ambiguous or awkward ones, and a suffix stripper covers
+# the remaining "X, Republic of" long forms.
+COMMON_NAME = {
+    "KR": "South Korea", "KP": "North Korea", "RU": "Russia", "IR": "Iran",
+    "VE": "Venezuela", "BO": "Bolivia", "TZ": "Tanzania", "LA": "Laos",
+    "SY": "Syria", "MD": "Moldova", "BN": "Brunei", "VN": "Vietnam",
+    "CD": "DR Congo", "CG": "Congo-Brazzaville", "FM": "Micronesia",
+    "GB": "United Kingdom", "US": "United States", "AE": "United Arab Emirates",
+    "TW": "Taiwan", "MK": "North Macedonia", "CZ": "Czechia", "PS": "Palestine",
+    "VA": "Vatican City",
+}
+
+
+def _display_country(cc: str, fallback: str = "") -> str:
+    """Common everyday country name, never the ISO long form. cc stays internal.
+    Drops any parenthetical and any long-form comma tail ("Iran, Islamic Republic
+    of" -> "Iran"); the awkward or ambiguous ones are pinned in COMMON_NAME."""
+    if cc in COMMON_NAME:
+        return COMMON_NAME[cc]
+    c = pycountry.countries.get(alpha_2=cc)
+    if not c:
+        return fallback or cc
+    cn = getattr(c, "common_name", None)
+    if cn:
+        return cn
+    name = c.name.split("(")[0].strip()
+    if "," in name:
+        name = name.split(",", 1)[0].strip()
+    return name
+
+
+def _pick_postcode(cc: str, locale: str | None) -> str:
+    """A non-blank, format-plausible postcode: the locale's own format when Faker
+    has it, otherwise a generic value so the field is never left blank."""
+    for loc in (locale, "en_US"):
+        if not loc:
+            continue
+        try:
+            pc = str(Faker(loc).postcode()).strip()
+            if pc:
+                return pc
+        except Exception:
+            continue
+    return f"{random.randint(1000, 99999):05d}"
+
+
+def _career(age_val: int, birth_year: int) -> tuple[int, int]:
+    """Career start year and years of experience, derived together so tenure can
+    never contradict the age (no senior with two years, no negative experience)."""
+    start_age = min(random.randint(18, 25), max(16, age_val))
+    return birth_year + start_age, max(0, age_val - start_age)
+
+
+def _persona_iban(cc: str, locale: str | None) -> str:
+    """An IBAN for the persona's own country, or empty when the country is not an
+    IBAN country. Never the Faker default GB fallback."""
+    if not locale:
+        return ""
+    try:
+        cand = str(Faker(locale).iban())
+        return cand if cand[:2] == cc else ""
+    except Exception:
+        return ""
+
+
 def build_cover(cc: str, country_name: str, gender_req: str, age, include_financial: bool) -> tuple[dict, str, bool]:
     tier = _tier(cc)
     gender = _pick_gender(gender_req)
     meta = _metadata(cc)
-    region = random.choice(meta["subdivisions"]) if meta["subdivisions"] else ""
+    locale = _CC_LOCALE[cc][0] if cc in _CC_LOCALE else None
+    display_country = _display_country(cc, country_name)
+
     dob_iso, age_val = _dob_for(age)
     birth_year = int(dob_iso[:4])
 
-    name_source, city_source, need_llm_identity = "faker", "faker", False
+    # --- Build in dependency order, never field-by-field independently. ---
+    # 1. region is the geography anchor. A subdivision if the country has them,
+    #    else the country itself (correct for city-states, coarse-but-consistent
+    #    for the handful of others).
+    region = random.choice(meta["subdivisions"]) if meta["subdivisions"] else display_country
+    # 2. job -> department are a fixed pair.
+    job_title, department = random.choice(JOB_ROLES)
+    # 3. career start -> years of experience, derived from age.
+    career_start_year, years_experience = _career(age_val, birth_year)
+
+    # The city is always derived from the region (offline baseline == the region),
+    # and the Legend refines it to a real city located inside that region. It is
+    # never an independent draw, so city and region can never disagree.
+    name_source, city_source, need_llm_identity = "faker", "legend", False
 
     if tier == "A":
-        fake = Faker(_CC_LOCALE[cc][0])
+        fake = Faker(locale)
         first, last = _faker_name(fake, gender)
         full_name = f"{first} {last}"
         street = _oneline(fake.street_address())
-        city = fake.city()
-        region = fake.administrative_unit() if hasattr(fake, "administrative_unit") else region
-        postal = str(fake.postcode())
-        job_title, employer, color = fake.job(), fake.company(), fake.color_name()
+        if hasattr(fake, "administrative_unit"):
+            region = fake.administrative_unit()
+        try:
+            color = fake.color_name()
+        except Exception:
+            color = random.choice(COLORS)
+        employer = fake.company()
     elif tier == "B":
-        fake = Faker(_CC_LOCALE[cc][0])
+        fake = Faker(locale)
         first, last = _faker_name(fake, gender)
         full_name = f"{first} {last}"
-        street, postal, city = "[street to be set by the operator]", "", ""
-        city_source, need_llm_identity = "legend", True
-        job_title = random.choice(JOB_TITLES)
-        employer = f"{last} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
+        street = "[street to be set by the operator]"
         color = random.choice(COLORS)
+        employer = f"{last} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
     else:  # Tier C
         first, last, full_name = "", "", ""
-        name_source, city_source, need_llm_identity = "legend", "legend", True
-        street, postal, city = "[street to be set by the operator]", "", ""
-        job_title = random.choice(JOB_TITLES)
-        employer = f"{country_name} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
+        name_source, need_llm_identity = "legend", True
+        street = "[street to be set by the operator]"
         color = random.choice(COLORS)
+        employer = f"{display_country} {random.choice(['Group', 'Holdings', 'Services', 'Trading'])}"
 
-    # Offline fallbacks so the Cover is complete even with no LLM.
+    city = region  # offline baseline; Legend replaces with a real city in the region
+    postal = _pick_postcode(cc, locale)
+
+    # Offline name fallbacks so the Cover is complete even with no LLM.
     if not full_name:
         nf = Faker("en_US")
         first, last = _faker_name(nf, gender)
@@ -310,26 +402,23 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
     if not first:
         parts = full_name.split()
         first, last = parts[0], (parts[-1] if len(parts) > 1 else parts[0])
-    if not city:
-        city = region or f"{country_name} (capital region)"
     if not employer:
-        employer = f"{country_name} Services"
-    if not job_title:
-        job_title = random.choice(JOB_TITLES)
+        employer = f"{display_country} Services"
 
     tz = meta["timezone"]
     if cc == "US":
         tz = US_STATE_TZ.get(region, tz)
 
     # Latin twins (offline baseline; the Legend overrides with natural romanization).
+    # The job title is already a clean English role, so it is its own roman twin.
     name_roman = _roman(full_name)
     rparts = name_roman.split()
     first_roman = rparts[0] if rparts else (_roman(first) or "user")
     last_roman = rparts[-1] if len(rparts) > 1 else (_roman(last) or first_roman)
     city_roman, region_roman = _roman(city), _roman(region)
     street_roman = street if _is_latin(street) else _roman(street)
-    employer_roman, job_title_roman = _roman(employer), _roman(job_title)
-    approx = not (_is_latin(full_name) and _is_latin(city) and _is_latin(employer) and _is_latin(job_title))
+    employer_roman, job_title_roman = _roman(employer), job_title
+    approx = not (_is_latin(full_name) and _is_latin(city) and _is_latin(employer))
 
     cover = {
         "country_code": cc,
@@ -337,24 +426,25 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         "romanization_approximate": approx,
         "personal": {
             "full_name": full_name, "name_roman": name_roman,
-            "date_of_birth": dob_iso, "age": age_val, "gender": gender, "nationality": country_name,
+            "date_of_birth": dob_iso, "age": age_val, "gender": gender, "nationality": display_country,
         },
         "address": {
             "street": street, "street_roman": street_roman, "city": city, "city_roman": city_roman,
-            "region": region, "region_roman": region_roman, "postal_code": postal, "country": country_name,
+            "region": region, "region_roman": region_roman, "postal_code": postal, "country": display_country,
         },
         "contact": {},
         "professional": {
             "employer": employer, "employer_roman": employer_roman,
             "job_title": job_title, "job_title_roman": job_title_roman,
-            "department": random.choice(DEPARTMENTS), "years_experience": random.randint(1, max(1, min(age_val - 21, 32))),
+            "department": department, "career_start_year": career_start_year,
+            "years_experience": years_experience,
         },
         "additional": {
             "timezone": tz, "currency": meta["currency"], "calling_code": meta["calling_code"],
-            "favorite_color": color, "vehicle": random.choice(VEHICLES),
+            "favorite_color": color or random.choice(COLORS), "vehicle": random.choice(VEHICLES),
         },
         "social": {
-            "handle": "", "bio": _strip_dashes(f"{job_title_roman} based in {city_roman}, {country_name}. Views my own."),
+            "handle": "", "bio": _strip_dashes(f"{job_title_roman} based in {city_roman}, {display_country}. Views my own."),
             "followers": random.randint(80, 4200), "following": random.randint(60, 900), "posts": random.randint(12, 1600),
             "note": "Fictional social scaffolding for legend completeness, not a real account.",
         },
@@ -369,9 +459,13 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
 
     if include_financial:
         ff = Faker("en_US")
+        # Card number and provider come from the SAME card type so they agree; IBAN
+        # is the persona country's, or omitted rather than defaulting to GB.
+        card_type = ff.random_element(elements=("visa16", "mastercard", "amex", "discover"))
+        iban = _persona_iban(cc, locale)
         cover["financial"] = {
-            "card_number": ff.credit_card_number(), "provider": ff.credit_card_provider(),
-            "expiry": ff.credit_card_expire(), "iban": ff.iban(),
+            "card_number": ff.credit_card_number(card_type), "provider": ff.credit_card_provider(card_type),
+            "expiry": ff.credit_card_expire(), "iban": iban or "not applicable for this country",
             "note": "Test-only Faker values (Luhn valid but not real). Fictional filler, "
                     "not a payment instrument. Real funding needs a genuine burner-card service.",
         }
@@ -383,9 +477,11 @@ PERSONA_SYSTEM_PROMPT = """You write a fictional cover-identity back-story, a le
 
 The persona is entirely fictional. Never base it on, resemble, or impersonate a real, identifiable person. Do not add real contact details, real handles, or real companies.
 
-You receive a fixed Cover of surface facts, plus the country. USE THESE EXACT VALUES in the back-story. Do NOT invent a different city, employer, name, region, or age. When a field is marked PROVIDE, invent one that is fictional but culturally plausible for the stated country and gender, and a real city in that country; then use that invented value consistently.
+You receive a fully reconciled Cover: country, name, region, employer, job title, department, age, career start year, and years of experience. These are FIXED. Use these exact values in the back-story. Do NOT introduce a second region, a different tenure, a different employer, a different job, a different department, or a different age. The one field you must supply is the city: give a real city located INSIDE the given region of that country (never a city in a different region), and use it consistently everywhere. When the name is marked PROVIDE, invent one that is fictional but culturally plausible for the stated country and gender, then use it consistently.
 
-For the name, city, region, employer, and job title, also return an accurate, natural Latin romanization (the roman twin). For an Arabic, Thai, or CJK name, romanize it the way a person would write it in Latin script (for example a natural Given Family spelling), not a letter-by-letter transliteration. If a value is already Latin, echo it unchanged.
+For the name, city, region, street, and employer, also return an accurate, natural Latin romanization (the roman twin). For an Arabic, Thai, or CJK value, romanize it the way a person would write it in Latin script (for example a natural Given Family spelling), not a letter-by-letter transliteration. The output must contain no non-Latin characters. If a value is already Latin, echo it unchanged.
+
+Also return a postal_code in the real format for that country, plausible for the city and region.
 
 Also propose three extra handle ideas in the style a real person of this occupation and country might pick, lowercase, ASCII, no leetspeak, derived from the roman name and the hobbies. Any number in a handle must be the birth year or the age, never random.
 
@@ -396,16 +492,17 @@ Return ONLY valid JSON in this exact shape, no markdown or preamble:
 {
   "full_name": "the native full name (echo the given one, or invent only if it was PROVIDE)",
   "name_roman": "natural Latin romanization of the full name",
-  "city": "the city (echo the given one, or invent a real city in the country only if it was PROVIDE)",
+  "city": "a real city located inside the given region",
   "city_roman": "natural Latin romanization of the city",
   "region_roman": "natural Latin romanization of the region",
+  "street_roman": "natural Latin romanization of the street",
   "employer_roman": "natural Latin romanization of the employer",
-  "job_title_roman": "natural Latin romanization of the job title",
+  "postal_code": "a postal code in the country's real format, plausible for the city and region",
   "extra_handles": ["three", "handle", "ideas"],
-  "occupation_context": "1 to 2 sentences using the exact employer and job.",
+  "occupation_context": "1 to 2 sentences using the exact employer, job title, and department.",
   "education": "1 to 2 sentences consistent with the age and job.",
   "hobbies": "1 to 2 sentences that fit the location and persona.",
-  "life_history": "3 to 5 sentences that use the exact city and employer, with no loose ends.",
+  "life_history": "3 to 5 sentences using the exact city, region, employer, and the career start year to now, with no loose ends.",
   "writing_voice": "1 to 2 sentences on how this persona writes."
 }
 """
@@ -420,15 +517,17 @@ async def _llm_persona(cover: dict) -> dict | None:
 
     p, a, pr = cover["personal"], cover["address"], cover["professional"]
     name_field = "PROVIDE" if cover["field_sources"]["name"] == "legend" else p["full_name"]
-    city_field = "PROVIDE" if cover["field_sources"]["city"] == "legend" else a["city"]
     facts = (
         f"Country: {a['country']}\n"
         f"Full name (native): {name_field}\n"
-        f"City (native): {city_field}\n"
         f"Region (native): {a['region']}\n"
+        f"City: PROVIDE a real city located inside the region above\n"
+        f"Street (native): {a['street']}\n"
         f"Employer (native): {pr['employer']}\n"
-        f"Job title (native): {pr['job_title']}\n"
+        f"Job title: {pr['job_title']}\n"
+        f"Department: {pr['department']}\n"
         f"Age: {p['age']} (DOB {p['date_of_birth']})\n"
+        f"Career start year: {pr['career_start_year']} (years of experience {pr['years_experience']})\n"
         f"Gender: {p['gender']}\n"
         f"Timezone: {cover['additional']['timezone']}\n"
     )
@@ -464,8 +563,8 @@ async def _llm_persona(cover: dict) -> dict | None:
         return None
 
     str_fields = ("full_name", "name_roman", "city", "city_roman", "region_roman",
-                  "employer_roman", "job_title_roman", "occupation_context", "education",
-                  "hobbies", "life_history", "writing_voice")
+                  "street_roman", "employer_roman", "postal_code", "occupation_context",
+                  "education", "hobbies", "life_history", "writing_voice")
     out = {k: _strip_dashes(safe_str(parsed.get(k), 1500, "")) for k in str_fields}
     handles = parsed.get("extra_handles")
     out["extra_handles"] = [_strip_dashes(safe_str(h, 40, "")) for h in handles][:3] if isinstance(handles, list) else []
@@ -542,22 +641,28 @@ async def generate(req: GenRequest, request: Request):
 def _fold_legend(cover: dict, result: dict, cc: str, country_name: str) -> None:
     """Fold the LLM identity + roman twins back into the Cover, then rebuild the
     handles and stem from the (now natural) roman name."""
-    # Native identity for Tier B/C.
+    # Native identity for Tier C; real city inside the pinned region for all tiers.
     if cover["field_sources"]["name"] == "legend" and result.get("full_name"):
         cover["personal"]["full_name"] = result["full_name"]
-    if cover["field_sources"]["city"] == "legend" and result.get("city"):
+    if result.get("city"):
         cover["address"]["city"] = result["city"]
+    if result.get("postal_code"):
+        cover["address"]["postal_code"] = _oneline(result["postal_code"])[:16]
 
-    # Roman twins (primary; override the unidecode baseline).
+    # Roman twins (primary; override the unidecode baseline). A residual non-Latin
+    # sweep guarantees no field keeps script the LLM failed to romanize.
     twin_map = [
         (result.get("name_roman"), cover["personal"], "name_roman", cover["personal"]["full_name"]),
         (result.get("city_roman"), cover["address"], "city_roman", cover["address"]["city"]),
         (result.get("region_roman"), cover["address"], "region_roman", cover["address"]["region"]),
+        (result.get("street_roman"), cover["address"], "street_roman", cover["address"]["street"]),
         (result.get("employer_roman"), cover["professional"], "employer_roman", cover["professional"]["employer"]),
-        (result.get("job_title_roman"), cover["professional"], "job_title_roman", cover["professional"]["job_title"]),
     ]
     for value, section, key, native in twin_map:
-        section[key] = value if value else _roman(native)
+        r = _strip_dashes(value).strip() if value else _roman(native)
+        if not _is_latin(r):
+            r = _roman(r)
+        section[key] = r
     cover["romanization_approximate"] = False
 
     # Rebuild handles/stem/email/social from the natural roman name.
@@ -578,7 +683,8 @@ def _fold_legend(cover: dict, result: dict, cc: str, country_name: str) -> None:
     cover["contact"]["username_suggestions"] = cur[:11]
 
     cover["social"]["bio"] = _strip_dashes(
-        f"{cover['professional']['job_title_roman']} based in {cover['address']['city_roman']}, {country_name}. Views my own.")
+        f"{cover['professional']['job_title_roman']} based in {cover['address']['city_roman']}, "
+        f"{cover['address']['country']}. Views my own.")
 
 
 def _country_options_html() -> str:

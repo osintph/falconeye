@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.25.0] - 2026-07-25
+
+Sock Puppet Generator coherence pass. An audit across all 249 ISO countries (LLM
+off) found structural breaks that were not country-specific: department unrelated
+to job (100% of countries), blank postcode (78%, all Tier B/C), city and region
+drawn independently (21%, all Tier A), ISO long name shown instead of the common
+name (6%), native field-noun job titles (5%), and tenure that could contradict
+the age. Root cause: interdependent Cover fields were generated independently and
+only city and employer were pinned into the Legend. This release rebuilds the
+Cover as a self-consistent whole and pins all of it.
+
+### Fixed
+
+- **Cover is built in dependency order**, never field by field: region is the
+  geography anchor, the city derives from the region (the Legend refines it to a
+  real city inside that region, never an independent draw), job title and
+  department are a fixed pair, and years of experience is derived from a career
+  start age so it can never contradict the age.
+- **Common country names everywhere shown** (nationality, address, bio); the ISO
+  long form ("Iran, Islamic Republic of") and parentheticals are mapped to the
+  everyday name. The ISO code stays internal.
+- **Job title is always a readable role**, never a native field-noun; it is
+  reused in the bio and the Legend.
+- **Every script-variable field carries a Latin twin** (name, street, city,
+  region, employer) routed through the same romanization, with a residual
+  non-Latin sweep so no field keeps unromanized script.
+- **Filler correctness**: postcode is always present and format-plausible; the
+  card number now matches the stated card provider; the IBAN is the persona
+  country's or is omitted rather than defaulting to GB; favorite color always set.
+- **The entire reconciled Cover is pinned into the Legend** (name, region,
+  employer, job title, department, age, career start year, years of experience,
+  country), which is instructed to use those exact values and not introduce a
+  second region, a different tenure, or a different employer.
+
+Re-audit after the fix: zero failures across all deterministic checks
+(experience, geography, country name, job title, department, romanization, blank
+fields) for all 249 countries with the Legend off.
+
 ## [3.24.3] - 2026-07-25
 
 Sock Puppet Generator: put each server-rendered country <option> on its own
