@@ -10,6 +10,7 @@ from slowapi import Limiter
 
 from app.config import DB_PATH, ABUSECH_AUTH_KEY
 from app.database import get_db
+from app.utils import abusech
 from app.utils.client_ip import get_client_ip_key
 from app.utils.indicator import classify_indicator
 
@@ -48,65 +49,16 @@ def store_cache(db: sqlite3.Connection, key: str, response: dict) -> None:
 
 
 async def fetch_urlhaus_url(client: httpx.AsyncClient, url: str) -> dict | None:
-    if not ABUSECH_AUTH_KEY:
-        return None
-    try:
-        r = await client.post(
-            "https://urlhaus-api.abuse.ch/v1/url/",
-            data={"url": url},
-            timeout=FETCH_TIMEOUT,
-            headers={"Auth-Key": ABUSECH_AUTH_KEY, "User-Agent": USER_AGENT},
-        )
-        if r.status_code == 200:
-            return r.json()
-        log.warning(f"URLhaus URL returned {r.status_code}")
-        return None
-    except Exception as e:
-        log.warning(f"URLhaus URL exception: {e}")
-        return None
+    return await abusech.urlhaus_url(client, url)
 
 
 async def fetch_urlhaus_payload(client: httpx.AsyncClient, hash_type: str, hash_value: str) -> dict | None:
-    if not ABUSECH_AUTH_KEY:
-        log.warning("URLhaus payload: ABUSECH_AUTH_KEY not set")
-        return None
-    if hash_type not in ("md5", "sha256"):
-        return None
-    try:
-        r = await client.post(
-            "https://urlhaus-api.abuse.ch/v1/payload/",
-            data={f"{hash_type}_hash": hash_value},
-            timeout=FETCH_TIMEOUT,
-            headers={"Auth-Key": ABUSECH_AUTH_KEY, "User-Agent": USER_AGENT},
-        )
-        if r.status_code == 200:
-            return r.json()
-        log.warning(f"URLhaus payload returned {r.status_code}")
-        return None
-    except Exception as e:
-        log.warning(f"URLhaus payload exception: {e}")
-        return None
+    return await abusech.urlhaus_payload(client, hash_type, hash_value)
 
 
 async def fetch_malwarebazaar(client: httpx.AsyncClient, hash_value: str) -> dict | None:
     """MalwareBazaar accepts md5, sha1, or sha256 in a single `hash` field."""
-    if not ABUSECH_AUTH_KEY:
-        log.warning("MalwareBazaar: ABUSECH_AUTH_KEY not set")
-        return None
-    try:
-        r = await client.post(
-            "https://mb-api.abuse.ch/api/v1/",
-            data={"query": "get_info", "hash": hash_value},
-            timeout=FETCH_TIMEOUT,
-            headers={"Auth-Key": ABUSECH_AUTH_KEY, "User-Agent": USER_AGENT},
-        )
-        if r.status_code == 200:
-            return r.json()
-        log.warning(f"MalwareBazaar returned {r.status_code}")
-        return None
-    except Exception as e:
-        log.warning(f"MalwareBazaar exception: {e}")
-        return None
+    return await abusech.malwarebazaar(client, hash_value)
 
 
 @router.get("/lookup")

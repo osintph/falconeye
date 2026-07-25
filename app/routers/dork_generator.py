@@ -9,7 +9,6 @@ import json
 import logging
 import os
 import re
-import sqlite3
 from datetime import datetime, timezone
 
 from anthropic import AsyncAnthropic, APIError, APIStatusError, APITimeoutError
@@ -17,11 +16,11 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from app.config import (
-    DB_PATH,
     LLM_RATE_LIMIT_PER_DAY,
     LLM_TIMEOUT_SECONDS,
     ANTHROPIC_API_KEY,
 )
+from app.utils import cache, rate_limit
 from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import safe_str, validate_findings_list
 
@@ -42,50 +41,10 @@ class DorkGenRequest(BaseModel):
 
 # ---------- cache and rate limit tables ----------
 
-def _init_cache():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS dork_gen_cache (
-            id TEXT PRIMARY KEY,
-            response_json TEXT NOT NULL,
-            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS dork_gen_rate_limit (
-            source_ip TEXT NOT NULL,
-            called_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_dorkgen_rate_ip ON dork_gen_rate_limit(source_ip, called_at)")
-    conn.commit()
-    conn.close()
-
-
-_init_cache()
-
-
-def _check_rate_limit(source_ip: str) -> tuple[bool, int]:
-    """Returns (allowed, calls_used_in_window)."""
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT COUNT(*) FROM dork_gen_rate_limit WHERE source_ip = ? AND called_at > datetime('now', '-24 hours')",
-        (source_ip,),
-    )
-    count = cur.fetchone()[0]
-    conn.close()
-    return (count < LLM_RATE_LIMIT_PER_DAY, count)
-
-
-def _record_call(source_ip: str):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("INSERT INTO dork_gen_rate_limit (source_ip) VALUES (?)", (source_ip,))
-        conn.execute("DELETE FROM dork_gen_rate_limit WHERE called_at < datetime('now', '-48 hours')")
-        conn.commit()
-        conn.close()
-    except Exception as exc:
-        log.error("Failed to write dork_gen_rate_limit row for ip=%s: %s", source_ip, exc)
+_CACHE_TABLE = "dork_gen_cache"
+_RL_TABLE = "dork_gen_rate_limit"
+cache.init_table(_CACHE_TABLE, key_col="id")
+rate_limit.init_table(_RL_TABLE)
 
 
 def _cache_key(goal: str, target: str | None) -> str:
@@ -279,23 +238,12 @@ async def generate(req: DorkGenRequest, request: Request):
         )
 
     cache_id = _cache_key(goal, target)
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT response_json, fetched_at FROM dork_gen_cache WHERE id = ? AND fetched_at > datetime('now', ?)",
-        (cache_id, f"-{CACHE_TTL_HOURS} hours"),
-    )
-    row = cur.fetchone()
-    conn.close()
-
-    if row:
-        cached_json, fetched_at = row
-        cached = json.loads(cached_json)
-        cached["cache_hit"] = True
-        cached["fetched_at"] = fetched_at
+    cached = cache.get(_CACHE_TABLE, cache_id, CACHE_TTL_HOURS, key_col="id")
+    if cached:
         return cached
 
     source_ip = get_client_ip(request) if request else "unknown"
-    allowed, calls_used = _check_rate_limit(source_ip)
+    allowed, calls_used = rate_limit.check(_RL_TABLE, source_ip, LLM_RATE_LIMIT_PER_DAY)
     if not allowed:
         raise HTTPException(
             status_code=429,
@@ -309,19 +257,13 @@ async def generate(req: DorkGenRequest, request: Request):
             detail="Dork generator failed to produce a result. Try rephrasing your goal or try again in a moment.",
         )
 
-    _record_call(source_ip)
+    rate_limit.record(_RL_TABLE, source_ip)
 
     result["cache_hit"] = False
     result["fetched_at"] = datetime.now(timezone.utc).isoformat()
     result["goal"] = goal
     result["target"] = target or None
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT OR REPLACE INTO dork_gen_cache (id, response_json, fetched_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
-        (cache_id, json.dumps(result)),
-    )
-    conn.commit()
-    conn.close()
+    cache.set(_CACHE_TABLE, cache_id, result, key_col="id")
 
     return result

@@ -32,6 +32,7 @@ from app.config import (
     ANTHROPIC_API_KEY,
     REGEX_MAX_BODY_BYTES,
 )
+from app.utils import cache
 from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import clamp_int, safe_str, validate_findings_list
 
@@ -179,15 +180,15 @@ class HeaderAnalyzeRequest(BaseModel):
     raw_body: str | None = None
 
 
+_CACHE_TABLE = "email_header_cache"
+
+
 def _init_cache():
+    # email_header_cache goes through the shared cache store; the two bespoke
+    # rate-limit tables below (per-minute analyze, per-day llm) stay local — they
+    # are not the daily copy-paste pattern the shared rate_limit store covers.
+    cache.init_table(_CACHE_TABLE, key_col="id")
     conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS email_header_cache (
-            id TEXT PRIMARY KEY,
-            response_json TEXT NOT NULL,
-            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS llm_rate_limit (
             source_ip TEXT NOT NULL,
@@ -1047,19 +1048,8 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     cache_key_source = raw + "\n\n----BODY----\n\n" + body_input
     header_id = _hash_header(cache_key_source)
 
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT response_json, fetched_at FROM email_header_cache WHERE id = ? AND fetched_at > datetime('now', ?)",
-        (header_id, f"-{CACHE_TTL_HOURS} hours"),
-    )
-    row = cur.fetchone()
-    conn.close()
-
-    if row:
-        cached_json, fetched_at = row
-        cached = json.loads(cached_json)
-        cached["cache_hit"] = True
-        cached["fetched_at"] = fetched_at
+    cached = cache.get(_CACHE_TABLE, header_id, CACHE_TTL_HOURS, key_col="id")
+    if cached:
         return cached
 
     # M-2: a deeply nested multipart (~85 bytes/level, so depth ~2000 fits the
@@ -1225,13 +1215,7 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     parsed["cache_hit"] = False
     parsed["fetched_at"] = datetime.now(timezone.utc).isoformat()
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        "INSERT OR REPLACE INTO email_header_cache (id, response_json, fetched_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
-        (header_id, json.dumps(parsed)),
-    )
-    conn.commit()
-    conn.close()
+    cache.set(_CACHE_TABLE, header_id, parsed, key_col="id")
 
     return parsed
 

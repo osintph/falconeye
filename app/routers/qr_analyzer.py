@@ -10,14 +10,14 @@ decoded payload is a URL, the frontend forwards it to /api/url/expand separately
 import base64
 import io
 import logging
-import sqlite3
 
 from fastapi import APIRouter, File, HTTPException, Request, UploadFile
 from PIL import Image
 from pyzbar.pyzbar import decode as zbar_decode
 from slowapi import Limiter
 
-from app.config import DB_PATH, QR_DECODE_RATE_LIMIT_PER_DAY
+from app.config import QR_DECODE_RATE_LIMIT_PER_DAY
+from app.utils import rate_limit
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 
 log = logging.getLogger(__name__)
@@ -27,46 +27,10 @@ limiter = Limiter(key_func=get_client_ip_key)
 MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
-# ---------- rate limit (10 / IP / 24h, mirrors dork_generator pattern) ----------
+# ---------- rate limit (10 / IP / 24h) — shared store ----------
 
-def _init_rl():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS qr_decode_rate_limit (
-            source_ip TEXT NOT NULL,
-            called_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_qr_decode_rate_ip ON qr_decode_rate_limit(source_ip, called_at)"
-    )
-    conn.commit()
-    conn.close()
-
-
-_init_rl()
-
-
-def _check_rate_limit(source_ip: str) -> tuple[bool, int]:
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT COUNT(*) FROM qr_decode_rate_limit WHERE source_ip = ? AND called_at > datetime('now', '-24 hours')",
-        (source_ip,),
-    )
-    count = cur.fetchone()[0]
-    conn.close()
-    return (count < QR_DECODE_RATE_LIMIT_PER_DAY, count)
-
-
-def _record_call(source_ip: str):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("INSERT INTO qr_decode_rate_limit (source_ip) VALUES (?)", (source_ip,))
-        conn.execute("DELETE FROM qr_decode_rate_limit WHERE called_at < datetime('now', '-48 hours')")
-        conn.commit()
-        conn.close()
-    except Exception as exc:
-        log.error("Failed to write qr_decode_rate_limit row for ip=%s: %s", source_ip, exc)
+_RL_TABLE = "qr_decode_rate_limit"
+rate_limit.init_table(_RL_TABLE)
 
 
 # ---------- decoding ----------
@@ -142,7 +106,7 @@ def _decode_data_uri(data_uri: str) -> bytes:
 @limiter.limit("10/minute")
 async def decode(request: Request, image: UploadFile | None = File(default=None)):
     source_ip = get_client_ip(request)
-    allowed, used = _check_rate_limit(source_ip)
+    allowed, used = rate_limit.check(_RL_TABLE, source_ip, QR_DECODE_RATE_LIMIT_PER_DAY)
     if not allowed:
         raise HTTPException(
             status_code=429,
@@ -169,5 +133,5 @@ async def decode(request: Request, image: UploadFile | None = File(default=None)
     if len(image_bytes) > MAX_IMAGE_BYTES:
         raise HTTPException(status_code=413, detail="Image exceeds the 5 MB limit.")
 
-    _record_call(source_ip)
+    rate_limit.record(_RL_TABLE, source_ip)
     return decode_qr(image_bytes)

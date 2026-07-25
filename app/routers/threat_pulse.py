@@ -13,6 +13,7 @@ from slowapi import Limiter
 
 from app.config import DB_PATH, ABUSECH_AUTH_KEY
 from app.database import get_db
+from app.utils import abusech, cache
 from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/threat-pulse", tags=["threat-pulse"])
@@ -45,30 +46,18 @@ def detect_brand(url: str) -> str:
     return "Other"
 
 
+# threat_pulse_cache previously relied on scripts/db_init.py; self-init via the
+# shared store so a fresh/un-migrated DB doesn't 500 this widget.
+cache.init_table("threat_pulse_cache", key_col="id")
+
+
 def get_cached(db: sqlite3.Connection) -> dict | None:
-    """Single-row cache keyed by a fixed string."""
-    row = db.execute(
-        "SELECT response_json, fetched_at FROM threat_pulse_cache WHERE id = 'ph' LIMIT 1"
-    ).fetchone()
-    if not row:
-        return None
-    fetched = datetime.fromisoformat(row["fetched_at"])
-    if fetched.tzinfo is None:
-        fetched = fetched.replace(tzinfo=timezone.utc)
-    if datetime.now(timezone.utc) - fetched > timedelta(minutes=CACHE_TTL_MINUTES):
-        return None
-    data = json.loads(row["response_json"])
-    data["cache_hit"] = True
-    data["fetched_at"] = row["fetched_at"]
-    return data
+    """Single-row cache keyed by the fixed 'ph' id; TTL via the shared store."""
+    return cache.get("threat_pulse_cache", "ph", CACHE_TTL_MINUTES / 60, key_col="id", conn=db)
 
 
 def store_cache(db: sqlite3.Connection, response: dict) -> None:
-    db.execute(
-        "INSERT OR REPLACE INTO threat_pulse_cache (id, response_json, fetched_at) VALUES ('ph', ?, CURRENT_TIMESTAMP)",
-        (json.dumps(response),),
-    )
-    db.commit()
+    cache.set("threat_pulse_cache", "ph", response, key_col="id", conn=db)
 
 
 async def fetch_urlhaus_ph_feed() -> list[dict]:
@@ -77,15 +66,8 @@ async def fetch_urlhaus_ph_feed() -> list[dict]:
     dateadded, threat, tags, urlhaus_link.
     The feed at /feeds/country/PH/ returns CSV (or zip-wrapped CSV).
     """
-    try:
-        async with httpx.AsyncClient(timeout=FETCH_TIMEOUT, follow_redirects=True) as client:
-            r = await client.get(
-                "https://urlhaus.abuse.ch/feeds/country/PH/",
-                headers={"User-Agent": USER_AGENT},
-            )
-            r.raise_for_status()
-    except Exception as e:
-        log.warning(f"URLhaus PH feed fetch failed: {e}")
+    r = await abusech.urlhaus_country_feed("PH", timeout=FETCH_TIMEOUT)
+    if r is None:
         return []
 
     raw = r.content

@@ -14,7 +14,6 @@ later release can add a hardened (private-range-blocking) browser capture.
 import logging
 import re
 import socket
-import sqlite3
 import ssl
 import time
 from urllib.parse import urljoin, urlparse
@@ -24,7 +23,8 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from slowapi import Limiter
 
-from app.config import DB_PATH, HTTPX_TIMEOUT, URL_EXPAND_RATE_LIMIT_PER_DAY
+from app.config import HTTPX_TIMEOUT, URL_EXPAND_RATE_LIMIT_PER_DAY
+from app.utils import rate_limit
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.safe_fetch import SafeFetchError, pinned_request, resolve_pinned
 
@@ -50,46 +50,10 @@ _META_REFRESH_RE = re.compile(
 )
 
 
-# ---------- rate limit (10 / IP / 24h, mirrors dork_generator pattern) ----------
+# ---------- rate limit (10 / IP / 24h) — shared store ----------
 
-def _init_rl():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS url_expand_rate_limit (
-            source_ip TEXT NOT NULL,
-            called_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-    conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_url_expand_rate_ip ON url_expand_rate_limit(source_ip, called_at)"
-    )
-    conn.commit()
-    conn.close()
-
-
-_init_rl()
-
-
-def _check_rate_limit(source_ip: str) -> tuple[bool, int]:
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.execute(
-        "SELECT COUNT(*) FROM url_expand_rate_limit WHERE source_ip = ? AND called_at > datetime('now', '-24 hours')",
-        (source_ip,),
-    )
-    count = cur.fetchone()[0]
-    conn.close()
-    return (count < URL_EXPAND_RATE_LIMIT_PER_DAY, count)
-
-
-def _record_call(source_ip: str):
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        conn.execute("INSERT INTO url_expand_rate_limit (source_ip) VALUES (?)", (source_ip,))
-        conn.execute("DELETE FROM url_expand_rate_limit WHERE called_at < datetime('now', '-48 hours')")
-        conn.commit()
-        conn.close()
-    except Exception as exc:
-        log.error("Failed to write url_expand_rate_limit row for ip=%s: %s", source_ip, exc)
+_RL_TABLE = "url_expand_rate_limit"
+rate_limit.init_table(_RL_TABLE)
 
 
 # ---------- helpers ----------
@@ -293,7 +257,7 @@ async def expand(request: Request, payload: ExpandRequest):
         raise HTTPException(status_code=400, detail=f"URL exceeds {MAX_URL_LENGTH} characters.")
 
     source_ip = get_client_ip(request)
-    allowed, used = _check_rate_limit(source_ip)
+    allowed, used = rate_limit.check(_RL_TABLE, source_ip, URL_EXPAND_RATE_LIMIT_PER_DAY)
     if not allowed:
         raise HTTPException(
             status_code=429,
@@ -301,6 +265,6 @@ async def expand(request: Request, payload: ExpandRequest):
         )
     # Count the attempt (including SSRF-blocked ones) so the endpoint can't be
     # used as an unmetered probe of internal ranges.
-    _record_call(source_ip)
+    rate_limit.record(_RL_TABLE, source_ip)
 
     return await expand_url(url)

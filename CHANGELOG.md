@@ -5,6 +5,48 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.22.0] — 2026-07-25
+
+Internal dedup pass (2026-07 review P4). No user-facing behavior change; the
+value is that whole classes of copy-paste bug (like the never-expiring caches
+fixed in v3.21.0) become impossible rather than fixed once.
+
+### Changed
+
+- **Two shared stores replace copy-pasted SQLite plumbing.**
+  - `app/utils/rate_limit.py` — one per-IP daily limiter
+    (`init_table`/`check`/`record`). The four byte-identical
+    `_init_rl`/`_check_rate_limit`/`_record_call` copies in **dork_generator,
+    qr_analyzer, url_expander, script_decoder** now call it.
+  - `app/utils/cache.py` — one single-blob cache with a SQL-enforced TTL
+    (`init_table`/`get`/`set`, optional shared connection). The caches in
+    **dork_generator, script_decoder, email_header, ip_intel, threat_pulse** now
+    delegate to it (each keeps its existing table + key-column name, so **no DB
+    migration**).
+  - Left on their own helpers by design: email_header's two *bespoke* limiters
+    (per-minute analyze, per-day llm — not the daily copy-paste pattern), and the
+    `asn_intel` / `domain_intel` caches (raw-data and multi-column shapes the
+    single-blob store doesn't model). The per-package stores (breach/abuse/
+    ransomware/username/telegram) keep their own cohesive implementations.
+  - Side benefit: **threat_pulse now self-initializes its cache table** instead
+    of relying on `scripts/db_init.py`, so a fresh/un-migrated DB no longer 500s
+    the PH Threat Pulse widget.
+- **abuse.ch / URLhaus callers consolidated behind `app/utils/abusech.py`.** The
+  hand-rolled Auth-Key POST + User-Agent + error handling that was duplicated in
+  Sandbox (URLhaus url/payload + MalwareBazaar), IP Reputation (URLhaus host),
+  and PH Threat Pulse (the keyless country feed) now go through one client.
+  **ThreatFox is intentionally left in `app/ip_sources/threatfox.py`** — it uses
+  the `SourceResult` state model and the ip_sources aggregation contract, which
+  the thin client doesn't model.
+
+### Tests
+
+- `tests/unit/test_shared_stores.py` (9 cases) covers the two shared stores:
+  cache round-trip / TTL boundary / fractional-hour TTL, per-IP limiting and
+  window expiry, and the SQL-identifier guard. Full suite green (462 passed).
+
+---
+
 ## [3.21.0] — 2026-07-25
 
 Hardening batch plus one scope cut (News tab), from the 2026-07 architecture

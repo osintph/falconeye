@@ -15,6 +15,7 @@ from slowapi import Limiter
 from app.config import DB_PATH, GREYNOISE_API_KEY, ABUSECH_AUTH_KEY
 from app.database import get_db
 from app.ip_sources import reputation, asn_intel
+from app.utils import abusech, cache
 from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/ip", tags=["ip"])
@@ -43,49 +44,21 @@ def validate_ip(raw: str) -> str | None:
 # 500s on any database that was created fresh rather than migrated in place.
 
 def _init_cache():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS ip_intel_cache (
-            ip TEXT PRIMARY KEY,
-            response_json TEXT,
-            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
-        )
-        """
-    )
-    conn.execute("CREATE INDEX IF NOT EXISTS idx_ip_cache_fetched ON ip_intel_cache(fetched_at)")
-    conn.commit()
-    conn.close()
+    """Self-init entry point (delegates to the shared cache store)."""
+    cache.init_table("ip_intel_cache", key_col="ip")
 
 
 _init_cache()
 
 
-# ---- Cache helpers ----
+# ---- Cache helpers (delegate to the shared cache store, reusing the request conn) ----
 
 def get_cached(db: sqlite3.Connection, ip: str) -> dict | None:
-    row = db.execute(
-        "SELECT response_json, fetched_at FROM ip_intel_cache WHERE ip = ?", (ip,)
-    ).fetchone()
-    if not row:
-        return None
-    fetched = datetime.fromisoformat(row["fetched_at"])
-    if fetched.tzinfo is None:
-        fetched = fetched.replace(tzinfo=timezone.utc)
-    if datetime.now(timezone.utc) - fetched > timedelta(hours=CACHE_TTL_HOURS):
-        return None
-    data = json.loads(row["response_json"])
-    data["cache_hit"] = True
-    data["fetched_at"] = row["fetched_at"]
-    return data
+    return cache.get("ip_intel_cache", ip, CACHE_TTL_HOURS, key_col="ip", conn=db)
 
 
 def store_cache(db: sqlite3.Connection, ip: str, response: dict) -> None:
-    db.execute(
-        "INSERT OR REPLACE INTO ip_intel_cache (ip, response_json, fetched_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
-        (ip, json.dumps(response)),
-    )
-    db.commit()
+    cache.set("ip_intel_cache", ip, response, key_col="ip", conn=db)
 
 
 # ---- Data source fetchers ----
@@ -177,22 +150,7 @@ async def fetch_ripestat(client: httpx.AsyncClient, ip: str) -> dict | None:
 
 
 async def fetch_urlhaus_host(client: httpx.AsyncClient, ip: str) -> dict | None:
-    if not ABUSECH_AUTH_KEY:
-        return None
-    try:
-        r = await client.post(
-            "https://urlhaus-api.abuse.ch/v1/host/",
-            data={"host": ip},
-            timeout=FETCH_TIMEOUT,
-            headers={"Auth-Key": ABUSECH_AUTH_KEY, "User-Agent": USER_AGENT},
-        )
-        if r.status_code == 200:
-            return r.json()
-        log.warning(f"URLhaus host returned {r.status_code} for {ip}")
-        return None
-    except Exception as e:
-        log.warning(f"URLhaus host exception for {ip}: {e}")
-        return None
+    return await abusech.urlhaus_host(client, ip)
 
 
 def fetch_reverse_dns_sync(ip: str) -> list[str]:

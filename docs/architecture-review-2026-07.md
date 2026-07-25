@@ -211,11 +211,21 @@ ships separately after that.
       tab does not already cover) until that is migrated inline. Not deleted
       without a go-ahead, since it removes a capability.
 
-### Priority 4 — dedupe (separate release, after P1–P3 deployed)
-- [ ] Extract one shared module for cache-with-TTL and rate limiting; migrate the
-      copy-pasted SQLite limiters and caches onto it (makes the never-expiring
-      cache class impossible, not just fixed once).
-- [ ] Consolidate the four abuse.ch/URLhaus callers behind one client.
+### Priority 4 — dedupe — **shipped v3.22.0**
+- [x] Extract shared `cache` + `rate_limit` stores; migrated the 4 copy-pasted
+      limiters (dork/qr/url/script) and 5 caches (dork/script/email/ip_intel/
+      threat_pulse). Left bespoke/divergent ones on their own helpers
+      (email_header's two limiters, asn_intel/domain_intel caches, package
+      stores) — see the changelog.
+- [x] Consolidated the abuse.ch/URLhaus callers behind `app/utils/abusech.py`
+      (Sandbox, IP `urlhaus_host`, Threat Pulse feed). ThreatFox left in
+      `ip_sources` (SourceResult contract).
+
+### Follow-up: Sandbox tab removal (migration-first)
+- [ ] Move MalwareBazaar hash reputation inline into Email Header / Script
+      Decoder (using the new `abusech` client), verify hash lookup from both
+      flows, then delete the Sandbox tab and its dangling pivots. Scheduled as
+      the release after P4 (the `abusech` client is now in place for it).
 
 ### Explicitly not doing this pass
 - No shared upstream-source layer; no RIPEstat/RDAP client unification; no
