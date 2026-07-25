@@ -5,3 +5,5 @@ __pycache__/
 *.db-shm
 .env
 /tmp/
+.venv/
+.venv312/
