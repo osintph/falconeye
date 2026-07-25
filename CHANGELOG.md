@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.25.1] - 2026-07-25
+
+Sock Puppet Legend: constrain the supplied city to the persona's own country, not
+just the region. A rare Legend slip could place the city in a neighbouring country
+when a region name was globally ambiguous (for example a city-state district). One
+prompt clause; deterministic Cover unchanged.
+
 ## [3.25.0] - 2026-07-25
 
 Sock Puppet Generator coherence pass. An audit across all 249 ISO countries (LLM
