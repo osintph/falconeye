@@ -5142,30 +5142,21 @@ const SP_TIER_NOTE = {
   B: "Local name. Address, phone, timezone, and currency come from offline country metadata. The city is written by the Legend pass, or a region fallback if the Legend is off.",
   C: "No local name library for this country. The name and city come from the Legend pass constrained to the country, with an offline fallback if the Legend is off.",
 };
-let _spCountriesLoaded = false;
-const _spTierByCode = {};
 let _spLastData = null;
 
 document.getElementById('sp-btn').addEventListener('click', generateSockpuppet);
 
-async function initSockpuppet() {
-  if (_spCountriesLoaded) return;
-  try {
-    const res = await fetch('/api/sockpuppet/countries');
-    const data = await res.json();
-    const sel = document.getElementById('sp-country');
-    sel.innerHTML = '<option value="random">Random country</option>' +
-      (data.countries || []).map(c => { _spTierByCode[c.code] = c.tier; return `<option value="${escapeAttr(c.code)}">${escapeHtml(c.name)}</option>`; }).join('');
-    _spCountriesLoaded = true;
-    updateSpCountryNote();
-  } catch (e) { /* keep the fallback option */ }
-}
+// The country <option> list is rendered server-side into index.html, so there is
+// nothing to fetch here; just set the tier note for the current selection.
+function initSockpuppet() { updateSpCountryNote(); }
 
 function updateSpCountryNote() {
-  const code = document.getElementById('sp-country').value;
+  const sel = document.getElementById('sp-country');
   const note = document.getElementById('sp-country-note');
-  if (!code || code === 'random') { note.textContent = 'A random ISO country will be chosen.'; return; }
-  note.textContent = SP_TIER_NOTE[_spTierByCode[code] || 'A'];
+  if (!sel || !note) return;
+  if (!sel.value || sel.value === 'random') { note.textContent = 'A random ISO country will be chosen.'; return; }
+  const opt = sel.options[sel.selectedIndex];
+  note.textContent = SP_TIER_NOTE[(opt && opt.dataset.tier) || 'A'];
 }
 
 function spCopy(btn) {

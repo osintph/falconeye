@@ -2,7 +2,7 @@ import logging
 import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app.utils.client_ip import get_client_ip_key
@@ -25,7 +25,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.24.1",
+    version="3.24.2",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -80,9 +80,15 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.24.1"}
+    return {"status": "ok", "version": "3.24.2"}
 
 
 @app.get("/")
 async def serve_index():
-    return FileResponse("app/static/index.html")
+    # Read fresh each request (static edits need no restart) and inject the full
+    # ISO country <option> list server-side, so the Sock Puppet country picker is
+    # in the served HTML and does not depend on a client-side fetch.
+    with open("app/static/index.html", encoding="utf-8") as f:
+        html = f.read()
+    html = html.replace("<!--SP_COUNTRY_OPTIONS-->", sockpuppet.COUNTRY_OPTIONS_HTML)
+    return HTMLResponse(html)

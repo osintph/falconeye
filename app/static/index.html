@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.24.1",
+    "softwareVersion": "3.24.2",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -149,7 +149,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.24.1" />
+  <link rel="stylesheet" href="/static/style.css?v=3.24.2" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -920,7 +920,7 @@
         <div>
           <label class="block text-xs text-gray-500 uppercase mb-1">Country</label>
           <select id="sp-country" onchange="updateSpCountryNote()" class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">
-            <option value="random">Random country</option>
+            <option value="random">Random country</option><!--SP_COUNTRY_OPTIONS-->
           </select>
         </div>
         <div>
@@ -1528,6 +1528,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.24.1"></script>
+  <script src="/static/app.js?v=3.24.2"></script>
 </body>
 </html>

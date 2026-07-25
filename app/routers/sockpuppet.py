@@ -579,3 +579,17 @@ def _fold_legend(cover: dict, result: dict, cc: str, country_name: str) -> None:
 
     cover["social"]["bio"] = _strip_dashes(
         f"{cover['professional']['job_title_roman']} based in {cover['address']['city_roman']}, {country_name}. Views my own.")
+
+
+def _country_options_html() -> str:
+    """Server-rendered <option> tags for the full ISO 3166 list, sorted by name,
+    each carrying its generation tier. Injected into the served index.html so the
+    country picker does not depend on a client-side fetch."""
+    import html
+    return "".join(
+        f'<option value="{c.alpha_2}" data-tier="{_tier(c.alpha_2)}">{html.escape(c.name)}</option>'
+        for c in sorted(pycountry.countries, key=lambda x: x.name)
+    )
+
+
+COUNTRY_OPTIONS_HTML = _country_options_html()

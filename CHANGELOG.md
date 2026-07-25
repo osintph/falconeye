@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.24.2] - 2026-07-25
+
+Sock Puppet Generator fix: the Country picker showed only "Random country". The
+full ISO list was populated by a client-side fetch that never landed in the
+served HTML, so no specific country could be selected.
+
+### Fixed
+
+- **Country options are now rendered server-side** into the served index.html.
+  `serve_index` reads the page and injects the full pycountry ISO 3166 list
+  (one option per country, value = ISO alpha-2, label = country name, sorted by
+  name, tagged with its generation tier), so the ~249 options are in the HTML on
+  first paint and do not depend on a JS fetch. "Random country" stays first and
+  default. The tier note now reads the selected option's data-tier attribute;
+  the old fetch-based population is removed. Selecting a country generates that
+  country; Random is unchanged.
+
 ## [3.24.1] — 2026-07-25
 
 Sock Puppet Generator correction pass: non-Latin locales were broken. On an
