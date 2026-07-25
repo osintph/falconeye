@@ -5155,10 +5155,7 @@ async function initSockpuppet() {
     const data = await res.json();
     const sel = document.getElementById('sp-country');
     sel.innerHTML = '<option value="random">Random country</option>' +
-      (data.countries || []).map(c => {
-        _spTierByCode[c.code] = c.tier;
-        return `<option value="${escapeAttr(c.code)}">${escapeHtml(c.name)}</option>`;
-      }).join('');
+      (data.countries || []).map(c => { _spTierByCode[c.code] = c.tier; return `<option value="${escapeAttr(c.code)}">${escapeHtml(c.name)}</option>`; }).join('');
     _spCountriesLoaded = true;
     updateSpCountryNote();
   } catch (e) { /* keep the fallback option */ }
@@ -5181,19 +5178,42 @@ function spField(label, value) {
   const blank = (value === null || value === undefined || value === '');
   const v = blank ? '(to be set by the operator)' : String(value);
   return `<div class="flex items-start justify-between gap-3 py-1.5 border-b border-gray-800/60">
-      <div class="min-w-0">
-        <p class="text-xs text-gray-500 uppercase tracking-wide">${escapeHtml(label)}</p>
-        <p class="text-sm text-gray-100 break-words">${escapeHtml(v)}</p>
-      </div>
+      <div class="min-w-0"><p class="text-xs text-gray-500 uppercase tracking-wide">${escapeHtml(label)}</p>
+        <p class="text-sm text-gray-100 break-words">${escapeHtml(v)}</p></div>
       <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition shrink-0" data-copy="${escapeAttr(v)}" onclick="spCopy(this)">copy</button>
     </div>`;
 }
 
-function spCard(title, rowsHtml, extraClass) {
-  return `<div class="bg-gray-900 border border-gray-800 rounded p-5 ${extraClass || ''}">
-      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">${escapeHtml(title)}</h3>
-      ${rowsHtml}
+function spTwin(label, native, roman) {
+  const nv = (native === null || native === undefined || native === '') ? '' : String(native);
+  const rv = (roman === null || roman === undefined || roman === '') ? '' : String(roman);
+  const primary = nv || rv || '(to be set by the operator)';
+  const showRoman = rv && rv !== nv;
+  return `<div class="flex items-start justify-between gap-3 py-1.5 border-b border-gray-800/60">
+      <div class="min-w-0">
+        <p class="text-xs text-gray-500 uppercase tracking-wide">${escapeHtml(label)}</p>
+        <p class="text-sm text-gray-100 break-words">${escapeHtml(primary)}</p>
+        ${showRoman ? `<p class="text-xs text-gray-400 break-words">roman: ${escapeHtml(rv)}</p>` : ''}
+      </div>
+      <div class="flex flex-col gap-1 shrink-0">
+        <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition" data-copy="${escapeAttr(primary)}" onclick="spCopy(this)">copy</button>
+        ${showRoman ? `<button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition" data-copy="${escapeAttr(rv)}" onclick="spCopy(this)">roman</button>` : ''}
+      </div>
     </div>`;
+}
+
+function spCard(title, rowsHtml) {
+  return `<div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">${escapeHtml(title)}</h3>${rowsHtml}</div>`;
+}
+
+function spHandles(list) {
+  const chips = (list || []).map(h => `<span class="inline-flex items-center gap-1 bg-gray-950 border border-gray-800 rounded px-2 py-1">
+      <span class="text-xs text-amber-300 font-mono">${escapeHtml(h)}</span>
+      <button class="text-[10px] text-gray-500 hover:text-amber-300" data-copy="${escapeAttr(h)}" onclick="spCopy(this)">copy</button></span>`).join('');
+  return `<p class="text-xs text-gray-500 uppercase tracking-wide mb-2">Username suggestions</p>
+      <div class="flex flex-wrap gap-2">${chips}</div>
+      <p class="text-xs text-gray-500 mt-2">Suggestions. Check availability on the target platform; FalconEye does not check or reserve handles.</p>`;
 }
 
 function renderSockpuppet(el, data) {
@@ -5203,23 +5223,26 @@ function renderSockpuppet(el, data) {
 
   let html = `<div class="bg-amber-400/10 border border-amber-500/40 rounded p-3 flex items-center justify-between gap-3">
       <p class="text-xs text-amber-300">${escapeHtml(data.disclaimer || 'Research persona. Fictional. Not for impersonation of any real individual.')}</p>
-      <span class="text-xs text-gray-500 shrink-0">${escapeHtml(tierLabel)}</span>
-    </div>`;
+      <span class="text-xs text-gray-500 shrink-0">${escapeHtml(tierLabel)}</span></div>`;
+  if (cov.romanization_approximate) {
+    html += `<p class="text-xs text-gray-500">Romanization is an approximate offline transliteration. Enable the Legend for a natural romanization.</p>`;
+  }
 
   html += spCard('Personal',
-    spField('Full name', p.full_name) + spField('Date of birth', p.date_of_birth) +
+    spTwin('Full name', p.full_name, p.name_roman) + spField('Date of birth', p.date_of_birth) +
     spField('Age', p.age) + spField('Gender', p.gender) + spField('Nationality', p.nationality));
 
   html += spCard('Address',
-    spField('Street', a.street) + spField('City', a.city) + spField('Region', a.region) +
-    spField('Postal code', a.postal_code) + spField('Country', a.country));
+    spTwin('Street', a.street, a.street_roman) + spTwin('City', a.city, a.city_roman) +
+    spTwin('Region', a.region, a.region_roman) + spField('Postal code', a.postal_code) + spField('Country', a.country));
 
   html += spCard('Contact',
-    spField('Username stem', ct.username_stem) + spField('Email (placeholder)', ct.email_placeholder) +
-    spField('Phone (placeholder)', ct.phone_placeholder));
+    spField('Primary stem', ct.username_stem) + spField('Email (placeholder)', ct.email_placeholder) +
+    spField('Phone (placeholder)', ct.phone_placeholder) +
+    `<div class="mt-3">${spHandles(ct.username_suggestions)}</div>`);
 
   html += spCard('Professional',
-    spField('Employer', pr.employer) + spField('Job title', pr.job_title) +
+    spTwin('Employer', pr.employer, pr.employer_roman) + spTwin('Job title', pr.job_title, pr.job_title_roman) +
     spField('Department', pr.department) + spField('Years of experience', pr.years_experience));
 
   html += spCard('Additional',
@@ -5246,20 +5269,15 @@ function renderSockpuppet(el, data) {
     html += spCard('Legend (back-story)',
       para('Occupation context', c.occupation_context) + para('Education', c.education) +
       para('Hobbies and interests', c.hobbies) + para('Life history', c.life_history) +
-      para('Writing voice', c.writing_voice) +
-      `<p class="text-xs text-gray-500 mt-1">${escapeHtml(c._source_note || '')}</p>`);
+      para('Writing voice', c.writing_voice) + `<p class="text-xs text-gray-500 mt-1">${escapeHtml(c._source_note || '')}</p>`);
   } else {
-    html += spCard('Legend (back-story)',
-      `<p class="text-sm text-gray-400">${escapeHtml(lg.message || 'Legend not generated. The Cover above is complete.')}</p>`);
+    html += spCard('Legend (back-story)', `<p class="text-sm text-gray-400">${escapeHtml(lg.message || 'Legend not generated. The Cover above is complete.')}</p>`);
   }
 
   html += spCard('Avatar', `<p class="text-sm text-gray-300">${escapeHtml(SP_AVATAR)}</p>`);
-
   html += spCard('Operator OPSEC checklist',
     `<ul class="list-disc pl-5 space-y-1.5 text-sm text-gray-300">${SP_OPSEC.map(i => `<li>${escapeHtml(i)}</li>`).join('')}</ul>`);
-
   html += `<div class="flex justify-end"><button onclick="downloadSockpuppetPdf()" class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 font-bold px-4 py-2 rounded text-sm transition">Download dossier PDF</button></div>`;
-
   el.innerHTML = html;
 }
 
@@ -5289,33 +5307,34 @@ async function generateSockpuppet() {
 function downloadSockpuppetPdf() {
   if (!_spLastData) return;
   if (!fePdfReady()) { alert('PDF library not loaded.'); return; }
-  const data = _spLastData;
-  const cov = data.cover || {};
+  const cov = _spLastData.cover || {};
   const p = cov.personal || {}, a = cov.address || {}, ct = cov.contact || {}, pr = cov.professional || {}, ad = cov.additional || {}, so = cov.social || {};
   const st = fePdfNew();
   feBrandHeader(st, 'FalconEye Sock Puppet Dossier', [
-    data.disclaimer || 'Research persona. Fictional. Not for impersonation of any real individual.',
+    _spLastData.disclaimer || 'Research persona. Fictional. Not for impersonation of any real individual.',
     'Generated ' + fePdfUtcStamp(),
   ]);
+  // Roman twins so no field renders blank in the Latin-1 PDF.
   feHeading(st, 'Personal');
-  feKeyVal(st, 'Full name', p.full_name);
+  feKeyVal(st, 'Full name', p.name_roman || p.full_name);
   feKeyVal(st, 'Date of birth', p.date_of_birth);
   feKeyVal(st, 'Age', String(p.age));
   feKeyVal(st, 'Gender', p.gender);
   feKeyVal(st, 'Nationality', p.nationality);
   feHeading(st, 'Address');
-  feKeyVal(st, 'Street', a.street);
-  feKeyVal(st, 'City', a.city);
-  feKeyVal(st, 'Region', a.region);
+  feKeyVal(st, 'Street', a.street_roman || a.street);
+  feKeyVal(st, 'City', a.city_roman || a.city);
+  feKeyVal(st, 'Region', a.region_roman || a.region);
   feKeyVal(st, 'Postal code', a.postal_code);
   feKeyVal(st, 'Country', a.country);
   feHeading(st, 'Contact');
-  feKeyVal(st, 'Username stem', ct.username_stem);
+  feKeyVal(st, 'Primary stem', ct.username_stem);
   feKeyVal(st, 'Email placeholder', ct.email_placeholder);
   feKeyVal(st, 'Phone placeholder', ct.phone_placeholder);
+  feText(st, 'Username suggestions: ' + (ct.username_suggestions || []).join(', '), { size: 9.5 });
   feHeading(st, 'Professional');
-  feKeyVal(st, 'Employer', pr.employer);
-  feKeyVal(st, 'Job title', pr.job_title);
+  feKeyVal(st, 'Employer', pr.employer_roman || pr.employer);
+  feKeyVal(st, 'Job title', pr.job_title_roman || pr.job_title);
   feKeyVal(st, 'Department', pr.department);
   feKeyVal(st, 'Years of experience', String(pr.years_experience));
   feHeading(st, 'Additional');
@@ -5337,7 +5356,7 @@ function downloadSockpuppetPdf() {
     feKeyVal(st, 'IBAN', fi.iban);
     feText(st, fi.note, { size: 8.5, color: FE_PDF.muted });
   }
-  const lg = data.legend || {};
+  const lg = _spLastData.legend || {};
   feHeading(st, 'Legend (back-story)');
   if (lg.available && lg.content) {
     const c = lg.content;
@@ -5355,7 +5374,7 @@ function downloadSockpuppetPdf() {
   feHeading(st, 'Operator OPSEC checklist');
   SP_OPSEC.forEach(item => feText(st, '- ' + item, { size: 9.5 }));
   feFooterAll(st, ['FalconEye Sock Puppet Generator', 'Fictional research persona. Not for impersonation.']);
-  st.doc.save('falconeye-sockpuppet-' + (feSanitizeName(p.full_name) || 'persona') + '-' + fePdfDate() + '.pdf');
+  st.doc.save('falconeye-sockpuppet-' + (feSanitizeName(p.name_roman || 'persona') || 'persona') + '-' + fePdfDate() + '.pdf');
 }
 
 

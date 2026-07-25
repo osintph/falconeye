@@ -5,6 +5,41 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.24.1] — 2026-07-25
+
+Sock Puppet Generator correction pass: non-Latin locales were broken. On an
+Arabic persona the PDF dropped name, city, region, employer, and job title to
+blank (the jsPDF Latin-1 sanitizer erased the native script), the username stem
+fell back to a generic `researchpersonaNNN`, and the Legend invented a different
+city and employer than the Cover.
+
+### Fixed
+
+- **Romanization layer.** Every script-variable field (name, street, city,
+  region, employer, job title) now carries a Latin twin (`*_roman`). The twin is
+  the Legend's natural romanization when the LLM runs, else an offline `unidecode`
+  transliteration marked approximate. The on-screen Cover shows native with the
+  roman twin beneath; the PDF renders the roman twins, so **no field is ever
+  blank** for non-Latin personas.
+- **Real username suggestions.** The single generic stem is replaced by 6 to 8
+  human-looking handles derived from the roman name plus persona facts
+  (`nawwar.kano`, `nkano`, `kano.nawwar`, `nkano1975`, ...). Any number is the
+  birth year or the age, never a random 3-digit tell. Each has its own copy
+  button and is labelled a suggestion to check on the target platform. The
+  primary `first.last` stem flows into the email placeholder. Optional LLM enrich
+  adds three natural handles; the deterministic set always exists.
+- **Cover pinned into the Legend prompt.** The full Cover (name, city, region,
+  employer, job, age, country) is passed in with an instruction to use those
+  exact values, so the Legend can no longer invent a different city or employer.
+- **Employer and job title are never blank in the Cover** (generated for every
+  tier and romanized).
+- PDF stays on the shared `FE_PDF` path with `feSan` as the final ASCII guard;
+  no other tab's export is touched. Native-script-in-PDF (embedded Noto fonts) is
+  left as a follow-up; roman-only clears the blank-field bug.
+- New dep: `Unidecode`.
+
+---
+
 ## [3.24.0] — 2026-07-25
 
 New tab: **Sock Puppet Generator** in the Identity cluster. Builds a coherent

@@ -25,3 +25,4 @@ pycountry==26.2.16
 phonenumbers==9.0.34
 pytz==2026.2
 Babel==2.18.0
+Unidecode==1.4.0
