@@ -586,7 +586,8 @@ def _country_options_html() -> str:
     each carrying its generation tier. Injected into the served index.html so the
     country picker does not depend on a client-side fetch."""
     import html
-    return "".join(
+    # One option per line so a plain grep -c '<option' over the served HTML counts them.
+    return "\n" + "\n".join(
         f'<option value="{c.alpha_2}" data-tier="{_tier(c.alpha_2)}">{html.escape(c.name)}</option>'
         for c in sorted(pycountry.countries, key=lambda x: x.name)
     )

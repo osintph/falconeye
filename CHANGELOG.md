@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.24.3] - 2026-07-25
+
+Sock Puppet Generator: put each server-rendered country <option> on its own
+line so a plain `curl | grep -c '<option'` counts the full ~249 list. Purely a
+formatting change to the injected block; the options and behavior are unchanged
+from 3.24.2.
+
 ## [3.24.2] - 2026-07-25
 
 Sock Puppet Generator fix: the Country picker showed only "Random country". The
