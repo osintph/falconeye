@@ -132,6 +132,14 @@ COMPANY_SECTOR = [
     "Solutions", "Foods", "Construction", "Analytics", "Partners", "Materials",
     "Retail", "Engineering", "Media",
 ]
+# Neutral, brandable company base names for when the persona's own surname must not
+# be used (it would read as a self-owned firm) and no locale surname is available.
+COMPANY_BASE = [
+    "Meridian", "Northgate", "Vantage", "Summit", "Beacon", "Harbor", "Ironwood",
+    "Crestline", "Waypoint", "Sterling", "Ashford", "Brightwater", "Kestrel",
+    "Silverline", "Highfield", "Bluestone", "Redwood", "Lakeside", "Granite",
+    "Evergreen", "Fairview", "Oakmont", "Riverside", "Westbrook", "Cornerstone",
+]
 LEGAL_FORM = {
     "CZ": "s.r.o.", "SK": "s.r.o.", "DE": "GmbH", "AT": "GmbH", "CH": "AG", "LI": "AG",
     "FR": "SARL", "BE": "SPRL", "LU": "S.a r.l.", "IT": "S.r.l.", "ES": "S.L.",
@@ -646,6 +654,32 @@ def _templated_company(base: str, cc: str) -> str:
     return f"{base} {random.choice(COMPANY_SECTOR)} {_legal_form(cc)}"
 
 
+def _name_clash(text: str, first: str, last: str) -> bool:
+    """True if the persona's first or last name appears as a whole word in the text.
+    Keeps the employer name from being built on the persona's own surname, without
+    false-flagging an incidental substring (Xia inside Xian)."""
+    tokens = set(re.findall(r"[^\W\d_]+", (text or "").lower(), re.UNICODE))
+    for raw in ((first or ""), (last or "")):
+        for part in re.findall(r"[^\W\d_]+", (raw or "").lower(), re.UNICODE):
+            if len(part) >= 3 and part in tokens:
+                return True
+    return False
+
+
+def _independent_base(fake, first: str, last: str) -> str:
+    """A company base name that is NOT the persona's own first or last name. A
+    redrawn locale surname when a Faker instance is available, otherwise a neutral
+    brandable word."""
+    avoid = {(first or "").strip().lower(), (last or "").strip().lower()}
+    if fake is not None:
+        for _ in range(6):
+            cand = (fake.last_name() or "").strip()
+            if cand and cand.lower() not in avoid and not _name_clash(cand, first, last):
+                return cand
+    pool = [b for b in COMPANY_BASE if b.lower() not in avoid] or COMPANY_BASE
+    return random.choice(pool)
+
+
 def _enrich_company(name: str, cc: str) -> str:
     """fake.company() is usually a full company name; only a thin single-token
     output (a bare surname or town, like 'Salo') gets a sector and legal form so it
@@ -703,6 +737,7 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
     career_start_year, years_experience = _career(age_val, birth_year)
 
     name_source, city_source, need_llm_identity = "faker", "legend", False
+    fake = None
 
     if tier == "A":
         fake = Faker(locale)
@@ -724,7 +759,7 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         full_name = f"{first} {last}"
         street = "[street to be set by the operator]"
         color = random.choice(COLORS)
-        employer = _templated_company(last, cc)
+        employer = _templated_company(_independent_base(fake, first, last), cc)
     else:  # Tier C
         first, last, full_name = "", "", ""
         name_source, need_llm_identity = "legend", True
@@ -756,6 +791,19 @@ def build_cover(cc: str, country_name: str, gender_req: str, age, include_financ
         first, last = parts[0], (parts[-1] if len(parts) > 1 else parts[0])
     if not employer:
         employer = _templated_company(display_country, cc)
+
+    # The employer must not contain the persona's own first or last name (it would
+    # read as a self-owned firm). Redraw with an independent base until it does not.
+    for _ in range(6):
+        if not _name_clash(employer, first, last):
+            break
+        if tier == "A":
+            employer = _enrich_company(fake.company(), cc)
+        else:
+            employer = _templated_company(_independent_base(fake if tier == "B" else None, first, last), cc)
+    if _name_clash(employer, first, last):
+        pool = [b for b in COMPANY_BASE if not _name_clash(b, first, last)] or COMPANY_BASE
+        employer = _templated_company(random.choice(pool), cc)
 
     # Latin twins (offline baseline; the Legend overrides with natural romanization).
     # The job title is already a clean English role, so it is its own roman twin.

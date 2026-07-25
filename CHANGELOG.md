@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.26.3] - 2026-07-25
+
+Sock Puppet: the offline employer name can no longer be the persona's own surname.
+
+### Fixed
+
+- The Tier B employer template built the company name directly from the persona's
+  surname ("Safo" -> "Safo Media Ltd"), which reads as a self-owned firm and is a
+  coincidence an adversary would flag; it affected every Tier B persona. The
+  employer base is now an independent name (a redrawn locale surname that is not
+  the persona's own, else a neutral brandable word), and a guard redraws any
+  employer, in any tier, whose name contains the persona's first or last name as a
+  whole word. Verified 0 whole-word collisions across 300 personas in 50 locales.
+
 ## [3.26.2] - 2026-07-25
 
 Sock Puppet: precise residual non-Latin sweep on the Legend romanization path.
