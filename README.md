@@ -20,7 +20,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 |---|---|
 | **Home** | Landing page with PH Threat Pulse widget, example cards that prefill other tabs, and a curated news strip |
 | **Crypto Workbench** | Trace Bitcoin, Ethereum, and USDT TRC20 addresses with D3 force-directed transaction graphs and labelled clusters |
-| **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs |
+| **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs. An opt-in **Deep kit report** toggle upgrades the same run to a full teardown: fetch the page, detect a client-rendered SPA shell, pull and hash every JS bundle, decode the obfuscated string table and resolve decoder call sites before searching, probe the operator relay path (status codes only, no socket opened), pull RDAP, CT and urlscan, score against a kit signature, and render one case report with a sourced lifecycle timeline and a copyable indicator block. Pasting a JavaScript bundle instead of page source runs the same analysis offline, for a target that is already dead. |
 | **Domain Intelligence** | RDAP, DNS, certificate transparency logs (crt.sh + Cert Spotter fallback), RIPEstat ASN data |
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
 | **IP Reputation** | Multi-source reputation with a consensus verdict (Clean/Suspicious/Malicious) from AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, reverse DNS. Merges Censys + Shodan ports and surfaces geolocation disagreement across sources. ASN Intelligence block (RIPEstat): operator identity, full announced-prefix footprint, and an expand-to-load routing view of upstream/downstream ASN relationships — the pivot from one abusive IP to the operator's whole network. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, optional Mailgun send, or client-side PDF). Reputation reports export to PDF in the browser. |
@@ -195,6 +195,7 @@ All write endpoints accept JSON. Rate limits are enforced per real client IP (`C
 |---|---|---|
 | `/api/crypto/lookup` | POST | None (upstream provider quotas apply) |
 | `/api/scanner/scan` | POST | 10/minute per IP |
+| `/api/scanner/kit-report` | POST | 4/minute per IP + 10/IP/24h |
 | `/api/domain/intel` | POST | None |
 | `/api/telegram/inspect` | POST | None |
 | `/api/ip/reputation` | POST | None |
@@ -258,6 +259,14 @@ falconeye/
 │   │   ├── script_decoder.py
 │   │   ├── news.py
 │   │   └── threat_pulse.py
+│   ├── scanner/                 # Phishing Scanner analysis engine, see docs/kit-analysis.md
+│   │   ├── kit_analyzer.py      # Deobfuscates string-obfuscated bundles; decodes the
+│   │   │                        #   table and resolves call sites BEFORE searching
+│   │   ├── rabbithunt_sig.py    # Per-kit signature records + transparent weighted scorer
+│   │   ├── kit_acquire.py       # Read-only acquisition, every request via safe_fetch
+│   │   ├── kit_report.py        # Consolidated case report builder
+│   │   ├── cloudflare_detect.py
+│   │   └── ph_bank_indicators.py
 │   ├── prospect/                # Prospect tab (SearchAPI.io dossier)
 │   ├── image_search/            # Image Search tab (Google Lens + Yandex)
 │   ├── ransomware/               # Ransomware Watch tab — reads local SQLite only
@@ -275,6 +284,12 @@ falconeye/
 ├── scripts/
 │   ├── provision.sh             # Automated VPS provisioning
 │   └── db_init.py               # SQLite schema initializer
+├── tools/                       # Standalone CLI analysis tools (not imported by the app)
+│   ├── kitanalyze.py            # Reference deobfuscator the tab's engine was ported from
+│   ├── runkit.sh                # Reference acquisition sequence (raw curl; the app uses safe_fetch)
+│   ├── decode_kit.py            # Minimal string-table decoder
+│   └── kitdecrypt.py            # Decrypts captured kit blobs; CLI only, deliberately
+│                                #   never wired into an endpoint. Needs `cryptography`.
 ├── nginx/
 │   └── falconeye.conf           # nginx vhost with security headers
 ├── falconeye.service            # systemd unit
