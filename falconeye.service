@@ -1,5 +1,5 @@
 [Unit]
-Description=FalconEye v3.5.0
+Description=FalconEye OSINT toolkit
 After=network.target
 
 [Service]

@@ -27,7 +27,7 @@ for arg in "$@"; do
     esac
 done
 
-echo "=== FalconEye v3.5.0 Provisioning ==="
+echo "=== FalconEye Provisioning ==="
 
 # --- Pre-flight: warn if critical env vars are missing in the target .env file ---
 # The service will start either way, but LLM tabs and Image Search will be broken
