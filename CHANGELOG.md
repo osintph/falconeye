@@ -5,6 +5,74 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.28.0] - 2026-08-23
+
+Phishing Kit Scanner: URL-to-report deep kit analysis. One URL runs the whole
+workflow end to end, fetch the live page, detect the SPA shell, pull the JS
+bundles, deobfuscate and tear down the kit chunk, probe the relay path, pull
+RDAP, CT and urlscan, score against a kit signature, and render one consolidated
+case report with a copyable indicator block.
+
+### Added
+
+- `app/scanner/kit_analyzer.py`, static analysis for string-obfuscated bundles.
+  Decodes the string table first, resolves decoder call sites back into the
+  source, normalizes bracket access to dot access, and only then searches. A
+  miss on raw obfuscated source means nothing, so misses are only reported after
+  resolution. No network, no execution, never eval.
+- `app/scanner/rabbithunt_sig.py`, per-kit signature records and a transparent
+  weighted scorer. Every signal is reported with its weight and whether it hit
+  or missed. Verdict tiers: STRONG MATCH, PARTIAL, WEAK, NO MATCH. Adding a
+  second kit means adding a signature record, not editing the analyzer.
+- `app/scanner/kit_acquire.py`, read-only acquisition of a kit's victim-facing
+  surface. Every outbound request goes through `safe_fetch`. The socket probe
+  reads status codes only, no socket is opened and no frames are sent.
+- `app/scanner/kit_report.py`, the consolidated case builder: sourced lifecycle
+  timeline, decode header, crypto, socket and live probe, victim views, locales
+  and identity fields, anti-analysis, CJK debug strings, what was not found,
+  enrichment, and a flat indicator block.
+- `POST /api/scanner/kit-report`. Live mode from a URL, offline mode when the
+  pasted text is a JavaScript bundle rather than an HTML page, detected server
+  side so the tab keeps a single textarea. Burst limit plus a daily per-IP quota.
+- Phishing Kit Scanner tab: a "Deep kit report" toggle next to Run Scan that
+  upgrades the same run to the full pipeline. One form, one button, opt-in depth.
+- `tools/`, the reference CLI scripts from the teardown this automates:
+  `kitanalyze.py`, `runkit.sh`, `decode_kit.py`, `kitdecrypt.py`. CLI only,
+  `kitdecrypt.py` is deliberately not wired into any endpoint.
+
+### Fixed
+
+Four extraction bugs, all the same class: the extractor matched a direct or
+unminified syntactic shape that a real Vite build does not emit. Each was found
+by scoring the real kit bundles rather than a synthesized fixture.
+
+- Socket channels registered through a kit's own dispatch wrapper were missed
+  entirely, because only `.on()` and `.emit()` call sites were read. Handler
+  registration wrappers are now detected from their definition, which also keeps
+  Vue render calls out of the results.
+- `socket.present` reported false while a path and transport list from the same
+  bundle were populated, because the socket.io library markers live in the
+  vendor chunk. A recovered configuration now counts as present.
+- Only one of two AES key/IV pairs was recovered when one pair was bound to
+  variables before being parsed. One level of variable indirection is now
+  resolved, preserving source order so key and IV still pair correctly.
+- Hash routes came back empty because the router gate looked for
+  `createWebHashHistory`, which minification removes. The gate now also accepts
+  the hash `createHref` regex literal, which cannot be renamed.
+
+### Security
+
+- Every rendered value in the report is escaped with the standardized escaper.
+  Kit source, decoded strings, response headers, RDAP and CT fields are all
+  attacker controlled.
+- Neither raw bundle text nor raw page HTML ever reaches the LLM. The optional
+  Haiku summary receives an allowlisted, structural view of the report only.
+- Bundle analysis is cached by bundle sha256. Host enrichment and the live probe
+  are deliberately not cached with it, so one host's results can never be served
+  for another host running the same kit.
+
+---
+
 ## [3.27.0] - 2026-07-25
 
 Sock Puppet: avatar sourcing guidance, a starting-point disclaimer, and a

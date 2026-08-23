@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.27.0",
+    "softwareVersion": "3.28.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -149,7 +149,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.27.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.28.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -410,11 +410,14 @@
       </div>
       <div class="mb-4">
         <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Or paste raw HTML</label>
-        <textarea id="scan-html" rows="5" placeholder="Paste page source here..."
+        <textarea id="scan-html" rows="5" placeholder="Paste page source here, or a JavaScript bundle for offline kit analysis..."
           class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-none"></textarea>
       </div>
-      <div class="flex items-center gap-4">
+      <div class="flex items-center gap-4 flex-wrap">
         <button id="scan-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Run Scan</button>
+        <label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer" title="Fetches the page, pulls and deobfuscates the JS bundles, probes the relay path, and pulls RDAP, CT and urlscan. Slower, and limited per day.">
+          <input id="scan-deep" type="checkbox" class="accent-amber-400" /> <span>Deep kit report</span>
+        </label>
         <button class="sample-btn text-xs text-gray-500 hover:text-amber-400 transition"
                 data-sample="https://example.com"
                 data-target="scan-url"
@@ -1529,6 +1532,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.27.0"></script>
+  <script src="/static/app.js?v=3.28.0"></script>
 </body>
 </html>

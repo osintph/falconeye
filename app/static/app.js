@@ -750,12 +750,18 @@ function renderGraph(container, data, targetAddress) {
 document.getElementById('scan-btn').addEventListener('click', async () => {
   const url = document.getElementById('scan-url').value.trim();
   const html = document.getElementById('scan-html').value.trim();
+  const deepEl = document.getElementById('scan-deep');
   const resultEl = document.getElementById('scan-result');
 
   if (!url && !html) {
     resultEl.innerHTML = '<p class="text-red-400 text-sm">Provide a URL or HTML source.</p>';
     resultEl.classList.remove('hidden');
     return;
+  }
+
+  // Same form, same button: the toggle upgrades this run to the full pipeline.
+  if (deepEl && deepEl.checked) {
+    return runKitReport(url, html, resultEl);
   }
 
   resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Scanning...</p>';
@@ -804,6 +810,361 @@ document.getElementById('scan-btn').addEventListener('click', async () => {
     resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${e.message}</p>`;
   }
 });
+
+// ---- Deep Kit Report ----
+// Every value rendered below is attacker-controlled: kit source, decoded
+// strings, response headers, RDAP and CT fields. All of it goes through
+// escapeHtml / escapeAttr. Never interpolate a raw value here.
+
+const KIT_VERDICT_CLASS = {
+  'STRONG MATCH': 'bg-red-500/15 text-red-300 border-red-500/40',
+  'PARTIAL': 'bg-amber-400/15 text-amber-300 border-amber-400/40',
+  'WEAK': 'bg-gray-700/40 text-gray-300 border-gray-600',
+  'NO MATCH': 'bg-green-500/10 text-green-400 border-green-500/30',
+};
+
+function kitBadge(verdict, pct, label) {
+  const v = String(verdict || 'NO MATCH');
+  const cls = KIT_VERDICT_CLASS[v] || KIT_VERDICT_CLASS['NO MATCH'];
+  const pctText = (pct === null || pct === undefined) ? '' : ` ${escapeHtml(String(pct))}%`;
+  return `<span class="inline-flex items-center gap-2 border px-3 py-1 rounded text-xs font-bold tracking-wide ${cls}">
+    <span class="opacity-70 font-normal">${escapeHtml(label)}</span>${escapeHtml(v)}${pctText}</span>`;
+}
+
+function kitSection(title, body, subtitle) {
+  if (!body) return '';
+  const sub = subtitle ? `<span class="text-gray-600 normal-case tracking-normal"> ${escapeHtml(subtitle)}</span>` : '';
+  return `<div class="mt-6">
+    <p class="text-xs text-amber-400/80 uppercase tracking-wider mb-2 border-b border-gray-800 pb-1">${escapeHtml(title)}${sub}</p>
+    ${body}</div>`;
+}
+
+function kitRow(label, value, valueClass) {
+  if (value === null || value === undefined || value === '') return '';
+  return `<div class="flex gap-3 py-1 text-sm border-b border-gray-800/40">
+    <span class="text-gray-500 shrink-0 w-40">${escapeHtml(label)}</span>
+    <span class="${valueClass || 'text-gray-200'} break-all font-mono text-xs">${escapeHtml(String(value))}</span>
+  </div>`;
+}
+
+function kitStatusClass(status) {
+  if (status === 204 || status === 200) return 'text-green-400';
+  if (status === 404) return 'text-gray-500';
+  if (status === null || status === undefined) return 'text-gray-600';
+  return 'text-amber-300';
+}
+
+function kitSignals(score) {
+  if (!score || !Array.isArray(score.signals)) return '';
+  const rows = score.signals.map(s => {
+    const hit = !!s.hit;
+    return `<div class="flex items-center gap-2 py-0.5 font-mono text-xs">
+      <span class="${hit ? 'text-amber-400' : 'text-gray-600'} w-12 shrink-0">${hit ? '[HIT]' : '[miss]'}</span>
+      <span class="${hit ? 'text-gray-200' : 'text-gray-500'} w-56 shrink-0 break-all">${escapeHtml(String(s.name || ''))}</span>
+      <span class="text-gray-600 w-10 shrink-0">w=${escapeHtml(String(s.weight))}</span>
+      <span class="text-gray-500 break-all">${escapeHtml(String(s.detail || ''))}</span>
+    </div>`;
+  }).join('');
+  const note = score.note
+    ? `<p class="text-xs text-gray-600 mt-2 italic">note: ${escapeHtml(String(score.note))}</p>` : '';
+  return `<div class="bg-gray-950/60 border border-gray-800 rounded p-3">
+    <p class="text-xs text-gray-500 mb-2">${escapeHtml(String(score.points))}/${escapeHtml(String(score.possible))} points
+      &middot; every signal shown, hits and misses</p>
+    ${rows}${note}</div>`;
+}
+
+function kitTimeline(rows) {
+  if (!rows || !rows.length) return '';
+  const body = rows.map(r => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+      <span class="text-amber-300/80 font-mono shrink-0 w-40">${escapeHtml(String(r.time || ''))}</span>
+      <span class="text-gray-200 grow break-all">${escapeHtml(String(r.event || ''))}</span>
+      <span class="text-gray-600 shrink-0 uppercase tracking-wide">${escapeHtml(String(r.source || ''))}</span>
+    </div>`).join('');
+  return `<div>${body}<p class="text-xs text-gray-600 mt-2 italic">Every row carries the lookup it came from. Nothing here is inferred.</p></div>`;
+}
+
+function kitProbe(probe) {
+  if (!probe) return '';
+  const order = ['root', 'campaign', 'ws', 'console', 'console_polling'];
+  const rows = order.filter(k => probe[k]).map(k => {
+    const p = probe[k];
+    return `<div class="flex gap-3 py-1 text-xs font-mono border-b border-gray-800/40">
+      <span class="text-gray-300 w-64 shrink-0 break-all">${escapeHtml(String(p.path || k))}</span>
+      <span class="${kitStatusClass(p.status)}">${p.status === null || p.status === undefined ? 'no response' : escapeHtml(String(p.status))}</span>
+    </div>`;
+  }).join('');
+  const tell = probe.path_scoped
+    ? `<p class="text-xs text-red-300 mt-2">Relay is real and scoped to the campaign path: the handshake answers at the campaign path while the web root does not.</p>`
+    : `<p class="text-xs text-gray-600 mt-2">No path-scoped relay: the campaign path did not answer the socket handshake differently from the root.</p>`;
+  return `<div>${rows}${tell}
+    <p class="text-xs text-gray-600 mt-1 italic">Status codes only. No socket was opened and no frames were sent.</p></div>`;
+}
+
+function kitPivots(report) {
+  const a = report.analysis || {};
+  const pivots = Array.isArray(a.pivots) ? a.pivots : [];
+  const host = (report.target && report.target.host) || '';
+  const buttons = [];
+
+  pivots.forEach(p => {
+    const value = String(p.value || '');
+    if (!value) return;
+    if (p.kind === 'telegram_token' || p.kind === 'telegram_chat') {
+      buttons.push(`<button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition"
+        onclick="pushToTab('telegram','telegram-input','telegram-btn',${escapeAttr(JSON.stringify(value))})">
+        &#8594; Telegram: ${escapeHtml(value.slice(0, 24))}</button>`);
+    } else {
+      buttons.push(`<button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition"
+        onclick="pivotToCrypto(${escapeAttr(JSON.stringify(value))})">
+        &#8594; Crypto: ${escapeHtml(value.slice(0, 24))}</button>`);
+    }
+  });
+
+  if (host) {
+    buttons.push(`<button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition"
+      onclick="pushToTab('domain','domain-input','domain-btn',${escapeAttr(JSON.stringify(host))})">
+      &#8594; Domain Intel: ${escapeHtml(host)}</button>`);
+  }
+
+  if (!buttons.length) return '';
+  return `<div class="flex flex-wrap gap-2">${buttons.join('')}</div>`;
+}
+
+function kitIndicators(indicators) {
+  if (!indicators || !indicators.length) return '';
+  const rows = indicators.map(i => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+      <span class="text-gray-500 shrink-0 w-32 uppercase tracking-wide">${escapeHtml(String(i.type || ''))}</span>
+      <span class="text-gray-200 grow break-all font-mono">${escapeHtml(String(i.value || ''))}</span>
+      <span class="text-gray-600 shrink-0 text-right">${escapeHtml(String(i.note || ''))}</span>
+    </div>`).join('');
+  const plain = indicators
+    .map(i => `${i.type}\t${i.value}${i.note ? '\t' + i.note : ''}`)
+    .join('\n');
+  return `<div>
+    <div class="flex justify-end mb-2">
+      <button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-3 py-1 rounded transition"
+              data-copy="${escapeAttr(plain)}" onclick="spCopy(this)">copy all indicators</button>
+    </div>
+    ${rows}</div>`;
+}
+
+function renderKitReport(el, data) {
+  const a = data.analysis || {};
+  const score = data.score || {};
+  const page = data.page;
+  const enrich = data.enrichment;
+  const target = data.target || {};
+
+  const badges = [
+    kitBadge((score.bundle || {}).verdict, (score.bundle || {}).score_pct, 'bundle'),
+    score.host ? kitBadge(score.host.verdict, score.host.score_pct, 'host') : '',
+  ].join(' ');
+
+  const notes = (data.notes || []).length
+    ? `<div class="mt-3 space-y-1">${data.notes.map(n =>
+        `<p class="text-xs text-amber-300/80">${escapeHtml(String(n))}</p>`).join('')}</div>`
+    : '';
+
+  const llm = data.llm
+    ? kitSection('Analyst summary', `<div class="bg-gray-950/60 border border-gray-800 rounded p-3">
+        <p class="text-sm text-gray-200">${escapeHtml(String(data.llm.summary || ''))}</p>
+        <p class="text-xs text-gray-500 mt-2">confidence: ${escapeHtml(String(data.llm.confidence || ''))}</p>
+        ${data.llm.next_steps ? `<p class="text-xs text-gray-400 mt-1">Next: ${escapeHtml(String(data.llm.next_steps))}</p>` : ''}
+      </div>`, '(generated, verify against the sections below)')
+    : '';
+
+  // --- Page / first contact ---
+  const pageBody = page
+    ? kitRow('HTTP status', page.status) +
+      kitRow('Server', page.server) +
+      kitRow('Content-Type', page.content_type) +
+      kitRow('Session cookie', page.session_cookie, 'text-amber-300') +
+      kitRow('Body size', page.size_bytes === null || page.size_bytes === undefined ? '' : page.size_bytes + ' bytes') +
+      kitRow('Rendering', page.spa ? 'client-rendered SPA' : 'server-rendered', page.spa ? 'text-amber-300' : 'text-gray-200') +
+      (page.spa_reason ? `<p class="text-xs text-gray-600 mt-2 italic">${escapeHtml(String(page.spa_reason))}</p>` : '')
+    : '<p class="text-xs text-gray-600 italic">Offline mode: the page was never fetched.</p>';
+
+  // --- Decode header ---
+  const decoder = a.decoder || {};
+  const decodeBody =
+    kitRow('Decode score', a.decode_score) +
+    kitRow('Table entries', a.table_entries) +
+    kitRow('Decoder functions', (decoder.functions || []).join(', ')) +
+    kitRow('String arrays', decoder.string_arrays_found) +
+    kitRow('Alphabet', decoder.alphabet) +
+    (a.error ? `<p class="text-xs text-red-400 mt-2">${escapeHtml(String(a.error))}</p>` : '');
+
+  // --- Crypto ---
+  const pairs = (a.crypto || {}).pairs || [];
+  const cryptoBody = pairs.length
+    ? pairs.map(p => `<div class="indicator-hit">
+        <span class="text-amber-400 font-bold uppercase">${escapeHtml(String(p.role || 'unlabelled'))}</span>
+        <span class="text-gray-500">${escapeHtml(String(p.mode || ''))} ${escapeHtml(String(p.padding || ''))}</span>
+        <div class="font-mono text-xs mt-1 text-gray-200 break-all">key ${escapeHtml(String(p.key || ''))}</div>
+        <div class="font-mono text-xs text-gray-200 break-all">iv&nbsp; ${escapeHtml(String(p.iv || ''))}</div>
+      </div>`).join('') +
+      ((a.crypto || {}).md5_storage
+        ? `<p class="text-xs text-amber-300 mt-2">Storage keys are MD5-hashed before writing: localStorage.setItem(MD5(name), AES(value)).</p>` : '') +
+      (a.storage_keys || []).map(k => `<div class="font-mono text-xs text-gray-300 mt-1 break-all">
+          ${escapeHtml(String(k.name))} &rarr; MD5 ${escapeHtml(String(k.md5))}</div>`).join('')
+    : '<p class="text-xs text-gray-600 italic">No hardcoded key material recovered.</p>';
+
+  // --- Socket ---
+  const sock = a.socket || {};
+  const socketBody =
+    kitRow('Present', sock.present ? 'yes' : 'no') +
+    kitRow('Path', sock.path) +
+    kitRow('Transports', (sock.transports || []).join(', ')) +
+    kitRow('Channels', (sock.channels || []).join(', '), 'text-amber-300') +
+    (data.socket_probe
+      ? `<div class="mt-3">${kitProbe(data.socket_probe)}</div>`
+      : '<p class="text-xs text-gray-600 mt-2 italic">Offline mode: the live relay was never probed.</p>');
+
+  // --- Routes ---
+  const routes = a.hash_routes || [];
+  const routesBody = routes.length
+    ? `<div class="flex flex-wrap gap-2">${routes.map(r =>
+        `<span class="font-mono text-xs bg-gray-800 text-gray-200 px-2 py-1 rounded">#${escapeHtml(String(r))}</span>`).join('')}</div>
+       <p class="text-xs text-gray-600 mt-2 italic">Client-side hash routes, not server paths. A detection rule written against these as URL paths matches nothing.</p>`
+    : '';
+
+  // --- Locales / identity ---
+  const fields = a.identity_fields || [];
+  const localeBody = fields.length
+    ? `<p class="text-sm text-gray-300 mb-2">Locales in this build: <span class="text-amber-300 font-bold">${escapeHtml((a.locales || []).join(', '))}</span></p>` +
+      fields.map(f => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+        <span class="text-gray-500 w-12 shrink-0">${escapeHtml(String(f.locale || ''))}</span>
+        <span class="text-gray-200 grow">${escapeHtml(String(f.field || ''))}</span>
+        <span class="text-gray-600 font-mono break-all">${escapeHtml(String(f.value || '').slice(0, 60))}</span>
+      </div>`).join('')
+    : '';
+
+  // --- Anti-analysis ---
+  const anti = a.anti_analysis || {};
+  const antiBody = anti.count
+    ? kitRow('Detection strings', anti.count) +
+      kitRow('Frameworks named', (anti.frameworks || []).join(', '), 'text-amber-300') +
+      kitRow('Verdict tiers', (anti.verdict_tiers || []).join(', ')) +
+      ((anti.samples || []).length
+        ? `<div class="mt-2 space-y-1">${anti.samples.map(s =>
+            `<div class="font-mono text-xs text-gray-500 break-all">${escapeHtml(String(s))}</div>`).join('')}</div>` : '')
+    : '';
+
+  // --- CJK ---
+  const cjk = a.cjk_strings || [];
+  const cjkBody = cjk.length
+    ? cjk.map(c => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+        <span class="text-gray-100 w-40 shrink-0">${escapeHtml(String(c.cjk || ''))}</span>
+        <span class="text-gray-400">${escapeHtml(String(c.gloss || ''))}</span>
+      </div>`).join('') +
+      `<p class="text-xs text-gray-600 mt-2 italic">Developer debug strings, never shown to a victim.</p>`
+    : '';
+
+  // --- Not found ---
+  const nf = a.not_found || [];
+  const nfBody = nf.length
+    ? nf.map(n => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+        <span class="text-gray-500 w-28 shrink-0">${escapeHtml(String(n.category || ''))}</span>
+        <span class="text-gray-600 break-all">${escapeHtml((n.labels || []).join(', '))}</span>
+      </div>`).join('') +
+      `<p class="text-xs text-gray-600 mt-2 italic">Meaningful only because the source was resolved first. A miss on raw obfuscated source would mean nothing.</p>`
+    : '';
+
+  // --- Bundles ---
+  const bundles = data.bundles || [];
+  const bundleBody = bundles.length
+    ? bundles.map(b => `<div class="py-1 text-xs border-b border-gray-800/40">
+        <div class="flex gap-3">
+          <span class="text-gray-200 w-40 shrink-0 break-all">${escapeHtml(String(b.name || ''))}</span>
+          <span class="text-gray-600">${escapeHtml(String(b.role || ''))}</span>
+        </div>
+        <div class="font-mono text-gray-500 break-all">${escapeHtml(String(b.sha256 || ''))}</div>
+        ${b.error ? `<div class="text-red-400">${escapeHtml(String(b.error))}</div>` : ''}
+      </div>`).join('')
+    : '';
+
+  // --- Enrichment ---
+  let enrichBody = '';
+  if (enrich) {
+    const ct = enrich.ct || {};
+    const us = enrich.urlscan || {};
+    const rdap = enrich.rdap || {};
+    enrichBody =
+      kitRow('Registrar', rdap.registrar) +
+      kitRow('RDAP status', (rdap.status || []).join(', ')) +
+      kitRow('Nameservers', (rdap.nameservers || []).join(', ')) +
+      kitRow('Abuse contact', rdap.abuse_contact) +
+      kitRow('CT source', ct.source) +
+      kitRow('CT certificates', ct.cert_count) +
+      kitRow('CT subdomains', ct.subdomain_count) +
+      (ct.single_hostname && ct.found
+        ? `<p class="text-xs text-gray-500 py-1">Single hostname on the certificate: nothing to pivot on in CT.</p>` : '') +
+      (ct.error ? kitRow('CT error', ct.error, 'text-amber-300') : '') +
+      kitRow('urlscan verdict', us.verdict || (us.found ? 'no verdict' : 'no scan found'),
+             us.malicious ? 'text-red-400' : 'text-gray-200') +
+      kitRow('urlscan seen', us.submitted_at) +
+      (enrich.cloudflare
+        ? `<p class="text-xs text-amber-300 py-1">${escapeHtml(String(enrich.cloudflare.description || ''))}</p>` : '') +
+      ((enrich.ph_bank_indicators || []).length
+        ? enrich.ph_bank_indicators.map(i => `<div class="indicator-hit">
+            <span class="text-amber-400 font-bold">[HIT]</span> ${escapeHtml(String(i.description || ''))}
+          </div>`).join('')
+        : '');
+  }
+
+  const modeLabel = data.mode === 'offline'
+    ? 'OFFLINE (pasted bundle)' : 'LIVE';
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="min-w-0">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Deep kit report &middot; ${escapeHtml(modeLabel)}</p>
+          <p class="text-sm text-gray-200 break-all font-mono mt-1">${escapeHtml(String(target.url || 'pasted bundle'))}</p>
+          ${target.campaign_path ? `<p class="text-xs text-gray-600 font-mono">campaign path ${escapeHtml(String(target.campaign_path))}</p>` : ''}
+        </div>
+        <div class="flex gap-2 flex-wrap">${badges}</div>
+      </div>
+      ${notes}
+      ${llm}
+      ${kitSection('Registration timeline', kitTimeline(data.timeline))}
+      ${kitSection('Page, first contact', pageBody)}
+      ${kitSection('Decode', decodeBody)}
+      ${kitSection('Crypto', cryptoBody)}
+      ${kitSection('Socket and transport', socketBody)}
+      ${kitSection('Victim views', routesBody)}
+      ${kitSection('Locales and identity fields', localeBody)}
+      ${kitSection('Anti-analysis', antiBody)}
+      ${kitSection('CJK debug strings', cjkBody)}
+      ${kitSection('Bundles', bundleBody)}
+      ${kitSection('Signature score, bundle', kitSignals(score.bundle))}
+      ${score.host ? kitSection('Signature score, live host', kitSignals(score.host)) : ''}
+      ${kitSection('Not found', nfBody)}
+      ${kitSection('Enrichment', enrichBody)}
+      ${kitSection('Pivots', kitPivots(data))}
+      ${kitSection('Indicators', kitIndicators(data.indicators))}
+    </div>`;
+}
+
+async function runKitReport(url, html, resultEl) {
+  resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Running deep kit report: fetching, deobfuscating bundles, probing the relay path, pulling RDAP / CT / urlscan...</p>';
+  resultEl.classList.remove('hidden');
+  try {
+    const res = await fetch('/api/scanner/kit-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url || null, raw_html: html || null }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      resultEl.innerHTML = `<p class="text-red-400 text-sm">Error: ${escapeHtml(String(data.detail || 'request failed'))}</p>`;
+      return;
+    }
+    renderKitReport(resultEl, data);
+  } catch (e) {
+    resultEl.innerHTML = `<p class="text-red-400 text-sm">Request failed: ${escapeHtml(e.message)}</p>`;
+  }
+}
 
 // ---- URL Expander ----
 function urlStatusClass(status) {

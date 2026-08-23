@@ -7,17 +7,22 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Request, Depends, HTTPException
 from pydantic import BaseModel
 from slowapi import Limiter
-from app.utils.client_ip import get_client_ip_key
+from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.safe_fetch import safe_fetch, SafeFetchError
 from app.database import get_db
-from app.config import HTTPX_TIMEOUT
+from app.config import HTTPX_TIMEOUT, KIT_REPORT_RATE_LIMIT_PER_DAY
 from app.scanner.ph_bank_indicators import match_ph_indicators, match_age_indicators
 from app.scanner.cloudflare_detect import detect_cloudflare_challenge
+from app.scanner import kit_report
+from app.utils import rate_limit
 from app.utils.urlscan import check_urlscan
 from app.utils.domain_age import check_domain_age
 
 router = APIRouter(prefix="/api/scanner", tags=["scanner"])
 limiter = Limiter(key_func=get_client_ip_key)
+
+_KIT_RL_TABLE = "kit_report_rate_limit"
+rate_limit.init_table(_KIT_RL_TABLE)
 
 INDICATORS = [
     {"id": "telegram_exfil", "pattern": "api.telegram.org/bot", "description": "Telegram bot exfiltration endpoint"},
@@ -132,6 +137,65 @@ async def scan_phishing(request: Request, payload: ScanRequest, db: sqlite3.Conn
         "urlscan": urlscan_result,
         "domain_age": domain_age_result,
     }
+
+
+class KitReportRequest(BaseModel):
+    url: str | None = None
+    raw_html: str | None = None
+
+
+@router.post("/kit-report")
+@limiter.limit("4/minute")
+async def kit_report_endpoint(request: Request, payload: KitReportRequest):
+    """Deep kit report: acquire, deobfuscate, probe, enrich, score.
+
+    Live mode when a URL is given. Offline mode when the pasted text is a
+    JavaScript bundle rather than an HTML page, which is detected here so the
+    tab keeps a single textarea for both.
+
+    This is far heavier than /scan (many outbound fetches plus a full bundle
+    teardown), so it carries a daily per-IP budget on top of the burst limit.
+    """
+    url = (payload.url or "").strip()
+    pasted = (payload.raw_html or "").strip()
+
+    if not url and not pasted:
+        raise HTTPException(status_code=400, detail="Provide a URL or paste a bundle.")
+
+    source_ip = get_client_ip(request)
+    allowed, used = rate_limit.check(_KIT_RL_TABLE, source_ip, KIT_REPORT_RATE_LIMIT_PER_DAY)
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                f"Daily limit reached ({used}/{KIT_REPORT_RATE_LIMIT_PER_DAY} deep kit "
+                "reports per 24 hours). Try again later."
+            ),
+        )
+    rate_limit.record(_KIT_RL_TABLE, source_ip)
+
+    # A pasted bundle wins over a URL: it is the more specific instruction, and
+    # it is the offline path for a target that is already dead.
+    if pasted and kit_report.looks_like_javascript(pasted):
+        return kit_report.build_offline_report(pasted)
+
+    if not url:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Pasted text looks like an HTML page, not a JavaScript bundle. "
+                "Run the normal scan for page source, or provide a URL for the "
+                "deep report."
+            ),
+        )
+
+    if not urlparse(url).scheme:
+        url = f"https://{url}"
+
+    try:
+        return await kit_report.build_live_report(url)
+    except SafeFetchError as exc:
+        raise HTTPException(status_code=400, detail=f"URL blocked: {exc}")
 
 
 @router.get("/history")

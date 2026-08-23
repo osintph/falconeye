@@ -23,6 +23,16 @@ LLM_TIMEOUT_SECONDS = 15
 LLM_MIN_BODY_CHARS = 50             # below this, skip LLM (too short to analyze meaningfully)
 REGEX_MAX_BODY_BYTES = 100_000      # regex pass only; 100KB cap prevents compute amplification on adversarial input
 
+# Deep kit report (Phishing Kit Scanner tab). The bundle caps are the
+# kit-analysis analogue of REGEX_MAX_BODY_BYTES above. That 100KB cap is NOT
+# reused here: real entry bundles run 85KB to 2MB, so truncating at 100KB would
+# produce wrong analysis rather than slower analysis. Compute stays bounded by
+# these caps plus the bounded-quantifier patterns in kit_analyzer.
+KIT_MAX_BUNDLE_BYTES = 8_000_000     # reject a single bundle larger than this
+KIT_MAX_RESOLVE_BYTES = 4_000_000    # above this, skip decoder call-site resolution
+KIT_MAX_ASSETS = 12                  # most assets fetched per target
+KIT_REPORT_RATE_LIMIT_PER_DAY = 10   # per source IP per rolling 24-hour window
+
 ANTHROPIC_API_KEY = getenv_clean("ANTHROPIC_API_KEY")
 URLSCAN_API_KEY = getenv_clean("URLSCAN_API_KEY")
 
