@@ -62,12 +62,24 @@ Verify none exist: `ssh … 'sudo find /opt/falconeye/app_src/.git/objects -user
 Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirror.
 
 1. **Make the change** on the Mac.
-2. **Version bump — 4 places** (only when cutting a release):
+2. **Version bump — 5 places** (only when cutting a release). There is no shared
+   version constant; every one of these is hand-edited, so grep before you push:
+   `grep -rn "<old-version>" README.md app/main.py app/static/index.html`.
    - `app/main.py` — `FastAPI(version=…)` **and** the `/health` return.
    - `app/static/index.html` — JSON-LD `softwareVersion`.
    - `app/static/index.html` — the `?v=` cache-bust on **both** `app.js` and
      `style.css` (this is what makes browsers/Cloudflare refetch — no manual
      purge needed).
+   - `README.md` — the `Current version: **x.y.z**` line near the top, **and**
+     the "controls are in place as of vX.Y.Z" line under Security posture. This
+     one is easy to miss and silently drifted from v3.20.0 to v3.28.0, eight
+     releases, before anyone noticed.
+
+   Version strings that are **not** part of the bump: `vX.Y.Z` references inside
+   code comments, docstrings, HTML comments and `.env.example` are historical
+   ("introduced in vX.Y.Z") and must be left alone. Two cosmetic ones are pinned
+   and go stale by design: `Description=` in `falconeye.service` and the banner
+   `echo` in `scripts/provision.sh`, both still saying v3.5.0.
 3. **CHANGELOG.md** — Keep a Changelog format: `## [x.y.z] - YYYY-MM-DD`, newest
    on top, `---` between entries. That separator is a **plain ASCII hyphen**, not
    an en/em dash; check an existing heading before writing a new one.
