@@ -67,6 +67,37 @@ Scores are `null`, rendered `N/A`. **Never `0%`.** A zero reads as a clean bill
 of health for a host nobody looked at, which is exactly how the original
 incident got past review.
 
+## The third rule, added in v3.30.0
+
+> Describe what the kit does before asking which kit it is.
+
+Signature matching answers "have I seen this before". It is the wrong first
+question for a kit nobody has seen. Before v3.30.0 a bundle was only ever scored
+against the default signature, so anything unfamiliar came back `NO MATCH 0%`
+with an otherwise empty report, which reads as "not a phishing kit" when it
+means "not that phishing kit". A live credential harvester scored 0/66.
+
+`extract_capabilities` answers "what does this do" instead, and it needs no
+signature. A kit has to describe itself twice over: to its victim on screen, and
+to its own developers in its message catalog and object keys. That vocabulary
+names what is being taken (`enter_otp_prompt`, `cardholder`,
+`bank_additional_verification`, `reward_points_waiting`) and it survives
+minification, because keys are data. Reading it works on a family nothing
+recognises.
+
+Each capability carries the terms that fired it. A label with no evidence is not
+arguable, and a wrong call must be visible.
+
+Two supporting rules:
+
+- **Extractors must read the resolved source, not only the decoded string
+  table.** An unobfuscated build has no string table, and for a long time that
+  meant every table-driven extractor returned nothing at all. The same applies
+  to the scorer's haystack: a kit scored zero purely for not being obfuscated.
+- **Score against every signature and promote the best** (`score_bundle_best`).
+  The registry exists so a second kit is a data change, but nothing read it
+  until this release.
+
 ## Modules
 
 | Module | Responsibility |
@@ -215,3 +246,15 @@ reports `config, operation, validate`, where `validate` is a Vue form-validation
 handler registered with `.on("validate", ...)`. Separating the two would require
 knowing which object is the socket, which is not generically decidable, and it
 does not affect scoring because the signature check is a subset test.
+
+**Narrowed in v3.30.0.** The worst case of this was a carousel library: Swiper
+registers its whole event bus through the same `.on("name", ...)` shape, so a
+kit's real channels were buried under forty carousel and transport events.
+Swiper's events and engine.io's transport internals are published, fixed lists,
+so they are now excluded by name rather than by guessing which object is the
+socket. The general problem remains for any library this does not know about.
+
+Capability detection is deliberately keyword-driven and will miss a kit that
+localizes its catalog into a language the rules do not cover, or that keys
+everything numerically. It reports what it can evidence and stays silent
+otherwise, because a false "captures payment cards" is worse than a miss.

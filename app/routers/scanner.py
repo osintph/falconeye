@@ -184,8 +184,8 @@ async def kit_report_endpoint(request: Request, payload: KitReportRequest):
             status_code=400,
             detail=(
                 "Pasted text looks like an HTML page, not a JavaScript bundle. "
-                "Run the normal scan for page source, or provide a URL for the "
-                "deep report."
+                "Add the URL it came from and it will be analyzed as that "
+                "target's page, or paste the JavaScript bundle instead."
             ),
         )
 
@@ -193,7 +193,10 @@ async def kit_report_endpoint(request: Request, payload: KitReportRequest):
         url = f"https://{url}"
 
     try:
-        return await kit_report.build_live_report(url)
+        # A URL plus pasted HTML means the operator could reach the target and
+        # FalconEye could not, which is the normal case for a kit geofenced to
+        # its victim country. Use their body, keep our enrichment.
+        return await kit_report.build_live_report(url, pasted_html=pasted)
     except SafeFetchError as exc:
         raise HTTPException(status_code=400, detail=f"URL blocked: {exc}")
 

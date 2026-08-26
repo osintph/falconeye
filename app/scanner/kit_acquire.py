@@ -315,7 +315,40 @@ async def probe_socket(host: str, path: str, case_registrable: str,
     return await _probe_socket(host, path)
 
 
-async def acquire(url: str, page: dict | None = None, case_id: str = "") -> dict:
+def page_from_html(url: str, html: str) -> dict:
+    """A page dict built from operator-supplied HTML rather than a fetch.
+
+    For a target that is geofenced or otherwise unreachable from wherever
+    FalconEye runs. The operator can see the page; the scanner cannot. The case
+    identity still comes from `url`, so enrichment and scope are unchanged, and
+    the body is marked as supplied so no part of the report claims to have
+    fetched it.
+    """
+    raw = (html or "").encode("utf-8", "replace")
+    submitted_host = (urlparse(url).hostname or "").lower()
+    return {
+        "url": url,
+        "profile": "supplied",
+        "status": None,
+        "server": "",
+        "set_cookie": "",
+        "session_cookie": "",
+        "content_type": "text/html (supplied)",
+        "body": html or "",
+        "size_bytes": len(raw),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+        "error": None,
+        "blocked": False,
+        "url_final": url,
+        "final_host": submitted_host,
+        "redirect_chain": [],
+        "scope_left": False,
+        "supplied": True,
+    }
+
+
+async def acquire(url: str, page: dict | None = None, case_id: str = "",
+                  supplied: bool = False) -> dict:
     """Run the whole acquisition sequence for one URL.
 
     Order matches runkit.sh: index, assets, bundle hashes, socket probe. Pass
@@ -337,25 +370,33 @@ async def acquire(url: str, page: dict | None = None, case_id: str = "") -> dict
     case_registrable = registrable(submitted_host)
     path = campaign_path(url)
 
-    if page is None:
-        page = await fetch_page(url, profile=PROFILE_BARE)
-    bare = page
-    browser = await fetch_page(url, profile=PROFILE_BROWSER)
-
-    profiles = {
-        PROFILE_BARE: profile_meta(bare),
-        PROFILE_BROWSER: profile_meta(browser),
-    }
-    divergence = _profiles_diverge(bare, browser)
-
-    # Prefer a profile that stayed in scope. If both left, the caller takes the
-    # out-of-scope path and nothing below it runs.
-    if not browser.get("scope_left") and not browser.get("error"):
-        chosen = browser
-    elif not bare.get("scope_left") and not bare.get("error"):
-        chosen = bare
+    if supplied and page is not None:
+        # The body was handed to us. Fetching the target again would only
+        # re-acquire whatever it serves this vantage, which is the thing that
+        # did not work.
+        profiles = {"supplied": profile_meta(page)}
+        divergence = False
+        chosen = page
     else:
-        chosen = browser if not browser.get("error") else bare
+        if page is None:
+            page = await fetch_page(url, profile=PROFILE_BARE)
+        bare = page
+        browser = await fetch_page(url, profile=PROFILE_BROWSER)
+
+        profiles = {
+            PROFILE_BARE: profile_meta(bare),
+            PROFILE_BROWSER: profile_meta(browser),
+        }
+        divergence = _profiles_diverge(bare, browser)
+
+        # Prefer a profile that stayed in scope. If both left, the caller takes
+        # the out-of-scope path and nothing below it runs.
+        if not browser.get("scope_left") and not browser.get("error"):
+            chosen = browser
+        elif not bare.get("scope_left") and not bare.get("error"):
+            chosen = bare
+        else:
+            chosen = browser if not browser.get("error") else bare
 
     scope_left = bool(chosen.get("scope_left"))
 

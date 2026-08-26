@@ -1144,6 +1144,53 @@ function renderKitReport(el, data) {
           ${escapeHtml(String(k.name))} &rarr; MD5 ${escapeHtml(String(k.md5))}</div>`).join('')
     : '<p class="text-xs text-gray-600 italic">No hardcoded key material recovered.</p>';
 
+  // --- What the kit does. Signature-free, so it is populated even for a kit
+  // nothing in the registry recognises. Rendered first because it is the
+  // question an analyst opening a brand new kit actually has. ---
+  const caps = a.capabilities || [];
+  const capClass = { high: 'text-red-400', medium: 'text-amber-300', low: 'text-gray-400' };
+  const capsBody = caps.length
+    ? caps.map(c => `<div class="py-1 border-b border-gray-800/40">
+        <div class="flex gap-3 items-baseline">
+          <span class="${capClass[c.confidence] || 'text-gray-400'} text-xs uppercase tracking-wide w-16 shrink-0">${escapeHtml(String(c.confidence || ''))}</span>
+          <span class="text-gray-100 text-sm grow">${escapeHtml(String(c.description || ''))}</span>
+        </div>
+        <div class="font-mono text-xs text-gray-600 break-all ml-16">${escapeHtml((c.evidence || []).join(', '))}</div>
+      </div>`).join('') +
+      `<p class="text-xs text-gray-500 mt-2 italic">Derived from the kit's own vocabulary, not from a signature match, so this is populated even for a family nothing recognises. Every line carries the terms that fired it.</p>`
+    : '';
+
+  // --- Exfil and endpoints: where the victim's data goes ---
+  const exfil = a.exfil_endpoints || [];
+  const otherEps = (a.endpoints || []).filter(e => !e.exfil);
+  const srcRoutes = a.source_routes || [];
+  const blockFlags = a.block_flags || [];
+  const exfilBody =
+    (exfil.length
+      ? exfil.map(e => `<div class="indicator-hit">
+          <span class="text-red-400 font-bold">[EXFIL]</span>
+          <span class="font-mono text-gray-100">${escapeHtml((e.verbs || []).join('/'))} ${escapeHtml(String(e.path || ''))}</span>
+        </div>`).join('')
+      : '') +
+    (otherEps.length
+      ? otherEps.map(e => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+          <span class="text-gray-500 w-20 shrink-0 font-mono">${escapeHtml((e.verbs || []).join('/'))}</span>
+          <span class="text-gray-200 grow break-all font-mono">${escapeHtml(String(e.path || ''))}</span>
+        </div>`).join('')
+      : '') +
+    (blockFlags.length
+      ? `<p class="text-xs text-amber-300 mt-2">Server-controlled block flag: <span class="font-mono">${escapeHtml(blockFlags.join(', '))}</span>. The kit asks its own backend whether to show the page, so the operator can blank it for anyone they do not want looking.</p>`
+      : '') +
+    (exfil.length
+      ? `<p class="text-xs text-gray-500 mt-2 italic">Paths are reported as found. Nothing here was fetched or submitted to.</p>`
+      : '');
+
+  const srcRoutesBody = srcRoutes.length
+    ? `<div class="flex flex-wrap gap-2">${srcRoutes.slice(0, 24).map(r =>
+        `<span class="font-mono text-xs bg-gray-800 text-gray-200 px-2 py-1 rounded">${escapeHtml(String(r.path))}</span>`).join('')}</div>
+       <p class="text-xs text-gray-600 mt-2 italic">Client-side routes recovered from source rather than a decoded string table, so they are present even on an unobfuscated build.</p>`
+    : '';
+
   // --- Socket ---
   const sock = a.socket || {};
   const socketBody =
@@ -1268,6 +1315,9 @@ function renderKitReport(el, data) {
       ${kitSection('Redirect chain', redirectBody, 'same-domain redirects, informational')}
       ${kitSection('Decode', decodeBody)}
       ${kitSection('Crypto', cryptoBody)}
+      ${kitSection('What this kit does', capsBody, 'derived from the kit itself, no signature required')}
+      ${kitSection('Exfiltration and kit endpoints', exfilBody, 'where the victim data goes')}
+      ${kitSection('Victim views, from source', srcRoutesBody)}
       ${kitSection('Socket and transport', socketBody)}
       ${kitSection('Victim views', routesBody)}
       ${kitSection('Locales and identity fields', localeBody)}

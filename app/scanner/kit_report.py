@@ -358,6 +358,23 @@ def build_indicators(target: dict, page: dict, rdap: dict, bundles: list,
     if console.get("status") is not None:
         add("Operator view", f"{console.get('path')} (HTTP {console.get('status')})")
 
+    # Where the victim's data goes. The highest-value line in the block, and on
+    # a kit with no matching signature it is often the only hard IOC there is.
+    for e in analysis.get("exfil_endpoints", []):
+        add("Exfil endpoint", f"{'/'.join(e.get('verbs', []))} {e.get('path', '')}".strip(),
+            "credential exfiltration")
+    for e in analysis.get("endpoints", []):
+        if e.get("exfil"):
+            continue
+        add("Kit endpoint", f"{'/'.join(e.get('verbs', []))} {e.get('path', '')}".strip())
+    if analysis.get("block_flags"):
+        add("Server block flag", ", ".join(analysis["block_flags"]),
+            "operator-controlled cloaking switch read from the bootstrap response")
+    if analysis.get("source_routes"):
+        add("Victim views",
+            " ".join(r["path"] for r in analysis["source_routes"][:14]),
+            "client-side routes recovered from source, not server paths")
+
     if analysis.get("hash_routes"):
         add("Victim views",
             " ".join("#" + r for r in analysis["hash_routes"]),
@@ -479,6 +496,10 @@ def _llm_view(report: dict) -> dict:
             "md5_storage": analysis.get("crypto", {}).get("md5_storage"),
         },
         "storage_keys": [k.get("name") for k in analysis.get("storage_keys", [])],
+        "capabilities": [{"capability": c.get("capability"),
+                          "confidence": c.get("confidence")}
+                         for c in analysis.get("capabilities", [])],
+        "exfil_endpoints": [e.get("path") for e in analysis.get("exfil_endpoints", [])],
         "socket": analysis.get("socket"),
         "hash_routes": analysis.get("hash_routes"),
         "locales": analysis.get("locales"),
@@ -653,7 +674,7 @@ def build_offline_report(pasted: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     """Offline mode: analyze a pasted bundle. Live-only fields are null."""
     signature = rabbithunt_sig.get_signature(sig_id)
     analysis = kit_analyzer.analyze(pasted, signature=signature)
-    bundle_score = rabbithunt_sig.score_bundle(analysis, sig_id)
+    bundle_score = rabbithunt_sig.score_bundle_best(analysis)
 
     return {
         "mode": "offline",
@@ -765,19 +786,38 @@ def build_out_of_scope_report(target: dict, acquired: dict,
     }
 
 
-async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNATURE_ID) -> dict:
-    """Live mode: acquire, analyze, score, enrich, assemble."""
+async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNATURE_ID,
+                            pasted_html: str = "") -> dict:
+    """Live mode: acquire, analyze, score, enrich, assemble.
+
+    `pasted_html` lets an operator supply the page body for a target that is
+    unreachable from wherever FalconEye runs. A kit geofenced to its victim
+    country answers a scanner in another country with a decoy, and no amount of
+    request shaping changes that: the operator can see the page and the server
+    cannot. The case identity, scope and enrichment are unchanged, so the
+    report is a real report, with the body marked as supplied.
+    """
     signature = rabbithunt_sig.get_signature(sig_id)
     notes = []
+    supplied = bool(pasted_html.strip())
 
-    page = await kit_acquire.fetch_page(url)
-    if page.get("blocked"):
-        # The guard refused this target, so nothing else touches it either: no
-        # bundle fetch, no probe, and no registry or urlscan lookups. Matches
-        # how /scan reports a blocked URL.
-        raise SafeFetchError(page["error"].replace("blocked by SSRF guard: ", ""))
+    if supplied:
+        page = kit_acquire.page_from_html(url, pasted_html)
+        notes.append(
+            "Page body was supplied by the operator, not fetched. Everything "
+            "derived from the body is analysis of what you pasted; the "
+            "registration timeline and enrichment below are live lookups on "
+            "the submitted domain."
+        )
+    else:
+        page = await kit_acquire.fetch_page(url)
+        if page.get("blocked"):
+            # The guard refused this target, so nothing else touches it either: no
+            # bundle fetch, no probe, and no registry or urlscan lookups. Matches
+            # how /scan reports a blocked URL.
+            raise SafeFetchError(page["error"].replace("blocked by SSRF guard: ", ""))
 
-    acquired = await kit_acquire.acquire(url, page=page)
+    acquired = await kit_acquire.acquire(url, page=page, supplied=supplied)
 
     # The case host is the submitted host. Never the fetched one. See
     # kit_acquire.acquire and app.scanner.scope.
@@ -827,7 +867,7 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     usable = [b for b in acquired["bundles"] if b.get("text")]
     for b in usable:
         analysis = analyze_cached(b["text"], b.get("sha256", ""), signature)
-        scored.append((analysis, rabbithunt_sig.score_bundle(analysis, sig_id)))
+        scored.append((analysis, rabbithunt_sig.score_bundle_best(analysis)))
 
     primary = _pick_primary(scored)
     if primary >= 0:
@@ -895,8 +935,9 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     ph_hits = match_ph_indicators(body, url)
 
     report = {
-        "mode": "live",
+        "mode": "supplied" if supplied else "live",
         "out_of_scope": False,
+        "body_supplied": supplied,
         "target": target,
         "page": {
             "status": page.get("status"),

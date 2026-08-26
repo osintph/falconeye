@@ -143,7 +143,70 @@ PAPER_RABBIT = {
     ),
 }
 
-SIGNATURES = {PAPER_RABBIT["id"]: PAPER_RABBIT}
+# ---------------------------------------------------------------------------
+# Second kit. Same PhaaS lineage as Paper Rabbit (socket.io relay to a live
+# operator, staged victim views for phone, OTP, card and app approval), but a
+# different build: a plain unobfuscated Vite bundle with NO string table and no
+# crypto at all, exfiltrating in the clear to a randomized operator API path.
+#
+# First seen on station.qpon impersonating Petron, 2026-08-26, on a domain
+# registered hours earlier. Geofenced to PH: the kit asks its own backend
+# whether to render, via an `isBlock` flag on the bootstrap response, so a
+# scanner outside the victim country is served a redirect to the real brand.
+#
+# Adding this record required no analyzer change, which is the property the
+# registry exists to preserve.
+# ---------------------------------------------------------------------------
+
+STAGED_RELAY = {
+    "id": "staged_relay",
+    "name": "Staged Relay (Petron/station.qpon build)",
+    "family": "socket.io live-operator relay, plaintext exfil, PH brand impersonation",
+    "reference": "tests/fixtures/station_qpon/PROVENANCE.md",
+    "summary": (
+        "Vue over Vite, unobfuscated. socket.io relay to a live operator with "
+        "app-valid and custom-otp-valid channels, staged victim views for "
+        "phone, OTP, card and app approval, and plaintext exfiltration to a "
+        "randomized operator API path. Server-controlled isBlock flag cloaks "
+        "the page from anyone outside the target country."
+    ),
+
+    # This build ships no hardcoded key material at all. That absence is itself
+    # discriminating against Paper Rabbit, which carries two AES contexts.
+    "crypto_pairs": [],
+    "storage_keys": [],
+
+    "socket": {
+        "path": "/",
+        "channels": ["app-valid", "custom-otp-valid", "otp-valid", "success"],
+        "transports": ["websocket", "polling"],
+    },
+
+    "hash_routes": [],
+    "locales": [],
+    "operator_path": "",
+    "session_cookie": "",
+    "cjk_glossary": {},
+
+    "content_tokens": {
+        # Matched against the analyzer haystack, which carries bare values one
+        # per line rather than quoted source, so these are written unquoted and
+        # never span lines.
+        "staged_otp_views": (r"/(otpValid|customOtpValid|appValid)\b", 8),
+        "card_capture_view": (r"(?m)^/card$", 5),
+        "operator_api_input": (r"/[A-Za-z0-9]{6,16}/api/input\b", 8),
+        "server_block_flag": (r"\bisBlock\b", 6),
+        "relay_valid_channels": (r"\b(?:app-valid|custom-otp-valid|otp-valid)\b", 7),
+        "goods_decoy_shell": (r"/(goods|goodsDetails)\b", 3),
+    },
+
+    "aes_literals": (),
+}
+
+SIGNATURES = {
+    PAPER_RABBIT["id"]: PAPER_RABBIT,
+    STAGED_RELAY["id"]: STAGED_RELAY,
+}
 DEFAULT_SIGNATURE_ID = PAPER_RABBIT["id"]
 
 
@@ -227,6 +290,15 @@ def _haystack(analysis_or_text) -> str:
         parts.append(r)
     for r in analysis_or_text.get("routes", []):
         parts.append(r.get("path", ""))
+    # Source-derived fields. Without these the haystack is nearly empty for an
+    # unobfuscated build, so every content token misses and a real kit scores
+    # zero purely because it was not obfuscated.
+    for r in analysis_or_text.get("source_routes", []):
+        parts.append(r.get("path", ""))
+    for e in analysis_or_text.get("endpoints", []):
+        parts.append(e.get("path", ""))
+    parts.extend(analysis_or_text.get("block_flags", []) or [])
+    parts.extend(analysis_or_text.get("urls", []) or [])
     for f in analysis_or_text.get("identity_fields", []):
         parts.append(f.get("value", ""))
     for s in analysis_or_text.get("anti_analysis", {}).get("samples", []):
@@ -244,6 +316,38 @@ def _haystack(analysis_or_text) -> str:
     parts.extend(sock.get("channels", []))
     parts.extend(sock.get("transports", []))
     return "\n".join(p for p in parts if p)
+
+
+def score_bundle_best(analysis_or_text) -> dict:
+    """Score against every signature and return the best match.
+
+    The registry exists so a second kit is a data change, but nothing was
+    reading it: every caller passed the default id, so a bundle was only ever
+    compared against Paper Rabbit. A different kit therefore scored NO MATCH 0%
+    no matter what it was, which reads as "not a phishing kit" rather than
+    "not that phishing kit".
+
+    Ties break toward the higher raw points, so a signature with more evidence
+    behind it wins over a small one that happened to match proportionally.
+    """
+    best = None
+    ranked = []
+    for sig_id in SIGNATURES:
+        scored = score_bundle(analysis_or_text, sig_id)
+        ranked.append({
+            "signature": sig_id,
+            "name": SIGNATURES[sig_id]["name"],
+            "verdict": scored["verdict"],
+            "score_pct": scored["score_pct"],
+            "points": scored["points"],
+        })
+        key = (scored["score_pct"], scored["points"])
+        if best is None or key > (best["score_pct"], best["points"]):
+            best = scored
+    ranked.sort(key=lambda r: (-r["score_pct"], -r["points"]))
+    if best is not None:
+        best["considered"] = ranked
+    return best if best is not None else score_bundle(analysis_or_text)
 
 
 def score_bundle(analysis_or_text, sig_id: str = DEFAULT_SIGNATURE_ID) -> dict:

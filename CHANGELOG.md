@@ -5,6 +5,71 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.30.0] - 2026-08-26
+
+Analyze the kit, do not just recognise it. v3.29.0 stopped the deep report
+describing the wrong host, but on a kit that matched no signature it still
+returned NO MATCH 0% and almost nothing else. That is recognition failing, not
+analysis. A report should be able to say what a kit does the first time anyone
+has ever seen it.
+
+Measured on a live Petron-impersonating kit, unobfuscated Vue over Vite, that
+previously scored 0/66 with no crypto, no routes, no endpoints and no findings.
+
+### Added
+
+- `capabilities`, a signature-free description of what a kit does, in plain
+  language, with the evidence for each call. A kit has to describe itself to
+  its victim and to its own developers, so its message catalog keys, object
+  keys and on-screen strings name what is being harvested. Reading that
+  vocabulary works on a family nothing recognises, which is exactly when it
+  matters. Covers OTP interception, live operator approval, card capture, bank
+  selection, credential capture, identity harvesting, reward, fee and credit
+  limit pretexts, urgency pressure and anti-analysis. Each entry carries the
+  terms that fired it, so a wrong call is arguable rather than a bare label.
+- `exfil_endpoints` and `endpoints`. HTTP client call sites recovered from the
+  source, split into likely exfiltration and the rest. On a kit with no
+  signature this is often the only hard IOC available, and it is the single
+  most useful line in a report: where the victim's data goes.
+- `block_flags`, server-controlled cloaking switches read from a bootstrap
+  response. The kit asks its own backend whether to render at all, which is the
+  cloaking decision surfacing in the client.
+- `source_routes`, victim view routes recovered from source rather than from a
+  decoded string table.
+- `message_keys`, message catalog keys, which survive minification because they
+  are data and read as a description of the flow when every identifier around
+  them has been mangled to one letter.
+- Second signature record, `staged_relay`, and `score_bundle_best`, which
+  scores against every signature in the registry and promotes the best match.
+  Nothing was reading the registry: every caller passed the default id, so a
+  bundle was only ever compared against one kit and anything else scored
+  NO MATCH 0% regardless of what it was.
+- Operator-supplied page bodies. `POST /api/scanner/kit-report` now accepts a
+  URL together with pasted page HTML, for a target that is geofenced or
+  otherwise unreachable from wherever FalconEye runs. The operator can see the
+  page and the server cannot. Case identity, scope and enrichment are
+  unchanged, and the body is marked as supplied so nothing claims to have
+  fetched it. Pasting HTML was previously rejected outright.
+
+### Fixed
+
+- Nearly every extractor read the decoded string table, so an unobfuscated
+  bundle produced an empty report. A plain build now goes through the same
+  extraction as an obfuscated one.
+- The signature scorer searched a haystack built only from the decoded string
+  table, so on a plain build every content token missed and a real kit scored
+  zero purely for not being obfuscated. Source-derived fields now feed it.
+- Bundled library license and documentation URLs are no longer emitted as
+  indicators. In a copyable IOC block they were noise around the one URL that
+  mattered.
+- Carousel library events (Swiper) and engine.io transport internals are no
+  longer reported as operator relay channels. They register through the same
+  call shape as a socket, and their published names were crowding out the kit's
+  real channels. This closes the "known imprecision" recorded in
+  `docs/kit-analysis.md`.
+
+---
+
 ## [3.29.0] - 2026-08-26
 
 Case scope. The deep kit report now describes the host that was submitted, and

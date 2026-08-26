@@ -550,3 +550,235 @@ def test_foreign_urls_in_a_bundle_are_evidence_not_indicators():
     assert "www.petron.com" in hosts
     assert hosts["www.petron.com"]["brand"] == "Petron"
     assert "station.qpon" not in hosts
+
+
+# ---------------------------------------------------------------------------
+# kit-agnostic extraction: a kit with no matching signature still gets analyzed
+# ---------------------------------------------------------------------------
+
+from app.scanner import kit_analyzer  # noqa: E402
+
+
+def _real_kit_bundle():
+    path = FIXTURES / "entry_index-5ac4d3e6761.js"
+    if not path.exists():
+        pytest.skip("kit bundle not present (live kit source is not committed)")
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+PLAIN_KIT = '''
+const api = axios.create();
+function send(d){ api.post("/xzQpONCfLl/api/input", d).then(e=>{}); }
+api.post("/xzQpONCfLl/api", {}).then(r=>{ if(r.data.isBlock){ blank(); return } });
+const routes = ["/login","/otpValid","/card","/pay","/success"];
+router.push("/otpValid"); router.push("/card"); router.push("/login");
+'''
+
+
+def test_exfil_endpoint_found_without_a_string_table():
+    """The bug class: every extractor read the decoded string table, so an
+    unobfuscated build reported nothing at all."""
+    a = kit_analyzer.analyze(PLAIN_KIT)
+    assert a["table_entries"] == 0, "fixture must be unobfuscated for this test"
+
+    exfil = {e["path"] for e in a["exfil_endpoints"]}
+    assert "/xzQpONCfLl/api/input" in exfil
+    assert all("POST" in e["verbs"] for e in a["exfil_endpoints"])
+
+
+def test_server_side_block_flag_is_reported():
+    a = kit_analyzer.analyze(PLAIN_KIT)
+    assert "isBlock" in a["block_flags"]
+
+
+def test_victim_routes_recovered_from_source():
+    a = kit_analyzer.analyze(PLAIN_KIT)
+    paths = {r["path"] for r in a["source_routes"]}
+    assert {"/otpValid", "/card", "/login"} <= paths
+
+
+def test_source_routes_not_emitted_when_a_string_table_exists():
+    """On an obfuscated build the table is the better source; this would add noise."""
+    from tests.scanner.kit_fixtures import build_obfuscated_bundle
+    a = kit_analyzer.analyze(build_obfuscated_bundle())
+    assert a["table_entries"] > 0
+    assert a["source_routes"] == []
+
+
+def test_vendor_license_urls_are_not_indicators():
+    src = ('x="https://lodash.com/license";y="http://underscorejs.org/LICENSE";'
+           'z="https://openjsf.org/";w="https://evil.example/collect";')
+    urls = kit_analyzer.analyze(src)["urls"]
+    assert "https://evil.example/collect" in urls
+    assert not any("lodash" in u or "underscorejs" in u or "openjsf" in u for u in urls)
+
+
+def test_carousel_events_are_not_relay_channels():
+    src = ('s.on("activeIndexChange",f);s.on("beforeLoopFix",f);s.on("upgrade",f);'
+           's.on("custom-otp-valid",f);s.on("app-valid",f);')
+    channels = kit_analyzer.analyze(src)["socket"]["channels"]
+    assert "custom-otp-valid" in channels
+    assert "app-valid" in channels
+    for noise in ("activeIndexChange", "beforeLoopFix", "upgrade"):
+        assert noise not in channels
+
+
+def test_real_kit_bundle_yields_its_operator_api():
+    """The station.qpon kit end to end, when the bundle is available locally."""
+    a = kit_analyzer.analyze(_real_kit_bundle())
+    exfil = {e["path"] for e in a["exfil_endpoints"]}
+    assert "/xzQpONCfLl/api/input" in exfil
+    assert "isBlock" in a["block_flags"]
+    paths = {r["path"] for r in a["source_routes"]}
+    assert {"/otpValid", "/customOtpValid", "/card", "/appValid"} <= paths
+
+
+def test_exfil_endpoints_reach_the_indicator_block():
+    report = kit_report.build_offline_report(PLAIN_KIT)
+    copied = kit_report.copy_all_indicators(report)
+    assert "/xzQpONCfLl/api/input" in copied
+    assert "Exfil endpoint" in copied
+    assert "isBlock" in copied
+
+
+# ---------------------------------------------------------------------------
+# a second kit, and picking between them
+# ---------------------------------------------------------------------------
+
+def test_registry_holds_more_than_one_signature():
+    assert len(rabbithunt_sig.SIGNATURES) >= 2
+
+
+def test_best_signature_is_chosen_not_the_default():
+    """A kit that is not the default must not score NO MATCH 0% just for that.
+
+    That reads as "not a phishing kit" when it means "not that phishing kit".
+    """
+    a = kit_analyzer.analyze(_real_kit_bundle())
+    best = rabbithunt_sig.score_bundle_best(a)
+    assert best["signature"] == "staged_relay"
+    assert best["score_pct"] >= 60
+    assert best["verdict"] in ("STRONG MATCH", "PARTIAL")
+
+    # And the default signature genuinely does not match it, so the choice is real.
+    default = rabbithunt_sig.score_bundle(a, "paper_rabbit")
+    assert default["score_pct"] == 0
+    considered = {c["signature"] for c in best["considered"]}
+    assert {"paper_rabbit", "staged_relay"} <= considered
+
+
+def test_paper_rabbit_still_wins_on_its_own_kit():
+    """Adding a signature must not cannibalise the one that was already right."""
+    from tests.scanner.kit_fixtures import build_obfuscated_bundle
+    a = kit_analyzer.analyze(build_obfuscated_bundle(),
+                             signature=rabbithunt_sig.get_signature("paper_rabbit"))
+    best = rabbithunt_sig.score_bundle_best(a)
+    assert best["signature"] == "paper_rabbit"
+
+
+def test_unobfuscated_kit_is_scored_at_all():
+    """The bug class: content tokens were searched against the decoded string
+    table, which is empty on a plain build, so every token missed."""
+    best = rabbithunt_sig.score_bundle_best(kit_analyzer.analyze(PLAIN_KIT))
+    assert best["score_pct"] > 0
+
+
+# ---------------------------------------------------------------------------
+# operator-supplied page body, for a target FalconEye cannot reach
+# ---------------------------------------------------------------------------
+
+def test_supplied_html_is_analyzed_without_fetching_the_page(monkeypatch):
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "station.qpon", "https://www.petron.com/"))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    html = _read_fixture("body_browser.html")
+    report = asyncio.run(kit_report.build_live_report(
+        "https://station.qpon/", pasted_html=html))
+
+    assert report["body_supplied"] is True
+    assert report["mode"] == "supplied"
+    assert report["out_of_scope"] is False
+    assert report["target"]["host"] == "station.qpon"
+    # The page itself must NOT have been re-fetched: that is the thing that did
+    # not work, and re-fetching would re-acquire the decoy. Asset fetches are
+    # expected and fine; a second request for the page document is not.
+    assert reached.count("station.qpon") == len(
+        [u for u in reached if u == "station.qpon"])
+    assert report["page"]["profiles"].keys() == {"supplied"}
+    assert report["page"]["profile_used"] == "supplied"
+
+
+def test_supplied_html_still_detects_the_impersonated_brand():
+    html = _read_fixture("body_browser.html")
+    page = kit_acquire.page_from_html("https://station.qpon/", html)
+    assert page["supplied"] is True
+    assert page["scope_left"] is False
+    assert detect_brand(page["body"])["brand"] == "Petron"
+
+
+# ---------------------------------------------------------------------------
+# what the kit does, with no signature involved
+# ---------------------------------------------------------------------------
+
+def _caps(report):
+    return {c["capability"]: c for c in report["capabilities"]}
+
+
+def test_capabilities_describe_a_kit_with_no_matching_signature():
+    """The point of the extractor: analysis, not recognition.
+
+    A brand new kit matches nothing in the registry. It must still come back
+    described, because "what does this do" is the question an analyst has when
+    looking at something for the first time.
+    """
+    novel = """
+      const msgs = { enter_otp_prompt:"x", resend_code:"y", code_sent_to:"z",
+        cardholder:"a", card_number:"b", expire_date:"c", cvv:"d",
+        reward_points:"e", available_points:"f", check_points:"g",
+        delivery_courier_fee:"h", express_shipping:"i",
+        waiting_for_approval:"j", bank_app:"k", do_not_close:"l" };
+    """
+    a = kit_analyzer.analyze(novel)
+    # Nothing recognises it.
+    assert rabbithunt_sig.score_bundle_best(a)["score_pct"] < 30
+    # It is still described.
+    caps = _caps(a)
+    for expected in ("otp_interception", "card_capture", "reward_lure",
+                     "fee_lure", "live_operator_approval"):
+        assert expected in caps, f"{expected} not described"
+    assert caps["card_capture"]["confidence"] == "high"
+
+
+def test_capability_carries_the_evidence_that_fired_it():
+    a = kit_analyzer.analyze('m={cvv:"1",cardholder:"2",card_number:"3"}')
+    ev = _caps(a)["card_capture"]["evidence"]
+    assert ev and all(isinstance(e, str) for e in ev)
+    assert any("cvv" in e.lower() for e in ev)
+
+
+def test_no_capabilities_claimed_on_a_benign_bundle():
+    """A false positive here is worse than a miss: it labels a normal page a
+    credential harvester."""
+    benign = ('const t={greeting:"Hello",menu_items:["a"],footer_text:"c",'
+              'about_us:"d",contact_form:"e"};function render(){}')
+    assert kit_analyzer.analyze(benign)["capabilities"] == []
+
+
+def test_real_kit_is_described_end_to_end():
+    a = kit_analyzer.analyze(_real_kit_bundle())
+    caps = _caps(a)
+    for expected in ("otp_interception", "card_capture", "live_operator_approval",
+                     "reward_lure", "fee_lure", "identity_harvest"):
+        assert expected in caps, f"{expected} missing"
+        assert caps[expected]["evidence"]
+    assert caps["otp_interception"]["confidence"] == "high"
+    assert caps["card_capture"]["confidence"] == "high"
+
+
+def test_message_keys_recovered_from_a_minified_bundle():
+    a = kit_analyzer.analyze(_real_kit_bundle())
+    keys = set(a["message_keys"])
+    assert {"enter_otp_prompt", "resend_code"} & keys

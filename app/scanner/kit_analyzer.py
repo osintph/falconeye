@@ -589,6 +589,37 @@ def find_registration_wrappers(resolved: str) -> set:
     return out
 
 
+# Swiper is a carousel library whose event bus is registered with the same
+# `.on("name", ...)` shape as a socket. Its events are a fixed, published list,
+# so they can be excluded by name without guessing which object is the socket.
+# Documented in docs/kit-analysis.md as the known imprecision this addresses.
+_SWIPER_EVENTS = frozenset({
+    "activeIndexChange", "afterInit", "beforeDestroy", "beforeInit",
+    "beforeLoopFix", "beforeResize", "beforeSlideChangeStart",
+    "beforeTransitionStart", "breakpoint", "changeDirection", "click",
+    "destroy", "disable", "doubleTap", "doubleClick", "drag", "enable",
+    "fromEdge", "init", "loopFix", "momentumBounce", "observerUpdate",
+    "orientationchange", "progress", "reachBeginning", "reachEnd",
+    "realIndexChange", "resize", "scroll", "setTransition", "setTranslate",
+    "slideChange", "slideChangeTransitionEnd", "slideChangeTransitionStart",
+    "slideNextTransitionEnd", "slideNextTransitionStart",
+    "slidePrevTransitionEnd", "slidePrevTransitionStart",
+    "slideResetTransitionEnd", "slideResetTransitionStart", "sliderMove",
+    "snapGridLengthChange", "snapIndexChange", "tap", "toEdge",
+    "touchEnd", "touchMove", "touchMoveOpposite", "touchStart",
+    "transitionEnd", "transitionStart", "update", "lock", "unlock",
+    "afterResize", "resistanceBefore", "resistanceAfter",
+    "sliderFirstMove", "slidesGridLengthChange", "slidesLengthChange",
+    "slidesUpdated", "beforeSlideChangeStart", "transitionEnd",
+    # engine.io / socket.io transport internals, library-level not kit-level
+    "packet", "packetCreate", "upgrade", "upgradeError", "upgrading",
+    "pollComplete", "reconnect_attempt", "reconnect_failed", "reconnect_error",
+    "reconnecting", "ping", "pong", "heartbeat",
+    # generic emitter plumbing, never a relay channel
+    "drain", "flush", "error", "close", "open", "end", "finish", "pipe",
+})
+
+
 def extract_socket(resolved: str, decoded: list) -> dict:
     """Extract the socket transport config.
 
@@ -627,8 +658,9 @@ def extract_socket(resolved: str, decoded: list) -> dict:
     for pattern in call_sites:
         for m in re.finditer(pattern, resolved):
             c = m.group(1)
-            # socket.io lifecycle events are library-level, not kit channels.
-            if c in seen or c in _SOCKET_LIFECYCLE:
+            # socket.io lifecycle events are library-level, not kit channels,
+            # and a carousel's event bus registers through the same call shape.
+            if c in seen or c in _SOCKET_LIFECYCLE or c in _SWIPER_EVENTS:
                 continue
             seen.add(c)
             channels.append(c)
@@ -879,6 +911,12 @@ def _empty_report(error: str) -> dict:
         "socket": {"present": False, "path": "", "channels": [], "transports": []},
         "hash_routes": [],
         "routes": [],
+        "source_routes": [],
+        "endpoints": [],
+        "capabilities": [],
+        "message_keys": [],
+        "exfil_endpoints": [],
+        "block_flags": [],
         "locales": [],
         "identity_fields": [],
         "anti_analysis": {"count": 0, "frameworks": [], "verdict_tiers": [], "samples": []},
@@ -891,6 +929,214 @@ def _empty_report(error: str) -> dict:
     }
 
 
+# HTTP client call sites: axios/fetch/$http style, verb plus a quoted path.
+# Matched against the RESOLVED SOURCE, not the string table, because an
+# unobfuscated bundle has no string table at all.
+_HTTP_CALL_RE = re.compile(
+    r"""(?:\.\s*(?P<verb>post|put|patch|delete|get)\s*\(\s*|"""
+    r"""\bfetch\s*\(\s*)["'](?P<path>/[^"'\s]{1,120})["']""",
+    re.I,
+)
+
+# Paths whose name says they take victim data rather than serve a page.
+_EXFIL_HINT = re.compile(
+    r"api|input|submit|save|log|collect|report|send|post|upload|record|"
+    r"cred|card|otp|pin|pass|verify|valid|auth|login|track",
+    re.I,
+)
+
+# A server-controlled kill switch read from a bootstrap response. This is the
+# cloaking decision surfacing in the client: the operator can blank the page
+# for anyone they do not want looking at it.
+_BLOCK_FLAG_RE = re.compile(
+    r"""\.\s*data\s*\.\s*(?P<flag>is[A-Z]\w*|blocked?|ban(?:ned)?|deny)\b"""
+    r"""|["'](?P<key>isBlock|isBan|isDeny|blocked|banned)["']""",
+)
+
+
+def extract_endpoints(resolved: str, decoded: list) -> dict:
+    """Server paths the kit calls, split into likely exfil and the rest.
+
+    This is the highest-value thing a report can name: where the victim's data
+    goes. It runs on the resolved source so it works on plain builds as well as
+    obfuscated ones, and it is entirely kit-agnostic, so a kit with no signature
+    still gets its operator API named.
+
+    Paths are reported as found. They are not fetched.
+    """
+    calls: dict = {}
+    for m in _HTTP_CALL_RE.finditer(resolved or ""):
+        path = m.group("path")
+        verb = (m.group("verb") or "fetch").upper()
+        if len(path) < 2:
+            continue
+        entry = calls.setdefault(path, {"path": path, "verbs": set(), "count": 0})
+        entry["verbs"].add(verb)
+        entry["count"] += 1
+
+    out = []
+    for entry in calls.values():
+        verbs = sorted(entry["verbs"])
+        writing = any(v in ("POST", "PUT", "PATCH") for v in verbs)
+        out.append({
+            "path": entry["path"],
+            "verbs": verbs,
+            "count": entry["count"],
+            # A write to an api/input/submit shaped path is the exfil channel.
+            "exfil": bool(writing and _EXFIL_HINT.search(entry["path"])),
+        })
+    out.sort(key=lambda e: (not e["exfil"], e["path"]))
+
+    flags = sorted({(m.group("flag") or m.group("key"))
+                    for m in _BLOCK_FLAG_RE.finditer(resolved or "")
+                    if (m.group("flag") or m.group("key"))})
+
+    return {
+        "endpoints": out[:40],
+        "exfil": [e for e in out if e["exfil"]][:20],
+        "block_flags": flags[:10],
+    }
+
+
+def extract_source_routes(resolved: str) -> list:
+    """Route-shaped path literals straight from the source.
+
+    `extract_routes` reads the decoded string table, which does not exist on an
+    unobfuscated build. Without this fallback a plain Vite kit reports no victim
+    views at all, which is exactly how a live credential harvester came back
+    looking empty.
+    """
+    seen = {}
+    for m in re.finditer(r"""["'](/[A-Za-z][A-Za-z0-9_-]{1,30})["']""", resolved or ""):
+        path = m.group(1)
+        seen[path] = seen.get(path, 0) + 1
+    # A view route is referenced by the router and by whatever navigates to it,
+    # so single mentions are usually incidental strings.
+    return [{"path": p, "hits": n} for p, n in
+            sorted(seen.items(), key=lambda kv: (-kv[1], kv[0]))][:40]
+
+
+# What a kit DOES, derived from its own vocabulary rather than from a signature.
+#
+# A phishing kit has to describe itself to its victim, and to its own
+# developers. The i18n message catalog, the object keys and the on-screen
+# strings all name the thing being harvested: `enter_otp_prompt`, `cardholder`,
+# `bank_additional_verification`. That vocabulary is present whether or not the
+# kit matches any known family, which is the point. Signature matching answers
+# "have I seen this before". This answers "what does it do", which is the
+# question an analyst looking at a brand new kit actually has.
+#
+# Each capability carries the terms that fired it, so a wrong call is visible
+# and arguable rather than a bare label.
+CAPABILITY_RULES = [
+    ("otp_interception", "Intercepts one-time passcodes", [
+        r"\botp\b", r"one[_ -]?time", r"enter_?your_?code", r"resend_?code",
+        r"code_?sent", r"verification_?code", r"security_?code", r"sms_?code",
+        r"enter_otp", r"another_?code",
+    ]),
+    ("live_operator_approval", "Waits on a live operator while the victim holds", [
+        r"waiting_?for_?approval", r"bank_?app", r"approve.{0,20}request",
+        r"please_?wait", r"processing.{0,15}request", r"do_?not_?close",
+        r"additional_?verification", r"pending_?approval",
+    ]),
+    ("card_capture", "Captures full payment card details", [
+        r"\bcvv\b", r"\bcvc\b", r"card_?number", r"cardholder",
+        r"expire_?date", r"expiry", r"expiration", r"card_?expired",
+    ]),
+    ("bank_selection", "Asks the victim to name their bank", [
+        r"authorized_?bank", r"select_?(your_?)?bank", r"choose_?(your_?)?bank",
+        r"bank_?list", r"issuing_?bank",
+    ]),
+    ("credential_capture", "Captures account credentials", [
+        r"\bpassword\b", r"\bpasswd\b", r"\bpin\b", r"login_?id",
+        r"username", r"account_?number", r"mpin",
+    ]),
+    ("identity_harvest", "Harvests personal identity and contact data", [
+        r"phone_?number", r"mobile_?number", r"full_?name", r"birth",
+        r"email_?address", r"detailed_?address", r"shipping_?address",
+        r"confirm_?shipping", r"postal", r"\bzip\b",
+    ]),
+    ("reward_lure", "Uses a loyalty or rewards pretext", [
+        r"reward_?points", r"available_?points", r"club_?points",
+        r"check_?(my_?)?points", r"redeem", r"loyalty", r"points_?waiting",
+    ]),
+    ("fee_lure", "Charges a small fee to justify taking a card", [
+        r"delivery_?(courier_?)?fee", r"shipping_?fee", r"courier_?fee",
+        r"handling_?fee", r"express_?shipping", r"same_?day_?shipping",
+    ]),
+    ("credit_limit_lure", "Uses a credit limit increase pretext", [
+        r"credit_?increase", r"credit_?limit", r"limit_?upgrade",
+    ]),
+    ("urgency_pressure", "Applies time pressure to the victim", [
+        r"expiring_?soon", r"expires_?in", r"countdown", r"time_?remaining",
+        r"attention_?expiring", r"hurry", r"act_?now", r"limited_?time",
+    ]),
+    ("anti_analysis", "Detects or resists inspection", [
+        r"devtools", r"debugger", r"headless", r"webdriver", r"is_?block",
+        r"disable_?right_?click", r"contextmenu.{0,20}prevent",
+    ]),
+]
+
+
+def extract_capabilities(resolved: str, decoded: list) -> list:
+    """What the kit does, in plain language, with the evidence for each call.
+
+    Kit-agnostic by construction: it reads the kit's own vocabulary, so a kit
+    with no matching signature still gets described. This is the answer to
+    "what am I looking at", which is a different and more useful question than
+    "which known family is this".
+    """
+    haystack = resolved or ""
+    if decoded:
+        haystack = haystack + "\n" + "\n".join(d for d in decoded if d)
+    if not haystack:
+        return []
+
+    out = []
+    for key, description, patterns in CAPABILITY_RULES:
+        evidence = []
+        for pat in patterns:
+            try:
+                m = re.search(pat, haystack, re.I)
+            except re.error:
+                continue
+            if m:
+                term = m.group(0).strip()
+                if term and term.lower() not in {e.lower() for e in evidence}:
+                    evidence.append(term[:40])
+        if not evidence:
+            continue
+        # One loose term is a hint. Three or more distinct ones is the kit
+        # telling you what it is.
+        confidence = "high" if len(evidence) >= 3 else (
+            "medium" if len(evidence) == 2 else "low")
+        out.append({
+            "capability": key,
+            "description": description,
+            "confidence": confidence,
+            "evidence": evidence[:6],
+        })
+    order = {"high": 0, "medium": 1, "low": 2}
+    out.sort(key=lambda c: (order[c["confidence"]], c["capability"]))
+    return out
+
+
+def extract_message_keys(resolved: str) -> list:
+    """Message catalog keys, which name the kit's screens in its own words.
+
+    A localized kit ships a key/value catalog. The keys survive minification
+    because they are data, so they read as a plain description of the flow even
+    when every identifier around them has been mangled to one letter.
+    """
+    keys = {}
+    for m in re.finditer(r"[,{]\s*([a-z][a-z0-9]*(?:_[a-z0-9]+){1,5})\s*:", resolved or ""):
+        k = m.group(1)
+        keys[k] = keys.get(k, 0) + 1
+    # Single-use snake_case keys are usually ordinary object properties from a
+    # bundled library; a catalog key is referenced by the catalog and the view.
+    return sorted(k for k, n in keys.items() if len(k) > 6)[:120]
+
+
 def extract_urls(decoded: list, resolved: str) -> list:
     urls = set()
     for s in decoded:
@@ -900,7 +1146,17 @@ def extract_urls(decoded: list, resolved: str) -> list:
             urls.add(m.group(0))
     for m in re.finditer(r"https?://[A-Za-z0-9._~:/?#@!$&()*+,;=%-]+", resolved or ""):
         urls.add(m.group(0))
-    noise = re.compile(r"w3\.org|vuejs\.org|socket\.io/docs|github\.io|schema\.org")
+    # Bundled library license and doc URLs are not indicators of anything. They
+    # come from whatever npm packages the kit happened to build against, and in
+    # a copyable IOC block they are pure noise around the one URL that matters.
+    noise = re.compile(
+        r"w3\.org|vuejs\.org|socket\.io/docs|github\.io|schema\.org|"
+        r"lodash\.com|underscorejs\.org|openjsf\.org|npms\.io|"
+        r"github\.com/(?:[^/]+/)?(?:focus-trap|tabbable|uuidjs|uuid|axios|core-js)|"
+        r"/LICENSE|licenses?\.txt|opensource\.org|unpkg\.com|jsdelivr\.net|"
+        r"^https?://localhost",
+        re.I,
+    )
     return sorted(u for u in urls if not noise.search(u))[:60]
 
 
@@ -994,6 +1250,15 @@ def analyze_full(src: str, signature: Optional[dict] = None,
             decoded, resolved_norm, exclude={rep["socket"].get("path", "")}
         )
         rep["routes"] = extract_routes(decoded)
+        endpoints = extract_endpoints(resolved_norm, decoded)
+        rep["endpoints"] = endpoints["endpoints"]
+        rep["exfil_endpoints"] = endpoints["exfil"]
+        rep["block_flags"] = endpoints["block_flags"]
+        # Fallback only: on an obfuscated build the string table is the better
+        # source and this would just add noise.
+        rep["source_routes"] = extract_source_routes(resolved_norm) if not decoded else []
+        rep["capabilities"] = extract_capabilities(resolved_norm, decoded)
+        rep["message_keys"] = extract_message_keys(resolved_norm)
         rep["identity_fields"], rep["locales"] = extract_identity(decoded)
         rep["anti_analysis"] = extract_anti_analysis(decoded, resolved_norm)
         rep["cjk_strings"] = extract_cjk(decoded, signature)
