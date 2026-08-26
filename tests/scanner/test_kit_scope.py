@@ -798,11 +798,13 @@ def test_pasted_bundle_with_a_url_gets_the_full_case_treatment(monkeypatch):
     calls: dict = {}
     _arm_tripwires(monkeypatch, calls)
 
+    # No pasted_html here, so the page IS fetched and the cloak is observed
+    # while the supplied bundle still gets torn down.
     report = asyncio.run(kit_report.build_live_report(
-        "https://station.qpon/", pasted_html="<html></html>",
-        pasted_bundle=PLAIN_KIT))
+        "https://station.qpon/", pasted_bundle=PLAIN_KIT))
 
     assert report["target"]["host"] == "station.qpon"
+    assert report["cloaked"] is True
     assert report["bundles"][0]["name"] == "supplied bundle"
     # The substantive claim: the pasted bundle was actually torn down, and the
     # url was kept rather than discarded as it was on the offline path.
@@ -863,3 +865,73 @@ def test_cloaked_fetch_is_evidence_not_a_dead_end_when_content_is_supplied(monke
     copied = kit_report.copy_all_indicators(report)
     assert "petron" not in copied.lower()
     assert report["page"]["size_bytes"] is not None
+
+
+# ---------------------------------------------------------------------------
+# in-browser collector: the answer to a geofenced target
+# ---------------------------------------------------------------------------
+
+def _collector_payload(url, html, bundles):
+    return json.dumps({"falconeye_collector": 1, "url": url, "html": html,
+                       "bundles": [{"url": u, "text": t} for u, t in bundles]})
+
+
+def test_collector_payload_is_parsed():
+    raw = _collector_payload("https://station.qpon/", "<html>shell</html>",
+                             [("https://station.qpon/p/kit.js", PLAIN_KIT)])
+    parsed = kit_report.parse_collector_payload(raw)
+    assert parsed["url"] == "https://station.qpon/"
+    assert parsed["bundles"][0]["url"].endswith("kit.js")
+    assert "xzQpONCfLl" in parsed["bundles"][0]["text"]
+
+
+@pytest.mark.parametrize("text", [
+    "", "   ", "<html><body>plain page</body></html>",
+    "function x(){return 1}", '{"not_a_collector": true}', "{broken json",
+])
+def test_non_collector_text_is_left_alone(text):
+    """The textarea must keep taking plain HTML and plain bundles."""
+    assert kit_report.parse_collector_payload(text) is None
+
+
+def test_collector_payload_drives_a_full_teardown(monkeypatch):
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "station.qpon",
+                                               "https://www.petron.com/",
+                                               end_body="<html>decoy</html>"))
+    _arm_tripwires(monkeypatch, {})
+
+    raw = _collector_payload("https://station.qpon/", "<html>shell</html>",
+                             [("https://station.qpon/p/kit.js", PLAIN_KIT)])
+    parsed = kit_report.parse_collector_payload(raw)
+    report = asyncio.run(kit_report.build_live_report(
+        parsed["url"], pasted_html=parsed["html"],
+        collected_bundles=parsed["bundles"]))
+
+    # Supplying the page means the page is never re-fetched, so this run does
+    # not observe the cloak. That is deliberate: the first run already reported
+    # it, and re-fetching would cost another request to the impersonated brand
+    # for a finding already in hand.
+    assert report["cloaked"] is False
+    assert report["body_supplied"] is True
+    assert report["target"]["host"] == "station.qpon"
+    assert report["bundles"][0]["name"] == "kit.js"
+    exfil = {e["path"] for e in report["analysis"]["exfil_endpoints"]}
+    assert "/xzQpONCfLl/api/input" in exfil
+    assert "petron" not in kit_report.copy_all_indicators(report).lower()
+
+
+def test_cloaked_dead_end_carries_the_way_out(monkeypatch):
+    """A dead-end report must name the next step, not just the failure."""
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "station.qpon",
+                                               "https://www.petron.com/"))
+    _arm_tripwires(monkeypatch, {})
+    report = asyncio.run(kit_report.build_live_report("https://station.qpon/"))
+
+    assert report["out_of_scope"] is True
+    step = report["next_step"]
+    assert step["action"] == "collector"
+    assert "browser" in step["headline"].lower()

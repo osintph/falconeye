@@ -1060,6 +1060,11 @@ function renderKitOutOfScope(el, data) {
         <div class="flex gap-2 flex-wrap">${badges}</div>
       </div>
       ${notes}
+      ${data.next_step ? `<div class="mt-4 border border-amber-500/50 bg-amber-500/5 rounded p-4">
+        <p class="text-sm text-amber-300 font-bold">${escapeHtml(String(data.next_step.headline || ''))}</p>
+        <p class="text-xs text-gray-300 mt-2">${escapeHtml(String(data.next_step.detail || ''))}</p>
+        <p class="text-xs text-gray-500 mt-2 italic">The collector is in the "Target unreachable or cloaked?" panel under the scan form.</p>
+      </div>` : ''}
       ${kitSection('Redirect chain', kitRedirectChain(target.redirect_chain, target.final_url),
                    'the headline finding: the fetch did not stay on the submitted domain')}
       ${kitSection('Redirect destination (not an indicator)', destBody)}

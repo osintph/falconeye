@@ -69,6 +69,45 @@ _JS_RE = re.compile(
 )
 
 
+COLLECTOR_MARKER = "falconeye_collector"
+
+
+def parse_collector_payload(text: str) -> Optional[dict]:
+    """Parse a payload produced by the in-browser collector bookmarklet.
+
+    A kit geofenced to its victim country cannot be fetched from wherever
+    FalconEye runs, and its assets are behind the same fence, so pasting the
+    page source alone leaves the JavaScript, which is where the intelligence
+    is, out of reach. The collector runs on the kit's own page in the
+    operator's browser, where the fetch is same-origin, and hands over the page
+    and its bundles together.
+
+    Returns None for anything that is not a collector payload, so the textarea
+    keeps taking plain HTML and plain bundles as before.
+    """
+    import json as _json
+
+    if not text or COLLECTOR_MARKER not in text[:400]:
+        return None
+    try:
+        data = _json.loads(text)
+    except Exception:
+        return None
+    if not isinstance(data, dict) or not data.get(COLLECTOR_MARKER):
+        return None
+
+    bundles = []
+    for b in data.get("bundles") or []:
+        if isinstance(b, dict) and isinstance(b.get("text"), str) and b["text"].strip():
+            bundles.append({"url": safe_str(b.get("url"), 500), "text": b["text"]})
+
+    return {
+        "url": safe_str(data.get("url"), 2000),
+        "html": data.get("html") if isinstance(data.get("html"), str) else "",
+        "bundles": bundles,
+    }
+
+
 def looks_like_javascript(text: str) -> bool:
     """True when pasted text is a script or bundle rather than an HTML page.
 
@@ -784,11 +823,29 @@ def build_out_of_scope_report(target: dict, acquired: dict,
             "No request was issued to the redirect destination beyond following "
             "the redirect itself.",
         ],
+        # A dead end has to come with the way out of it. This target is very
+        # likely geofenced to its victim country, which no amount of request
+        # shaping from this server can defeat, so the next step is a different
+        # vantage: the operator's own browser.
+        "next_step": {
+            "headline": "This target is cloaked from this server. Collect it from your browser.",
+            "detail": (
+                "A kit geofenced to its victim country serves this server a decoy "
+                "and serves you the real page. Its JavaScript is behind the same "
+                "fence, and that is where the analysis happens. Open the target in "
+                "a browser that can reach it, run the collector from the Phishing "
+                "Kit Scanner tab, and paste the result back with this URL. The "
+                "teardown then runs on what you collected while the enrichment "
+                "stays a live lookup on the submitted domain."
+            ),
+            "action": "collector",
+        },
     }
 
 
 async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNATURE_ID,
-                            pasted_html: str = "", pasted_bundle: str = "") -> dict:
+                            pasted_html: str = "", pasted_bundle: str = "",
+                            collected_bundles: Optional[list] = None) -> dict:
     """Live mode: acquire, analyze, score, enrich, assemble.
 
     `pasted_html` lets an operator supply the page body for a target that is
@@ -801,6 +858,7 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     signature = rabbithunt_sig.get_signature(sig_id)
     notes = []
     supplied = bool(pasted_html.strip())
+    collected_bundles = collected_bundles or []
 
     if supplied:
         page = kit_acquire.page_from_html(url, pasted_html)
@@ -824,17 +882,27 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     # intelligence lives in the JavaScript, not in the shell. A target that
     # geofences its page geofences its assets too, so an operator who can reach
     # the target has to be able to hand over the bundle, not just the HTML.
+    supplied_bundles = list(collected_bundles or [])
     if pasted_bundle.strip():
-        raw = pasted_bundle.encode("utf-8", "replace")
-        acquired["bundles"] = [{
-            "name": "supplied bundle",
-            "url": "",
-            "entry": True,
-            "sha256": hashlib.sha256(raw).hexdigest(),
-            "size_bytes": len(raw),
-            "text": pasted_bundle,
-            "error": None,
-        }] + [b for b in acquired.get("bundles", []) if b.get("text")]
+        supplied_bundles.insert(0, {"url": "", "text": pasted_bundle})
+    if supplied_bundles:
+        injected = []
+        for i, b in enumerate(supplied_bundles):
+            raw = b["text"].encode("utf-8", "replace")
+            fallback = ("supplied bundle" if len(supplied_bundles) == 1
+                        else f"supplied bundle {i + 1}")
+            name = (b.get("url") or "").rsplit("/", 1)[-1] or fallback
+            injected.append({
+                "name": name,
+                "url": b.get("url", ""),
+                "entry": i == 0,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "size_bytes": len(raw),
+                "text": b["text"],
+                "error": None,
+            })
+        acquired["bundles"] = injected + [
+            b for b in acquired.get("bundles", []) if b.get("text")]
         notes.append(
             "Bundle was supplied by the operator, not fetched. The teardown "
             "below is analysis of what you pasted."
@@ -865,7 +933,7 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     # stops being a dead end and becomes what it always was: evidence. This is
     # the normal path for a kit geofenced to its victim country, where the
     # operator can reach the target and this server cannot.
-    if target["scope_left"] and not (supplied or pasted_bundle.strip()):
+    if target["scope_left"] and not (supplied or pasted_bundle.strip() or collected_bundles):
         return build_out_of_scope_report(target, acquired, sig_id=sig_id)
 
     cloaked = bool(target["scope_left"])

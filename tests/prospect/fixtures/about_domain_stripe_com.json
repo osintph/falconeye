@@ -1,14 +1,14 @@
 {
   "search_metadata": {
-    "id": "search_mMjwVJvBznTKZWVL3vynp5OY",
+    "id": "search_JoY68Me7qNsNQ6MVgv0axRVb",
     "status": "Success",
-    "created_at": "2026-07-03T02:30:05Z",
-    "request_time_taken": 0.8,
+    "created_at": "2026-07-03T03:37:03Z",
+    "request_time_taken": 0.4,
     "parsing_time_taken": 0.0,
-    "total_time_taken": 0.8,
+    "total_time_taken": 0.4,
     "request_url": "https://www.google.com/search/about-this-result?origin=www.google.com&cs=1&req=ChNodHRwczovL3N0cmlwZS5jb20vEggKABIAGgIIABowEgIIARoAIgAqADIGCAESAnVzOgBCBAgBEABKAFoOCAESCnN0cmlwZS5jb21yAHoAIgIQAUgBWAA&ilrm=zpr&uact=1",
-    "html_url": "https://www.searchapi.io/api/v1/searches/search_mMjwVJvBznTKZWVL3vynp5OY.html",
-    "json_url": "https://www.searchapi.io/api/v1/searches/search_mMjwVJvBznTKZWVL3vynp5OY"
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_JoY68Me7qNsNQ6MVgv0axRVb.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_JoY68Me7qNsNQ6MVgv0axRVb"
   },
   "search_parameters": {
     "engine": "google_about_this_domain",

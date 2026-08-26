@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.31.0] - 2026-08-26
+
+Close the loop on a geofenced kit. The previous releases made the analysis good
+and then made it feedable, but a URL pasted into the UI still produced a wall of
+N/A with no way forward. Verified against the live target: it is geofenced to
+its victim country, and neither this server, nor urlscan from a US vantage, nor
+a public rendering proxy can reach it. The operator's own browser can.
+
+### Added
+
+- In-browser collector. A one-line script, in a panel under the scan form, run
+  from the console on the kit's own page. It reads the page and its script
+  bundles same-origin, where there is no CSP or CORS obstacle, and copies them
+  as one payload. Paste that back with the URL and the full teardown runs while
+  the enrichment stays a live lookup on the submitted domain. It submits
+  nothing to the target and touches no form on it.
+- `POST /api/scanner/kit-report` accepts a collector payload in the same
+  textarea, detected by marker, so plain HTML and plain bundles keep working
+  exactly as before. Multiple collected bundles are analyzed together.
+- A cloaked report now carries `next_step`, naming the collector and explaining
+  why the fetch failed. It previously stopped at N/A and left the operator with
+  nowhere to go, which is the state this release exists to fix.
+
+### Notes
+
+The FalconEye page cannot fetch the target itself: `connect-src` is
+`'self' https://api.pwnedpasswords.com`, and widening it to arbitrary origins
+to work around a geofence would trade a real security control for a
+convenience. The collector runs on the kit's origin instead, which needs no
+such change.
+
+---
+
 ## [3.30.2] - 2026-08-26
 
 The scope abort was still swallowing supplied content. With a bundle pasted

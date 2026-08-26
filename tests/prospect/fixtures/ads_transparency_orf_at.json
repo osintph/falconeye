@@ -1,0 +1,21 @@
+{
+  "search_metadata": {
+    "id": "search_mpKN8l48W3i6DZlNYe3n1ZDx",
+    "status": "Success",
+    "created_at": "2026-07-03T03:37:02Z",
+    "request_time_taken": 0.86,
+    "parsing_time_taken": 0.0,
+    "total_time_taken": 0.86,
+    "request_url": "https://adstransparency.google.com?domain=orf.at&region=ANYWHERE&preset-date=Last+30+days",
+    "html_url": "https://www.searchapi.io/api/v1/searches/search_mpKN8l48W3i6DZlNYe3n1ZDx.html",
+    "json_url": "https://www.searchapi.io/api/v1/searches/search_mpKN8l48W3i6DZlNYe3n1ZDx"
+  },
+  "search_parameters": {
+    "engine": "google_ads_transparency_center",
+    "domain": "orf.at",
+    "time_period": "last_30_days",
+    "num": 40,
+    "region": "ANYWHERE"
+  },
+  "error": "Google Ads Transparency Center API didn't return any results."
+}

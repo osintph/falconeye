@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.30.2",
+    "softwareVersion": "3.31.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -149,7 +149,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.30.2" />
+  <link rel="stylesheet" href="/static/style.css?v=3.31.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -425,6 +425,30 @@
           ↳ Try sample (benign test URL)
         </button>
       </div>
+      <details class="mt-4 border border-gray-800 rounded bg-gray-900/40">
+        <summary class="cursor-pointer px-4 py-2 text-xs text-amber-400/90 uppercase tracking-wide select-none">
+          Target unreachable or cloaked? Collect it from your own browser
+        </summary>
+        <div class="px-4 pb-4 text-xs text-gray-400 space-y-3">
+          <p>
+            A kit geofenced to its victim country serves this server a decoy and serves you the real thing.
+            Its JavaScript is behind the same fence, and that is where the analysis happens. When the report
+            comes back <span class="text-amber-300 font-mono">CLOAKED REDIRECT</span>, collect the target from
+            the browser that can reach it.
+          </p>
+          <ol class="list-decimal ml-5 space-y-1 text-gray-500">
+            <li>Open the suspect page in your browser. <span class="text-gray-400">Do not type anything into it.</span></li>
+            <li>Open DevTools (F12), go to Console, paste the line below and press Enter.</li>
+            <li>It copies the page and its bundles to your clipboard. Paste that into the box above, put the URL in the URL field, tick Deep kit report and run.</li>
+          </ol>
+          <textarea readonly rows="4" onclick="this.select()"
+            class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 font-mono text-[10px] text-gray-300 resize-none">(async()=&gt;{try{const u=location.href,h=await(await fetch(u,{credentials:'omit'})).text(),r=[...h.matchAll(/&lt;script[^&gt;]+src="([^"]+\.js)"/g)].map(m=&gt;m[1]).slice(0,4),b=[];for(const x of r){try{const a=new URL(x,u).href,s=await fetch(a,{credentials:'omit'});if(s.ok)b.push({url:a,text:await s.text()})}catch(e){}}const p=JSON.stringify({falconeye_collector:1,url:u,html:h,bundles:b});let ok=false;try{await navigator.clipboard.writeText(p);ok=true}catch(e){}const d=document.createElement('div');d.style.cssText='position:fixed;z-index:2147483647;inset:auto 12px 12px auto;max-width:420px;background:#0b0f19;color:#e5e7eb;border:1px solid #f59e0b;border-radius:8px;padding:12px;font:12px ui-monospace,monospace;box-shadow:0 8px 32px rgba(0,0,0,.6)';d.textContent=ok?'FalconEye: copied '+p.length+' bytes ('+b.length+' bundle(s)). Paste into the Phishing Kit Scanner.':'FalconEye: clipboard blocked. Select all below and copy.';if(!ok){const t=document.createElement('textarea');t.value=p;t.style.cssText='width:100%;height:120px;margin-top:8px;background:#111827;color:#e5e7eb;border:1px solid #374151';d.appendChild(t);setTimeout(()=&gt;{t.focus();t.select()},50)}const c=document.createElement('button');c.textContent='close';c.style.cssText='margin-left:8px;background:#f59e0b;color:#0b0f19;border:0;border-radius:4px;padding:2px 8px;cursor:pointer';c.onclick=()=&gt;d.remove();d.appendChild(c);document.body.appendChild(d)}catch(e){}})();</textarea>
+          <p class="text-gray-600 italic">
+            Reads the page and its scripts only. It submits nothing to the target and touches no form on it.
+            The case identity, scope and live enrichment still come from the URL you supply.
+          </p>
+        </div>
+      </details>
       <div id="scan-result" class="mt-8 hidden"></div>
     </div>
 
@@ -1532,6 +1556,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.30.2"></script>
+  <script src="/static/app.js?v=3.31.0"></script>
 </body>
 </html>

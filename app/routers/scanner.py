@@ -174,6 +174,28 @@ async def kit_report_endpoint(request: Request, payload: KitReportRequest):
         )
     rate_limit.record(_KIT_RL_TABLE, source_ip)
 
+    # A collector payload carries the page and its bundles together, gathered by
+    # the operator's own browser on the kit's own origin. It wins over every
+    # other interpretation of the textarea because it is unambiguous.
+    collected = kit_report.parse_collector_payload(pasted)
+    if collected:
+        target_url = url or collected["url"]
+        if not target_url:
+            raise HTTPException(
+                status_code=400,
+                detail="Collector payload carried no URL. Add the target URL above.",
+            )
+        if not urlparse(target_url).scheme:
+            target_url = f"https://{target_url}"
+        try:
+            return await kit_report.build_live_report(
+                target_url,
+                pasted_html=collected["html"],
+                collected_bundles=collected["bundles"],
+            )
+        except SafeFetchError as exc:
+            raise HTTPException(status_code=400, detail=f"URL blocked: {exc}")
+
     is_bundle = bool(pasted) and kit_report.looks_like_javascript(pasted)
 
     # A pasted bundle with no URL is the offline path, for a target that is
