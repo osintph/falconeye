@@ -418,7 +418,7 @@ def score_bundle(analysis_or_text, sig_id: str = DEFAULT_SIGNATURE_ID) -> dict:
 # Network scoring
 # ---------------------------------------------------------------------------
 
-async def _probe_status(url: str) -> Optional[int]:
+async def _probe_status(url: str, scope_registrable: str = "") -> Optional[int]:
     """Status code for a read-only probe, or None if unreachable/blocked.
 
     Redirects are not followed: the status itself is the signal, and following
@@ -430,6 +430,7 @@ async def _probe_status(url: str) -> Optional[int]:
             headers={"User-Agent": KIT_UA},
             timeout=PROBE_TIMEOUT,
             allow_redirects=False,
+            scope_registrable=scope_registrable,
         )
         return resp.get("status")
     except SafeFetchError as exc:
@@ -560,7 +561,8 @@ async def score_host(host: str, path: str = "/",
     status = None
     try:
         resp = await safe_fetch(f"{base}{path}", headers={"User-Agent": KIT_UA},
-                                timeout=PROBE_TIMEOUT)
+                                timeout=PROBE_TIMEOUT,
+                                scope_registrable=case_registrable)
         status = resp.get("status")
         headers = {k.lower(): v for k, v in (resp.get("headers") or {}).items()}
         body = resp.get("body", "") or ""
@@ -592,7 +594,8 @@ async def score_host(host: str, path: str = "/",
         btext = ""
         try:
             bresp = await safe_fetch(burl, headers={"User-Agent": KIT_UA},
-                                     timeout=PROBE_TIMEOUT)
+                                     timeout=PROBE_TIMEOUT,
+                                     scope_registrable=case_registrable)
             btext = bresp.get("body", "") or ""
         except SafeFetchError as exc:
             log.debug("score_host bundle fetch blocked for %s: %s", burl, exc)

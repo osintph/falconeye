@@ -274,7 +274,9 @@ async def fetch_bundles(assets: list, referer: str = "", case_registrable: str =
                 out.append(entry)
                 continue
         try:
-            resp = await safe_fetch(asset["url"], headers=headers, timeout=FETCH_TIMEOUT)
+            resp = await safe_fetch(asset["url"], headers=headers,
+                                    timeout=FETCH_TIMEOUT,
+                                    scope_registrable=case_registrable)
         except SafeFetchError as exc:
             entry["error"] = f"blocked by SSRF guard: {exc}"
             out.append(entry)

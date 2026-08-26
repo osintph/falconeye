@@ -5,6 +5,39 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.31.3] - 2026-08-26
+
+The impersonated brand got back into the indicator block, through a door the
+v3.29.0 scope guard left open. Caught in a real report: a line reading
+`BUNDLE SHA256  index-5ac4d3e6761.js  a7d08b34...  entry bundle` was the sha256
+of the brand's own homepage, published as a kit indicator.
+
+The guard checked the URL before each request. It did not check the redirect.
+Fetching the kit's asset URL returns `302` to the brand, `safe_fetch` follows
+it, and 234KB of somebody else's homepage comes back under the asset's name and
+is hashed as that asset. The same mechanism fed the live host score, which was
+scoring the decoy: `spa_shell body=234561B` and `cloudflare_front
+Sucuri/Cloudproxy` were measurements of the brand's site, not the kit's.
+
+### Fixed
+
+- `safe_fetch` takes `scope_registrable` and refuses any redirect hop that
+  leaves that domain. Checking the URL before the request was never enough,
+  because a target can bounce a request off its own domain mid-fetch. This is
+  enforced at the transport, so it holds for every caller rather than being
+  re-implemented per call site.
+- Threaded through the three fetches that were still exposed: the bundle fetch
+  in `kit_acquire.fetch_bundles`, and the landing fetch and entry-bundle fetch
+  inside `rabbithunt_sig.score_host`. Those were also issuing requests to the
+  impersonated brand, which the v3.29.0 conduct fix was supposed to have ended.
+- A refused asset is recorded with its reason and carries no text and no
+  sha256, so a decoy can no longer be hashed or reach the indicator block.
+
+Behaviour is unchanged when `scope_registrable` is not passed, so nothing
+outside the kit case path is affected.
+
+---
+
 ## [3.31.2] - 2026-08-26
 
 Stop the collector claiming a transfer it did not make. Tested against the live

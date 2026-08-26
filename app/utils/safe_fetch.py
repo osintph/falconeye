@@ -207,6 +207,7 @@ async def safe_fetch(
     timeout: float = 15.0,
     max_redirects: int = 3,
     allow_redirects: bool = True,
+    scope_registrable: str = "",
 ) -> dict:
     """Fetch *url* safely, resolving+validating+IP-pinning every hop.
 
@@ -221,6 +222,14 @@ async def safe_fetch(
     it. A cloaking kit controls the Location header, so treating it as the
     subject of the case points the whole pipeline at whatever host the kit
     names. See app.scanner.scope.
+
+    `scope_registrable` confines the WHOLE fetch, redirects included, to one
+    registrable domain. Without it a target can bounce any request off its own
+    domain mid-fetch: an asset fetch that follows a 302 returns somebody else's
+    content under the asset's name, and it lands in the report as that asset.
+    That is how an impersonated brand's homepage ended up in a copyable
+    indicator block as a kit bundle hash. Checking the URL before the request is
+    not enough; the hop has to be checked too.
 
     Raises SafeFetchError on any policy violation or if max_redirects is exceeded.
     """
@@ -245,6 +254,20 @@ async def safe_fetch(
                     raise SafeFetchError("Redirect response missing Location header")
 
                 next_url = urljoin(current_url, location)
+
+                if scope_registrable:
+                    # Imported lazily: this is the only place the transport
+                    # needs to know about case scope, and a module-level import
+                    # would put a scanner dependency in a generic utility.
+                    from app.scanner.scope import in_scope
+
+                    next_host = urlparse(next_url).hostname or ""
+                    if not in_scope(next_host, scope_registrable):
+                        raise SafeFetchError(
+                            f"redirect left the case domain: {current_url} sent "
+                            f"the fetch to {next_host or 'an empty host'}, "
+                            f"outside {scope_registrable}"
+                        )
 
                 if hop == max_redirects:
                     raise SafeFetchError(f"Exceeded maximum redirects ({max_redirects})")

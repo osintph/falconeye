@@ -935,3 +935,82 @@ def test_cloaked_dead_end_carries_the_way_out(monkeypatch):
     step = report["next_step"]
     assert step["action"] == "collector"
     assert "browser" in step["headline"].lower()
+
+
+# ---------------------------------------------------------------------------
+# redirects mid-fetch: the door the scope guard was left open on
+# ---------------------------------------------------------------------------
+
+def test_safe_fetch_refuses_a_redirect_that_leaves_the_case_domain(monkeypatch):
+    """Checking the URL before the request is not enough.
+
+    A target can bounce any request off its own domain mid-fetch. An asset fetch
+    that follows the 302 returns somebody else's content under the asset's name,
+    which is how an impersonated brand's homepage reached a copyable indicator
+    block as a kit bundle hash.
+    """
+    import app.utils.safe_fetch as sf
+
+    class _Resp:
+        def __init__(self, status, headers, text=""):
+            self.status_code = status
+            self.headers = headers
+            self.text = text
+
+    async def _fake(client, method, url, headers=None, conn=None):
+        if "station.qpon" in url:
+            return _Resp(302, {"location": "https://www.petron.com/"})
+        return _Resp(200, {}, "petron homepage")
+
+    monkeypatch.setattr(sf, "resolve_pinned",
+                        lambda u: sf.PinnedConnection(scheme="https",
+                                                      host=__import__("urllib.parse", fromlist=["x"]).urlparse(u).hostname,
+                                                      port=443, ips=["203.0.113.1"]))
+    monkeypatch.setattr(sf, "pinned_request", _fake)
+
+    with pytest.raises(sf.SafeFetchError) as exc:
+        asyncio.run(sf.safe_fetch("https://station.qpon/p/kit.js",
+                                  scope_registrable="station.qpon"))
+    assert "left the case domain" in str(exc.value)
+
+    # Without a scope the old behaviour is unchanged, so nothing else regresses.
+    out = asyncio.run(sf.safe_fetch("https://station.qpon/p/kit.js"))
+    assert out["url_final"] == "https://www.petron.com/"
+    assert out["redirect_chain"]
+
+
+def test_a_cloaked_asset_never_becomes_a_bundle_indicator(monkeypatch):
+    """The exact regression: a decoy fetched in place of a kit asset must not
+    be hashed and published as that asset."""
+    decoy = "<!DOCTYPE html><html>petron homepage</html>"
+
+    async def _fake_fetch(url, method="GET", headers=None, timeout=15.0,
+                          max_redirects=3, allow_redirects=True,
+                          scope_registrable=""):
+        from app.utils.safe_fetch import SafeFetchError as _E
+        if scope_registrable:
+            raise _E("redirect left the case domain: sent the fetch to "
+                     "www.petron.com, outside station.qpon")
+        return {"status": 200, "headers": {}, "body": decoy,
+                "url_final": "https://www.petron.com/", "redirect_chain": []}
+
+    monkeypatch.setattr(kit_acquire, "safe_fetch", _fake_fetch)
+
+    assets = kit_acquire.extract_assets(
+        '<script src="/p/1a26/kit.js"></script>',
+        "https://station.qpon/", "station.qpon")
+    fetched = asyncio.run(kit_acquire.fetch_bundles(
+        assets, case_registrable="station.qpon"))
+
+    assert len(fetched) == 1
+    entry = fetched[0]
+    assert entry["text"] == "", "decoy content must not be kept"
+    assert entry["sha256"] == "", "decoy content must not be hashed"
+    assert "left the case domain" in (entry["error"] or "")
+
+    indicators = kit_report.build_indicators(
+        target={"host": "station.qpon", "domain": "station.qpon"},
+        page={}, rdap={}, bundles=fetched, analysis={}, probe={},
+        case_registrable="station.qpon")
+    assert "petron" not in kit_report.copy_all_indicators(
+        {"indicators": indicators}).lower()
