@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.30.1] - 2026-08-26
+
+v3.30.0 shipped the capability analysis but left the operator unable to feed it.
+A kit that geofences its page geofences its assets too, so on the production
+host the supplied-HTML path analyzed a 4KB shell and reported one low
+confidence finding. The intelligence lives in the JavaScript.
+
+### Fixed
+
+- A pasted bundle sent together with a URL kept the bundle and threw the URL
+  away, dropping straight to the offline path. It now gets the full case
+  treatment: the operator's bundle is torn down while the case identity, scope
+  and live enrichment come from the URL.
+- `otp` in a camelCase route or key (`otpValid`, `otpCode`) no longer misses the
+  OTP interception rule, which required a trailing word boundary. A `/card`
+  route now counts toward card capture on the same reasoning.
+- A report that could not fetch any bundle now says what to do about it, naming
+  the entry bundle to fetch and the fact that pasting it with the URL completes
+  the teardown. It previously stopped at "there is nothing to tear down".
+
+---
+
 ## [3.30.0] - 2026-08-26
 
 Analyze the kit, do not just recognise it. v3.29.0 stopped the deep report

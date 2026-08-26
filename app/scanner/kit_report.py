@@ -23,6 +23,7 @@ is ever returned to a client or sent to the LLM.
 """
 
 import asyncio
+import hashlib
 import logging
 import re
 from datetime import datetime, timezone
@@ -787,7 +788,7 @@ def build_out_of_scope_report(target: dict, acquired: dict,
 
 
 async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNATURE_ID,
-                            pasted_html: str = "") -> dict:
+                            pasted_html: str = "", pasted_bundle: str = "") -> dict:
     """Live mode: acquire, analyze, score, enrich, assemble.
 
     `pasted_html` lets an operator supply the page body for a target that is
@@ -818,6 +819,26 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
             raise SafeFetchError(page["error"].replace("blocked by SSRF guard: ", ""))
 
     acquired = await kit_acquire.acquire(url, page=page, supplied=supplied)
+
+    # A supplied bundle is the whole point of the supplied path: the kit's
+    # intelligence lives in the JavaScript, not in the shell. A target that
+    # geofences its page geofences its assets too, so an operator who can reach
+    # the target has to be able to hand over the bundle, not just the HTML.
+    if pasted_bundle.strip():
+        raw = pasted_bundle.encode("utf-8", "replace")
+        acquired["bundles"] = [{
+            "name": "supplied bundle",
+            "url": "",
+            "entry": True,
+            "sha256": hashlib.sha256(raw).hexdigest(),
+            "size_bytes": len(raw),
+            "text": pasted_bundle,
+            "error": None,
+        }] + [b for b in acquired.get("bundles", []) if b.get("text")]
+        notes.append(
+            "Bundle was supplied by the operator, not fetched. The teardown "
+            "below is analysis of what you pasted."
+        )
 
     # The case host is the submitted host. Never the fetched one. See
     # kit_acquire.acquire and app.scanner.scope.
@@ -876,7 +897,22 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     else:
         analysis, bundle_score = _empty_analysis(), rabbithunt_sig.score_bundle("", sig_id)
         primary_sha = ""
-        notes.append("No JavaScript bundle could be fetched, so there is nothing to tear down.")
+        refused = [b for b in acquired.get("bundles", [])
+                   if b.get("error") and not b.get("text")]
+        if refused or acquired.get("assets"):
+            notes.append(
+                "No JavaScript bundle could be fetched, so there is nothing to "
+                "tear down. The kit's assets are served from the same host that "
+                "cloaked the page, so they are unreachable from here too. If you "
+                "can open the target yourself, fetch the entry bundle listed "
+                "under Assets and paste it together with this URL: the report "
+                "will then carry the full teardown alongside this enrichment."
+            )
+        else:
+            notes.append(
+                "No JavaScript bundle could be fetched, so there is nothing to "
+                "tear down."
+            )
 
     bundles_out = []
     for b in acquired["bundles"]:

@@ -1030,7 +1030,10 @@ def extract_source_routes(resolved: str) -> list:
 # and arguable rather than a bare label.
 CAPABILITY_RULES = [
     ("otp_interception", "Intercepts one-time passcodes", [
-        r"\botp\b", r"one[_ -]?time", r"enter_?your_?code", r"resend_?code",
+        # camelCase route and key names (otpValid, otpCode) are evidence too, so
+        # this deliberately does not require a trailing word boundary.
+        r"\botp\b|\botp(?=[A-Z_])", r"one[_ -]?time", r"enter_?your_?code",
+        r"resend_?code",
         r"code_?sent", r"verification_?code", r"security_?code", r"sms_?code",
         r"enter_otp", r"another_?code",
     ]),
@@ -1041,6 +1044,7 @@ CAPABILITY_RULES = [
     ]),
     ("card_capture", "Captures full payment card details", [
         r"\bcvv\b", r"\bcvc\b", r"card_?number", r"cardholder",
+        r"(?m)^/card$", r"/card\b",
         r"expire_?date", r"expiry", r"expiration", r"card_?expired",
     ]),
     ("bank_selection", "Asks the victim to name their bank", [

@@ -174,9 +174,13 @@ async def kit_report_endpoint(request: Request, payload: KitReportRequest):
         )
     rate_limit.record(_KIT_RL_TABLE, source_ip)
 
-    # A pasted bundle wins over a URL: it is the more specific instruction, and
-    # it is the offline path for a target that is already dead.
-    if pasted and kit_report.looks_like_javascript(pasted):
+    is_bundle = bool(pasted) and kit_report.looks_like_javascript(pasted)
+
+    # A pasted bundle with no URL is the offline path, for a target that is
+    # already dead. A pasted bundle WITH a URL is the far more useful case: the
+    # operator could reach the target and this server could not, so their
+    # bundle gets the full case treatment, enrichment and scope included.
+    if is_bundle and not url:
         return kit_report.build_offline_report(pasted)
 
     if not url:
@@ -196,7 +200,11 @@ async def kit_report_endpoint(request: Request, payload: KitReportRequest):
         # A URL plus pasted HTML means the operator could reach the target and
         # FalconEye could not, which is the normal case for a kit geofenced to
         # its victim country. Use their body, keep our enrichment.
-        return await kit_report.build_live_report(url, pasted_html=pasted)
+        return await kit_report.build_live_report(
+            url,
+            pasted_html="" if is_bundle else pasted,
+            pasted_bundle=pasted if is_bundle else "",
+        )
     except SafeFetchError as exc:
         raise HTTPException(status_code=400, detail=f"URL blocked: {exc}")
 

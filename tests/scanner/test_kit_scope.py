@@ -782,3 +782,49 @@ def test_message_keys_recovered_from_a_minified_bundle():
     a = kit_analyzer.analyze(_real_kit_bundle())
     keys = set(a["message_keys"])
     assert {"enter_otp_prompt", "resend_code"} & keys
+
+
+def test_pasted_bundle_with_a_url_gets_the_full_case_treatment(monkeypatch):
+    """The operator could reach the target and this server could not.
+
+    A bundle pasted WITHOUT a url is the offline path. A bundle pasted WITH one
+    must keep the url: the case identity, scope and enrichment are still valid,
+    and throwing them away was why a geofenced kit came back empty.
+    """
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "station.qpon",
+                                               "https://www.petron.com/"))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    report = asyncio.run(kit_report.build_live_report(
+        "https://station.qpon/", pasted_html="<html></html>",
+        pasted_bundle=PLAIN_KIT))
+
+    assert report["target"]["host"] == "station.qpon"
+    assert report["bundles"][0]["name"] == "supplied bundle"
+    # The substantive claim: the pasted bundle was actually torn down, and the
+    # url was kept rather than discarded as it was on the offline path.
+    exfil = {e["path"] for e in report["analysis"]["exfil_endpoints"]}
+    assert "/xzQpONCfLl/api/input" in exfil
+    assert report["analysis"]["block_flags"] == ["isBlock"]
+    caps = {c["capability"] for c in report["analysis"]["capabilities"]}
+    assert caps, "a torn-down bundle must yield at least one described capability"
+    assert {"otp_interception", "card_capture", "anti_analysis"} & caps
+
+
+def test_unfetchable_bundle_tells_the_operator_what_to_do(monkeypatch):
+    """A dead end must come with the next step, not just a shrug."""
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "station.qpon",
+                                               "https://station.qpon/"))
+    _arm_tripwires(monkeypatch, {})
+
+    html = '<script src="/p/1a26/kit.js"></script>'
+    report = asyncio.run(kit_report.build_live_report(
+        "https://station.qpon/", pasted_html=html))
+
+    joined = " ".join(report["notes"])
+    assert "paste it together with this URL" in joined
