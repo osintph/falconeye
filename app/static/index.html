@@ -79,7 +79,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
     "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.31.1",
+    "softwareVersion": "3.31.2",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -149,7 +149,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/vendor/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.31.1" />
+  <link rel="stylesheet" href="/static/style.css?v=3.31.2" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -440,11 +440,16 @@
             <li>Open the suspect page in your browser. <span class="text-gray-400">Do not type anything into it.</span></li>
             <li>Open DevTools (F12), go to Console, paste the line below and press Enter.</li>
             <li>
-              It copies the page and its bundles to your clipboard. If the browser blocks the
-              clipboard, it saves <span class="font-mono text-gray-400">falconeye-collect.json</span>
-              to your Downloads instead, and says which it did.
+              It collects the page and its bundles and reports the size. In the DevTools console it
+              also copies straight to your clipboard.
             </li>
-            <li>Paste it into the box above, or load the file here, then put the URL in the URL field, tick Deep kit report and run.</li>
+            <li>
+              If the console says to, run <span class="font-mono text-amber-300">copy(FE_PAYLOAD)</span>
+              as a second line. That is DevTools' own copy command: it needs no permission and is the
+              one transfer a page cannot block. <span class="font-mono text-gray-400">FE_SAVE()</span>
+              writes a file instead, though a phishing origin often has downloads blocked.
+            </li>
+            <li>Paste it into the box above, or load the saved file here, then put the URL in the URL field, tick Deep kit report and run.</li>
           </ol>
           <div class="flex items-center gap-3 flex-wrap">
             <label class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-3 py-1.5 rounded transition cursor-pointer">
@@ -454,7 +459,7 @@
             <span id="scan-collect-status" class="text-xs text-gray-500"></span>
           </div>
           <textarea readonly rows="4" onclick="this.select()"
-            class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 font-mono text-[10px] text-gray-300 resize-none">(async()=&gt;{try{const u=location.href,h=await(await fetch(u,{credentials:'omit'})).text(),r=[...h.matchAll(/&lt;script[^&gt;]+src="([^"]+\.js)"/g)].map(m=&gt;m[1]).slice(0,4),b=[];for(const x of r){try{const a=new URL(x,u).href,s=await fetch(a,{credentials:'omit'});if(s.ok)b.push({url:a,text:await s.text()})}catch(e){}}const p=JSON.stringify({falconeye_collector:1,url:u,html:h,bundles:b});window.FE_PAYLOAD=p;let via='';try{if(typeof copy==='function'){copy(p);via='copied to clipboard'}}catch(e){}if(!via){try{await navigator.clipboard.writeText(p);via='copied to clipboard'}catch(e){}}if(!via){const bl=new Blob([p],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='falconeye-collect.json';document.body.appendChild(a);a.click();setTimeout(()=&gt;{URL.revokeObjectURL(a.href);a.remove()},1000);via='saved falconeye-collect.json to Downloads'}console.log('%cFalconEye collector: '+p.length+' bytes, '+b.length+' bundle(s) -&gt; '+via,'color:#f59e0b;font-weight:bold;font-size:13px');console.log('%cNext: open the Phishing Kit Scanner, paste it or load the file, put '+u+' in the URL field, tick Deep kit report.','color:#9ca3af');console.log('%cIf neither worked, the payload is in window.FE_PAYLOAD','color:#6b7280');}catch(e){console.error('FalconEye collector failed:',e)}})();</textarea>
+            class="w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 font-mono text-[10px] text-gray-300 resize-none">(async()=&gt;{try{const u=location.href,h=await(await fetch(u,{credentials:'omit'})).text(),r=[...h.matchAll(/&lt;script[^&gt;]+src="([^"]+\.js)"/g)].map(m=&gt;m[1]).slice(0,4),b=[];for(const x of r){try{const a=new URL(x,u).href,s=await fetch(a,{credentials:'omit'});if(s.ok)b.push({url:a,text:await s.text()})}catch(e){}}const p=JSON.stringify({falconeye_collector:1,url:u,html:h,bundles:b});window.FE_PAYLOAD=p;window.FE_SAVE=()=&gt;{const bl=new Blob([p],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download='falconeye-collect.json';document.body.appendChild(a);a.click();setTimeout(()=&gt;{URL.revokeObjectURL(a.href);a.remove()},1000);return'if no file appeared the browser blocked it, use copy(FE_PAYLOAD)'};let c=0;try{if(typeof copy==='function'){copy(p);c=1}}catch(e){}console.log('%cFalconEye collector: '+p.length+' bytes, '+b.length+' bundle(s) collected from '+u,'color:#f59e0b;font-weight:bold;font-size:13px');console.log(c?'%cAlready on your clipboard. Paste it into the Phishing Kit Scanner with the URL above.':'%cNow run this to copy it:   copy(FE_PAYLOAD)','color:#e5e7eb');console.log('%cPrefer a file? run FE_SAVE()   (a phishing origin can have downloads blocked, clipboard is more reliable)','color:#6b7280');}catch(e){console.error('FalconEye collector failed:',e)}})();</textarea>
           <p class="text-gray-600 italic">
             Reads the page and its scripts only. It submits nothing to the target and touches no form on it.
             The case identity, scope and live enrichment still come from the URL you supply.
@@ -1568,6 +1573,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/vendor/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.31.1"></script>
+  <script src="/static/app.js?v=3.31.2"></script>
 </body>
 </html>

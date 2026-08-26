@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.31.2] - 2026-08-26
+
+Stop the collector claiming a transfer it did not make. Tested against the live
+target, neither automatic transfer is dependable on a phishing origin:
+
+- `navigator.clipboard.writeText` needs user activation, and a console
+  evaluation does not grant it.
+- A programmatic download does not survive either. User activation expires
+  across `await`, so the anchor click after the fetches is blocked, and Chrome
+  additionally refuses repeat automatic downloads from an origin like this one.
+
+The previous release logged "saved falconeye-collect.json to Downloads" when no
+file had been written, which is worse than failing.
+
+### Fixed
+
+- The collector now states what it collected and, when it could not copy,
+  prints the command that always works rather than asserting success:
+  `copy(FE_PAYLOAD)`. That is the DevTools command line API, it needs no
+  permission, and a page cannot block it.
+- `FE_SAVE()` is offered as a file alternative, described as what it is: often
+  blocked on a phishing origin.
+- Nothing is claimed that was not verified. The script attempts `copy()` and
+  reports only the outcome it can actually observe.
+
+---
+
 ## [3.31.1] - 2026-08-26
 
 The collector appeared to do nothing. `navigator.clipboard.writeText` needs user
