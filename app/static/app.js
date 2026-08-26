@@ -1339,6 +1339,45 @@ function renderKitReport(el, data) {
     </div>`;
 }
 
+// Loading a collector file is the transfer that cannot silently fail. The
+// clipboard can be blocked by the browser without telling anyone, which is
+// exactly how the first version of this appeared to do nothing at all.
+function wireCollectorFileInput() {
+  const input = document.getElementById('scan-collect-file');
+  const status = document.getElementById('scan-collect-status');
+  if (!input || input.dataset.wired) return;
+  input.dataset.wired = '1';
+  input.addEventListener('change', () => {
+    const file = input.files && input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onerror = () => { if (status) status.textContent = 'Could not read that file.'; };
+    reader.onload = () => {
+      const text = String(reader.result || '');
+      let parsed = null;
+      try { parsed = JSON.parse(text); } catch (e) { parsed = null; }
+      if (!parsed || !parsed.falconeye_collector) {
+        if (status) status.textContent = 'That is not a collector file.';
+        return;
+      }
+      const box = document.getElementById('scan-html');
+      const urlBox = document.getElementById('scan-url');
+      const deep = document.getElementById('scan-deep');
+      if (box) box.value = text;
+      if (urlBox && !urlBox.value.trim() && parsed.url) urlBox.value = parsed.url;
+      if (deep) deep.checked = true;
+      const n = (parsed.bundles || []).length;
+      if (status) {
+        status.textContent = `Loaded ${text.length.toLocaleString()} bytes, ${n} bundle${n === 1 ? '' : 's'}. Deep kit report ticked. Press Run Scan.`;
+      }
+    };
+    reader.readAsText(file);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', wireCollectorFileInput);
+if (document.readyState !== 'loading') wireCollectorFileInput();
+
 async function runKitReport(url, html, resultEl) {
   resultEl.innerHTML = '<p class="text-gray-400 text-sm animate-pulse">Running deep kit report: fetching, deobfuscating bundles, probing the relay path, pulling RDAP / CT / urlscan...</p>';
   resultEl.classList.remove('hidden');

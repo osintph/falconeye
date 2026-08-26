@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.31.1] - 2026-08-26
+
+The collector appeared to do nothing. `navigator.clipboard.writeText` needs user
+activation, and pasting a script into the DevTools console does not provide it,
+so the write failed silently and the clipboard stayed empty. The script reported
+success into a page overlay that a single-page kit can wipe on its next render.
+
+### Fixed
+
+- The collector no longer depends on one transfer working. It tries the DevTools
+  `copy()` command first, which is the right call for something run in a console
+  and needs no permission, then the async clipboard API, and if both are refused
+  it saves `falconeye-collect.json` to Downloads. It says in the console which
+  of the three actually happened, rather than assuming.
+- Feedback moved from a page overlay to `console.log`. A kit that re-renders can
+  remove an injected element; the console is outside its reach.
+- The payload is left on `window.FE_PAYLOAD` as a last resort.
+
+### Added
+
+- Load collector file. A file input in the collector panel reads a saved
+  payload, fills the textarea and the URL, and ticks Deep kit report. This is
+  the transfer that cannot fail quietly: a browser can block the clipboard
+  without telling anyone, which is what made the first version look broken.
+
+---
+
 ## [3.31.0] - 2026-08-26
 
 Close the loop on a geofenced kit. The previous releases made the analysis good
