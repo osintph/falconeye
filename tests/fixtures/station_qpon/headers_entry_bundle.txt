@@ -1,0 +1,16 @@
+HTTP/2 200 
+accept-ranges: bytes
+access-control-allow-headers: *
+access-control-allow-methods: *
+access-control-allow-origin: *
+alt-svc: h3=":443"; ma=2592000
+cache-control: public, max-age=31536000, immutable
+content-type: application/javascript; charset=utf-8
+date: Wed, 26 Aug 2026 06:03:42 GMT
+etag: "87be218e9b97a419ddd172913867464f"
+last-modified: Wed, 26 Aug 2026 04:14:20 GMT
+referrer-policy: strict-origin-when-cross-origin
+via: 1.1 Caddy
+x-content-type-options: nosniff
+content-length: 588713
+

@@ -210,12 +210,22 @@ async def safe_fetch(
 ) -> dict:
     """Fetch *url* safely, resolving+validating+IP-pinning every hop.
 
-    Returns a dict with keys: status, headers, body, url_final. `url_final` is the
-    hostname-based URL of the final hop (NOT the internal IP-pinned URL), so callers
-    that display or parse it (e.g. RDAP RIR attribution) see the real host.
+    Returns a dict with keys: status, headers, body, url_final, redirect_chain.
+    `url_final` is the hostname-based URL of the final hop (NOT the internal
+    IP-pinned URL), so callers that display or parse it (e.g. RDAP RIR
+    attribution) see the real host.
+
+    `redirect_chain` is one entry per redirect hop that was followed, each with
+    hop, url, status, location and server. It is informational only: it records
+    where a target sent the fetch. Callers must not derive a lookup target from
+    it. A cloaking kit controls the Location header, so treating it as the
+    subject of the case points the whole pipeline at whatever host the kit
+    names. See app.scanner.scope.
+
     Raises SafeFetchError on any policy violation or if max_redirects is exceeded.
     """
     current_url = url
+    redirect_chain: list = []
 
     async with httpx.AsyncClient(
         follow_redirects=False,
@@ -239,6 +249,14 @@ async def safe_fetch(
                 if hop == max_redirects:
                     raise SafeFetchError(f"Exceeded maximum redirects ({max_redirects})")
 
+                redirect_chain.append({
+                    "hop": hop,
+                    "url": current_url,
+                    "status": response.status_code,
+                    "location": location,
+                    "server": response.headers.get("server", ""),
+                })
+
                 # 303 mandates GET for the subsequent request.
                 if response.status_code == 303:
                     method = "GET"
@@ -251,6 +269,7 @@ async def safe_fetch(
                 "headers": dict(response.headers),
                 "body": response.text,
                 "url_final": current_url,
+                "redirect_chain": redirect_chain,
             }
 
     raise SafeFetchError(f"Exceeded maximum redirects ({max_redirects})")

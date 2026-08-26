@@ -1,0 +1,552 @@
+"""
+Case scope: the report must describe the host that was submitted, and only that.
+
+These cover the station.qpon regression, where the deep kit report was handed a
+live phishing URL, followed the kit's cloaking redirect to the brand it was
+impersonating, and then ran the entire pipeline against that brand: five
+unsolicited socket probes at their production infrastructure, a registry and CT
+profile of their domain, their registrar and nameservers in the copyable
+indicator block, and a confident NO MATCH 0% verdict on a page nobody had
+looked at.
+
+The tests are written against the bug CLASS rather than the one instance. What
+is asserted is the invariant "the case host comes from the submitted URL and
+outbound requests stay on it", not "petron does not appear", so a future change
+that leaks a host through a canonical link or an og:url fails these too.
+"""
+
+import asyncio
+import json
+import pathlib
+import sys
+import types
+
+import pytest
+
+from app.scanner import kit_acquire, kit_report, rabbithunt_sig
+from app.scanner.ph_bank_indicators import detect_brand
+from app.scanner.scope import OutOfScope, in_scope, registrable
+
+FIXTURES = pathlib.Path(__file__).resolve().parents[1] / "fixtures" / "station_qpon"
+
+
+def _read_fixture(name: str) -> str:
+    path = FIXTURES / name
+    if not path.exists():
+        pytest.skip(f"evidence fixture missing: {path}")
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+# The bare-profile capture is the impersonated brand's real homepage, kept
+# locally as evidence but not committed: see tests/fixtures/station_qpon/.gitignore.
+# These tests use it when it is present and a synthetic stand-in otherwise, so
+# they assert the same thing either way and never silently skip.
+_SYNTHETIC_BRAND_HOME = (
+    "<!doctype html><html><head><title>Home - Petron</title>"
+    '<meta property="og:site_name" content="Petron">'
+    "</head><body><p>Petron Corporation</p>"
+    '<a href="https://www.petron.com/fuels">Petron Blaze</a>'
+    "<p>Petron Value Card</p></body></html>"
+)
+
+
+def _brand_home_html() -> str:
+    path = FIXTURES / "body_bare.html"
+    if path.exists():
+        return path.read_text(encoding="utf-8", errors="replace")
+    return _SYNTHETIC_BRAND_HOME
+
+
+# ---------------------------------------------------------------------------
+# A transport that redirects off the submitted domain, and a tripwire that
+# records every host anything tried to reach.
+# ---------------------------------------------------------------------------
+
+def _redirecting_transport(reached: list, start_host: str, end_url: str,
+                           end_body: str = "", per_profile: dict | None = None):
+    """Fake safe_fetch: anything on start_host redirects to end_url.
+
+    `per_profile` maps a User-Agent substring to a (final_url, body) pair, which
+    is how a cloaking target that answers a scanner and a browser differently
+    gets modelled.
+    """
+    async def _fake(url, method="GET", headers=None, timeout=15.0,
+                    max_redirects=3, allow_redirects=True):
+        from urllib.parse import urlparse
+        host = urlparse(url).hostname or ""
+        reached.append(host)
+
+        final_url, body = end_url, end_body
+        if per_profile:
+            ua = (headers or {}).get("User-Agent", "")
+            for needle, (f_url, f_body) in per_profile.items():
+                if needle in ua:
+                    final_url, body = f_url, f_body
+                    break
+
+        if host == start_host and final_url != url:
+            return {
+                "status": 200,
+                "headers": {"server": "GoFrame HTTP Server"},
+                "body": body,
+                "url_final": final_url,
+                "redirect_chain": [{
+                    "hop": 0, "url": url, "status": 302,
+                    "location": final_url, "server": "GoFrame HTTP Server",
+                }],
+            }
+        return {
+            "status": 200,
+            "headers": {"server": "test"},
+            "body": body,
+            "url_final": url,
+            "redirect_chain": [],
+        }
+    return _fake
+
+
+def _arm_tripwires(monkeypatch, calls: dict):
+    """Replace every enrichment and probe entry point with a recorder."""
+    def _record(name):
+        async def _fn(*args, **kwargs):
+            calls.setdefault(name, []).append((args, kwargs))
+            return {"found": False}
+        return _fn
+
+    monkeypatch.setattr(kit_report, "_rdap", _record("rdap"))
+    monkeypatch.setattr(kit_report, "_ct", _record("ct"))
+    monkeypatch.setattr(kit_report, "_urlscan", _record("urlscan"))
+    monkeypatch.setattr(kit_acquire, "probe_socket", _record("probe_socket"))
+    monkeypatch.setattr(rabbithunt_sig, "probe_socket", _record("probe_socket_sig"))
+
+    async def _score_host(*args, **kwargs):
+        calls.setdefault("score_host", []).append((args, kwargs))
+        return {}
+    monkeypatch.setattr(rabbithunt_sig, "score_host", _score_host)
+
+    async def _llm(*args, **kwargs):
+        calls.setdefault("llm", []).append((args, kwargs))
+        return None
+    monkeypatch.setattr(kit_report, "llm_summary", _llm)
+
+
+# ---------------------------------------------------------------------------
+# 1. the case host is the submitted host
+# ---------------------------------------------------------------------------
+
+def test_target_host_from_submitted_url(monkeypatch):
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "a.example", "https://b.example/"))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    report = asyncio.run(kit_report.build_live_report("https://a.example/"))
+
+    assert report["target"]["host"] == "a.example"
+    assert report["target"]["registrable_domain"] == "a.example"
+    assert report["target"]["final_host"] == "b.example"
+    assert report["target"]["scope_left"] is True
+    assert report["target"]["redirect_chain"], "the redirect chain must be recorded"
+
+
+def test_same_domain_redirect_is_not_out_of_scope(monkeypatch):
+    """A redirect that stays on the domain is normal and must not abort."""
+    reached: list = []
+    monkeypatch.setattr(
+        kit_acquire, "safe_fetch",
+        _redirecting_transport(reached, "a.example", "https://www.a.example/kit/"))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    report = asyncio.run(kit_report.build_live_report("https://a.example/"))
+
+    assert report["target"]["host"] == "a.example"
+    assert report["target"]["scope_left"] is False
+    assert report.get("out_of_scope") is False
+
+
+# ---------------------------------------------------------------------------
+# 2. leaving scope aborts the pipeline
+# ---------------------------------------------------------------------------
+
+def test_scope_left_aborts_enrichment(monkeypatch):
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "a.example", "https://b.example/"))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    report = asyncio.run(kit_report.build_live_report("https://a.example/"))
+
+    assert report["out_of_scope"] is True
+    for name in ("rdap", "ct", "urlscan", "probe_socket", "score_host", "llm"):
+        assert calls.get(name, []) == [], f"{name} ran on an out-of-scope fetch"
+
+    # And nothing reached the redirect destination beyond the redirect itself.
+    assert "b.example" not in reached, f"requests were issued to {reached}"
+
+
+def test_scope_left_reports_every_skipped_stage_with_a_reason(monkeypatch):
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "a.example", "https://b.example/"))
+    _arm_tripwires(monkeypatch, {})
+
+    report = asyncio.run(kit_report.build_live_report("https://a.example/"))
+
+    for key in ("registration_timeline", "enrichment", "socket_probe",
+                "crypto", "analysis", "bundles"):
+        assert report[key] is None, f"{key} should be null, not empty"
+    assert "left the submitted registrable domain" in report["not_run_reason"]
+
+
+# ---------------------------------------------------------------------------
+# 3. null scores, never zero
+# ---------------------------------------------------------------------------
+
+def test_scores_are_null_not_zero_on_scope_left(monkeypatch):
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "a.example", "https://b.example/"))
+    _arm_tripwires(monkeypatch, {})
+
+    report = asyncio.run(kit_report.build_live_report("https://a.example/"))
+
+    assert report["score"]["bundle"] is None
+    assert report["score"]["host"] is None
+
+    # 0% reads as clean to a tired analyst. Nothing in the bundle or host score
+    # may serialize as a zero percentage.
+    for key in ("bundle", "host"):
+        assert json.dumps(report["score"][key]) == "null"
+    assert report["verdict"] == kit_report.OUT_OF_SCOPE_VERDICT
+
+
+# ---------------------------------------------------------------------------
+# 4. the indicator block never carries the redirect destination
+# ---------------------------------------------------------------------------
+
+def test_indicators_exclude_redirect_destination(monkeypatch):
+    """The real station.qpon case, from the captured evidence."""
+    body = _brand_home_html()
+    reached: list = []
+    monkeypatch.setattr(
+        kit_acquire, "safe_fetch",
+        _redirecting_transport(reached, "station.qpon", "https://www.petron.com/", body))
+    _arm_tripwires(monkeypatch, {})
+
+    report = asyncio.run(kit_report.build_live_report("https://station.qpon/"))
+    copied = kit_report.copy_all_indicators(report)
+
+    assert "petron" not in copied.lower(), f"indicator block leaked the brand:\n{copied}"
+    assert "station.qpon" in copied
+
+    # The destination is still reported, just not as an indicator.
+    assert report["redirect_destination"]["host"] == "www.petron.com"
+    assert "not an indicator" in report["redirect_destination"]["label"]
+
+
+def test_indicator_builder_drops_a_foreign_case_host():
+    """The filter is on the host type, not on one hardcoded brand name."""
+    indicators = kit_report.build_indicators(
+        target={"host": "www.petron.com", "domain": "petron.com"},
+        page={}, rdap={}, bundles=[], analysis={}, probe={},
+        case_registrable="station.qpon",
+    )
+    values = [i["value"] for i in indicators]
+    assert "www.petron.com" not in values
+    assert "petron.com" not in values
+
+
+def test_third_party_nameservers_of_the_case_domain_are_kept():
+    """Nameservers normally live on somebody else's domain. That is not a leak.
+
+    Scope-filtering this field would drop correct case data on nearly every
+    real target. It is the RDAP lookup being aimed at the case domain that
+    keeps it honest, which _assert_case_domain enforces separately.
+    """
+    indicators = kit_report.build_indicators(
+        target={"host": "station.qpon", "domain": "station.qpon"},
+        page={},
+        rdap={"registrar": "Some Registrar",
+              "nameservers": ["ns1.domainnamens.com", "ns2.domainnamens.com"]},
+        bundles=[], analysis={}, probe={},
+        case_registrable="station.qpon",
+    )
+    values = [i["value"] for i in indicators]
+    assert "ns1.domainnamens.com" in values
+    assert "ns2.domainnamens.com" in values
+
+
+def test_enrichment_call_site_assertion_rejects_a_foreign_domain():
+    """The guard that makes the nameserver decision above safe."""
+    kit_report._assert_case_domain("station.qpon", "station.qpon", "RDAP lookup")
+    with pytest.raises(AssertionError):
+        kit_report._assert_case_domain("petron.com", "station.qpon", "RDAP lookup")
+    with pytest.raises(AssertionError):
+        kit_report._assert_case_domain("https://www.petron.com/", "station.qpon",
+                                       "urlscan lookup")
+
+
+# ---------------------------------------------------------------------------
+# 5. the probe refuses out-of-scope hosts before issuing a request
+# ---------------------------------------------------------------------------
+
+def test_probe_refuses_out_of_scope_host(monkeypatch):
+    issued: list = []
+
+    async def _tripwire(url, **kwargs):
+        issued.append(url)
+        return {"status": 200, "headers": {}, "body": "", "url_final": url,
+                "redirect_chain": []}
+
+    monkeypatch.setattr(rabbithunt_sig, "safe_fetch", _tripwire)
+
+    with pytest.raises(OutOfScope):
+        asyncio.run(kit_acquire.probe_socket("www.petron.com", "/", "station.qpon"))
+
+    assert issued == [], f"the probe issued requests before refusing: {issued}"
+
+
+def test_probe_allows_the_case_host_and_its_subdomains(monkeypatch):
+    async def _ok(url, **kwargs):
+        return {"status": 204, "headers": {}, "body": "", "url_final": url,
+                "redirect_chain": []}
+    monkeypatch.setattr(rabbithunt_sig, "safe_fetch", _ok)
+
+    probe = asyncio.run(kit_acquire.probe_socket("a.station.qpon", "/", "station.qpon"))
+    assert probe["campaign"]["status"] == 204
+
+
+# ---------------------------------------------------------------------------
+# 6. PSL-backed registrable domain
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("host,expected", [
+    ("station.qpon", "station.qpon"),          # a real gTLD, already registrable
+    ("www.petron.com", "petron.com"),
+    ("foo.bar.com.ph", "bar.com.ph"),
+    ("example.co.uk", "example.co.uk"),
+    ("a.b.c.example.co.uk", "example.co.uk"),
+    ("shop.example.com.ph", "example.com.ph"),
+    ("x.gov.ph", "x.gov.ph"),                  # absent from the old hardcoded list
+    ("jtexpress.mwkqbr.club", "mwkqbr.club"),
+    ("example.com", "example.com"),
+    ("localhost", "localhost"),                # fails closed, not to ""
+    ("127.0.0.1", "127.0.0.1"),
+    ("", ""),
+])
+def test_psl_registrable_domain(host, expected):
+    assert registrable(host) == expected
+    assert kit_report.registrable_domain(host) == expected
+
+
+@pytest.mark.parametrize("host,case,expected", [
+    ("station.qpon", "station.qpon", True),
+    ("a.station.qpon", "station.qpon", True),
+    ("www.petron.com", "station.qpon", False),
+    ("evilstation.qpon", "station.qpon", False),   # suffix confusion
+    ("station.qpon.attacker.com", "station.qpon", False),
+    ("station.qpon", "", False),                   # fail closed
+    ("", "station.qpon", False),
+])
+def test_in_scope(host, case, expected):
+    assert in_scope(host, case) is expected
+
+
+# ---------------------------------------------------------------------------
+# 7. brand-identical content on an unrelated domain
+# ---------------------------------------------------------------------------
+
+def test_brand_host_mismatch(monkeypatch):
+    """Petron-branded HTML served from station.qpon scores the mismatch."""
+    body = _read_fixture("body_browser.html")
+    brand = detect_brand(body)
+    assert brand["brand"] == "Petron"
+
+    async def _no_network(url, **kwargs):
+        return {"status": 200, "headers": {}, "body": "", "url_final": url,
+                "redirect_chain": []}
+    monkeypatch.setattr(rabbithunt_sig, "safe_fetch", _no_network)
+
+    score = asyncio.run(rabbithunt_sig.score_host(
+        "station.qpon", "/", probe={}, brand=brand, case_registrable="station.qpon"))
+    signal = next(s for s in score["signals"] if s["name"] == "brand_host_mismatch")
+    assert signal["hit"] is True
+    assert signal["weight"] == 12
+
+
+def test_brand_on_its_own_domain_is_not_a_mismatch(monkeypatch):
+    """The real brand on the real domain must not score impersonation."""
+    body = _brand_home_html()
+    brand = detect_brand(body)
+    assert brand["brand"] == "Petron"
+
+    async def _no_network(url, **kwargs):
+        return {"status": 200, "headers": {}, "body": "", "url_final": url,
+                "redirect_chain": []}
+    monkeypatch.setattr(rabbithunt_sig, "safe_fetch", _no_network)
+
+    score = asyncio.run(rabbithunt_sig.score_host(
+        "www.petron.com", "/", probe={}, brand=brand, case_registrable="petron.com"))
+    signal = next(s for s in score["signals"] if s["name"] == "brand_host_mismatch")
+    assert signal["hit"] is False
+
+
+def test_cross_domain_redirect_to_a_brand_scores(monkeypatch):
+    score = rabbithunt_sig.score_redirect(
+        scope_left=True, final_host="www.petron.com",
+        case_registrable="station.qpon", profile_divergence=True)
+    hits = {s["name"]: s for s in score["signals"]}
+    assert hits["cross_domain_redirect"]["hit"] is True
+    assert hits["redirect_to_impersonated_brand"]["hit"] is True
+    assert hits["profile_divergence"]["hit"] is True
+    # This combination must outrank any single bundle signal.
+    assert score["score_pct"] == 100
+
+
+def test_redirect_to_an_unknown_host_does_not_claim_impersonation():
+    score = rabbithunt_sig.score_redirect(
+        scope_left=True, final_host="unrelated.example",
+        case_registrable="station.qpon", profile_divergence=False)
+    hits = {s["name"]: s for s in score["signals"]}
+    assert hits["cross_domain_redirect"]["hit"] is True
+    assert hits["redirect_to_impersonated_brand"]["hit"] is False
+
+
+# ---------------------------------------------------------------------------
+# 8. the LLM summary cannot name a host that is not the case host
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text,allowed,expected", [
+    ("The host www.petron.com is a WordPress site.", {"station.qpon"}, "www.petron.com"),
+    ("station.qpon serves a Vite SPA shell.", {"station.qpon"}, None),
+    ("Registered via Network Solutions.", {"station.qpon"}, None),
+    ("Pivot on petron.com next.", {"station.qpon"}, "petron.com"),
+    ("Sub host a.station.qpon answered.", {"station.qpon"}, None),
+])
+def test_summary_mentions_foreign_host(text, allowed, expected):
+    assert kit_report.summary_mentions_foreign_host(text, allowed) == expected
+
+
+def _fake_anthropic(summary_text: str):
+    """A stand-in anthropic module returning one fixed JSON summary."""
+    module = types.ModuleType("anthropic")
+
+    class _Block:
+        type = "text"
+        def __init__(self, text): self.text = text
+
+    class _Response:
+        def __init__(self, text): self.content = [_Block(text)]
+
+    class _Messages:
+        async def create(self, **kwargs):
+            return _Response(json.dumps({
+                "summary": summary_text,
+                "confidence": "low",
+                "next_steps": "Confirm ownership.",
+            }))
+
+    class _AsyncAnthropic:
+        def __init__(self, **kwargs): self.messages = _Messages()
+
+    module.AsyncAnthropic = _AsyncAnthropic
+    return module
+
+
+def test_llm_summary_rejected_on_foreign_host(monkeypatch):
+    """The station.qpon case: the model names petron.com, so it is dropped."""
+    monkeypatch.setitem(
+        sys.modules, "anthropic",
+        _fake_anthropic("The submitted host does not match www.petron.com, which "
+                        "this report describes. Confidence is low."))
+    monkeypatch.setattr(kit_report, "LLM_ANALYSIS_ENABLED", True)
+    monkeypatch.setattr(kit_report, "ANTHROPIC_API_KEY", "test-key")
+
+    report = {"target": {"host": "station.qpon", "registrable_domain": "station.qpon"}}
+    assert asyncio.run(kit_report.llm_summary(report)) is None
+
+
+def test_llm_summary_kept_when_it_names_only_the_case_host(monkeypatch):
+    monkeypatch.setitem(
+        sys.modules, "anthropic",
+        _fake_anthropic("station.qpon serves a Vite SPA shell with no recovered "
+                        "key material."))
+    monkeypatch.setattr(kit_report, "LLM_ANALYSIS_ENABLED", True)
+    monkeypatch.setattr(kit_report, "ANTHROPIC_API_KEY", "test-key")
+
+    report = {"target": {"host": "station.qpon", "registrable_domain": "station.qpon"}}
+    result = asyncio.run(kit_report.llm_summary(report))
+    assert result is not None
+    assert "station.qpon" in result["summary"]
+
+
+# ---------------------------------------------------------------------------
+# dual-profile acquisition
+# ---------------------------------------------------------------------------
+
+def test_profile_divergence_is_detected_and_the_in_scope_profile_wins(monkeypatch):
+    """A target that cloaks against the bare profile is analyzed via browser."""
+    kit_body = _read_fixture("body_browser.html")
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch", _redirecting_transport(
+        reached, "station.qpon", "https://www.petron.com/", "decoy",
+        per_profile={
+            "Mobile Safari": ("https://station.qpon/", kit_body),   # browser profile
+            "iPhone": ("https://www.petron.com/", "decoy"),          # bare profile
+        }))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    acquired = asyncio.run(kit_acquire.acquire("https://station.qpon/"))
+
+    assert acquired["profile_divergence"] is True
+    assert acquired["profile_used"] == "browser"
+    assert acquired["scope_left"] is False
+    assert acquired["host"] == "station.qpon"
+    assert acquired["profiles"]["bare"]["scope_left"] is True
+    assert acquired["profiles"]["browser"]["scope_left"] is False
+
+
+def test_out_of_scope_assets_are_never_fetched():
+    """A page listing a third party's scripts must not cause them to be pulled."""
+    html = ('<script src="https://www.petron.com/wp/app.js"></script>'
+            '<script src="/p/1a26/kit.js"></script>')
+    assets = kit_acquire.extract_assets(html, "https://station.qpon/", "station.qpon")
+    by_host = {a["host"]: a["in_scope"] for a in assets}
+    assert by_host["www.petron.com"] is False
+    assert by_host["station.qpon"] is True
+
+    fetched = asyncio.run(kit_acquire.fetch_bundles(
+        assets, case_registrable="station.qpon"))
+    refused = [b for b in fetched if b["url"].startswith("https://www.petron.com")]
+    assert refused and "not fetched" in refused[0]["error"]
+
+
+# ---------------------------------------------------------------------------
+# foreign hosts referenced by the kit's own content
+# ---------------------------------------------------------------------------
+
+def test_foreign_urls_in_a_bundle_are_evidence_not_indicators():
+    """A kit referencing the brand it imitates must not put that brand in the
+    copyable block, but the reference is still reported."""
+    analysis = {"urls": ["https://www.petron.com",
+                         "https://station.qpon/api/submit",
+                         "https://lodash.com/license"]}
+    indicators = kit_report.build_indicators(
+        target={"host": "station.qpon", "domain": "station.qpon"},
+        page={}, rdap={}, bundles=[], analysis=analysis, probe={},
+        case_registrable="station.qpon",
+    )
+    copied = kit_report.copy_all_indicators({"indicators": indicators})
+    assert "petron" not in copied.lower()
+    assert "lodash" not in copied.lower()
+    assert "station.qpon/api/submit" in copied
+
+    refs = kit_report.build_content_references(analysis, "station.qpon")
+    hosts = {r["host"]: r for r in refs}
+    assert "www.petron.com" in hosts
+    assert hosts["www.petron.com"]["brand"] == "Petron"
+    assert "station.qpon" not in hosts

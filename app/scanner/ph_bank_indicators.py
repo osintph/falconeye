@@ -15,6 +15,8 @@ TODO: Google Safe Browsing enrichment (GSB_API_KEY) — requires
   supplements rather than overwrites indicator matching.
 """
 
+from typing import Optional
+
 # ---------------------------------------------------------------------------
 # URL path patterns — suspicious path segments combined with PH bank context
 # ---------------------------------------------------------------------------
@@ -494,3 +496,200 @@ def match_age_indicators(age_result: dict) -> list[dict]:
         ]
 
     return []
+
+
+# ---------------------------------------------------------------------------
+# PH brand impersonation registry
+#
+# Banking indicators above answer "does this look like a PH bank phish". This
+# registry answers a different and broader question: "whose brand is this page
+# wearing, and is it being served from that brand's own domain".
+#
+# Brand-identical content on an unrelated registrable domain is impersonation by
+# definition. Before this existed it scored exactly zero, because every content
+# check in the scorer was looking for kit internals rather than for whose logo
+# was on the page.
+#
+# Markers are content fingerprints, chosen to be distinctive rather than
+# obvious. Several of these brands are ordinary English words (Shell, Globe,
+# Smart, Grab, SM), so a bare brand token would fire on any page that happened
+# to use the word. The markers for those are qualified: a domain reference, a
+# full legal name, or a product name that is not a common noun.
+# ---------------------------------------------------------------------------
+
+PH_BRANDS = [
+    # Fuel and energy
+    {"name": "Petron", "domains": ["petron.com", "petron.com.ph"],
+     "markers": ["petron corporation", "petron.com", "petron blaze", "petron gasul",
+                 "petron value card", "- petron", "petron fuels"]},
+    {"name": "Shell PH", "domains": ["shell.com.ph", "shell.com", "pilipinas.shell.com.ph"],
+     "markers": ["shell.com.ph", "pilipinas shell", "shell v-power", "shell select",
+                 "shell go+", "pilipinas shell petroleum"]},
+    {"name": "Caltex", "domains": ["caltex.com", "caltex.com.ph"],
+     "markers": ["caltex.com", "caltex philippines", "techron", "caltex starcard",
+                 "chevron philippines"]},
+
+    # Utilities and telco
+    {"name": "Meralco", "domains": ["meralco.com.ph"],
+     "markers": ["meralco.com.ph", "meralco", "manila electric company",
+                 "meralco online", "kuryente load"]},
+    {"name": "PLDT", "domains": ["pldt.com", "pldt.com.ph", "pldthome.com"],
+     "markers": ["pldt.com", "pldt home", "pldt enterprise", "philippine long distance",
+                 "myhome fibr", "pldt fibr"]},
+    {"name": "Globe", "domains": ["globe.com.ph", "globe.com"],
+     "markers": ["globe.com.ph", "globe telecom", "globe at home", "globeone",
+                 "globe myaccount", "globe postpaid"]},
+    {"name": "Smart", "domains": ["smart.com.ph"],
+     "markers": ["smart.com.ph", "smart communications", "smart bro", "giga life",
+                 "smart infinity", "smart prepaid"]},
+
+    # Retail, food and malls
+    {"name": "Jollibee", "domains": ["jollibee.com.ph", "jollibee.com"],
+     "markers": ["jollibee.com", "jollibee foods", "chickenjoy", "jolly spaghetti",
+                 "yumburger", "jollibee delivery"]},
+    {"name": "SM", "domains": ["smsupermalls.com", "sm-investments.com", "smmarkets.ph"],
+     "markers": ["sm supermalls", "smsupermalls.com", "sm investments", "sm prestige",
+                 "sm advantage card", "sm store"]},
+    {"name": "Robinsons", "domains": ["robinsonsmalls.com", "robinsonsretail.com.ph",
+                                      "robinsonsbank.com.ph"],
+     "markers": ["robinsons malls", "robinsonsmalls.com", "robinsons retail",
+                 "robinsons supermarket", "go rewards"]},
+
+    # Logistics
+    {"name": "LBC", "domains": ["lbcexpress.com", "lbcexpress.ph"],
+     "markers": ["lbcexpress.com", "lbc express", "lbc padala", "lbc tracking",
+                 "lbc remittance"]},
+    {"name": "J&T Express", "domains": ["jtexpress.ph", "jtexpress.com", "jtexpress.com.ph"],
+     "markers": ["jtexpress.ph", "j&t express", "jt express", "j&amp;t express",
+                 "jtexpress tracking"]},
+
+    # Marketplaces and ride hailing
+    {"name": "Lazada", "domains": ["lazada.com.ph", "lazada.com"],
+     "markers": ["lazada.com", "lazada philippines", "lazmall", "lazada wallet",
+                 "lazada seller"]},
+    {"name": "Shopee", "domains": ["shopee.ph", "shopee.com"],
+     "markers": ["shopee.ph", "shopee philippines", "shopeepay", "shopee mall",
+                 "shopee guarantee"]},
+    {"name": "Grab", "domains": ["grab.com", "grab.ph"],
+     "markers": ["grab.com", "grabpay", "grabfood", "grabcar", "grabexpress",
+                 "grab philippines"]},
+
+    # Banks and e-wallets, mirroring the banking indicators above
+    {"name": "BPI", "domains": ["bpi.com.ph", "bpiexpressonline.com"],
+     "markers": ["bpi.com.ph", "bpiexpressonline", "bank of the philippine islands",
+                 "bpi online", "bpi express"]},
+    {"name": "BDO", "domains": ["bdo.com.ph"],
+     "markers": ["bdo.com.ph", "banco de oro", "bdo unibank", "bdo online banking",
+                 "bdo nomura"]},
+    {"name": "GCash", "domains": ["gcash.com", "globe.com.ph"],
+     "markers": ["gcash.com", "gcash", "gscore", "gsave", "ginvest", "gcredit"]},
+    {"name": "Maya", "domains": ["maya.ph", "paymaya.com"],
+     "markers": ["maya.ph", "paymaya", "maya bank", "maya wallet", "maya savings"]},
+    {"name": "Landbank", "domains": ["landbank.com"],
+     "markers": ["landbank.com", "land bank of the philippines", "landbank iaccess",
+                 "landbank mobile banking"]},
+    {"name": "UnionBank", "domains": ["unionbankph.com", "unionbank.com"],
+     "markers": ["unionbankph.com", "union bank of the philippines", "unionbank online",
+                 "ubp online"]},
+    {"name": "RCBC", "domains": ["rcbc.com"],
+     "markers": ["rcbc.com", "rizal commercial banking", "rcbc pulz", "rcbc diskartech"]},
+    {"name": "Metrobank", "domains": ["metrobank.com.ph"],
+     "markers": ["metrobank.com.ph", "metropolitan bank and trust", "metrobank online",
+                 "metrobank direct"]},
+    {"name": "Security Bank", "domains": ["securitybank.com"],
+     "markers": ["securitybank.com", "security bank corporation", "securitybank online"]},
+    {"name": "PNB", "domains": ["pnb.com.ph"],
+     "markers": ["pnb.com.ph", "philippine national bank", "pnb digital banking"]},
+]
+
+# Where a brand name shows up in page furniture rather than in body copy. A hit
+# here is worth more than a loose substring match anywhere in the document.
+_STRONG_MARKER_CONTEXTS = (
+    'og:site_name" content="{b}',
+    "og:site_name' content='{b}",
+    "<title>{b}",
+    "{b}</title>",
+    "copyright &copy; {b}",
+    "copyright © {b}",
+    "&copy; {b}",
+    "© {b}",
+)
+
+
+def detect_brand(html: str) -> dict:
+    """Identify whose brand a page is wearing.
+
+    Returns {brand, confidence, matched_markers, domains}. `brand` is None when
+    nothing matched, so a caller can tell "no brand detected" apart from
+    "detected and it is fine".
+
+    Confidence is high when the brand name appears in page furniture (title,
+    og:site_name, a copyright line) or when three or more markers hit, medium at
+    two markers, low at one. The furniture rule matters because a phishing clone
+    copies the whole page head verbatim, which is exactly where it is most
+    expensive for the operator to strip the brand out.
+    """
+    empty = {"brand": None, "confidence": None, "matched_markers": [], "domains": []}
+    if not html:
+        return empty
+
+    lowered = html.lower()
+    best = None
+
+    for entry in PH_BRANDS:
+        matched = [m for m in entry["markers"] if m in lowered]
+        if not matched:
+            continue
+
+        name = entry["name"].lower()
+        strong = any(ctx.format(b=name) in lowered for ctx in _STRONG_MARKER_CONTEXTS)
+
+        if strong or len(matched) >= 3:
+            confidence = "high"
+        elif len(matched) == 2:
+            confidence = "medium"
+        else:
+            confidence = "low"
+
+        rank = ({"high": 3, "medium": 2, "low": 1}[confidence], len(matched))
+        if best is None or rank > best[0]:
+            best = (rank, {
+                "brand": entry["name"],
+                "confidence": confidence,
+                "matched_markers": matched[:8],
+                "domains": list(entry["domains"]),
+                "strong_context": strong,
+            })
+
+    return best[1] if best else empty
+
+
+def brand_domains(brand_name: str) -> list:
+    """Registered domains for a brand name, empty when it is not in the registry."""
+    for entry in PH_BRANDS:
+        if entry["name"] == brand_name:
+            return list(entry["domains"])
+    return []
+
+
+def brand_for_domain(host: str) -> Optional[dict]:
+    """The registry entry that owns *host*, or None.
+
+    Matched at the registrable level, so www.petron.com and petron.com both
+    resolve to Petron. Used to answer "did this redirect land on a brand we
+    know" without depending on content detection, which a redirect response
+    body is usually too small to support.
+    """
+    if not host:
+        return None
+    # Imported here rather than at module top: scope imports nothing from this
+    # module, but keeping the dependency lazy makes the direction obvious.
+    from app.scanner.scope import registrable
+
+    target = registrable(host)
+    if not target:
+        return None
+    for entry in PH_BRANDS:
+        if any(registrable(d) == target for d in entry["domains"]):
+            return entry
+    return None

@@ -386,16 +386,47 @@ def path_scoped_hit(root_status: Optional[int], path_status: Optional[int]) -> b
 
 async def score_host(host: str, path: str = "/",
                      probe: Optional[dict] = None,
-                     sig_id: str = DEFAULT_SIGNATURE_ID) -> dict:
+                     sig_id: str = DEFAULT_SIGNATURE_ID,
+                     brand: Optional[dict] = None,
+                     case_registrable: str = "",
+                     profile_divergence: bool = False) -> dict:
     """Score a live host. Every outbound request goes through safe_fetch.
 
     Pass `probe` to reuse a socket probe the caller already ran, so a report
     does not probe the same target twice.
+
+    `host` must be the SUBMITTED host. Passing a redirect destination here
+    points every probe below at whatever host the target named.
     """
     sig = get_signature(sig_id)
     path = _norm_path(path)
     base = f"https://{host}"
     signals = []
+
+    # Impersonation. A page wearing a brand it does not own is the single
+    # cheapest true positive available, and until this signal existed it scored
+    # nothing at all: every other content check looks for kit internals, so a
+    # pixel-perfect clone with no recognisable kit signature scored zero.
+    brand = brand or {}
+    brand_name = brand.get("brand")
+    mismatch = bool(
+        brand_name
+        and case_registrable
+        and not any(_same_registrable(d, case_registrable)
+                    for d in brand.get("domains", []))
+    )
+    signals.append(_signal(
+        "brand_host_mismatch", 12, mismatch,
+        f"{brand_name} content on {case_registrable}, brand owns "
+        f"{', '.join(brand.get('domains', [])) or 'unknown'}" if mismatch
+        else (f"{brand_name} on its own domain" if brand_name else "no brand detected"),
+    ))
+
+    signals.append(_signal(
+        "profile_divergence", 10, bool(profile_divergence),
+        "the bare and browser profiles were served different responses"
+        if profile_divergence else "both profiles were served the same response",
+    ))
 
     if probe is None:
         probe = await probe_socket(host, path)
@@ -485,6 +516,70 @@ async def score_host(host: str, path: str = "/",
         "host": host,
         "path": path,
         "note": note,
+    })
+
+
+def _same_registrable(a: str, b: str) -> bool:
+    """Compare two domains at the registrable level, PSL-backed."""
+    from app.scanner.scope import registrable
+    if not a or not b:
+        return False
+    return registrable(a) == registrable(b)
+
+
+def score_redirect(scope_left: bool, final_host: str, case_registrable: str,
+                   brand: Optional[dict] = None,
+                   profile_divergence: bool = False,
+                   sig_id: str = DEFAULT_SIGNATURE_ID) -> dict:
+    """Score a fetch that left the submitted domain.
+
+    This is the only score block populated on an out-of-scope report. Everything
+    else there is null, because nothing else ran.
+
+    An unrelated host bouncing a scanner to a major brand is close to conclusive
+    cloaking, so the pair of signals below deliberately outweighs any single
+    bundle signal. A kit that is only ever seen redirecting is still a kit; the
+    old behaviour scored it 0% because the scoring only ever looked at whatever
+    the redirect landed on.
+    """
+    sig = get_signature(sig_id)
+    brand = brand or {}
+    signals = []
+
+    signals.append(_signal(
+        "cross_domain_redirect", 8, bool(scope_left),
+        f"{case_registrable} redirected the fetch to {final_host}" if scope_left
+        else "the fetch stayed on the submitted domain",
+    ))
+
+    # Looked up from the destination domain itself, not from the detected brand.
+    # A redirect response body is usually a bare 302 with nothing in it, so
+    # content detection cannot be the thing this depends on.
+    from app.scanner.ph_bank_indicators import brand_for_domain
+
+    destination_brand = brand_for_domain(final_host)
+    impersonated = bool(scope_left and destination_brand)
+    signals.append(_signal(
+        "redirect_to_impersonated_brand", 12, impersonated,
+        f"redirect destination {final_host} belongs to {destination_brand['name']}, "
+        f"a brand in the PH registry" if impersonated
+        else f"redirect destination {final_host or 'none'} is not a registry brand",
+    ))
+
+    signals.append(_signal(
+        "profile_divergence", 10, bool(profile_divergence),
+        "the bare and browser profiles were served different responses"
+        if profile_divergence else "both profiles were served the same response",
+    ))
+
+    return _tally(signals, {
+        "signature": sig["id"],
+        "mode": "redirect",
+        "host": case_registrable,
+        "final_host": final_host,
+        "note": ("Scored on redirect behaviour alone. The submitted host was "
+                 "never enriched, probed or torn down, so there is no bundle "
+                 "score and no host score to compare this against."),
     })
 
 

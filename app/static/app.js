@@ -831,6 +831,59 @@ function kitBadge(verdict, pct, label) {
     <span class="opacity-70 font-normal">${escapeHtml(label)}</span>${escapeHtml(v)}${pctText}</span>`;
 }
 
+// A null score is N/A, never 0%. "Nothing ran" and "everything ran and found
+// nothing" are different findings, and a 0% badge reads as a clean bill of
+// health for a host that was never actually examined.
+function kitNaBadge(label, reason) {
+  return `<span class="inline-flex items-center gap-2 border px-3 py-1 rounded text-xs font-bold tracking-wide border-gray-700 text-gray-400 bg-gray-900" title="${escapeAttr(reason || '')}">
+    <span class="opacity-70 font-normal">${escapeHtml(label)}</span>N/A</span>`;
+}
+
+function kitRedirectChain(chain, finalUrl) {
+  if (!chain || !chain.length) return '';
+  const rows = chain.map(h => `<div class="flex gap-3 py-1 text-xs font-mono border-b border-gray-800/40">
+      <span class="text-gray-600 w-10 shrink-0">${escapeHtml(String(h.hop))}</span>
+      <span class="text-amber-300 w-16 shrink-0">${escapeHtml(String(h.status || ''))}</span>
+      <span class="text-gray-300 grow break-all">${escapeHtml(String(h.url || ''))}</span>
+      <span class="text-gray-500 shrink-0">${escapeHtml(String(h.server || ''))}</span>
+    </div>`).join('');
+  const dest = finalUrl
+    ? `<div class="flex gap-3 py-1 text-xs font-mono">
+         <span class="text-gray-600 w-10 shrink-0">end</span>
+         <span class="text-gray-600 w-16 shrink-0"></span>
+         <span class="text-red-300 grow break-all">${escapeHtml(String(finalUrl))}</span>
+       </div>` : '';
+  return `<div>${rows}${dest}</div>`;
+}
+
+function kitProfiles(page) {
+  const profiles = page && page.profiles;
+  if (!profiles) return '';
+  const order = ['bare', 'browser'];
+  const rows = order.filter(k => profiles[k]).map(k => {
+    const p = profiles[k];
+    return `<div class="py-1 text-xs border-b border-gray-800/40">
+      <div class="flex gap-3">
+        <span class="text-gray-500 w-20 shrink-0 uppercase tracking-wide">${escapeHtml(k)}</span>
+        <span class="${p.scope_left ? 'text-red-400' : 'text-gray-200'} grow break-all font-mono">${escapeHtml(String(p.final_host || p.error || 'no response'))}</span>
+        <span class="text-gray-600 shrink-0 font-mono">${p.status === null || p.status === undefined ? '' : escapeHtml(String(p.status))}</span>
+        <span class="text-gray-600 shrink-0 font-mono">${p.size_bytes === null || p.size_bytes === undefined ? '' : escapeHtml(String(p.size_bytes)) + 'B'}</span>
+      </div>
+      <div class="font-mono text-gray-600 break-all">${escapeHtml(String(p.sha256 || '').slice(0, 32))}</div>
+    </div>`;
+  }).join('');
+  const tell = page.profile_divergence
+    ? `<p class="text-xs text-red-300 mt-2">The two profiles were served different responses. This target changes what it serves based on what the request looks like, which is cloaking.</p>`
+    : `<p class="text-xs text-gray-600 mt-2">Both profiles were served the same response.</p>`;
+  const used = page.profile_used
+    ? `<p class="text-xs text-gray-500 mt-1">Analysis below ran on the <span class="text-amber-300">${escapeHtml(String(page.profile_used))}</span> profile.</p>` : '';
+  return `<div>${rows}${tell}${used}</div>`;
+}
+
+function kitNotRun(reason) {
+  return `<p class="text-xs text-gray-600 italic">${escapeHtml(String(reason || 'not run'))}</p>`;
+}
+
 function kitSection(title, body, subtitle) {
   if (!body) return '';
   const sub = subtitle ? `<span class="text-gray-600 normal-case tracking-normal"> ${escapeHtml(subtitle)}</span>` : '';
@@ -920,6 +973,10 @@ function kitPivots(report) {
     }
   });
 
+  // target.host is the SUBMITTED host, never the redirect destination. Domain
+  // Intel is offered on that and on nothing else: a pivot button pointed at an
+  // impersonated brand turns one wrong report into a second lookup against an
+  // uninvolved company.
   if (host) {
     buttons.push(`<button class="text-xs bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 px-2 py-1 rounded transition"
       onclick="pushToTab('domain','domain-input','domain-btn',${escapeAttr(JSON.stringify(host))})">
@@ -928,6 +985,19 @@ function kitPivots(report) {
 
   if (!buttons.length) return '';
   return `<div class="flex flex-wrap gap-2">${buttons.join('')}</div>`;
+}
+
+// Rendered outside the copyable block on purpose. See build_content_references.
+function kitContentReferences(refs) {
+  if (!refs || !refs.length) return '';
+  const rows = refs.map(r => `<div class="flex gap-3 py-1 text-xs border-b border-gray-800/40">
+      <span class="text-gray-200 grow break-all font-mono">${escapeHtml(String(r.url || ''))}</span>
+      <span class="text-amber-300 shrink-0">${escapeHtml(String(r.brand || ''))}</span>
+    </div>`).join('');
+  return `<div>${rows}
+    <p class="text-xs text-gray-500 mt-2 italic">Hosts the kit's own content points at, outside the submitted domain.
+      Evidence of what the kit is imitating. These are NOT indicators for those hosts, they are excluded from
+      "copy all indicators", and nothing was looked up or probed against them.</p></div>`;
 }
 
 function kitIndicators(indicators) {
@@ -948,7 +1018,64 @@ function kitIndicators(indicators) {
     ${rows}</div>`;
 }
 
+function renderKitOutOfScope(el, data) {
+  const target = data.target || {};
+  const dest = data.redirect_destination || {};
+  const reason = data.not_run_reason || 'not run';
+
+  const badges = [
+    kitNaBadge('bundle', reason),
+    kitNaBadge('host', reason),
+    (data.score && data.score.redirect)
+      ? kitBadge(data.score.redirect.verdict, data.score.redirect.score_pct, 'redirect')
+      : '',
+  ].join(' ');
+
+  const notes = (data.notes || []).length
+    ? `<div class="mt-3 space-y-1">${data.notes.map(n =>
+        `<p class="text-xs text-amber-300/80">${escapeHtml(String(n))}</p>`).join('')}</div>`
+    : '';
+
+  // The destination is rendered here, outside the copyable indicator block and
+  // labelled, so it cannot be pasted into a case file as an indicator of the
+  // thing being investigated.
+  const destBody =
+    kitRow('Host', dest.host, 'text-red-300') +
+    kitRow('Registrable domain', dest.registrable_domain, 'text-red-300') +
+    kitRow('URL', dest.url) +
+    (dest.brand && dest.brand.brand
+      ? kitRow('Brand', `${dest.brand.brand} (${dest.brand.confidence} confidence)`, 'text-amber-300') : '') +
+    `<p class="text-xs text-gray-500 mt-2 italic">This host is where the fetch was sent. It is not an indicator of the
+      submitted target and it is excluded from the indicator block above. Nothing was looked up, probed or scored
+      against it.</p>`;
+
+  el.innerHTML = `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <div class="flex items-start justify-between gap-4 flex-wrap">
+        <div class="min-w-0">
+          <p class="text-xs text-gray-500 uppercase tracking-wide">Deep kit report &middot; ${escapeHtml(String(data.verdict || 'OUT OF SCOPE REDIRECT'))}</p>
+          <p class="text-sm text-gray-200 break-all font-mono mt-1">${escapeHtml(String(target.url || ''))}</p>
+          <p class="text-xs text-gray-600 font-mono">submitted host ${escapeHtml(String(target.host || ''))}</p>
+        </div>
+        <div class="flex gap-2 flex-wrap">${badges}</div>
+      </div>
+      ${notes}
+      ${kitSection('Redirect chain', kitRedirectChain(target.redirect_chain, target.final_url),
+                   'the headline finding: the fetch did not stay on the submitted domain')}
+      ${kitSection('Redirect destination (not an indicator)', destBody)}
+      ${kitSection('Request profiles', kitProfiles(data.page || {}))}
+      ${kitSection('Signature score, redirect behaviour', kitSignals((data.score || {}).redirect))}
+      ${kitSection('Registration timeline', kitNotRun(reason))}
+      ${kitSection('Socket and relay probe', kitNotRun(reason))}
+      ${kitSection('Bundles and decode', kitNotRun(reason))}
+      ${kitSection('Enrichment', kitNotRun(reason))}
+      ${kitSection('Pivots', kitPivots(data))}
+      ${kitSection('Indicators', kitIndicators(data.indicators))}
+    </div>`;
+}
+
 function renderKitReport(el, data) {
+  if (data && data.out_of_scope) return renderKitOutOfScope(el, data);
   const a = data.analysis || {};
   const score = data.score || {};
   const page = data.page;
@@ -956,8 +1083,12 @@ function renderKitReport(el, data) {
   const target = data.target || {};
 
   const badges = [
-    kitBadge((score.bundle || {}).verdict, (score.bundle || {}).score_pct, 'bundle'),
-    score.host ? kitBadge(score.host.verdict, score.host.score_pct, 'host') : '',
+    score.bundle
+      ? kitBadge(score.bundle.verdict, score.bundle.score_pct, 'bundle')
+      : kitNaBadge('bundle', 'no bundle was analyzed'),
+    score.host
+      ? kitBadge(score.host.verdict, score.host.score_pct, 'host')
+      : kitNaBadge('host', 'the live host was not scored'),
   ].join(' ');
 
   const notes = (data.notes || []).length
@@ -983,6 +1114,10 @@ function renderKitReport(el, data) {
       kitRow('Rendering', page.spa ? 'client-rendered SPA' : 'server-rendered', page.spa ? 'text-amber-300' : 'text-gray-200') +
       (page.spa_reason ? `<p class="text-xs text-gray-600 mt-2 italic">${escapeHtml(String(page.spa_reason))}</p>` : '')
     : '<p class="text-xs text-gray-600 italic">Offline mode: the page was never fetched.</p>';
+
+  const profilesBody = page ? kitProfiles(page) : '';
+  const redirectBody = (target.redirect_chain && target.redirect_chain.length)
+    ? kitRedirectChain(target.redirect_chain, target.final_url) : '';
 
   // --- Decode header ---
   const decoder = a.decoder || {};
@@ -1129,6 +1264,8 @@ function renderKitReport(el, data) {
       ${llm}
       ${kitSection('Registration timeline', kitTimeline(data.timeline))}
       ${kitSection('Page, first contact', pageBody)}
+      ${kitSection('Request profiles', profilesBody)}
+      ${kitSection('Redirect chain', redirectBody, 'same-domain redirects, informational')}
       ${kitSection('Decode', decodeBody)}
       ${kitSection('Crypto', cryptoBody)}
       ${kitSection('Socket and transport', socketBody)}
@@ -1142,6 +1279,7 @@ function renderKitReport(el, data) {
       ${kitSection('Not found', nfBody)}
       ${kitSection('Enrichment', enrichBody)}
       ${kitSection('Pivots', kitPivots(data))}
+      ${kitSection('References to other hosts (not indicators)', kitContentReferences(data.content_references))}
       ${kitSection('Indicators', kitIndicators(data.indicators))}
     </div>`;
 }

@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.28.0**
+Current version: **3.29.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -20,7 +20,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 |---|---|
 | **Home** | Landing page with PH Threat Pulse widget, example cards that prefill other tabs, and a curated news strip |
 | **Crypto Workbench** | Trace Bitcoin, Ethereum, and USDT TRC20 addresses with D3 force-directed transaction graphs and labelled clusters |
-| **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs. An opt-in **Deep kit report** toggle upgrades the same run to a full teardown: fetch the page, detect a client-rendered SPA shell, pull and hash every JS bundle, decode the obfuscated string table and resolve decoder call sites before searching, probe the operator relay path (status codes only, no socket opened), pull RDAP, CT and urlscan, score against a kit signature, and render one case report with a sourced lifecycle timeline and a copyable indicator block. Pasting a JavaScript bundle instead of page source runs the same analysis offline, for a target that is already dead. |
+| **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs. An opt-in **Deep kit report** toggle upgrades the same run to a full teardown: fetch the page, detect a client-rendered SPA shell, pull and hash every JS bundle, decode the obfuscated string table and resolve decoder call sites before searching, probe the operator relay path (status codes only, no socket opened), pull RDAP, CT and urlscan, score against a kit signature, and render one case report with a sourced lifecycle timeline and a copyable indicator block. The case host always comes from the URL you submitted: a cloaking kit that redirects the scanner to the brand it impersonates cannot redirect the investigation with it, and a fetch that leaves the submitted domain is reported as a cloaked redirect with the chain, scored on the redirect itself, with every skipped stage marked N/A rather than 0%. Pasting a JavaScript bundle instead of page source runs the same analysis offline, for a target that is already dead. |
 | **Domain Intelligence** | RDAP, DNS, certificate transparency logs (crt.sh + Cert Spotter fallback), RIPEstat ASN data |
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
 | **IP Reputation** | Multi-source reputation with a consensus verdict (Clean/Suspicious/Malicious) from AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, reverse DNS. Merges Censys + Shodan ports and surfaces geolocation disagreement across sources. ASN Intelligence block (RIPEstat): operator identity, full announced-prefix footprint, and an expand-to-load routing view of upstream/downstream ASN relationships — the pivot from one abusive IP to the operator's whole network. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, optional Mailgun send, or client-side PDF). Reputation reports export to PDF in the browser. |
@@ -65,7 +65,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.28.0:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.29.0:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 

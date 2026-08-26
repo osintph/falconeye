@@ -5,6 +5,99 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.29.0] - 2026-08-26
+
+Case scope. The deep kit report now describes the host that was submitted, and
+only that host. A cloaking kit that answers the scanner with a redirect to the
+brand it impersonates can no longer redirect the entire investigation with it.
+
+This fixes a live incident. Given `https://station.qpon/`, a Petron-branded
+credential harvesting page, the report followed the kit's redirect and produced
+a full case report describing `www.petron.com`: their registration date, their
+registrar, their nameservers, 54 CT certificates, all rendered as case
+indicators, with both scores reading NO MATCH 0%. Five unsolicited socket
+probes hunting for an operator console were sent to an uninvolved company's
+production infrastructure, and the bundle fetcher pulled their site assets on
+top of that.
+
+### Fixed
+
+- The case host is parsed from the submitted URL and from nothing else. It was
+  being read from the fetched response's final URL after redirects
+  (`kit_acquire.acquire`), so every stage downstream ran against whatever host
+  the target named. A redirect Location, a canonical link, an og:url and a base
+  href are all attacker controlled: they may become indicators, they are never
+  lookup targets.
+- Relative asset references are no longer absolutized against the post-redirect
+  URL, which had the bundle fetcher pulling a third party's scripts.
+- `registrable_domain` is now Public Suffix List backed via `tldextract` rather
+  than a split on the last two labels with a hand-maintained list of seven
+  suffixes. That list was missing `gov.ph`, `edu.ph`, `co.za` and `com.sg`, and
+  no hand-maintained list stays complete.
+
+### Added
+
+- `app/scanner/scope.py`. A case scope guard, separate from and additional to
+  the SSRF guard: `safe_fetch` stops the scanner reaching internal address
+  space, this stops it reaching third parties who are not the subject of the
+  case. Both apply, in that order. `probe_socket` takes the case domain as a
+  mandatory argument and raises `OutOfScope` before issuing any request.
+- Out-of-scope report path. A fetch that leaves the submitted registrable
+  domain aborts before the enrichment fan-out: no registry lookup, no CT, no
+  urlscan, no probe, no bundle teardown, and no LLM call. Every skipped stage
+  reports null with a stated reason rather than an empty result.
+- Scores are null and render `N/A`, never `0%`, when nothing ran. A zero reads
+  as a clean bill of health for a host nobody examined.
+- Redirect chain capture. `safe_fetch` now returns `redirect_chain`, one entry
+  per followed hop with status, location and server. It is informational and no
+  enrichment function accepts it. Rendered as the headline section on an
+  out-of-scope report.
+- New scoring signals: `cross_domain_redirect` (weight 8),
+  `redirect_to_impersonated_brand` (12), `brand_host_mismatch` (12) and
+  `profile_divergence` (10). Brand-identical content on an unrelated
+  registrable domain is impersonation by definition and previously scored zero,
+  because every content check looked for kit internals rather than for whose
+  logo was on the page.
+- PH brand impersonation registry in `app/scanner/ph_bank_indicators.py`,
+  covering fuel, utilities, telco, retail, logistics, marketplaces and ride
+  hailing alongside the existing banks and e-wallets, with `detect_brand` and
+  `brand_for_domain`. The existing banking indicators are unchanged.
+- Dual-profile acquisition. Every live target is fetched twice, once as the
+  scanner has always fetched and once as a mobile browser, and analysis
+  proceeds on whichever profile stayed in scope. Both profiles are rendered
+  side by side. Capped at two, deliberately: a profile matrix turns one report
+  into a fetch campaign against the target.
+- LLM summaries naming any host other than the case host are dropped, never
+  rendered. On the incident above the model correctly flagged the mismatch and
+  lowered its own confidence, and the pipeline rendered it anyway.
+- `References to other hosts (not indicators)` section. URLs the kit's own
+  bundle points at outside the case domain are real evidence of what is being
+  imitated, so they are reported, but outside the copyable block and excluded
+  from `copy all indicators`.
+- Captured evidence under `tests/fixtures/station_qpon/` with provenance notes,
+  both request profiles plus the kit's entry bundle.
+- `tests/scanner/test_kit_scope.py`, 44 tests covering the invariant rather
+  than the instance: the case host comes from the submitted URL and outbound
+  requests stay on it.
+
+### Security
+
+- Out-of-scope probing of third parties is now refused at the call site and
+  logged at WARNING with the case id, the refused host and the case domain.
+  The indicator block is scope filtered, so a legitimate company's host cannot
+  reach a case file or a takedown request by copy-paste. Nameservers are
+  deliberately not filtered: they normally live on another registrable domain,
+  and the protection there is that the RDAP lookup is asserted to target the
+  case domain.
+
+### Changed
+
+- `tldextract==5.3.0` added to `requirements.txt`, constructed with
+  `suffix_list_urls=()` so it uses the bundled Public Suffix List snapshot and
+  never fetches it at runtime.
+
+---
+
 ## [3.28.0] - 2026-08-23
 
 Phishing Kit Scanner: URL-to-report deep kit analysis. One URL runs the whole

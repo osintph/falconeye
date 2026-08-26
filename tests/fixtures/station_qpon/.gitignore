@@ -1,0 +1,9 @@
+# Live phishing kit source is deliberately not committed, matching the
+# convention documented in docs/kit-analysis.md for tests/scanner/test_real_bundles.py.
+entry_*.js
+
+# The bare-profile capture is the impersonated brand's own homepage, fetched
+# only because the kit redirected there. It is evidence and it is kept locally,
+# but a public repo is the wrong place to republish an uninvolved company's
+# site. Tests fall back to a synthetic equivalent when it is absent.
+body_bare.html

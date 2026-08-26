@@ -38,7 +38,8 @@ from app.config import (
 )
 from app.scanner import kit_acquire, kit_analyzer, rabbithunt_sig
 from app.scanner.cloudflare_detect import detect_cloudflare_challenge
-from app.scanner.ph_bank_indicators import match_ph_indicators
+from app.scanner.ph_bank_indicators import brand_for_domain, detect_brand, match_ph_indicators
+from app.scanner.scope import in_scope, registrable
 from app.utils import cache
 from app.utils.llm_response import parse_llm_json, safe_str
 from app.utils.safe_fetch import SafeFetchError
@@ -101,15 +102,13 @@ def is_domain(host: str) -> bool:
 
 
 def registrable_domain(host: str) -> str:
-    """Best-effort apex. Registry lookups need the apex, not the campaign host."""
-    parts = [p for p in (host or "").split(".") if p]
-    if len(parts) < 2:
-        return host or ""
-    # Two-label public suffixes we actually see on phishing infra.
-    two_label = {"co.uk", "org.uk", "com.ph", "net.ph", "com.au", "co.jp", "com.br"}
-    if len(parts) >= 3 and ".".join(parts[-2:]) in two_label:
-        return ".".join(parts[-3:])
-    return ".".join(parts[-2:])
+    """The apex to run registry lookups against. PSL-backed, see app.scanner.scope.
+
+    This used to split on the last two labels with a hand-maintained list of
+    seven two-label suffixes. That list did not have gov.ph, edu.ph, co.za or
+    com.sg in it, and no hand-maintained list ever stays complete.
+    """
+    return registrable(host)
 
 
 async def _rdap(domain: str) -> dict:
@@ -175,6 +174,25 @@ async def _urlscan(url: str) -> dict:
     except Exception:
         log.warning("kit_report urlscan failed", exc_info=True)
         return {"found": False, "error": "urlscan lookup failed"}
+
+
+def _assert_case_domain(value: str, case_registrable: str, what: str) -> None:
+    """Assert an enrichment lookup is aimed at the case domain.
+
+    Registry, CT and urlscan lookups take a domain or a URL, not a scope, so
+    they cannot refuse an out-of-scope target themselves. This is the call-site
+    check that keeps a third party's domain from being profiled because a kit
+    redirected the fetch there.
+    """
+    host = value
+    if "://" in value:
+        from urllib.parse import urlparse as _up
+        host = _up(value).hostname or ""
+    if not in_scope(host, case_registrable):
+        raise AssertionError(
+            f"{what} would leave the case domain: {host!r} is outside "
+            f"{case_registrable!r}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -263,14 +281,42 @@ def build_timeline(rdap: dict, ct: dict, urlscan: dict) -> list:
 # Indicators
 # ---------------------------------------------------------------------------
 
+# Indicator types that must BE the case host. Only these get scope-checked.
+#
+# Nameserver is deliberately not in this set. A domain's nameservers normally
+# live on somebody else's registrable domain, so scope-filtering them would
+# throw away correct and useful case data on nearly every real target. What
+# keeps them honest is that they come from an RDAP lookup on the case domain,
+# which _assert_case_domain enforces at the call site: the nameservers in the
+# original bug were Petron's only because the whole lookup was aimed at Petron.
+#
+# The rest of the block is content fingerprints (hashes, key material, paths),
+# which are indicators of the kit wherever they appear.
+_HOST_INDICATOR_TYPES = {"Host", "Domain"}
+
+
 def build_indicators(target: dict, page: dict, rdap: dict, bundles: list,
-                     analysis: dict, probe: dict) -> list:
-    """Flat, copyable IOC block, in the order the published teardown uses."""
+                     analysis: dict, probe: dict,
+                     case_registrable: str = "") -> list:
+    """Flat, copyable IOC block, in the order the published teardown uses.
+
+    Scope filtered. A host-typed indicator outside the case domain is dropped,
+    because this block is what gets pasted into a case file or an abuse report,
+    and one legitimate company's nameservers in that block is a takedown request
+    aimed at the wrong party. The redirect destination is deliberately absent:
+    it is rendered as its own labelled section outside the copyable block.
+    """
     out = []
 
     def add(kind, value, note=""):
-        if value:
-            out.append({"type": kind, "value": str(value), "note": note})
+        if not value:
+            return
+        if case_registrable and kind in _HOST_INDICATOR_TYPES:
+            if not in_scope(str(value), case_registrable):
+                log.warning("indicator dropped as out of scope: %s=%s case_domain=%s",
+                            kind, value, case_registrable)
+                return
+        out.append({"type": kind, "value": str(value), "note": note})
 
     status = ", ".join(rdap.get("status", []) or [])
     add("Host", target.get("host"), status)
@@ -321,9 +367,72 @@ def build_indicators(target: dict, page: dict, rdap: dict, bundles: list,
         add("Locales", ", ".join(analysis["locales"]), "identity fields")
 
     for u in analysis.get("urls", [])[:10]:
+        if case_registrable and _foreign_url(u, case_registrable):
+            # Real evidence, wrong place. A kit referencing the brand it
+            # impersonates is worth recording, but not on a line that gets
+            # pasted into a takedown request as infrastructure of the phish.
+            # It goes to build_content_references instead.
+            continue
         add("URL in bundle", u)
 
     return out
+
+
+def _foreign_url(url: str, case_registrable: str) -> bool:
+    from urllib.parse import urlparse as _up
+    try:
+        host = _up(url).hostname or ""
+    except Exception:
+        return False
+    if not host:
+        return False
+    return not in_scope(host, case_registrable)
+
+
+def build_content_references(analysis: dict, case_registrable: str) -> list:
+    """Hosts the kit's own content points at, outside the case domain.
+
+    Rendered as its own labelled section, outside the copyable indicator block
+    and excluded from "copy all indicators". A kit impersonating a brand tends
+    to reference that brand's real site, which is evidence of the impersonation
+    and is emphatically not an indicator of compromise for that brand.
+    """
+    out = []
+    seen = set()
+    for u in (analysis or {}).get("urls", []) or []:
+        if not case_registrable or not _foreign_url(u, case_registrable):
+            continue
+        if u in seen:
+            continue
+        seen.add(u)
+        from urllib.parse import urlparse as _up
+        host = _up(u).hostname or ""
+        brand = brand_for_domain(host)
+        out.append({
+            "url": u,
+            "host": host,
+            "brand": brand["name"] if brand else None,
+        })
+    return out[:15]
+
+
+def copy_all_indicators(report: dict) -> str:
+    """The exact text the "copy all indicators" button puts on the clipboard.
+
+    Mirrors the frontend's format so the copyable block has one definition that
+    can actually be asserted on. This is the string that ends up pasted into a
+    case file or an abuse report, which is why it is worth a test of its own:
+    a single foreign hostname in here is a takedown request aimed at the wrong
+    company.
+    """
+    lines = []
+    for i in report.get("indicators") or []:
+        note = i.get("note") or ""
+        line = f"{i.get('type', '')}\t{i.get('value', '')}"
+        if note:
+            line += f"\t{note}"
+        lines.append(line)
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -393,8 +502,37 @@ def _llm_view(report: dict) -> dict:
     }
 
 
+# A hostname or bare registrable domain anywhere in free text.
+_HOSTNAME_RE = re.compile(
+    r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}\b", re.I)
+
+
+def summary_mentions_foreign_host(text: str, allowed: set) -> Optional[str]:
+    """The first host in *text* that is not the case host or its apex, else None.
+
+    Belt and braces behind the target dict being correct, which is the real fix.
+    Worth having anyway: on the station.qpon case the model actually did its job.
+    It noticed the host it had been handed did not match the rest of the report,
+    said so, and lowered its own confidence to low. The pipeline rendered the
+    summary regardless, so the one component that caught the bug had no way to
+    stop the report going out.
+    """
+    for match in _HOSTNAME_RE.finditer(text or ""):
+        candidate = match.group(0).lower().strip(".")
+        if candidate in allowed:
+            continue
+        if registrable(candidate) in allowed:
+            continue
+        return candidate
+    return None
+
+
 async def llm_summary(report: dict) -> Optional[dict]:
-    """Claude Haiku 4.5 case summary. Returns None when off or on any failure."""
+    """Claude Haiku 4.5 case summary. Returns None when off or on any failure.
+
+    A summary naming any host other than the case host is dropped, never
+    rendered.
+    """
     # ===== HARDCODED MODEL: do NOT replace with a config variable =====
     HARDCODED_MODEL = "claude-haiku-4-5"
     # ==================================================================
@@ -421,10 +559,26 @@ async def llm_summary(report: dict) -> Optional[dict]:
         if not data:
             return None
         confidence = safe_str(data.get("confidence"), 12).lower()
+        summary = safe_str(data.get("summary"), 900)
+        next_steps = safe_str(data.get("next_steps"), 400)
+
+        target = report.get("target") or {}
+        allowed = {str(v).lower() for v in
+                   (target.get("host"), target.get("registrable_domain"),
+                    target.get("domain")) if v}
+        if allowed:
+            foreign = summary_mentions_foreign_host(f"{summary} {next_steps}", allowed)
+            if foreign:
+                log.warning(
+                    "LLM summary dropped: named %s, which is not the case host %s",
+                    foreign, target.get("host"),
+                )
+                return None
+
         return {
-            "summary": safe_str(data.get("summary"), 900),
+            "summary": summary,
             "confidence": confidence if confidence in ("high", "medium", "low") else "low",
-            "next_steps": safe_str(data.get("next_steps"), 400),
+            "next_steps": next_steps,
         }
     except Exception:
         log.warning("kit_report LLM summary failed", exc_info=True)
@@ -532,6 +686,85 @@ def build_offline_report(pasted: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
     }
 
 
+OUT_OF_SCOPE_VERDICT = "CLOAKED REDIRECT"
+
+_NOT_RUN_REASON = "not run: fetch left the submitted registrable domain"
+
+
+def build_out_of_scope_report(target: dict, acquired: dict,
+                              sig_id: str = rabbithunt_sig.DEFAULT_SIGNATURE_ID) -> dict:
+    """The report for a fetch that ended up somewhere else entirely.
+
+    Nothing downstream ran, so nothing downstream is reported as a zero. Every
+    stage that was skipped is null with a stated reason.
+
+    Scores are null, rendered N/A, never 0%. A 0% reads as clean to a tired
+    analyst at the end of a shift, and the one thing this report must not do is
+    look like a clean bill of health for a host nobody actually examined. The
+    only populated score is the redirect scoring itself.
+    """
+    page = acquired.get("page") or {}
+    body = page.get("body", "") or ""
+    brand = detect_brand(body)
+    redirect_score = rabbithunt_sig.score_redirect(
+        scope_left=True,
+        final_host=target.get("final_host") or "",
+        case_registrable=target.get("registrable_domain") or "",
+        brand=brand,
+        profile_divergence=bool(acquired.get("profile_divergence")),
+        sig_id=sig_id,
+    )
+
+    return {
+        "mode": "live",
+        "out_of_scope": True,
+        "verdict": OUT_OF_SCOPE_VERDICT,
+        "target": target,
+        "page": {
+            "status": page.get("status"),
+            "server": page.get("server"),
+            "content_type": page.get("content_type"),
+            "size_bytes": page.get("size_bytes"),
+            "profiles": acquired.get("profiles"),
+            "profile_used": acquired.get("profile_used"),
+            "profile_divergence": acquired.get("profile_divergence"),
+            "error": page.get("error"),
+        },
+        "redirect_destination": {
+            "host": target.get("final_host"),
+            "url": target.get("final_url"),
+            "registrable_domain": registrable(target.get("final_host") or ""),
+            "brand": brand,
+            "label": "Redirect destination (not an indicator)",
+        },
+        "timeline": None,
+        "registration_timeline": None,
+        "bundles": None,
+        "analysis": None,
+        "decode": None,
+        "crypto": None,
+        "socket_probe": None,
+        "enrichment": None,
+        "score": {"bundle": None, "host": None, "redirect": redirect_score},
+        # Only the submitted target. The destination is in its own section above.
+        "indicators": [
+            {"type": "Host", "value": target.get("host") or "", "note": "submitted"},
+            {"type": "Domain", "value": target.get("registrable_domain") or "",
+             "note": "submitted"},
+        ] if target.get("host") else [],
+        "llm": None,
+        "not_run_reason": _NOT_RUN_REASON,
+        "notes": [
+            f"The fetch left {target.get('registrable_domain')} and ended on "
+            f"{target.get('final_host')}. Nothing was enriched, probed, scored or "
+            "summarized against either host, so the skipped sections read N/A "
+            "rather than zero.",
+            "No request was issued to the redirect destination beyond following "
+            "the redirect itself.",
+        ],
+    }
+
+
 async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNATURE_ID) -> dict:
     """Live mode: acquire, analyze, score, enrich, assemble."""
     signature = rabbithunt_sig.get_signature(sig_id)
@@ -545,9 +778,41 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
         raise SafeFetchError(page["error"].replace("blocked by SSRF guard: ", ""))
 
     acquired = await kit_acquire.acquire(url, page=page)
+
+    # The case host is the submitted host. Never the fetched one. See
+    # kit_acquire.acquire and app.scanner.scope.
     host = acquired["host"]
-    domain = registrable_domain(host) if is_domain(host) else ""
+    domain = acquired["registrable_domain"] if is_domain(host) else ""
+    target = {
+        "url": url,
+        "host": host,
+        "registrable_domain": domain,
+        "domain": domain,  # legacy key, kept so existing consumers keep working
+        "campaign_path": acquired["campaign_path"],
+        "final_url": acquired.get("final_url"),
+        "final_host": acquired.get("final_host"),
+        "redirect_chain": acquired.get("redirect_chain") or [],
+        "scope_left": bool(acquired.get("scope_left")),
+    }
+
+    # Abort before the enrichment fan-out. Not one lookup, not one probe, and
+    # no LLM call against a host that is not the subject of this case.
+    if target["scope_left"]:
+        return build_out_of_scope_report(target, acquired, sig_id=sig_id)
+
     probe = acquired["socket_probe"] or {}
+    case_registrable = acquired["registrable_domain"]
+
+    # Everything below reads the profile that stayed in scope, which is not
+    # necessarily the bare first-contact fetch above.
+    page = acquired["page"]
+    if acquired.get("profile_divergence"):
+        notes.append(
+            "The two request profiles were served different responses. A target "
+            "that answers a scanner and a browser differently is cloaking, and "
+            "the analysis below reflects only the profile named in the Page "
+            "section."
+        )
 
     if page.get("error"):
         notes.append(page["error"])
@@ -587,9 +852,23 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
         })
 
     # Enrichment in parallel, each already guarded internally.
-    host_score_task = rabbithunt_sig.score_host(host, acquired["campaign_path"], probe=probe,
-                                                sig_id=sig_id) if host else None
+    #
+    # Every one of these is aimed at the SUBMITTED domain. The assertions are
+    # the call-site half of the scope guard: _rdap and _ct take a bare domain
+    # string and _urlscan takes a URL, so none of them can refuse an
+    # out-of-scope target on its own.
+    body_for_brand = page.get("body", "") or ""
+    brand = detect_brand(body_for_brand)
+    host_score_task = rabbithunt_sig.score_host(
+        host, acquired["campaign_path"], probe=probe, sig_id=sig_id,
+        brand=brand, case_registrable=case_registrable,
+        profile_divergence=bool(acquired.get("profile_divergence")),
+    ) if host else None
     skipped = {"found": False, "error": "skipped: target is not a registrable domain"}
+    if domain:
+        _assert_case_domain(domain, case_registrable, "RDAP lookup")
+        _assert_case_domain(domain, case_registrable, "CT lookup")
+        _assert_case_domain(url, case_registrable, "urlscan lookup")
     tasks = [
         _rdap(domain) if domain else asyncio.sleep(0, result=skipped),
         _ct(domain) if domain else asyncio.sleep(0, result=skipped),
@@ -617,12 +896,8 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
 
     report = {
         "mode": "live",
-        "target": {
-            "url": url,
-            "host": host,
-            "domain": domain,
-            "campaign_path": acquired["campaign_path"],
-        },
+        "out_of_scope": False,
+        "target": target,
         "page": {
             "status": page.get("status"),
             "server": page.get("server"),
@@ -632,8 +907,12 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
             "size_bytes": page.get("size_bytes"),
             "spa": acquired["spa"].get("spa"),
             "spa_reason": acquired["spa"].get("reason"),
+            "profiles": acquired.get("profiles"),
+            "profile_used": acquired.get("profile_used"),
+            "profile_divergence": acquired.get("profile_divergence"),
             "error": page.get("error"),
         },
+        "brand": brand,
         "timeline": build_timeline(rdap, ct, urlscan),
         "bundles": bundles_out,
         "analysis": analysis,
@@ -650,7 +929,9 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
         "notes": notes,
     }
     report["indicators"] = build_indicators(
-        report["target"], report["page"], rdap, bundles_out, analysis, probe
+        report["target"], report["page"], rdap, bundles_out, analysis, probe,
+        case_registrable=case_registrable,
     )
+    report["content_references"] = build_content_references(analysis, case_registrable)
     report["llm"] = await llm_summary(report)
     return report

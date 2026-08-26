@@ -22,6 +22,51 @@ decoder call sites back into the source, normalizes bracket access
 why the report has a separate "Not found" section: those misses are only
 meaningful because resolution ran first.
 
+## The second rule, added in v3.29.0
+
+> The case host comes from the URL the operator submitted. Never from the
+> response.
+
+A cloaking kit answers a scanner with a redirect to the brand it impersonates.
+If the case host is taken from the fetched response, the whole pipeline follows
+the redirect: registry and CT lookups profile the impersonated brand, the relay
+probe hunts for an operator console on their production infrastructure, and
+their registrar and nameservers land in the copyable indicator block. That
+shipped, and `docs/regressions.md` has the post-mortem.
+
+A redirect `Location`, a canonical link, an `og:url`, a base href and the
+dominant asset host are all chosen by whoever controls the page. They may become
+indicators. They are never lookup targets.
+
+`app/scanner/scope.py` enforces it. Note that it is **not** the SSRF guard and
+does not replace it:
+
+| Guard | Stops the scanner reaching |
+|---|---|
+| `app/utils/safe_fetch` | internal and reserved address space |
+| `app/scanner/scope` | third parties who are not the subject of the case |
+
+Both apply, in that order. `in_scope` and `registrable` fail closed: an empty
+case domain matches nothing rather than everything, so a caller that forgets to
+thread the case domain through blocks its own requests instead of silently
+allowing every host. `registrable` is Public Suffix List backed via
+`tldextract`, constructed with `suffix_list_urls=()` so it uses the bundled
+snapshot and never fetches at runtime. Do not replace it with a split on the
+last two labels: `.qpon` is a real gTLD and `station.qpon` is already
+registrable, while `foo.bar.com.ph` is registrable at `bar.com.ph`.
+
+### What happens when a fetch leaves scope
+
+The pipeline aborts before the enrichment fan-out. No registry lookup, no CT, no
+urlscan, no probe, no bundle teardown and no LLM call. The report keeps its
+shape, with every skipped stage null and a stated reason, the redirect chain as
+the headline section, and the destination in its own `Redirect destination (not
+an indicator)` block outside the copyable indicators.
+
+Scores are `null`, rendered `N/A`. **Never `0%`.** A zero reads as a clean bill
+of health for a host nobody looked at, which is exactly how the original
+incident got past review.
+
 ## Modules
 
 | Module | Responsibility |
@@ -30,6 +75,8 @@ meaningful because resolution ran first.
 | `app/scanner/rabbithunt_sig.py` | Signature records plus the transparent weighted scorer (`score_bundle`, `score_host`, `probe_socket`). |
 | `app/scanner/kit_acquire.py` | Read-only acquisition. Every outbound request goes through `app/utils/safe_fetch`. |
 | `app/scanner/kit_report.py` | Assembles the case report and runs the guarded enrichment. |
+| `app/scanner/scope.py` | Case scope: PSL-backed `registrable`, `in_scope`, and `require_in_scope` which raises `OutOfScope` before a request is issued. |
+| `app/scanner/ph_bank_indicators.py` | PH banking indicators plus the brand impersonation registry (`PH_BRANDS`, `detect_brand`, `brand_for_domain`). |
 
 Endpoint: `POST /api/scanner/kit-report`, 4/minute per IP plus 10 per IP per
 24 hours. It is far heavier than `/scan` (many outbound fetches plus a full
@@ -88,6 +135,13 @@ shapes are deliberately awkward and must not be "simplified".
 
 - `tests/scanner/test_kit_analyzer.py`, `test_rabbithunt_sig.py`,
   `test_kit_report.py` run everywhere, against a synthesized obfuscated fixture.
+- `tests/scanner/test_kit_scope.py` covers case scope. It asserts the invariant
+  rather than the instance: "the case host comes from the submitted URL and
+  outbound requests stay on it", so a future leak through a canonical link or an
+  og:url fails the same tests. Its fixtures under
+  `tests/fixtures/station_qpon/` are the captured evidence from the incident,
+  both request profiles plus the kit's entry bundle, unscrubbed, with a
+  `PROVENANCE.md` recording the capture method and the cloaking discriminators.
 - `tests/scanner/test_real_bundles.py` scores **real** kit bundles and asserts
   their sha256 first, so a swapped or truncated file fails loudly. Those bundles
   are live phishing kit source and are deliberately **not** committed. Point the
@@ -122,6 +176,21 @@ Revisit only as a separate, deliberate decision.
 - Every outbound request goes through `safe_fetch`. A target the SSRF guard
   refuses is refused outright: nothing else touches it, no probe, no bundle fetch,
   no registry or urlscan lookup.
+- Every outbound request on the case path is additionally scope checked.
+  `probe_socket` takes the case domain as a mandatory positional argument and
+  raises `OutOfScope` before issuing anything; the RDAP, CT and urlscan call
+  sites assert. Refusals are logged at WARNING with the case id, the refused
+  host and the case domain.
+- Nameservers are deliberately **not** scope filtered out of the indicator
+  block. A domain's nameservers normally live on somebody else's registrable
+  domain, so filtering them would throw away correct case data on nearly every
+  real target. What keeps them honest is the assertion that the RDAP lookup was
+  aimed at the case domain in the first place.
+- Live targets are fetched under two request profiles and no more. Two makes
+  cloaking visible; a profile matrix turns one report into a fetch campaign
+  against the target.
+- An LLM summary naming any host other than the case host is dropped rather than
+  rendered. This is belt and braces behind the target dict being correct.
 - The relay probe reads HTTP status codes only. It does not open a socket. An
   earlier reference implementation opened a raw TLS socket for a WebSocket
   upgrade handshake; that was deliberately **not** carried over, because it

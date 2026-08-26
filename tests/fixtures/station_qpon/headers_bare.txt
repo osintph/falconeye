@@ -1,0 +1,29 @@
+HTTP/2 302 
+access-control-allow-headers: *
+access-control-allow-methods: *
+access-control-allow-origin: *
+alt-svc: h3=":443"; ma=2592000
+content-type: text/plain; charset=utf-8
+date: Wed, 26 Aug 2026 06:03:10 GMT
+location: https://www.petron.com
+server: GoFrame HTTP Server
+trace-id: eafe23fcad45cf186c11af16f452c3e8
+via: 1.1 Caddy
+
+HTTP/2 200 
+date: Wed, 26 Aug 2026 06:03:10 GMT
+content-type: text/html; charset=UTF-8
+vary: Accept-Encoding
+x-sucuri-id: 18012
+link: <https://www.petron.com/wp-json/>; rel="https://api.w.org/", <https://www.petron.com/wp-json/wp/v2/pages/8>; rel="alternate"; type="application/json", <https://www.petron.com/>; rel=shortlink
+x-frame-options: SAMEORIGIN
+content-security-policy: frame-ancestors 'self';
+referrer-policy: strict-origin-when-cross-origin
+permissions-policy: geolocation=(), gyroscope=()
+cross-origin-opener-policy: same-origin
+cache-control: max-age=172800
+expires: Fri, 28 Aug 2026 05:35:12 GMT
+server: Sucuri/Cloudproxy
+x-sucuri-cache: HIT
+alt-svc: h3=":443"; ma=86400
+

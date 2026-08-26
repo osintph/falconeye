@@ -6,6 +6,56 @@ and the concrete prevention.
 
 ---
 
+## v3.29.0: kit report analyzed the redirect destination, not the target
+
+**What broke.** The deep kit report was given `https://station.qpon/`, a live
+Petron-branded credential harvesting page, and produced a full case report
+describing `www.petron.com`. Registration 1995 via Network Solutions, four
+nameservers, 54 CT certificates, Sucuri, all rendered as case indicators. Both
+scores read NO MATCH 0%. The report was a confident, clean verdict on a real
+company's homepage, and a live phishing kit came back looking harmless.
+
+Worse than the wrong verdict: five unsolicited socket probes hunting for an
+operator console were sent to an uninvolved third party's production
+infrastructure, and the bundle fetcher pulled their site assets on top of that,
+because relative asset refs were being absolutized against the post-redirect
+URL.
+
+**Why it happened.** One assignment. `kit_acquire.acquire` derived the case
+host from `page["url_final"]`, which is `safe_fetch`'s URL after following
+redirects. Every stage downstream inherited it: RDAP, CT, the socket probe, the
+host score and the indicator block. The target was cloaking on User-Agent and
+on source IP, so the scanner was served a 302 to the brand being impersonated,
+and then dutifully investigated the brand.
+
+The wider lesson is that a redirect Location, a canonical link, an og:url and a
+base href are all chosen by whoever controls the page. On a phishing kit that
+is the adversary. Any of them may become an indicator. None of them may become
+a lookup target.
+
+**How it was found.** An operator noticed the report named the wrong company
+and reported it with a full written spec. The Haiku summary had actually caught
+it, flagging the host mismatch and lowering its own confidence to low, but the
+pipeline rendered the summary anyway, so the one component that spotted the bug
+had no way to stop the report.
+
+**Prevention going forward.**
+- The case host is parsed from the submitted URL and from nothing else.
+- `app/scanner/scope.py` guards the case path, separately from the SSRF guard.
+  `probe_socket` takes the case domain as a mandatory argument and raises
+  `OutOfScope` before issuing any request. Enrichment call sites assert.
+- A fetch that leaves the submitted registrable domain aborts before the
+  enrichment fan-out and reports every skipped stage as null with a reason.
+  Scores render `N/A`, never `0%`: a zero reads as clean to a tired analyst.
+- `tests/scanner/test_kit_scope.py` asserts the invariant, not the instance, so
+  a future leak through a canonical link or an og:url fails the same tests. Red
+  before green was verified against both guards independently.
+- When adding any new outbound request to the case path, thread the case domain
+  through it. The guard fails closed: an empty case domain blocks every host
+  rather than allowing every host.
+
+---
+
 ## v3.8.1 — inline comment in `.env` broke bcrypt admin-hash validation
 
 **What broke.** After the v3.8.1 "Send via Mailgun" auth fix, the correct admin
