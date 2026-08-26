@@ -858,8 +858,29 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
 
     # Abort before the enrichment fan-out. Not one lookup, not one probe, and
     # no LLM call against a host that is not the subject of this case.
-    if target["scope_left"]:
+    #
+    # Unless the operator handed us the kit. If there is supplied content then
+    # there is something real to analyze, and the case host is still the
+    # submitted host, so enrichment stays in scope and legitimate. The cloak
+    # stops being a dead end and becomes what it always was: evidence. This is
+    # the normal path for a kit geofenced to its victim country, where the
+    # operator can reach the target and this server cannot.
+    if target["scope_left"] and not (supplied or pasted_bundle.strip()):
         return build_out_of_scope_report(target, acquired, sig_id=sig_id)
+
+    cloaked = bool(target["scope_left"])
+    if cloaked:
+        notes.append(
+            f"The live fetch from this host was cloaked: it left "
+            f"{target['registrable_domain']} and ended on {target['final_host']}. "
+            "The teardown below is of the content you supplied, and the "
+            "enrichment is a live lookup on the submitted domain. Nothing was "
+            "probed or looked up against the redirect destination."
+        )
+        # The decoy body belongs to somebody else. It must not reach brand
+        # detection, indicator extraction or the analyzer.
+        acquired["page"] = dict(acquired["page"], body="")
+        acquired["assets"] = []
 
     probe = acquired["socket_probe"] or {}
     case_registrable = acquired["registrable_domain"]
@@ -994,7 +1015,20 @@ async def build_live_report(url: str, sig_id: str = rabbithunt_sig.DEFAULT_SIGNA
         "bundles": bundles_out,
         "analysis": analysis,
         "socket_probe": probe,
-        "score": {"bundle": bundle_score, "host": host_score},
+        "score": {
+            "bundle": bundle_score,
+            "host": host_score,
+            # Populated only when the live fetch was cloaked, so the evasion is
+            # scored rather than merely mentioned.
+            "redirect": rabbithunt_sig.score_redirect(
+                scope_left=True,
+                final_host=target.get("final_host") or "",
+                case_registrable=case_registrable,
+                profile_divergence=bool(acquired.get("profile_divergence")),
+                sig_id=sig_id,
+            ) if cloaked else None,
+        },
+        "cloaked": cloaked,
         "enrichment": {
             "rdap": rdap,
             "ct": ct,

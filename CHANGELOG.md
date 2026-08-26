@@ -5,6 +5,29 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.30.2] - 2026-08-26
+
+The scope abort was still swallowing supplied content. With a bundle pasted
+alongside a URL the live fetch still ran, was cloaked, and returned the
+out-of-scope report, so the bundle was never touched. That is the normal case
+for a geofenced kit, which meant the normal case still reported nothing.
+
+### Fixed
+
+- A cloaked live fetch is now evidence rather than a dead end whenever the
+  operator supplied content. The abort still exists and still does its job: it
+  fires when there is nothing to analyze, and it is what stops the pipeline
+  running against the redirect destination. With a supplied bundle the case
+  host is still the submitted host, so the teardown runs and enrichment stays
+  in scope.
+- The evasion is scored in that report via `score.redirect`, alongside the
+  bundle and host scores, instead of only appearing as prose.
+- The decoy body served by the cloak is discarded before brand detection,
+  indicator extraction and analysis, so an impersonated brand's homepage cannot
+  reach the case through the supplied path.
+
+---
+
 ## [3.30.1] - 2026-08-26
 
 v3.30.0 shipped the capability analysis but left the operator unable to feed it.

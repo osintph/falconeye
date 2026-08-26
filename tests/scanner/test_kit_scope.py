@@ -828,3 +828,38 @@ def test_unfetchable_bundle_tells_the_operator_what_to_do(monkeypatch):
 
     joined = " ".join(report["notes"])
     assert "paste it together with this URL" in joined
+
+
+def test_cloaked_fetch_is_evidence_not_a_dead_end_when_content_is_supplied(monkeypatch):
+    """A geofenced kit: the operator reaches it, this server cannot.
+
+    The scope abort exists to stop the pipeline running against the redirect
+    destination. It must not also throw away a bundle the operator handed over,
+    which left the normal case for a geofenced kit reporting nothing at all.
+    """
+    reached: list = []
+    monkeypatch.setattr(kit_acquire, "safe_fetch",
+                        _redirecting_transport(reached, "station.qpon",
+                                               "https://www.petron.com/",
+                                               end_body="<html>petron homepage</html>"))
+    calls: dict = {}
+    _arm_tripwires(monkeypatch, calls)
+
+    report = asyncio.run(kit_report.build_live_report(
+        "https://station.qpon/", pasted_bundle=PLAIN_KIT))
+
+    assert report.get("out_of_scope") is False
+    assert report["cloaked"] is True
+    assert report["target"]["host"] == "station.qpon"
+
+    # The kit was actually torn down.
+    exfil = {e["path"] for e in report["analysis"]["exfil_endpoints"]}
+    assert "/xzQpONCfLl/api/input" in exfil
+
+    # The evasion is scored, not merely mentioned.
+    assert report["score"]["redirect"]["score_pct"] > 0
+
+    # And the decoy body never contaminates the case.
+    copied = kit_report.copy_all_indicators(report)
+    assert "petron" not in copied.lower()
+    assert report["page"]["size_bytes"] is not None
