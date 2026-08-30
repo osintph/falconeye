@@ -957,7 +957,9 @@ def test_safe_fetch_refuses_a_redirect_that_leaves_the_case_domain(monkeypatch):
             self.headers = headers
             self.text = text
 
-    async def _fake(client, method, url, headers=None, conn=None):
+    # **_ so this double survives safe_fetch growing another keyword (max_bytes
+    # did exactly that): the test is about scope enforcement, not the call shape.
+    async def _fake(client, method, url, headers=None, conn=None, **_):
         if "station.qpon" in url:
             return _Resp(302, {"location": "https://www.petron.com/"})
         return _Resp(200, {}, "petron homepage")

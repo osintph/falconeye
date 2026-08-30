@@ -19,6 +19,10 @@ Threat model and the three bypass classes this closes:
 Only call this for requests where the URL is attacker-controlled. Fixed-host API
 calls (Shodan, RDAP, Telegram, etc.) may continue using httpx directly.
 
+Bodies are streamed and capped (DEFAULT_MAX_BYTES): the size of a response is this
+app's decision, not the target's. The rebuilt response carries decoded bytes, so its
+content-encoding/content-length framing headers are dropped.
+
 Reusable primitives for callers that run their own hop loop (e.g. url_expander):
 `resolve_pinned(url)` -> PinnedConnection, and `pinned_request(client, method, url)`
 which performs a single IP-pinned request. Do NOT introduce a second SSRF guard —
@@ -34,6 +38,13 @@ from urllib.parse import urlparse, urljoin
 import httpx
 
 ALLOWED_SCHEMES = {"http", "https"}
+
+# Ceiling on a single response body. A target chooses its own response size, so
+# without this an attacker-supplied URL pointed at a large file (or an endless
+# stream) is a memory-exhaustion primitive on a 3-worker box. The default clears
+# KIT_MAX_BUNDLE_BYTES (8 MB) so kit acquisition still applies its own cap to a
+# fully-read bundle; callers that only need headers pass something much smaller.
+DEFAULT_MAX_BYTES = 10_000_000
 
 # Explicit blocks for ranges that ipaddress stdlib does not classify via the
 # is_private / is_loopback / is_link_local / is_reserved / is_unspecified flags:
@@ -159,6 +170,42 @@ def _ip_url(url: str, conn: PinnedConnection, ip: str) -> str:
     return parsed._replace(netloc=f"{hostpart}:{conn.port}").geturl()
 
 
+async def _read_capped(response: httpx.Response, max_bytes: int) -> httpx.Response:
+    """Read a streamed *response* into memory, stopping at *max_bytes*.
+
+    Returns an equivalent non-streaming Response so callers keep using `.text`,
+    `.content` and `.json()` unchanged. Raises SafeFetchError if the body exceeds
+    the cap — truncating instead would hand the caller a half-body it cannot tell
+    apart from a complete one.
+    """
+    body = bytearray()
+    try:
+        async for chunk in response.aiter_bytes():
+            body.extend(chunk)
+            if len(body) > max_bytes:
+                raise SafeFetchError(
+                    f"Response body exceeds the {max_bytes} byte cap"
+                )
+    finally:
+        await response.aclose()
+
+    # aiter_bytes yields DECODED bytes. Carrying the original content-encoding /
+    # content-length onto the rebuilt response makes httpx try to gunzip an
+    # already-gunzipped body (DecodingError on every gzip'd target, which is most
+    # of them). Drop the framing headers and let httpx recompute the length.
+    headers = httpx.Headers(response.headers)
+    for framing in ("content-encoding", "content-length", "transfer-encoding"):
+        if framing in headers:
+            del headers[framing]
+
+    return httpx.Response(
+        status_code=response.status_code,
+        headers=headers,
+        content=bytes(body),
+        request=response.request,
+    )
+
+
 async def pinned_request(
     client: httpx.AsyncClient,
     method: str,
@@ -166,6 +213,7 @@ async def pinned_request(
     *,
     headers: Optional[dict] = None,
     conn: Optional[PinnedConnection] = None,
+    max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> httpx.Response:
     """Perform ONE request pinned to a validated IP (no redirect handling).
 
@@ -175,6 +223,9 @@ async def pinned_request(
     caller is responsible for redirect handling (and must re-call per hop so every
     hop is validated). Pass *conn* to reuse a resolution already done by the caller
     (so the same IP backs both a TLS probe and this fetch).
+
+    The body is streamed and capped at *max_bytes*, so the size of the response is
+    the caller's decision rather than the target's.
     """
     if conn is None:
         conn = resolve_pinned(url)
@@ -185,16 +236,18 @@ async def pinned_request(
     last_exc: Optional[Exception] = None
     for ip in conn.ips:
         ip_url = _ip_url(url, conn, ip)
+        request = client.build_request(
+            method,
+            ip_url,
+            headers=req_headers,
+            extensions={"sni_hostname": conn.host},
+        )
         try:
-            return await client.request(
-                method,
-                ip_url,
-                headers=req_headers,
-                extensions={"sni_hostname": conn.host},
-            )
+            response = await client.send(request, stream=True, follow_redirects=False)
         except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
             last_exc = exc
             continue
+        return await _read_capped(response, max_bytes)
     raise SafeFetchError(
         f"Could not connect to any validated address for {conn.host}: {last_exc}"
     )
@@ -208,6 +261,7 @@ async def safe_fetch(
     max_redirects: int = 3,
     allow_redirects: bool = True,
     scope_registrable: str = "",
+    max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> dict:
     """Fetch *url* safely, resolving+validating+IP-pinning every hop.
 
@@ -245,7 +299,8 @@ async def safe_fetch(
             # resolve_pinned raises SafeFetchError (fail closed) on any violation.
             conn = resolve_pinned(current_url)
             response = await pinned_request(
-                client, method, current_url, headers=headers, conn=conn
+                client, method, current_url, headers=headers, conn=conn,
+                max_bytes=max_bytes,
             )
 
             if allow_redirects and response.status_code in {301, 302, 303, 307, 308}:

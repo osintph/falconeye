@@ -35,6 +35,10 @@ limiter = Limiter(key_func=get_client_ip_key)
 USER_AGENT = "FalconEye/3.6.0 (+https://falconeye.osintph.info)"
 MAX_URL_LENGTH = 2048
 DEFAULT_MAX_HOPS = 10
+# This endpoint only needs headers plus enough HTML to spot a meta-refresh, so it
+# takes a far tighter body cap than safe_fetch's default. Ten hops of a 10 MB body
+# on an anonymous endpoint is a memory-exhaustion primitive; 2 MB per hop is not.
+MAX_BODY_BYTES = 2_000_000
 
 # Known URL shorteners (case-insensitive exact hostname match). Used only to
 # compute a signal; not a block list.
@@ -178,8 +182,19 @@ async def expand_url(url: str, max_hops: int = DEFAULT_MAX_HOPS) -> dict:
             start = time.monotonic()
             try:
                 resp = await pinned_request(
-                    client, "GET", current, headers={"User-Agent": USER_AGENT}, conn=conn
+                    client, "GET", current, headers={"User-Agent": USER_AGENT},
+                    conn=conn, max_bytes=MAX_BODY_BYTES,
                 )
+            except SafeFetchError as exc:
+                # Body over MAX_BODY_BYTES. The hop happened and its headers are
+                # real intelligence, so record it and stop rather than 500.
+                chain.append({
+                    "hop": hop_num, "url": current, "status": 0, "tls": tls,
+                    "server": None, "content_type": None, "location": None,
+                    "elapsed_ms": int((time.monotonic() - start) * 1000),
+                    "error": f"fetch blocked: {exc}",
+                })
+                break
             except httpx.TimeoutException:
                 chain.append({
                     "hop": hop_num, "url": current, "status": 0, "tls": tls,

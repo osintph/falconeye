@@ -231,10 +231,33 @@ async def kit_report_endpoint(request: Request, payload: KitReportRequest):
         raise HTTPException(status_code=400, detail=f"URL blocked: {exc}")
 
 
+# Columns /history is allowed to return. `SELECT *` is deliberately NOT used here:
+# phishing_scans stores telegram_bot_id, the live bot token lifted out of a kit's
+# exfiltration call, and this endpoint is unauthenticated. Any column added to the
+# table in future is withheld by default and has to be listed here on purpose.
+_HISTORY_COLUMNS = (
+    "id",
+    "url_hash",
+    "target_brand",
+    "phishing_url",
+    "kit_indicators",
+    "is_live",
+    "ingest_source",
+    "date_scanned",
+)
+
+
 @router.get("/history")
 @limiter.limit("30/minute")
 async def scan_history(request: Request, db: sqlite3.Connection = Depends(get_db)):
+    """Recent scans, minus the credentials a scan extracts.
+
+    Anonymous callers get the target and its indicators. They do not get
+    telegram_bot_id: handing a kit's live exfiltration token to anyone who asks
+    both burns the token for investigative use and arms whoever collected it.
+    """
     rows = db.execute(
-        "SELECT * FROM phishing_scans ORDER BY date_scanned DESC LIMIT 50"
+        f"SELECT {', '.join(_HISTORY_COLUMNS)} FROM phishing_scans "
+        "ORDER BY date_scanned DESC LIMIT 50"
     ).fetchall()
     return [dict(row) for row in rows]

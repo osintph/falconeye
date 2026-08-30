@@ -80,6 +80,18 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    ("introduced in vX.Y.Z") and must be left alone. Two cosmetic ones are pinned
    and go stale by design: `Description=` in `falconeye.service` and the banner
    `echo` in `scripts/provision.sh`, both still saying v3.5.0.
+
+   **Never remove `--forwarded-allow-ips 127.0.0.1` from the ExecStart line, and
+   never set `FORWARDED_ALLOW_IPS` in `.env`.** Every per-IP rate limit depends
+   on it. uvicorn rewrites the client peer from `X-Forwarded-For` only for peers
+   in that list, taking the **right-most** entry — which nginx sets to the
+   Cloudflare edge IP, and which `app/utils/client_ip.py` then checks against the
+   Cloudflare ranges. With `*` uvicorn takes the **left-most** entry instead,
+   which is fully caller-supplied: the peer becomes attacker-chosen and the paid
+   LLM endpoints lose their limits. An explicit CLI flag beats the env var, which
+   is why the flag is there rather than a comment. `tests/unit/test_client_ip.py`
+   fails if it is removed. If the unit file changed, `sudo systemctl
+   daemon-reload` before restarting or systemd keeps running the old ExecStart.
 3. **CHANGELOG.md** — Keep a Changelog format: `## [x.y.z] - YYYY-MM-DD`, newest
    on top, `---` between entries. That separator is a **plain ASCII hyphen**, not
    an en/em dash; check an existing heading before writing a new one.

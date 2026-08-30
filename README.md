@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.31.3**
+Current version: **3.32.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -65,11 +65,11 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.31.3:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.32.0:
 
-**SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
+**SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
-**Rate limiting.** All per-IP limits — including LLM cost controls and phishing scanner — are keyed on the `CF-Connecting-IP` header, which Cloudflare sets and nginx preserves. This header is trustworthy because nginx only accepts connections from Cloudflare IP ranges. The fallback for local development (no `CF-Connecting-IP`) is `request.client.host`.
+**Rate limiting.** All per-IP limits — including LLM cost controls and phishing scanner — are keyed on `get_client_ip()`, which honours the `CF-Connecting-IP` header **only when the direct TCP peer is inside a published Cloudflare range** (`app/utils/cloudflare_ips.py`) or an operator-configured `TRUSTED_PROXY_CIDRS` network. From any other peer the header is ignored and the limit keys on the real peer address, so a caller that reaches the origin directly cannot rotate a header to mint fresh counters. Header values that are not well-formed IP addresses are ignored rather than becoming their own bucket. This is deliberately independent of the nginx allowlist below: the limits hold even if the origin is exposed. The fallback for local development (no trusted peer, no header) is `request.client.host`.
 
 **XSS.** Attacker-controlled strings from Telegram channel metadata, RDAP registration fields, RSS feeds, and threat intelligence APIs are escaped with `escapeHtml()` / `escapeAttr()` before any DOM insertion. The existing escape helpers are used consistently; no `innerHTML` is assigned with unescaped external data.
 
@@ -77,11 +77,15 @@ FalconEye is a public, unauthenticated OSINT tool with no login. The following c
 
 **Error isolation.** Exception strings from httpx and upstream APIs are logged server-side with `log.exception` and never echoed to the client. Client responses get generic messages only (`"Upstream service unavailable."`).
 
-**LLM output validation.** Parsed LLM JSON is validated before any field is used in application logic. `clamp_int`, `safe_str`, and `validate_findings_list` in `app/utils/llm_response.py` prevent type errors from malformed model output reaching `max()`, `for` loops, or string operations.
+**Prompt injection.** Both LLM endpoints analyse input that is hostile by definition — obfuscated malware samples, scam email bodies. Every attacker-controlled value (the script decoder's `code` and `hint`, the email analyser's `sender_email` and body) is wrapped in `<untrusted_data>` fences by `app/utils/prompt_safety.py` before it reaches Claude, with any fence tag stripped from the value first so a sample cannot close its own fence and continue as operator framing. Both system prompts carry a trust-boundary instruction stating that fenced content is data to analyse and never an instruction to follow, and that an attempt to influence the verdict is itself an indicator to report. Untrusted input is never interpolated raw into a prompt.
+
+**LLM output validation.** Parsed LLM JSON is validated before any field is used in application logic. `clamp_int`, `safe_str`, and `validate_findings_list` in `app/utils/llm_response.py` prevent type errors from malformed model output reaching `max()`, `for` loops, or string operations. Free-text fields are additionally sanitised by `sanitize_llm_text` — control and ANSI sequences stripped, echoed fence markers removed, length clamped — before they are returned to the browser, so injected content cannot smuggle escapes or forged framing into the UI. `severity` and `intent` remain allowlist-validated, so an injected verdict cannot survive parsing.
 
 **Input validation.** All SQL uses parameterized queries. The only subprocess is `whois` in list-arg form over a strictly validated domain. No `eval`, `exec`, `pickle`, `yaml.load`, or `shell=True` anywhere in the codebase.
 
-**Origin protection.** nginx is configured to only accept inbound connections from Cloudflare IP ranges. The gunicorn listener binds to `127.0.0.1:8000` only.
+**Origin protection.** nginx is configured to only accept inbound connections from Cloudflare IP ranges. The gunicorn listener binds to `127.0.0.1:8000` only, and pins `--forwarded-allow-ips 127.0.0.1` so uvicorn trusts `X-Forwarded-For` from the local nginx alone — with `*` it would take the caller-supplied left-most entry and the peer address that Rate limiting depends on would become attacker-chosen. The same range list is enforced a second time in the application (see Rate limiting), so the two must be kept in step — a unit test fails if `nginx/falconeye.conf` and `app/utils/cloudflare_ips.py` drift apart.
+
+**Unauthenticated endpoints.** `GET /api/scanner/history` is public and returns an explicit column allowlist from `phishing_scans`. `telegram_bot_id` — the live bot token extracted from a kit's exfiltration call — is never in that list; it is returned only to the caller who submitted the scan that found it. Any column added to the table later is withheld until it is listed on purpose.
 
 ---
 

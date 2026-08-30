@@ -20,7 +20,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
 
-from app.utils.safe_fetch import SafeFetchError, is_private_ip, resolve_and_check, safe_fetch
+from app.utils.safe_fetch import (
+    DEFAULT_MAX_BYTES,
+    SafeFetchError,
+    is_private_ip,
+    resolve_and_check,
+    safe_fetch,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -192,42 +198,55 @@ def test_redirect_cap_exceeded():
 # Helpers
 # ---------------------------------------------------------------------------
 
+# Bound before any test patches httpx.AsyncClient — the helper below builds a real
+# client while that patch is active, so it must not go through the patched name.
+_REAL_ASYNC_CLIENT = httpx.AsyncClient
+
+
+def _client_from_handler(handler):
+    """A real httpx.AsyncClient wired to a MockTransport running *handler*.
+
+    Real clients rather than hand-rolled stubs on purpose: these tests assert on
+    what safe_fetch puts on the wire (pinned IP, SNI, Host), not on which httpx
+    method it happens to call to get there. A stub implementing only `.request`
+    breaks the moment the transport changes — which is how the body-cap change
+    (build_request + send(stream=True)) broke five of them.
+    """
+    return _REAL_ASYNC_CLIENT(
+        transport=httpx.MockTransport(handler), follow_redirects=False
+    )
+
+
 def _make_async_client(response):
-    """Return a minimal async context manager that always returns *response*."""
+    """Client that answers every request with a copy of *response*."""
 
-    class _FakeClient:
-        async def __aenter__(self):
-            return self
+    def handler(request):
+        return httpx.Response(
+            status_code=response.status_code,
+            headers=response.headers,
+            content=response.content,
+        )
 
-        async def __aexit__(self, *_):
-            pass
-
-        async def request(self, method, url, **kwargs):
-            return response
-
-    return _FakeClient()
+    return _client_from_handler(handler)
 
 
 def _recording_client(response, sink):
-    """Async client stub that records each request (url/headers/extensions)."""
+    """Client that records each request (url/headers/extensions) before answering."""
 
-    class _RecClient:
-        async def __aenter__(self):
-            return self
+    def handler(request):
+        sink.append({
+            "method": request.method,
+            "url": str(request.url),
+            "headers": dict(request.headers),
+            "extensions": dict(request.extensions),
+        })
+        return httpx.Response(
+            status_code=response.status_code,
+            headers=response.headers,
+            content=response.content,
+        )
 
-        async def __aexit__(self, *_):
-            pass
-
-        async def request(self, method, url, **kwargs):
-            sink.append({
-                "method": method,
-                "url": str(url),
-                "headers": {k: v for k, v in (kwargs.get("headers") or {}).items()},
-                "extensions": dict(kwargs.get("extensions") or {}),
-            })
-            return response
-
-    return _RecClient()
+    return _client_from_handler(handler)
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +275,7 @@ def test_connection_pinned_to_validated_ip():
     assert "example.com" not in rec["url"]         # not to the hostname
     assert rec["url"].endswith("/path?q=1")        # path/query preserved
     assert rec["extensions"].get("sni_hostname") == "example.com"  # TLS validates vs host
-    assert rec["headers"].get("Host") == "example.com"             # vhost routing
+    assert rec["headers"].get("host") == "example.com"             # vhost routing
 
 
 def test_dns_rebind_blocked_no_second_resolution():
@@ -296,22 +315,15 @@ def test_pins_to_first_reachable_validated_ip():
             (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("5.6.7.8", 0)),
         ]
 
-    class _FailFirstClient:
-        async def __aenter__(self):
-            return self
-
-        async def __aexit__(self, *_):
-            pass
-
-        async def request(self, method, url, **kwargs):
-            sink.append(str(url))
-            if "1.2.3.4" in str(url):
-                raise httpx.ConnectError("connection refused")
-            return ok
+    def handler(request):
+        sink.append(str(request.url))
+        if "1.2.3.4" in str(request.url):
+            raise httpx.ConnectError("connection refused")
+        return httpx.Response(ok.status_code)
 
     async def run():
         with patch("app.utils.safe_fetch.socket.getaddrinfo", side_effect=two_public_ips):
-            with patch("httpx.AsyncClient", side_effect=lambda **kw: _FailFirstClient()):
+            with patch("httpx.AsyncClient", side_effect=lambda **kw: _client_from_handler(handler)):
                 return await safe_fetch("http://multi.example.com/")
 
     res = asyncio.run(run())
@@ -323,3 +335,61 @@ def test_pins_to_first_reachable_validated_ip():
 def test_userinfo_url_rejected():
     with pytest.raises(SafeFetchError, match="userinfo"):
         asyncio.run(safe_fetch("http://user:pass@example.com/"))
+
+
+# ---------------------------------------------------------------------------
+# Response body cap — the target does not get to choose how much memory it costs
+# ---------------------------------------------------------------------------
+
+def _fetch_with_body(body: bytes, headers=None, **kwargs):
+    """Run safe_fetch against a mock target that returns *body*."""
+    def handler(request):
+        return httpx.Response(200, headers=headers or {}, content=body)
+
+    async def run():
+        with patch("app.utils.safe_fetch.socket.getaddrinfo",
+                   return_value=_getaddrinfo_returning("1.2.3.4")):
+            with patch("httpx.AsyncClient",
+                       side_effect=lambda **kw: _client_from_handler(handler)):
+                return await safe_fetch("http://big.example.com/", **kwargs)
+
+    return asyncio.run(run())
+
+
+def test_body_under_the_cap_is_returned_whole():
+    res = _fetch_with_body(b"x" * 1000, max_bytes=5000)
+    assert res["status"] == 200
+    assert res["body"] == "x" * 1000
+
+
+def test_body_over_the_cap_is_refused():
+    with pytest.raises(SafeFetchError, match="byte cap"):
+        _fetch_with_body(b"x" * 6000, max_bytes=5000)
+
+
+def test_oversize_body_is_refused_not_truncated():
+    """Truncating would hand the caller a partial body it cannot detect."""
+    with pytest.raises(SafeFetchError):
+        _fetch_with_body(b"x" * (DEFAULT_MAX_BYTES + 1))
+
+
+def test_body_exactly_at_the_cap_is_allowed():
+    res = _fetch_with_body(b"x" * 5000, max_bytes=5000)
+    assert len(res["body"]) == 5000
+
+
+def test_gzipped_body_is_decoded_once():
+    """The rebuilt response must not carry content-encoding, or httpx re-inflates
+    an already-inflated body and every compressed target raises DecodingError."""
+    import gzip
+    payload = gzip.compress(b"<html>compressed target</html>")
+    res = _fetch_with_body(payload, headers={"content-encoding": "gzip",
+                                             "content-type": "text/html"})
+    assert res["body"] == "<html>compressed target</html>"
+
+
+def test_response_headers_survive_the_cap():
+    res = _fetch_with_body(b"ok", headers={"server": "nginx",
+                                           "content-type": "text/plain"})
+    assert res["headers"]["server"] == "nginx"
+    assert res["headers"]["content-type"] == "text/plain"

@@ -8,10 +8,23 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/opt/falconeye/app_src
 EnvironmentFile=/opt/falconeye/.env
+# --forwarded-allow-ips is pinned, not left to the default, because every per-IP
+# rate limit depends on it. uvicorn's ProxyHeadersMiddleware rewrites the client
+# peer from X-Forwarded-For only for peers in this list; nginx appends its
+# $remote_addr (the Cloudflare edge IP) as the right-most entry, and that is what
+# app/utils/client_ip.py checks against the Cloudflare ranges.
+#
+# Setting it to "*" would make uvicorn take the LEFT-most X-Forwarded-For entry,
+# which is fully caller-supplied — the peer address becomes attacker-chosen and
+# every rate limit falls over. gunicorn reads FORWARDED_ALLOW_IPS from the
+# environment, and EnvironmentFile= below puts .env into that environment, so
+# without this explicit flag one line in .env could do exactly that. An explicit
+# CLI flag wins over the env var; keep it.
 ExecStart=/opt/falconeye/venv/bin/gunicorn app.main:app \
     --bind 127.0.0.1:8000 \
     --workers 3 \
     --worker-class uvicorn.workers.UvicornWorker \
+    --forwarded-allow-ips 127.0.0.1 \
     --timeout 90 \
     --access-logfile /var/log/falconeye/access.log \
     --error-logfile /var/log/falconeye/error.log
