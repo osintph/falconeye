@@ -23,6 +23,12 @@ There is deliberately no Playwright here — the map's real precondition is
 that its two hard dependencies are fetchable and the topojson carries country
 geometry, which is exactly what the browser needs to draw the country paths,
 and that is assertable over HTTP without a browser engine.
+
+Run the live check from a workstation, NOT from the VPS. It asserts what a
+user's browser sees, and Cloudflare bot management challenges datacenter
+source IPs on the larger payloads — from the VPS the world topojson comes
+back 403 even when the site is perfectly healthy. The assertion messages call
+this out so a false failure is not mistaken for a regression.
 """
 import json
 import os
@@ -119,7 +125,9 @@ _skip_live = pytest.mark.skipif(
 def test_live_map_dependencies_are_fetchable_through_the_edge():
     """The #ransomware/overview map renders only if both of these are
     reachable *through Cloudflare*. Fetching them from the origin is not a
-    substitute — that is precisely what passed while the map was broken."""
+    substitute — that is precisely what passed while the map was broken.
+
+    Run this from a workstation, not the VPS; see the module docstring."""
     import httpx
 
     browser_ua = (
@@ -129,10 +137,19 @@ def test_live_map_dependencies_are_fetchable_through_the_edge():
     with httpx.Client(timeout=30, follow_redirects=True) as client:
         for url_path in sorted(_local_static_refs()):
             resp = client.get(LIVE_BASE + url_path, headers={"User-Agent": browser_ua})
+            mitigated = resp.headers.get("cf-mitigated")
             assert resp.status_code == 200, (
                 f"{url_path} returned {resp.status_code} through the edge "
-                f"(cf-mitigated: {resp.headers.get('cf-mitigated', 'none')}). "
-                f"The asset is unreachable in a real browser even if the origin serves it."
+                f"(cf-mitigated: {mitigated or 'none'}). The asset is unreachable "
+                f"in a real browser even if the origin serves it."
+                + (
+                    "  NOTE: a 'challenge' here can also mean Cloudflare is "
+                    "challenging *your* source IP — that happens from the VPS and "
+                    "other datacenter addresses. Re-run from a client network "
+                    "before treating this as a regression."
+                    if mitigated
+                    else ""
+                )
             )
 
 
@@ -147,7 +164,11 @@ def test_live_topojson_carries_country_geometry():
     assert refs, "no world topojson reference found"
     with httpx.Client(timeout=60, follow_redirects=True) as client:
         resp = client.get(LIVE_BASE + refs[0])
-    assert resp.status_code == 200, f"topojson returned {resp.status_code} through the edge"
+    assert resp.status_code == 200, (
+        f"topojson returned {resp.status_code} through the edge "
+        f"(cf-mitigated: {resp.headers.get('cf-mitigated', 'none')}). If this is a "
+        f"challenge, check you are not running from the VPS — see the module docstring."
+    )
     topo = json.loads(resp.text)
     geometries = topo.get("objects", {}).get("countries", {}).get("geometries", [])
     assert len(geometries) > 100, (
