@@ -5,6 +5,52 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.32.1] - 2026-09-15
+
+The Ransomware Watch Overview map had been showing "Map library did not load."
+instead of the world choropleth. Nothing in the application was wrong, which is
+why it went unnoticed: the origin served every file correctly the whole time.
+
+The zone's "WordPress scanner noise" custom rule matches the `vendor` path
+segment, which is what the scanners it exists to absorb spend all day probing.
+Its exclusion for `/static/` sat lower in the rule order than the block, so the
+block matched first and the exclusion never got the chance to apply. Every
+request for `/static/vendor/*` was challenged at the edge — a 503 for the two
+script tags, a 403 for the topojson — while `/static/app.js` and
+`/static/style.css` were served normally. D3 loads from cdnjs and was fine, so
+`window.d3` was an object and `window.topojson` was `undefined`, which is
+exactly the condition the map's guard reports.
+
+The CSP was not involved. `script-src` still carries `cdnjs.cloudflare.com` from
+v3.5.2, and the live header is byte-identical to `nginx/falconeye.conf`.
+
+The second casualty was quieter: `jspdf.umd.min.js` was vendored under the same
+directory, so client-side PDF export had been failing everywhere in the app for
+the same reason and nobody had reported it.
+
+The rule's `/static/` exclusion has been corrected in the zone. The vendored
+assets have also been moved out from under the blocked segment, so the app no
+longer depends on an edge exclusion staying in the right order to render.
+
+### Fixed
+
+- Vendored browser libraries moved from `/static/vendor/` to `/static/lib/`
+  (`topojson-client.min.js`, `jspdf.umd.min.js`, `world-countries-50m.json`).
+  The Ransomware Watch world map renders again, and client-side PDF export
+  works again. No CSP change, no nginx change: the files were always readable
+  at the origin and the directory is served by the existing `/static/` alias.
+
+### Added
+
+- `tests/unit/test_static_asset_paths.py` covers the bug class rather than this
+  instance. It asserts every local `/static/*` URL that `index.html` and
+  `app.js` reference resolves to a file in the repo, and that no first-party
+  asset is parked under a URL segment WAF rules habitually block. An opt-in
+  live smoke test (`FALCONEYE_LIVE_SMOKE=1`) fetches those assets *through the
+  edge* rather than from the origin — fetching from the origin is what passed
+  while the map was broken — and asserts the served topojson parses and still
+  carries its country geometry, the data the map turns into country paths.
+
 ## [3.32.0] - 2026-08-30
 
 Four findings from a source-review security audit of the public instance. Two of

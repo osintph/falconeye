@@ -5707,7 +5707,7 @@ function usernamePivotTelegram(handle) {
 
 // ============================================================================
 //  Client-side PDF export (v3.9.1)
-//  jsPDF is vendored at /static/vendor/jspdf.umd.min.js (self-hosted, no CDN).
+//  jsPDF is vendored at /static/lib/jspdf.umd.min.js (self-hosted, no CDN).
 //  One shared builder (fePdfNew + fe* primitives) drives both report types —
 //  the IP reputation report and the abuse report. Everything runs in the
 //  browser; no bytes are sent to the server and nothing is written to disk
@@ -7393,7 +7393,7 @@ async function renderRansomwareMap(countries, rangeText) {
   }
   if (!_rwTopoCache) {
     try {
-      const resp = await fetch('/static/vendor/world-countries-50m.json');
+      const resp = await fetch('/static/lib/world-countries-50m.json');
       _rwTopoCache = await resp.json();
     } catch (e) {
       container.innerHTML = '<p class="text-gray-500 text-sm p-4">Could not load map data.</p>';
@@ -7942,7 +7942,7 @@ var RW_SEA_COUNTRY_FALLBACK_NAMES = {
 async function rwEnsureTopoLoaded() {
   if (_rwTopoCache) return _rwTopoCache;
   try {
-    const resp = await fetch('/static/vendor/world-countries-50m.json');
+    const resp = await fetch('/static/lib/world-countries-50m.json');
     _rwTopoCache = await resp.json();
   } catch (e) { /* leave null - callers degrade gracefully */ }
   return _rwTopoCache;
