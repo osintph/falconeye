@@ -9,6 +9,7 @@ from app.prospect.investigations import write_investigation
 from app.prospect.service import build_dossier
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.prospect")
 router = APIRouter(prefix="/api/prospect", tags=["prospect"])
@@ -51,7 +52,7 @@ async def get_prospect(request: Request, domain: str):
                 data["cached"] = True
                 return data
         except Exception as e:
-            log.warning("Redis get error for %s: %s", normalized, e)
+            log.warning("Redis get error for %s: %s", tag(normalized), e)
 
     dossier = await build_dossier(normalized)
 
@@ -67,7 +68,7 @@ async def get_prospect(request: Request, domain: str):
         try:
             await _redis.setex(cache_key, _CACHE_TTL, json.dumps(dossier))
         except Exception as e:
-            log.warning("Redis set error for %s: %s", normalized, e)
+            log.warning("Redis set error for %s: %s", tag(normalized), e)
 
     dossier["cached"] = False
     return dossier

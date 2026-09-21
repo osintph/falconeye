@@ -14,6 +14,7 @@ import os
 import pathlib
 import sqlite3
 import uuid
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.prospect.investigations")
 
@@ -54,7 +55,7 @@ def write_investigation(domain: str, generated_at: str, dossier: dict, client_ip
         _PROSPECT_DIR.mkdir(parents=True, exist_ok=True)
         (_DATA_DIR / rel_path).write_text(json.dumps(dossier, indent=2), encoding="utf-8")
     except Exception as exc:
-        log.warning("Could not write dossier JSON for %s: %s", domain, exc)
+        log.warning("Could not write dossier JSON for %s: %s", tag(domain), exc)
         return investigation_id
 
     try:
@@ -70,6 +71,6 @@ def write_investigation(domain: str, generated_at: str, dossier: dict, client_ip
         conn.commit()
         conn.close()
     except Exception as exc:
-        log.warning("Could not write investigation row for %s: %s", domain, exc)
+        log.warning("Could not write investigation row for %s: %s", tag(domain), exc)
 
     return investigation_id

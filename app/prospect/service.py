@@ -24,6 +24,7 @@ from app.prospect.engines import (
     meta_page_search,
 )
 from app.prospect.resolver import CompanyIdentity, resolve_identity
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.prospect.service")
 
@@ -124,8 +125,8 @@ def _select_meta_page(pages: list, identity: CompanyIdentity):
         # Step 1: whole-word filter
         if not any(pat.search(pname) for pat in patterns):
             log.info(
-                "meta.page_drop name=%r reason=no_whole_word_match candidates=%r",
-                pname, [n for n in names if n],
+                "meta.page_drop name=%s reason=no_whole_word_match candidates=%s",
+                tag(pname), [n for n in names if n],
             )
             continue
 
@@ -139,7 +140,7 @@ def _select_meta_page(pages: list, identity: CompanyIdentity):
             score = 75  # allow through when rapidfuzz absent
 
         if score < 75:
-            log.info("meta.page_drop name=%r reason=low_fuzzy_score score=%d threshold=75", pname, score)
+            log.info("meta.page_drop name=%s reason=low_fuzzy_score score=%d threshold=75", tag(pname), score)
             continue
 
         # Step 3: category boost
@@ -148,14 +149,14 @@ def _select_meta_page(pages: list, identity: CompanyIdentity):
         followers = page.get("likes") or 0
         scored.append((total, followers, page))
         log.info(
-            "meta.page_keep name=%r score=%d boost=%d followers=%d",
-            pname, score, boost, followers,
+            "meta.page_keep name=%s score=%d boost=%d followers=%d",
+            tag(pname), score, boost, followers,
         )
 
     if not scored:
         log.info(
-            "meta.page_none domain identity=%r no pages survived filtering",
-            identity.canonical_name,
+            "meta.page_none domain identity=%s no pages survived filtering",
+            tag(identity.canonical_name),
         )
         return None
 
@@ -235,14 +236,14 @@ async def _fetch_news(
         else:
             dropped += 1
             log.info(
-                "news.drop domain=%s title=%r reason=no_identity_token",
-                domain, (a.get("title") or "")[:80],
+                "news.drop domain=%s title=%s reason=no_identity_token",
+                tag(domain), tag(a.get("title")),
             )
 
     if articles and dropped / len(articles) > 0.6:
         log.warning(
             "news.high_drop domain=%s drop_pct=%d%% retrying_stricter",
-            domain, int(dropped / len(articles) * 100),
+            tag(domain), int(dropped / len(articles) * 100),
         )
         retry_query = f'"{identity.canonical_name}" site:{domain}'
         try:
@@ -252,7 +253,7 @@ async def _fetch_news(
                 result = result2
                 passed = [a for a in articles2 if _article_relevant(a, tokens)]
         except Exception as exc:
-            log.warning("news.retry_failed domain=%s error=%s", domain, exc)
+            log.warning("news.retry_failed domain=%s error=%s", tag(domain), exc)
 
     out = dict(result)
     out["organic_results"] = passed
@@ -273,14 +274,14 @@ def _filter_jobs(jobs: list, identity: CompanyIdentity, domain: str) -> list:
     for job in jobs:
         jc = (job.get("company_name") or "").strip()
         if not jc:
-            log.info("jobs.drop domain=%s reason=missing_company_name", domain)
+            log.info("jobs.drop domain=%s reason=missing_company_name", tag(domain))
             continue
         if any(_partial_ratio(jc.lower(), t.lower()) >= 75 for t in targets):
             kept.append(job)
         else:
             log.info(
-                "jobs.drop domain=%s job_company=%r reason=fuzzy_mismatch",
-                domain, jc,
+                "jobs.drop domain=%s job_company=%s reason=fuzzy_mismatch",
+                tag(domain), tag(jc),
             )
     return kept
 

@@ -45,6 +45,7 @@ from app.utils import cache
 from app.utils.llm_response import parse_llm_json, safe_str
 from app.utils.safe_fetch import SafeFetchError
 from app.utils.urlscan import check_urlscan
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.kit_report")
 
@@ -170,7 +171,7 @@ async def _rdap(domain: str) -> dict:
             "error": None,
         }
     except Exception:
-        log.warning("kit_report RDAP failed for %s", domain, exc_info=True)
+        log.warning("kit_report RDAP failed for %s", tag(domain), exc_info=True)
         return {"found": False, "error": "rdap lookup failed"}
 
 
@@ -204,7 +205,7 @@ async def _ct(domain: str) -> dict:
             "error": result.get("error"),
         }
     except Exception:
-        log.warning("kit_report CT failed for %s", domain, exc_info=True)
+        log.warning("kit_report CT failed for %s", tag(domain), exc_info=True)
         return {"found": False, "error": "CT lookup failed"}
 
 
@@ -354,7 +355,7 @@ def build_indicators(target: dict, page: dict, rdap: dict, bundles: list,
         if case_registrable and kind in _HOST_INDICATOR_TYPES:
             if not in_scope(str(value), case_registrable):
                 log.warning("indicator dropped as out of scope: %s=%s case_domain=%s",
-                            kind, value, case_registrable)
+                            kind, tag(value), tag(case_registrable))
                 return
         out.append({"type": kind, "value": str(value), "note": note})
 
@@ -632,7 +633,7 @@ async def llm_summary(report: dict) -> Optional[dict]:
             if foreign:
                 log.warning(
                     "LLM summary dropped: named %s, which is not the case host %s",
-                    foreign, target.get("host"),
+                    tag(foreign), tag(target.get("host")),
                 )
                 return None
 

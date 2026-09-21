@@ -41,6 +41,7 @@ from app.utils.prompt_safety import (
     sanitize_llm_text,
     wrap_untrusted,
 )
+from app.utils.logsafe import tag
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -184,6 +185,9 @@ SUSPICIOUS_ATTACHMENT_EXT = {
 class HeaderAnalyzeRequest(BaseModel):
     raw_header: str
     raw_body: str | None = None
+    # Bypass the 24 hour analysis cache and re-run, including the LLM call.
+    # Charged exactly like a fresh analysis: same limiter, same LLM daily cap.
+    refresh: bool = False
 
 
 _CACHE_TABLE = "email_header_cache"
@@ -246,7 +250,7 @@ def _record_analyze_call(source_ip: str):
         conn.commit()
         conn.close()
     except Exception as exc:
-        log.error("Failed to write email_analyze_rate_limit row for ip=%s: %s", source_ip, exc)
+        log.error("Failed to write email_analyze_rate_limit row for ip=%s: %s", tag(source_ip), exc)
 
 
 def _mime_within_limits(msg) -> bool:
@@ -773,7 +777,7 @@ def _record_llm_call(source_ip: str):
         conn.commit()
         conn.close()
     except Exception as exc:
-        log.error("Failed to write llm_rate_limit row for ip=%s: %s", source_ip, exc)
+        log.error("Failed to write llm_rate_limit row for ip=%s: %s", tag(source_ip), exc)
 
 
 # ---------- LLM body analyzer ----------
@@ -949,7 +953,9 @@ async def _llm_analyze_body(body: str, sender_email: str = "") -> dict | None:
         }
         return parsed
     except (json.JSONDecodeError, AttributeError) as e:
-        log.warning(f"LLM returned non-JSON: {raw_text[:200]}... ({e})")
+        # Never log the model text: it is derived from a pasted email header and
+        # routinely quotes it back. Length and a tag are enough to correlate.
+        log.warning("LLM returned non-JSON: %d chars %s (%s)", len(raw_text), tag(raw_text), e)
         return None
 
 
@@ -1098,7 +1104,11 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     cache_key_source = raw + "\n\n----BODY----\n\n" + body_input
     header_id = _hash_header(cache_key_source)
 
-    cached = cache.get(_CACHE_TABLE, header_id, CACHE_TTL_HOURS, key_col="id")
+    # refresh=true bypasses the cache and re-runs the analysis, including the
+    # LLM call, then replaces the row. Same endpoint, same limiter and the same
+    # LLM daily cap, so a refresh is charged exactly like a fresh analysis.
+    cached = None if getattr(req, "refresh", False) else cache.get(
+        _CACHE_TABLE, header_id, CACHE_TTL_HOURS, key_col="id")
     if cached:
         # Attached after the cache read, never written into it: Hudson Rock has
         # its own cache and its own per-IP cap, and a header analysis cached for
@@ -1329,7 +1339,7 @@ async def upload(file: UploadFile = File(...)):
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         except Exception as e:
-            log.warning(f"Email file upload parse exception ({file.filename}, {len(file_bytes)} bytes): {type(e).__name__}: {e}")
+            log.warning("Email file upload parse exception (%s, %d bytes): %s: %s", tag(file.filename), len(file_bytes), type(e).__name__, e)
             raise HTTPException(status_code=400, detail="failed to parse email file")
 
         return {

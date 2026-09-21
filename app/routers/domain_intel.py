@@ -17,6 +17,7 @@ from app.database import get_db
 from app.hudsonrock import client as hudsonrock
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain, extract_tld
+from app.utils.logsafe import tag
 
 router = APIRouter(prefix="/api/domain", tags=["domain"])
 limiter = Limiter(key_func=get_client_ip_key)
@@ -103,12 +104,12 @@ async def fetch_rdap(client: httpx.AsyncClient, domain: str) -> dict | None:
         if r.status_code == 200:
             return r.json()
         if r.status_code == 404:
-            log.info(f"RDAP: domain not found for {domain}")
+            log.info(f"RDAP: domain not found for {tag(domain)}")
             return {"error": "not_found", "status_code": 404}
-        log.warning(f"RDAP returned {r.status_code} for {domain}")
+        log.warning(f"RDAP returned {r.status_code} for {tag(domain)}")
         return {"error": "rdap_error", "status_code": r.status_code}
     except Exception as e:
-        log.warning(f"RDAP exception for {domain}: {e}")
+        log.warning(f"RDAP exception for {tag(domain)}: {e}")
         return None
 
 
@@ -191,7 +192,7 @@ async def fetch_whois(domain: str) -> str | None:
             return result.stdout[:8000]
         return None
     except Exception as e:
-        log.warning(f"WHOIS exception for {domain}: {e}")
+        log.warning(f"WHOIS exception for {tag(domain)}: {e}")
         return None
 
 
@@ -235,7 +236,7 @@ async def fetch_dns(domain: str) -> dict:
     try:
         return await loop.run_in_executor(None, fetch_dns_sync, domain)
     except Exception as e:
-        log.warning(f"DNS resolution failed for {domain}: {e}")
+        log.warning(f"DNS resolution failed for {tag(domain)}: {e}")
         return {rt: [] for rt in DNS_RECORD_TYPES}
 
 
@@ -257,23 +258,23 @@ async def fetch_ct_crtsh(client: httpx.AsyncClient, domain: str) -> dict | None:
                 try:
                     return {"raw": r.json(), "source": "crt.sh"}
                 except Exception as e:
-                    log.warning(f"crt.sh JSON parse failed for {domain}: {e}")
+                    log.warning(f"crt.sh JSON parse failed for {tag(domain)}: {e}")
                     return None
             elif r.status_code == 200:
                 # 200 with HTML body, error page
-                log.warning(f"crt.sh returned 200 with non-JSON content for {domain}")
+                log.warning(f"crt.sh returned 200 with non-JSON content for {tag(domain)}")
                 if attempt == 0:
                     await asyncio.sleep(3)
                     continue
                 return None
             else:
-                log.warning(f"crt.sh returned {r.status_code} for {domain} (attempt {attempt + 1})")
+                log.warning(f"crt.sh returned {r.status_code} for {tag(domain)} (attempt {attempt + 1})")
                 if attempt == 0 and r.status_code in (500, 502, 503, 504):
                     await asyncio.sleep(3)
                     continue
                 return None
         except Exception as e:
-            log.warning(f"crt.sh exception for {domain} attempt {attempt + 1}: {e}")
+            log.warning(f"crt.sh exception for {tag(domain)} attempt {attempt + 1}: {e}")
             if attempt == 0:
                 await asyncio.sleep(2)
                 continue
@@ -303,12 +304,12 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
             headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"},
         )
         if r.status_code != 200:
-            log.warning(f"Certspotter returned {r.status_code} for {domain}")
+            log.warning(f"Certspotter returned {r.status_code} for {tag(domain)}")
             return None
 
         data = r.json()
         if not isinstance(data, list):
-            log.warning(f"Certspotter unexpected response shape for {domain}")
+            log.warning(f"Certspotter unexpected response shape for {tag(domain)}")
             return None
 
         normalized = []
@@ -333,7 +334,7 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
 
         return {"raw_normalized": normalized, "source": "certspotter"}
     except Exception as e:
-        log.warning(f"Certspotter exception for {domain}: {e}")
+        log.warning(f"Certspotter exception for {tag(domain)}: {e}")
         return None
 
 
@@ -348,7 +349,7 @@ async def fetch_ct(client: httpx.AsyncClient, domain: str) -> dict:
         raw_certs = primary["raw"]
         source = primary["source"]
     else:
-        log.info(f"Falling back to Certspotter for {domain}")
+        log.info(f"Falling back to Certspotter for {tag(domain)}")
         fallback = await fetch_ct_certspotter(client, domain)
         if fallback:
             return _normalize_google_ct(fallback, domain)
@@ -462,7 +463,7 @@ async def fetch_network(client: httpx.AsyncClient, ip: str) -> dict | None:
                 result["asn_holder"] = asn_data.get("holder")
         return result
     except Exception as e:
-        log.warning(f"RIPEstat exception for {ip}: {e}")
+        log.warning(f"RIPEstat exception for {tag(ip)}: {e}")
         return None
 
 
@@ -470,7 +471,8 @@ async def fetch_network(client: httpx.AsyncClient, ip: str) -> dict | None:
 
 @router.get("/lookup/{domain}")
 @limiter.limit("20/minute")
-async def lookup_domain(request: Request, domain: str, db: sqlite3.Connection = Depends(get_db)):
+async def lookup_domain(request: Request, domain: str, refresh: bool = False,
+                        db: sqlite3.Connection = Depends(get_db)):
     normalized = normalize_domain(domain)
     if not normalized:
         raise HTTPException(
@@ -484,8 +486,9 @@ async def lookup_domain(request: Request, domain: str, db: sqlite3.Connection = 
     # None as "this source has nothing", never as an error.
     hudsonrock_data = await hudsonrock.lookup_domain(normalized, get_client_ip(request))
 
-    # Cache check
-    cached = get_cached(db, normalized)
+    # Cache check. refresh=1 bypasses it and replaces the row; same endpoint,
+    # same limiter, so a refresh costs a lookup.
+    cached = None if refresh else get_cached(db, normalized)
     if cached:
         return {
             "domain": normalized,

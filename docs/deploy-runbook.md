@@ -708,6 +708,90 @@ page example card) are deliberately left alone. They are demo values sitting
 beside a WannaCry wallet address and a `stripe.com` example, not a claim about
 who runs the site, and swapping in a domain with no data makes the demo worse.
 
+## Logging, and what it retains
+
+The app writes one structured line per reputation source call:
+
+```
+event=ip_source source=abuseipdb target=h:e483976eac9a status=ok latency_ms=596 cached=false
+```
+
+`target` is a **salted hash, not the IP**. The salt is 16 random bytes generated
+at process start, never persisted and never logged, so tags cannot be correlated
+across restarts and a captured journal cannot be walked back to the addresses.
+That matters: an unsalted sha256 of an IPv4 is a 32-bit search, which is minutes
+of work. The five lines belonging to one lookup share a tag, which is the point,
+since the reason to log at all is to see which source was slow or failing.
+
+The same treatment is applied to every other user-supplied value the logs touch:
+domains, hosts, Telegram handles, uploaded filenames, prospect company and
+article names, and the LLM output in the email, dork and decoder paths, which
+routinely quotes the user's own input back. `app/utils/logsafe.py` owns it, and
+`tests/unit/test_log_privacy.py` scans every `log.*` call in `app/` and fails if
+a new one passes a user value in the clear.
+
+### Retention
+
+Install the journal retention config once:
+
+```
+sudo cp deploy/journald/falconeye-retention.conf /etc/systemd/journald.conf.d/
+sudo systemctl restart systemd-journald
+journalctl --disk-usage
+```
+
+**Read the caveat in that file.** `MaxRetentionSec` is a journald setting, not a
+per-unit one: systemd has no per-unit retention, and the only way to scope it to
+one service is `LogNamespace=`, which moves the unit's logs out of
+`journalctl -u falconeye` entirely. On a single-purpose box that trade is not
+worth it, so **this applies to the whole journal on the host**. On a box running
+other services whose logs must be kept longer, use a namespace or do not install
+it.
+
+The privacy policy states 14 days. If you change the value here, change it there
+too: the sentence is in `app/static/index.html`, above the Cloudflare paragraph.
+
+### Turning it down
+
+`FALCONEYE_LOG_LEVEL=WARNING` in `.env` quiets the per-source lines without
+touching anything else. It is scoped to the app's own loggers, so it never
+switches httpx or uvicorn INFO chatter on or off.
+
+## Refresh
+
+IP Reputation, Domain Intel and the Email Header risk assessment each carry a
+Refresh control on the result card. It re-queries every source, bypassing the
+cache, and replaces the cached row.
+
+It exists because caches outlive configuration changes: a self-hoster added API
+keys and kept being served the answer computed before those keys existed, twice
+in one day. The 6 hour TTL is right for ordinary use; what was missing was a way
+to say "ask again now".
+
+**A refresh costs a lookup.** It goes through the same endpoint, so it carries
+the same per-IP limiter, and for the email path the same LLM daily cap. That is
+deliberate: an unmetered refresh button is a free way for a visitor to spend the
+upstream source quotas, which are the operator's to pay for.
+
+Query form, if you need it outside the UI:
+
+```
+curl -s "http://127.0.0.1:8000/api/ip/lookup/1.1.1.1?refresh=1"
+curl -s "http://127.0.0.1:8000/api/domain/lookup/example.com?refresh=1"
+```
+
+## Where the IP tab's source list comes from
+
+`app/ip_sources/catalog.py` is the only place the upstreams are listed. The tab
+intro, the in-tab privacy note, the home feature card and the privacy policy
+table are all rendered from it by `render_index()`.
+
+They used to be four hand-written lists and had drifted: the tab said five
+sources, the privacy note said nine, and the feature card said "Shodan and
+GreyNoise". A visitor could not tell where their IP was actually sent. Adding a
+source now means adding it to the catalog and nowhere else, and a test fails if
+a literal list reappears in the HTML.
+
 ## Notes
 
 - **Do NOT `git push` from the VPS**: its `origin` is HTTPS with no credentials.

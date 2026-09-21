@@ -1662,7 +1662,7 @@ async function runDomainLookup() {
   resultEl.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/domain/lookup/${encodeURIComponent(raw)}`);
+    const res = await fetch(`/api/domain/lookup/${encodeURIComponent(raw)}${_takeRefreshFlag() ? '?refresh=1' : ''}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -1688,7 +1688,10 @@ function renderDomainResult(el, data) {
           <span class="brand-badge text-sm px-3 py-1">${data.domain}</span>
           ${data.rdap?.events?.registration ? `<span class="ml-3 text-xs text-gray-400">Registered ${fmtPHT(data.rdap.events.registration)}</span>` : ''}
         </div>
-        ${cacheBadge}
+        <div class="flex items-center gap-3">
+          ${cacheBadge}
+          <button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="domain" title="Re-query every source, bypassing the 6 hour cache">&#8635; Refresh</button>
+        </div>
       </div>
     </div>
     ${renderRdapCard(data.rdap, data.whois_text)}
@@ -2333,6 +2336,19 @@ document.getElementById('ip-input').addEventListener('keydown', e => {
   if (e.key === 'Enter') runIpLookup();
 });
 
+// Set by the Refresh control immediately before it re-triggers a lookup, and
+// consumed once. A refresh goes through the same endpoint and therefore the
+// same per-IP limiter as any other lookup, so it costs a lookup. That is
+// deliberate: it is what stops Refresh being a free way to spend the upstream
+// source quotas.
+let _feRefreshOnce = false;
+
+function _takeRefreshFlag() {
+  const r = _feRefreshOnce;
+  _feRefreshOnce = false;
+  return r;
+}
+
 async function runIpLookup() {
   const raw = document.getElementById('ip-input').value.trim();
   const resultEl = document.getElementById('ip-result');
@@ -2343,7 +2359,7 @@ async function runIpLookup() {
   resultEl.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/ip/lookup/${encodeURIComponent(raw)}`);
+    const res = await fetch(`/api/ip/lookup/${encodeURIComponent(raw)}${_takeRefreshFlag() ? '?refresh=1' : ''}`);
     const data = await res.json();
 
     if (!res.ok) {
@@ -2537,12 +2553,32 @@ function renderReputationVerdict(rep) {
         ${unavailable.map(u => `<span class="ml-1 px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700">${escapeHtml(u.label || u.source)} <span class="text-gray-500">${escapeHtml(u.state || '')}</span></span>`).join('')}
       </div>` : '';
 
+  // Every nonzero signal, whatever the verdict. The reported case was an
+  // AbuseIPDB score of 24% over 8 reports rendering as a bare CLEAN, because
+  // the only route a score had to the card was the threshold reasoning string
+  // and 24 sits under the cutoff of 25. The cutoff is unchanged; the evidence
+  // is now always shown, so the threshold decides the colour and not whether
+  // the operator gets to see the number.
+  const signals = (vd.signals || []).length ? `
+      <div class="mt-3 flex flex-wrap gap-3">
+        ${vd.signals.map(sig => `
+        <div class="bg-gray-950 border border-gray-800 rounded px-3 py-2">
+          <p class="text-[10px] text-gray-500 uppercase tracking-wide">${escapeHtml(sig.source)} ${escapeHtml(sig.label)}</p>
+          <p class="text-sm font-bold text-amber-300">${escapeHtml(sig.value)}</p>
+          ${sig.detail ? `<p class="text-[10px] text-gray-500 mt-0.5">${escapeHtml(sig.detail)}</p>` : ''}
+        </div>`).join('')}
+      </div>` : '';
+
   return `
     <div class="bg-gray-900 border-l-4 border-${color}-500 rounded p-4 mb-4">
-      <div class="flex items-center gap-3 flex-wrap">
-        <span class="text-${color}-400 font-bold text-lg uppercase tracking-wide">${escapeHtml(v)}</span>
-        <span class="text-sm text-gray-300">${escapeHtml(vd.reasoning || '')}</span>
+      <div class="flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-3 flex-wrap">
+          <span class="text-${color}-400 font-bold text-lg uppercase tracking-wide">${escapeHtml(v)}</span>
+          <span class="text-sm text-gray-300">${escapeHtml(vd.reasoning || '')}</span>
+        </div>
+        ${rep._target ? `<button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="ip" data-refresh-target="${escapeAttr(rep._target)}" title="Re-query every source, bypassing the 6 hour cache">&#8635; Refresh</button>` : ''}
       </div>
+      ${signals}
       ${coverage}
       ${missing}
       ${renderGeoConsensus(rep.geo)}
@@ -3112,7 +3148,7 @@ document.getElementById('email-header-btn')?.addEventListener('click', async () 
     const res = await fetch('/api/email-header/analyze', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({raw_header: raw, raw_body: rawBody || null}),
+      body: JSON.stringify({raw_header: raw, raw_body: rawBody || null, refresh: _takeRefreshFlag()}),
     });
 
     if (!res.ok) {
@@ -3193,7 +3229,10 @@ function renderEmailHeaderResult(d) {
     <div class="bg-gray-900 border border-${verdictColor}-500 rounded p-5 mb-6">
       <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-${verdictColor}-400 uppercase tracking-wider">Email Risk Assessment</h3>
-        <span class="text-2xl font-bold text-${verdictColor}-400">${verdictLabel}</span>
+        <div class="flex items-center gap-3">
+          <button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="email" title="Re-run the analysis, bypassing the cache">&#8635; Refresh</button>
+          <span class="text-2xl font-bold text-${verdictColor}-400">${verdictLabel}</span>
+        </div>
       </div>
       <div class="mb-3">
         <div class="text-xs text-gray-500 uppercase mb-1">Risk Score</div>
@@ -8172,3 +8211,40 @@ async function rwBuildCountrySelectOptions() {
   const el = document.getElementById('ip-source-notice');
   if (el) el.innerHTML = renderReputationSourceNotice();
 })();
+
+
+// Refresh: re-query every source for this target, bypassing the cache and
+// replacing the cached row. Delegated, because the controls live inside result
+// markup that is rebuilt on every render.
+//
+// Each kind re-enters the tab's own lookup path rather than calling the API
+// directly, so the refresh is rate limited, rendered and cached exactly like a
+// fresh lookup. Needed in practice by a self-hoster who had just added API
+// keys and was still being served the pre-key cached answer.
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest && e.target.closest('.fe-refresh-btn');
+  if (!btn) return;
+  const kind = btn.dataset.refreshKind;
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = 'Refreshing...';
+  _feRefreshOnce = true;
+  try {
+    if (kind === 'ip') {
+      await runIpLookup();
+    } else if (kind === 'domain') {
+      await runDomainLookup();
+    } else if (kind === 'email') {
+      document.getElementById('email-header-btn')?.click();
+    }
+  } catch (err) {
+    console.error('Refresh failed:', err);
+  } finally {
+    // The card is usually replaced by now; restore only if this node survived.
+    _feRefreshOnce = false;
+    if (btn.isConnected) {
+      btn.disabled = false;
+      btn.innerHTML = original;
+    }
+  }
+});

@@ -9,7 +9,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app import config
 from app.utils.env import getenv_clean
-from app.ip_sources import reputation
+from app.ip_sources import catalog, reputation
 from app.utils.client_ip import get_client_ip_key
 from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet
 from app.prospect import routes as prospect_routes
@@ -46,7 +46,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.33.3",
+    version="3.33.4",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -101,7 +101,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.33.3"}
+    return {"status": "ok", "version": "3.33.4"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -142,6 +142,12 @@ def _operator_tokens() -> dict:
         # <host>" and the contact form's _source, where a scheme would read wrong.
         "{{SITE_HOST}}": _bare_host(config.OPERATOR_SITE_ORIGIN),
         "{{CONTACT_FORM_ACTION}}": config.CONTACT_FORM_ACTION,
+        # The IP lookup's upstreams, rendered from app/ip_sources/catalog.py so
+        # the tab copy and the privacy policy cannot drift apart. They had:
+        # the tab said five sources, the privacy note said nine.
+        "{{IP_REPUTATION_SOURCES}}": catalog.reputation_labels(),
+        "{{IP_ALL_SOURCES}}": catalog.all_labels(),
+        "{{IP_SOURCE_COUNT}}": str(len(catalog.ALL_SOURCES)),
         # Rendered as ", <tagline>" so an operator who clears it gets a clean
         # full stop after their name instead of a dangling comma.
         "{{OPERATOR_TAGLINE_CLAUSE}}": (

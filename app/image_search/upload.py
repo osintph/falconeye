@@ -5,6 +5,7 @@ import logging
 import os
 import time
 from pathlib import Path
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.image_search.upload")
 
@@ -113,6 +114,6 @@ async def schedule_cleanup(file_path: str) -> None:
     await asyncio.sleep(_CLEANUP_DELAY)
     try:
         Path(file_path).unlink(missing_ok=True)
-        log.info("upload.cleaned path=%s", file_path)
+        log.info("upload.cleaned path=%s", tag(file_path))
     except Exception as exc:
-        log.warning("upload.cleanup_failed path=%s error=%s", file_path, exc)
+        log.warning("upload.cleanup_failed path=%s error=%s", tag(file_path), exc)

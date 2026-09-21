@@ -23,6 +23,7 @@ from app.config import (
 from app.utils import cache, rate_limit
 from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import safe_str, validate_findings_list
+from app.utils.logsafe import tag
 
 LLM_DORKGEN_ENABLED = os.getenv("LLM_DORKGEN_ENABLED", "true").lower() == "true"
 CACHE_TTL_HOURS = 24  # dork_gen_cache entries older than this are regenerated, not served
@@ -206,7 +207,8 @@ async def _llm_generate_dorks(goal: str, target: str | None) -> dict | None:
         }
         return parsed
     except (json.JSONDecodeError, AttributeError) as e:
-        log.warning(f"Dork LLM returned non-JSON: {raw_text[:200]}... ({e})")
+        # The model text can echo the user's prompt back. Log its size, not it.
+        log.warning("Dork LLM returned non-JSON: %d chars %s (%s)", len(raw_text), tag(raw_text), e)
         return None
 
 

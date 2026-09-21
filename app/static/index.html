@@ -80,12 +80,12 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.33.3",
+    "softwareVersion": "3.33.4",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
       "Light and dark theme with a header toggle",
-      "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
+      "Multi-source IP reputation ({{IP_REPUTATION_SOURCES}}) with consensus verdict",
       "Client-side PDF export for IP reputation and abuse reports",
       "Username enumeration across ~950 platforms (WhatsMyName + Sherlock)",
       "Abuse report composition with RDAP contact lookup and optional Mailgun send",
@@ -93,7 +93,7 @@
       "Phishing kit fingerprinting",
       "Domain intelligence with RDAP, DNS, and CT logs",
       "Telegram Intelligence, tiered entity resolution (t.me scrape, Bot API, MTProto) for users, bots, channels, and groups",
-      "IP reputation with Shodan and GreyNoise",
+      "IP reputation across {{IP_SOURCE_COUNT}} sources",
       "File-hash reputation (URLhaus / MalwareBazaar) inline in Email Header and Script Decoder",
       "Email header analyzer with BEC and scam detection",
       "Google dork generator (LLM-powered)",
@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.33.3" />
+  <link rel="stylesheet" href="/static/style.css?v=3.33.4" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -521,10 +521,10 @@
     <!-- IP Reputation Tab -->
     <div id="tab-ip" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">IP Reputation & Threat Lookup</h2>
-      <p class="text-gray-400 text-sm mb-4">Paste a public IPv4 or IPv6 address for a multi-source reputation verdict (AbuseIPDB, VirusTotal, AlienVault OTX, Censys, ThreatFox), ASN, geolocation consensus, merged open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
+      <p class="text-gray-400 text-sm mb-4">Paste a public IPv4 or IPv6 address for a multi-source reputation verdict ({{IP_REPUTATION_SOURCES}}), ASN, geolocation consensus, merged open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the IP you look up is sent to external reputation services &mdash; AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan, GreyNoise, RIPEstat, and URLhaus.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the IP you look up is sent to external reputation services &mdash; {{IP_ALL_SOURCES}}.</div>
       </div>
 
       <!-- Populated on load from FALCONEYE_CONFIG.ipReputation. Warns before a
@@ -1479,7 +1479,7 @@
                 <tr class="border-b border-gray-800">
                   <td class="py-2">IP Reputation</td>
                   <td class="py-2 font-mono">IP address</td>
-                  <td class="py-2">AbuseIPDB, VirusTotal, AlienVault OTX, Censys, ThreatFox, Shodan InternetDB / CVEDB, GreyNoise, RIPEstat, URLhaus</td>
+                  <td class="py-2">{{IP_ALL_SOURCES}}</td>
                 </tr>
                 <tr class="border-b border-gray-800">
                   <td class="py-2">URL Expander</td>
@@ -1529,6 +1529,8 @@
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Cloudflare</h3>
+            <p>Lookups are recorded in the server log as salted hashes, not as the value you entered, so the operator can monitor which upstream sources are slow or failing without retaining what was searched for. These logs are kept for 14 days and then discarded.</p>
+
             <p>FalconEye sits behind Cloudflare for caching, DDoS protection, and TLS. This means Cloudflare sees every request you make to <code class="text-amber-300">{{SITE_HOST}}</code>, including your IP address and the URL path. Cloudflare may set its own cookies for security purposes (e.g., bot detection). See <a href="https://www.cloudflare.com/privacypolicy/" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">Cloudflare's privacy policy</a> for details.</p>
           </section>
 
@@ -1582,6 +1584,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.33.3"></script>
+  <script src="/static/app.js?v=3.33.4"></script>
 </body>
 </html>

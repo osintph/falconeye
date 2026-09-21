@@ -16,6 +16,7 @@ import sqlite3
 import time
 
 from app.config import DB_PATH as _DB_DEFAULT
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.abuse")
 
@@ -156,7 +157,7 @@ def store_cached_contact(target: str, target_type: str, abuse_email, network_nam
         )
         conn.commit()
     except Exception as exc:
-        log.error("abuse_contact_cache write failed for %s/%s: %s", target, target_type, exc)
+        log.error("abuse_contact_cache write failed for %s/%s: %s", tag(target), target_type, exc)
     finally:
         conn.close()
 

@@ -29,6 +29,7 @@ from bs4 import BeautifulSoup
 
 from app.telegram import entity
 from app.utils.safe_fetch import safe_fetch, SafeFetchError
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.telegram")
 
@@ -161,10 +162,10 @@ async def run(identifier: str) -> dict:
     try:
         html = await _fetch(f"https://t.me/{identifier}")
     except SafeFetchError as exc:
-        log.warning("telegram tier1: fetch failed for %s: %s", identifier, exc)
+        log.warning("telegram tier1: fetch failed for %s: %s", tag(identifier), exc)
         return {"ok": False, "state": ERROR, "data": {}, "error": str(exc)}
     except Exception as exc:
-        log.warning("telegram tier1: unexpected error for %s: %s", identifier, type(exc).__name__)
+        log.warning("telegram tier1: unexpected error for %s: %s", tag(identifier), type(exc).__name__)
         return {"ok": False, "state": ERROR, "data": {}, "error": type(exc).__name__}
 
     data = _parse_profile_page(html, identifier)
@@ -176,6 +177,6 @@ async def run(identifier: str) -> dict:
             preview_html = await _fetch(f"https://t.me/s/{identifier}")
             data["messages"] = _parse_preview_messages(preview_html)
         except Exception as exc:
-            log.info("telegram tier1: preview fetch skipped for %s: %s", identifier, type(exc).__name__)
+            log.info("telegram tier1: preview fetch skipped for %s: %s", tag(identifier), type(exc).__name__)
 
     return {"ok": True, "state": OK, "data": data, "error": None}

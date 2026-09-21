@@ -19,6 +19,7 @@ import logging
 from urllib.parse import urlparse
 from app.utils.safe_fetch import safe_fetch, SafeFetchError
 from app.config import URLSCAN_API_KEY
+from app.utils.logsafe import tag
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ async def check_urlscan(url: str) -> dict:
             timeout=10.0,
         )
     except SafeFetchError as exc:
-        log.warning("urlscan SSRF guard blocked request for host %s: %s", host, exc)
+        log.warning("urlscan SSRF guard blocked request for host %s: %s", tag(host), exc)
         return {**_EMPTY}
     except Exception:
         log.exception("urlscan fetch failed for host %s", host)
@@ -68,10 +69,10 @@ async def check_urlscan(url: str) -> dict:
 
     status = resp.get("status", 0)
     if status == 429:
-        log.warning("urlscan rate limit hit for host %s", host)
+        log.warning("urlscan rate limit hit for host %s", tag(host))
         return {**_EMPTY}
     if status != 200:
-        log.warning("urlscan returned HTTP %s for host %s", status, host)
+        log.warning("urlscan returned HTTP %s for host %s", status, tag(host))
         return {**_EMPTY}
 
     try:

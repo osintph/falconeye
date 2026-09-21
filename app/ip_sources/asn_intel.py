@@ -50,6 +50,7 @@ import httpx
 
 from app.config import DB_PATH
 from app.ip_sources.base import FETCH_TIMEOUT, USER_AGENT
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.ip.asn_intel")
 
@@ -113,10 +114,10 @@ async def _ripe_get(client: httpx.AsyncClient, call: str, resource: str) -> dict
             headers={"User-Agent": USER_AGENT},
         )
     except Exception as e:
-        log.warning(f"RIPEstat {call} exception for {resource}: {e}")
+        log.warning(f"RIPEstat {call} exception for {tag(resource)}: {e}")
         return None
     if r.status_code != 200:
-        log.warning(f"RIPEstat {call} returned {r.status_code} for {resource}")
+        log.warning(f"RIPEstat {call} returned {r.status_code} for {tag(resource)}")
         return None
     try:
         body = r.json()
@@ -246,7 +247,7 @@ async def fetch(client: httpx.AsyncClient, db: sqlite3.Connection, ip: str) -> d
         if isinstance(prefixes, Exception): prefixes = None
         return assemble_core(asn, ip_prefix, as_overview, prefixes)
     except Exception as e:
-        log.warning(f"ASN intel exception for {ip}: {e}")
+        log.warning(f"ASN intel exception for {tag(ip)}: {e}")
         return {"available": False}
 
 

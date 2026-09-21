@@ -29,6 +29,7 @@ from app.utils.prompt_safety import (
     sanitize_llm_text,
     wrap_untrusted,
 )
+from app.utils.logsafe import tag
 
 LLM_DECODER_ENABLED = os.getenv("LLM_DECODER_ENABLED", "true").lower() == "true"
 
@@ -275,7 +276,8 @@ async def _llm_decode_script(code: str, hint: str | None = None) -> dict | None:
         }
         return parsed
     except (json.JSONDecodeError, AttributeError) as e:
-        log.warning(f"Script decoder LLM returned non-JSON: {raw_text[:200]}... ({e})")
+        # This is deobfuscated script text supplied by the user. Never log it.
+        log.warning("Script decoder LLM returned non-JSON: %d chars %s (%s)", len(raw_text), tag(raw_text), e)
         return None
 
 

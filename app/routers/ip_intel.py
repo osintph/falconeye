@@ -17,6 +17,7 @@ from app.database import get_db
 from app.ip_sources import reputation, asn_intel
 from app.utils import abusech, cache
 from app.utils.client_ip import get_client_ip_key
+from app.utils.logsafe import tag
 
 router = APIRouter(prefix="/api/ip", tags=["ip"])
 limiter = Limiter(key_func=get_client_ip_key)
@@ -74,10 +75,10 @@ async def fetch_shodan_internetdb(client: httpx.AsyncClient, ip: str) -> dict | 
             return r.json()
         if r.status_code == 404:
             return {"empty": True}
-        log.warning(f"Shodan InternetDB returned {r.status_code} for {ip}")
+        log.warning(f"Shodan InternetDB returned {r.status_code} for {tag(ip)}")
         return None
     except Exception as e:
-        log.warning(f"Shodan InternetDB exception for {ip}: {e}")
+        log.warning(f"Shodan InternetDB exception for {tag(ip)}: {e}")
         return None
 
 
@@ -92,10 +93,10 @@ async def fetch_greynoise(client: httpx.AsyncClient, ip: str) -> dict | None:
         )
         if r.status_code in (200, 404):
             return r.json()
-        log.warning(f"GreyNoise returned {r.status_code} for {ip}")
+        log.warning(f"GreyNoise returned {r.status_code} for {tag(ip)}")
         return None
     except Exception as e:
-        log.warning(f"GreyNoise exception for {ip}: {e}")
+        log.warning(f"GreyNoise exception for {tag(ip)}: {e}")
         return None
 
 
@@ -145,7 +146,7 @@ async def fetch_ripestat(client: httpx.AsyncClient, ip: str) -> dict | None:
 
         return result
     except Exception as e:
-        log.warning(f"RIPEstat exception for {ip}: {e}")
+        log.warning(f"RIPEstat exception for {tag(ip)}: {e}")
         return None
 
 
@@ -201,12 +202,17 @@ async def fetch_cve_details(client: httpx.AsyncClient, cve_ids: list[str]) -> di
 
 @router.get("/lookup/{ip}")
 @limiter.limit("20/minute")
-async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(get_db)):
+async def lookup_ip(request: Request, ip: str, refresh: bool = False,
+                    db: sqlite3.Connection = Depends(get_db)):
     validated = validate_ip(ip)
     if not validated:
         raise HTTPException(status_code=400, detail="Invalid or non-routable IP address.")
 
-    cached = get_cached(db, validated)
+    # refresh=1 bypasses the 6 hour cache and re-queries every source, then
+    # replaces the cached row. It is the same endpoint and therefore carries the
+    # same per-IP limiter as any other lookup: a refresh costs a lookup, which
+    # is what stops it being a free way to spend the upstream quotas.
+    cached = None if refresh else get_cached(db, validated)
     if cached:
         # Replay the per-source lines so a cached answer is not a silent one.
         # Without this the log shows nothing for the majority of lookups, which
@@ -270,7 +276,7 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
         "urlhaus": urlhaus,
         "reverse_dns": ptr,
         "cve_details": cve_details,
-        "reputation": reputation_block,
+        "reputation": {**reputation_block, "_target": validated},
         "asn_intel": asn_block,
         "cache_hit": False,
     }

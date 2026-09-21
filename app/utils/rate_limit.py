@@ -14,6 +14,7 @@ import re
 import sqlite3
 
 from app.config import DB_PATH
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.rate_limit")
 
@@ -69,4 +70,4 @@ def record(table: str, source_ip: str, retain_hours: int = 48) -> None:
         conn.commit()
         conn.close()
     except Exception as exc:
-        log.error("rate_limit.record failed for %s/%s: %s", table, source_ip, exc)
+        log.error("rate_limit.record failed for %s/%s: %s", table, tag(source_ip), exc)

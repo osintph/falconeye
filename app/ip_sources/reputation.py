@@ -13,6 +13,7 @@ import httpx
 from app.ip_sources import abuseipdb, virustotal, otx, censys, threatfox
 from app.ip_sources.base import SourceResult, ERROR
 from app.utils.env import getenv_clean
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.ip_sources")
 
@@ -84,6 +85,49 @@ def _availability(sources: dict) -> tuple[int, list]:
     return responded, unavailable
 
 
+def collect_signals(sources: dict) -> list:
+    """Every nonzero reputation signal, whatever verdict it produces.
+
+    The reported case: AbuseIPDB returned 24% confidence over 8 reports and the
+    card showed nothing at all, because the only path a score had to the UI was
+    the threshold reasoning string, and 24 sits under the SUSPICIOUS cutoff of
+    25. An operator could not see the number the verdict was computed from, so a
+    near miss looked identical to a clean result.
+
+    The cutoff is unchanged. What changes is that the number is always visible,
+    so the threshold decides the colour rather than whether you get to see the
+    evidence.
+    """
+    def data(name):
+        entry = sources.get(name) or {}
+        return (entry.get("data") or {}) if entry.get("ok") else {}
+
+    out = []
+    ab = data("abuseipdb")
+    confidence, reports = ab.get("confidence"), ab.get("total_reports")
+    if isinstance(confidence, (int, float)) and not isinstance(confidence, bool) and confidence > 0:
+        out.append({"source": "AbuseIPDB", "label": "Abuse confidence",
+                    "value": f"{int(confidence)}%", "detail": ab.get("last_reported")})
+    if isinstance(reports, int) and not isinstance(reports, bool) and reports > 0:
+        categories = ", ".join(ab.get("categories") or [])
+        out.append({"source": "AbuseIPDB", "label": "Reports",
+                    "value": str(reports), "detail": categories[:120] or None})
+
+    vt = data("virustotal").get("malicious")
+    if isinstance(vt, int) and not isinstance(vt, bool) and vt > 0:
+        out.append({"source": "VirusTotal", "label": "Vendors flagging",
+                    "value": str(vt), "detail": None})
+
+    pulses = data("otx").get("pulse_count")
+    if isinstance(pulses, int) and not isinstance(pulses, bool) and pulses > 0:
+        out.append({"source": "AlienVault OTX", "label": "Pulses",
+                    "value": str(pulses), "detail": None})
+
+    if data("threatfox").get("matched"):
+        out.append({"source": "ThreatFox", "label": "IOC", "value": "match", "detail": None})
+    return out
+
+
 def compute_verdict(sources: dict, greynoise_malicious: bool = False) -> dict:
     def sig(name, field):
         s = sources.get(name, {})
@@ -101,6 +145,8 @@ def compute_verdict(sources: dict, greynoise_malicious: bool = False) -> dict:
         "sources_total": total,
         "sources_unavailable": unavailable,
         "coverage_note": f"{responded} of {total} reputation sources responded",
+        # Always present, whatever the verdict: see collect_signals().
+        "signals": collect_signals(sources),
     }
 
     def result(verdict, reasoning):
@@ -209,7 +255,7 @@ def log_source_call(name: str, target: str, status: str, latency_ms: int, cached
     """
     log.info(
         "event=ip_source source=%s target=%s status=%s latency_ms=%d cached=%s",
-        name, target, status, latency_ms, "true" if cached else "false",
+        name, tag(target), status, latency_ms, "true" if cached else "false",
     )
 
 

@@ -139,9 +139,53 @@ def test_source_call_logs_one_structured_line(caplog):
         reputation.log_source_call("abuseipdb", "203.0.113.5", "ok", 142, False)
     assert len(caplog.records) == 1
     msg = caplog.records[0].getMessage()
-    for field in ("event=ip_source", "source=abuseipdb", "target=203.0.113.5",
+    for field in ("event=ip_source", "source=abuseipdb", "target=h:",
                   "status=ok", "latency_ms=142", "cached=false"):
         assert field in msg, f"{field!r} missing from the log line: {msg}"
+
+
+def test_the_looked_up_ip_is_never_written_to_the_log(caplog):
+    """journald persists. The visitor's query must not persist with it.
+
+    v3.33.3 turned INFO logging on and started retaining every looked-up IP on
+    the box, with no stated retention and nothing in the privacy policy. The
+    line exists to correlate the five source calls of one lookup and to show
+    which source was slow; none of that needs the address.
+    """
+    ip = "51.195.242.234"
+    with caplog.at_level(logging.INFO, logger="falconeye.ip_sources"):
+        reputation.log_source_call("abuseipdb", ip, "ok", 142, False)
+        reputation.log_source_call("virustotal", ip, "ok", 98, False)
+    messages = [r.getMessage() for r in caplog.records]
+    for msg in messages:
+        assert ip not in msg, f"the looked-up IP is in the log line: {msg}"
+        assert "51.195" not in msg
+
+    # The five lines of one lookup still correlate, which is the whole purpose.
+    tags = {m.split("target=")[1].split(" ")[0] for m in messages}
+    assert len(tags) == 1, "the same target produced different tags"
+    assert tags.pop().startswith("h:")
+
+
+def test_different_targets_get_different_tags():
+    from app.utils.logsafe import tag
+    assert tag("1.1.1.1") != tag("8.8.8.8")
+    assert tag("") == "-" and tag(None) == "-"
+
+
+def test_the_tag_salt_is_per_process_and_not_derivable():
+    """A bare sha256 of an IPv4 is a 32-bit search, so the salt is the control."""
+    import importlib
+
+    from app.utils import logsafe
+
+    before = logsafe.tag("1.1.1.1")
+    reloaded = importlib.reload(logsafe)
+    after = reloaded.tag("1.1.1.1")
+    assert before != after, (
+        "the tag survived a module reload, so the salt is not per-process and a "
+        "captured journal could be brute-forced back to the addresses"
+    )
 
 
 def test_cache_hit_replays_a_line_per_source(caplog):

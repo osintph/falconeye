@@ -5,6 +5,93 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.33.4] - 2026-09-21
+
+Four follow-ups to v3.33.3, one of them a privacy regression that v3.33.3
+introduced.
+
+### The new log line was retaining visitor lookups
+
+v3.33.3 gave the app its first working logging configuration, which was the
+right fix. The consequence was not intended: a public, unauthenticated OSINT
+tool started persisting visitor activity to journald, which is retained, with no
+stated retention period and nothing in the privacy policy. Until v3.33.3 no
+lookup was recorded anywhere at all, so this was new.
+
+`event=ip_source` now records `target=h:e483976eac9a` rather than the address.
+The tag is sha256 over a per-process random salt plus the value, first 12 hex
+characters. The salt is 16 random bytes generated at start, never persisted and
+never logged. It is load-bearing: an unsalted hash of an IPv4 is a 32-bit
+search. The five lines of one lookup still share a tag, which is the only thing
+the field was ever for.
+
+The audit covered every log call in `app/`, not only the new one:
+
+| Where | What was being logged |
+|---|---|
+| `ip_sources/reputation.py` | the looked-up IP (the new line) |
+| `routers/ip_intel.py` (5) | the looked-up IP |
+| `routers/domain_intel.py` (14) | the looked-up domain, and a resolved IP |
+| `ip_sources/asn_intel.py` (3) | the looked-up IP and ASN resource |
+| `routers/email_header.py` (4) | the visitor IP, the uploaded filename, LLM output quoting the pasted header |
+| `routers/script_decoder.py` | LLM output quoting the pasted script |
+| `routers/dork_generator.py` | LLM output quoting the prompt |
+| `telegram/tier1_scrape.py` (3) | the Telegram handle |
+| `utils/urlscan.py` (3) | the submitted host |
+| `utils/rate_limit.py` | the visitor IP |
+| `abuse/store.py` | the abuse report target |
+| `scanner/scope.py`, `scanner/kit_report.py` (4) | the scanned host and case domain |
+| `prospect/` (12 across 4 files) | the looked-up domain, resolved company and page names, article titles, job companies |
+| `image_search/upload.py` (2) | the upload path |
+
+The three LLM ones mattered most: they logged up to 200 characters of model
+output, which routinely quotes the user's own input back. They now log a length
+and a tag.
+
+`tests/unit/test_log_privacy.py` scans every log call in `app/` and fails if a
+new one passes a user value in the clear, so this is a guarded rule rather than
+a one-off cleanup.
+
+Retention: `deploy/journald/falconeye-retention.conf` sets `MaxRetentionSec=14d`.
+Read its caveat. `MaxRetentionSec` is a journald setting, not a per-unit one, so
+it applies to the whole journal on the host; systemd's only per-unit option is
+`LogNamespace=`, which removes the unit from `journalctl -u falconeye`. The
+privacy policy gained one sentence stating that lookups are logged as salted
+hashes for operational monitoring and kept for 14 days.
+
+### Refresh
+
+IP Reputation, Domain Intel and the Email Header risk assessment each gained a
+Refresh control that re-queries every source, bypasses the cache and replaces
+the cached row. Needed twice in one day by the external self-hoster, who added
+API keys and kept being served the answer computed before they existed.
+
+A refresh costs a lookup: same endpoint, so the same per-IP limiter, and for the
+email path the same LLM daily cap. An unmetered refresh button is a free way for
+a visitor to spend the operator's upstream quota.
+
+### One source list
+
+The IP tab intro said five sources, the in-tab privacy note said nine, the home
+feature card said "Shodan and GreyNoise", and the privacy policy table said nine
+in a different order. A visitor could not tell where their IP was actually sent.
+`app/ip_sources/catalog.py` is now the only list, rendered into all four places.
+A test fails if a literal list reappears in the HTML.
+
+### AbuseIPDB score is always visible
+
+The reported IP had a confidence of 24 over 8 reports and the card showed
+nothing, because the only route a score had to the UI was the threshold
+reasoning string and 24 sits under the cutoff of 25.
+
+Every nonzero signal (AbuseIPDB confidence and report count, VirusTotal vendor
+count, OTX pulses, a ThreatFox match) is now rendered on the verdict card
+whatever the verdict. `ABUSEIPDB_SUSPICIOUS` is deliberately unchanged at 25:
+the threshold decides the colour, not whether the operator sees the evidence. A
+payload from a source that failed is still never shown.
+
+---
+
 ## [3.33.3] - 2026-09-21
 
 The per-source log line added in v3.33.2 produced nothing at all.

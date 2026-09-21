@@ -28,6 +28,7 @@ import logging
 from typing import Optional
 
 import tldextract
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.scope")
 
@@ -63,7 +64,7 @@ def registrable(host: str) -> str:
     try:
         parts = _EXTRACT(host)
     except Exception:
-        log.warning("PSL extract failed for %r, falling back to the host", host)
+        log.warning("PSL extract failed for %s, falling back to the host", tag(host))
         return host
     if parts.ipv4 or parts.ipv6:
         return host
@@ -99,7 +100,7 @@ def require_in_scope(host: str, case_registrable: str,
         return
     log.warning(
         "out-of-scope %s refused: case=%s host=%s case_domain=%s",
-        what, case_id or "-", host or "-", case_registrable or "-",
+        what, case_id or "-", tag(host), tag(case_registrable),
     )
     raise OutOfScope(
         f"{what} to {host or 'an empty host'} refused: outside the case domain "

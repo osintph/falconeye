@@ -15,6 +15,7 @@ The resolved CompanyIdentity drives downstream query construction:
 import logging
 import re
 from dataclasses import dataclass, field
+from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.prospect.resolver")
 
@@ -57,7 +58,7 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
     domain_root_cap = domain_root.capitalize()
 
     if not about_data:
-        log.info("resolver path=domain_fallback domain=%s reason=no_about_data", domain)
+        log.info("resolver path=domain_fallback domain=%s reason=no_about_data", tag(domain))
         return CompanyIdentity(
             display_name=domain_root_cap,
             canonical_name=domain,
@@ -86,8 +87,8 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
                     aliases.append(kg_title)
                 aliases.append(domain_root_cap)
                 log.info(
-                    "resolver path=kg_desc_extended domain=%s canonical=%r display=%r",
-                    domain, extracted, kg_title or extracted,
+                    "resolver path=kg_desc_extended domain=%s canonical=%s display=%s",
+                    tag(domain), tag(extracted), tag(kg_title or extracted),
                 )
                 return CompanyIdentity(
                     display_name=kg_title or extracted,
@@ -102,8 +103,8 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
             if kg_subtitle:
                 aliases.append(kg_subtitle)
             log.info(
-                "resolver path=kg_desc_confirmed domain=%s canonical=%r",
-                domain, extracted,
+                "resolver path=kg_desc_confirmed domain=%s canonical=%s",
+                tag(domain), tag(extracted),
             )
             return CompanyIdentity(
                 display_name=extracted,
@@ -139,8 +140,8 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
                     aliases.append(ai_header)
                 aliases.append(domain_root_cap)
                 log.info(
-                    "resolver path=ai_overview domain=%s canonical=%r display=%r",
-                    domain, extracted, display,
+                    "resolver path=ai_overview domain=%s canonical=%s display=%s",
+                    tag(domain), tag(extracted), tag(display),
                 )
                 return CompanyIdentity(
                     display_name=display,
@@ -157,7 +158,7 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
         aliases = [domain_root_cap]
         if kg_subtitle:
             aliases.append(kg_subtitle)
-        log.info("resolver path=kg_title domain=%s canonical=%r", domain, kg_title)
+        log.info("resolver path=kg_title domain=%s canonical=%s", tag(domain), tag(kg_title))
         return CompanyIdentity(
             display_name=kg_title,
             canonical_name=kg_title,
@@ -173,8 +174,8 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
     if kg_title and kg_subtitle:
         canonical = f"{kg_title} {kg_subtitle}"
         log.info(
-            "resolver path=kg_title_subtitle domain=%s canonical=%r",
-            domain, canonical,
+            "resolver path=kg_title_subtitle domain=%s canonical=%s",
+            tag(domain), tag(canonical),
         )
         return CompanyIdentity(
             display_name=kg_title,
@@ -190,7 +191,7 @@ def resolve_identity(domain: str, about_data: dict) -> CompanyIdentity:
     # ------------------------------------------------------------------
     log.info(
         "resolver path=domain_fallback domain=%s reason=insufficient_kg",
-        domain,
+        tag(domain),
     )
     return CompanyIdentity(
         display_name=domain_root_cap,
