@@ -1,8 +1,8 @@
 // ============================================================================
-//  Navigation registry (v3.15.0) — SINGLE source of truth for the sidebar,
+//  Navigation registry (v3.15.0), SINGLE source of truth for the sidebar,
 //  the mobile drawer, the command palette, and the Home launcher grid. Every
 //  one of those renders from this data, so reordering/regrouping tools (or
-//  adding tool #19 — Phone OSINT is already flagged as next) only means
+//  adding tool #19, Phone OSINT is already flagged as next) only means
 //  editing this array once; the four nav surfaces cannot drift out of sync
 //  with each other because none of them hand-maintains its own copy.
 //
@@ -85,7 +85,7 @@ const HOME_TAB = { id: 'home', label: 'Home', desc: 'Landing page and tool launc
   icon: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>' };
 
 // Flat index (home + every grouped/ungrouped tab), each tagged with its group
-// label — this is what VALID_TABS, the command palette, and the launcher grid
+// label, this is what VALID_TABS, the command palette, and the launcher grid
 // all derive from, so there is exactly one place a tab's metadata lives.
 const ALL_NAV_ENTRIES = [
   { ...HOME_TAB, groupLabel: null },
@@ -150,7 +150,7 @@ function renderHomeLauncherGrid() {
 
 // Each render is isolated: an error thrown by one (a bad tab entry, an
 // unexpected null container) must not stop the *rest* of this file from
-// running — everything below this point (hash routing, the drawer/palette
+// running, everything below this point (hash routing, the drawer/palette
 // wiring) is a separate top-level statement in the same script, so one
 // uncaught exception here would otherwise silently take all of it down too.
 try { renderSidebarNav(); } catch (e) { console.error('renderSidebarNav failed:', e); }
@@ -158,7 +158,7 @@ try { renderDrawerNav(); } catch (e) { console.error('renderDrawerNav failed:', 
 try { renderHomeLauncherGrid(); } catch (e) { console.error('renderHomeLauncherGrid failed:', e); }
 
 // Launcher-grid cards navigate but never prefill/auto-run (unlike
-// .example-card) — delegated, mirrors the .example-card handler's idiom.
+// .example-card), delegated, mirrors the .example-card handler's idiom.
 // Deliberately NOT given the .tab-btn class itself (which carries a
 // `background: none` reset elsewhere) so the card's own bg-gray-900 renders.
 document.body.addEventListener('click', (e) => {
@@ -306,11 +306,11 @@ document.getElementById('sidebar-search-btn')?.addEventListener('click', () => o
 
 // Collapsed-rail tooltip: a single shared `position: fixed` element positioned
 // by JS on hover, not a per-item CSS ::after. A ::after was tried first and
-// rejected — #sidebar needs `overflow-y: auto` for independent scroll, and
+// rejected, #sidebar needs `overflow-y: auto` for independent scroll, and
 // per the CSS overflow spec that silently forces overflow-x to `auto` too, so
 // a ::after trying to escape via `left: 100%` got clipped at the sidebar's
 // own edge. `position: fixed` escapes every scrolling ancestor instead. Only
-// wired at all where hover is meaningful (a real pointer, not touch) — gated
+// wired at all where hover is meaningful (a real pointer, not touch), gated
 // on the (hover:hover)/(pointer:fine) media features, never on UA.
 if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
   const navTooltip = document.getElementById('nav-tooltip');
@@ -382,12 +382,12 @@ function closeDrawer() {
   backdrop?.classList.add('hidden');
   trigger?.setAttribute('aria-expanded', 'false');
   // Wait for the slide-out transition (duration-200) before removing it from
-  // layout/the a11y tree — removing `hidden` immediately would make it vanish
+  // layout/the a11y tree, removing `hidden` immediately would make it vanish
   // instead of sliding away, and leaving it un-hidden the whole time would let
   // a keyboard user tab into off-screen content.
   setTimeout(() => { if (drawer.dataset.open !== 'true') drawer.classList.add('hidden'); }, 220);
-  // The drawer has exactly one entry point (this trigger button), so — unlike
-  // the command palette, which can open from several places — focus always
+  // The drawer has exactly one entry point (this trigger button), so, unlike
+  // the command palette, which can open from several places, focus always
   // returns here rather than to a captured "last focus" (which is fragile:
   // programmatic vs. real-user clicks don't move DOM focus identically).
   trigger?.focus();
@@ -418,7 +418,7 @@ document.getElementById('mobile-drawer')?.addEventListener('keydown', (e) => {
 });
 
 // ============================================================================
-//  Command palette (v3.15.0) — Cmd+K (Mac) / Ctrl+K (elsewhere). Keyboard-only
+//  Command palette (v3.15.0), Cmd+K (Mac) / Ctrl+K (elsewhere). Keyboard-only
 //  by design: the daily-driver path for anyone who already knows the tool.
 // ============================================================================
 
@@ -502,7 +502,7 @@ document.getElementById('cmd-palette')?.addEventListener('keydown', (e) => {
 });
 
 // Global shortcut: Cmd+K (Mac) / Ctrl+K (elsewhere). Keyboard-only, no touch
-// affordance by design — matches how power users expect it in other tools.
+// affordance by design, matches how power users expect it in other tools.
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
@@ -2074,7 +2074,7 @@ async function runTelegramLookup() {
     renderTelegramResult(resultEl, data);
   } catch (e) {
     const msg = e instanceof SyntaxError
-      ? 'Lookup timed out or failed — try again.'
+      ? 'Lookup timed out or failed, try again.'
       : `Request failed: ${escapeHtml(e.message)}`;
     resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
   }
@@ -2356,7 +2356,7 @@ async function runIpLookup() {
 
     renderIpResult(resultEl, data);
 
-    // Abuse report card is an enhancement — never let it regress the IP result.
+    // Abuse report card is an enhancement, never let it regress the IP result.
     try {
       const ipAbuse = document.createElement('div');
       ipAbuse.className = 'mt-4';
@@ -2410,20 +2410,20 @@ function renderAsnIntel(asn) {
   if (!asn.available) {
     return `<div class="bg-gray-900 border border-gray-800 rounded p-5 mb-4">
       <h3 class="text-sm font-bold text-gray-300 mb-1 uppercase tracking-wide">ASN Intelligence</h3>
-      <p class="text-xs text-gray-500">Unavailable — RIPEstat ASN lookup failed or the IP has no announced ASN.</p>
+      <p class="text-xs text-gray-500">Unavailable, RIPEstat ASN lookup failed or the IP has no announced ASN.</p>
     </div>`;
   }
 
   const p = asn.prefixes || {list: [], count: 0, truncated: false};
-  const orgLabel = [asn.name, asn.description].filter(Boolean).join(' — ') || `AS${asn.asn}`;
+  const orgLabel = [asn.name, asn.description].filter(Boolean).join(', ') || `AS${asn.asn}`;
   const truncNote = p.truncated
-    ? `<p class="text-xs text-amber-400/80 mt-2">Showing the first ${p.list.length.toLocaleString()} of ${p.count.toLocaleString()} prefixes — list capped for display.</p>`
+    ? `<p class="text-xs text-amber-400/80 mt-2">Showing the first ${p.list.length.toLocaleString()} of ${p.count.toLocaleString()} prefixes, list capped for display.</p>`
     : '';
 
   return `
     <details class="bg-gray-900 border border-gray-800 rounded mb-4">
       <summary class="cursor-pointer px-5 py-3 text-sm font-bold text-gray-300 hover:text-amber-400 transition select-none">
-        ASN Intelligence — AS${asn.asn} ${escapeHtml(orgLabel)}
+        ASN Intelligence, AS${asn.asn} ${escapeHtml(orgLabel)}
       </summary>
       <div class="px-5 pb-5">
         <p class="text-sm text-gray-300 mb-4">${escapeHtml(asn.summary)}</p>
@@ -2536,7 +2536,7 @@ function renderGeoConsensus(geo) {
     return `<p class="text-xs text-gray-400 mt-2">Geolocation: ${escapeHtml(entries[0][0])} (${escapeHtml(entries[0][1].join(', '))})</p>`;
   }
   const parts = entries.map(([c, srcs]) => `${escapeHtml(c)} (${srcs.map(escapeHtml).join(', ')})`).join('; ');
-  const caveat = geo.is_hosting_asn ? ' <span class="text-gray-500">— hosting/VPS ASN, geolocation is often unreliable</span>' : '';
+  const caveat = geo.is_hosting_asn ? ' <span class="text-gray-500">- hosting/VPS ASN, geolocation is often unreliable</span>' : '';
   return `<p class="text-xs text-amber-400/90 mt-2">⚠ Geo disputed: ${parts}${caveat}</p>`;
 }
 
@@ -2785,7 +2785,7 @@ function renderIpUrlhaus(uh) {
 // Replaces the former Sandbox tab: the hash-reputation capability moved inline
 // into Email Header and Script Decoder. Reuses renderUrlhausPayload /
 // renderMalwarebazaar below. The backend /api/sandbox/lookup endpoint is
-// unchanged — now called only with hashes from those two flows.
+// unchanged, now called only with hashes from those two flows.
 
 async function checkHashReputation(hash, containerId) {
   const el = document.getElementById(containerId);
@@ -3077,7 +3077,7 @@ document.getElementById('email-header-btn')?.addEventListener('click', async () 
 
     const data = await res.json();
     resultEl.innerHTML = renderEmailHeaderResult(data);
-    // Abuse cards are an enhancement — never let them regress the analysis result.
+    // Abuse cards are an enhancement, never let them regress the analysis result.
     try {
       renderEmailAbuseCards(resultEl, data, raw, rawBody);
     } catch (abuseErr) {
@@ -3366,7 +3366,7 @@ function renderEmailHeaderResult(d) {
         ` : ''}
         ${iocs.sha256?.length ? `
           <div class="mb-3">
-            <p class="text-xs text-gray-500 uppercase mb-2">SHA256 hashes (${iocs.sha256.length}) — click to check reputation</p>
+            <p class="text-xs text-gray-500 uppercase mb-2">SHA256 hashes (${iocs.sha256.length}), click to check reputation</p>
             <div class="flex flex-wrap gap-2">
               ${iocs.sha256.map(h => `
                 <button class="bg-gray-800 hover:bg-amber-400 hover:text-gray-950 text-amber-300 text-xs font-mono px-2 py-1 rounded transition"
@@ -5217,7 +5217,7 @@ window.openPrivacyPolicy = openPrivacyPolicy;
 
 
 // ============================================================
-//  Abuse Reporting (v3.7.0) — shared card for IP + Email tabs
+//  Abuse Reporting (v3.7.0), shared card for IP + Email tabs
 //  Compose + Copy work for everyone; Send via Mailgun is gated
 //  behind admin HTTP Basic Auth and only appears when the server
 //  reports the send path is configured (/api/abuse/send_available).
@@ -5272,13 +5272,13 @@ function abuseBuildIpEvidence(data) {
   // v3.9.0: multi-source reputation signals
   const rep = data.reputation || {};
   const src = rep.sources || {};
-  if (rep.verdict) lines.push(`Consensus verdict: ${rep.verdict.verdict} — ${rep.verdict.reasoning}.`);
+  if (rep.verdict) lines.push(`Consensus verdict: ${rep.verdict.verdict}, ${rep.verdict.reasoning}.`);
   const ab = (src.abuseipdb && src.abuseipdb.ok) ? src.abuseipdb.data : null;
   if (ab && ab.confidence != null) lines.push(`AbuseIPDB: ${ab.confidence}% confidence, ${ab.total_reports} reports from ${ab.distinct_users} reporters${(ab.categories || []).length ? ' (' + ab.categories.slice(0, 6).join(', ') + ')' : ''}.`);
   const vt = (src.virustotal && src.virustotal.ok) ? src.virustotal.data : null;
   if (vt) lines.push(`VirusTotal: ${vt.malicious}/${vt.total_engines} vendors malicious${(vt.flagged_vendors || []).length ? ' (' + vt.flagged_vendors.slice(0, 6).join(', ') + ')' : ''}.`);
   const ox = (src.otx && src.otx.ok) ? src.otx.data : null;
-  if (ox && ox.pulse_count) lines.push(`AlienVault OTX: ${ox.pulse_count} pulse(s)${(ox.pulse_names || []).length ? ' — ' + ox.pulse_names.slice(0, 3).join('; ') : ''}.`);
+  if (ox && ox.pulse_count) lines.push(`AlienVault OTX: ${ox.pulse_count} pulse(s)${(ox.pulse_names || []).length ? ', ' + ox.pulse_names.slice(0, 3).join('; ') : ''}.`);
   const tf = (src.threatfox && src.threatfox.ok) ? src.threatfox.data : null;
   if (tf && tf.matched) lines.push(`ThreatFox: ${(tf.iocs || []).map(i => i.malware).filter(Boolean).slice(0, 3).join(', ')} IOC match.`);
   const mports = (rep.ports && rep.ports.ports) || [];
@@ -5362,7 +5362,7 @@ function abuseExtractAttachments(raw) {
 
 // Email tab: build the report evidence entirely client-side from the raw email
 // (already in the browser) + parsed headers in `data`. Nothing is sent to the
-// server to parse and nothing new is persisted — the email-header cache stays
+// server to parse and nothing new is persisted, the email-header cache stays
 // headers-only, so the tab's "never written to disk" guarantee is preserved.
 // opts: {rawHeader, rawBody, variant:'domain'|'ip', fullBody:bool}
 // Both abuse cards (sender-domain registrar and sending-IP hoster) call this and
@@ -5398,7 +5398,7 @@ function abuseBuildEmailEvidence(data, opts) {
   else lines.push('  (no Received headers found)');
   lines.push('');
 
-  // URLs — the single most important evidence for a registrar abuse desk.
+  // URLs, the single most important evidence for a registrar abuse desk.
   // Combine the client-decoded body (refanged), the server's decoded-body URLs,
   // and any header URLs.
   const urls = Array.from(new Set([].concat(
@@ -5408,7 +5408,7 @@ function abuseBuildEmailEvidence(data, opts) {
   ).map(u => (u || '').trim()).filter(Boolean))).slice(0, 40);
   lines.push('URLs found in the message:');
   if (urls.length) urls.forEach(u => lines.push('  ' + u));
-  else lines.push('  (none found — the body may be missing or in a format we could not decode)');
+  else lines.push('  (none found, the body may be missing or in a format we could not decode)');
   lines.push('');
 
   if (opts.fullBody) {
@@ -5445,7 +5445,7 @@ function renderAbuseReportCard(container, info) {
   <div class="bg-gray-900 border border-gray-800 rounded p-5" data-abuse-card>
     <div class="flex items-center gap-2 mb-3">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400 flex-shrink-0"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
-      <h3 class="text-sm font-bold text-amber-300 uppercase tracking-wide">Report Abuse — ${escapeHtml(info.label || 'Abuse contact')}</h3>
+      <h3 class="text-sm font-bold text-amber-300 uppercase tracking-wide">Report Abuse, ${escapeHtml(info.label || 'Abuse contact')}</h3>
     </div>
     <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
       <strong class="font-bold">How to use this.</strong> FalconEye composes the abuse report. Click Preview to check it, then Copy Report and paste into your own email to send from your address, so the hosting provider can reply directly to you. The Send button is reserved for the FalconEye operator and requires admin credentials.
@@ -5461,7 +5461,7 @@ function renderAbuseReportCard(container, info) {
         <select class="abuse-category w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400">${optionsHtml}</select>
       </div>
       <div>
-        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Evidence (editable — redact your own PII before sending)</label>
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-1 block">Evidence (editable, redact your own PII before sending)</label>
         ${info.bodyVariants ? `<label class="flex items-center gap-1.5 cursor-pointer text-xs text-gray-400 mb-1.5"><input type="checkbox" class="abuse-fullbody accent-amber-400"> <span>Include full email body (default: 500-character excerpt)</span></label>` : ''}
         <textarea class="abuse-evidence w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-xs font-mono resize-y focus:outline-none focus:border-amber-400" rows="9">${escapeHtml(info.evidence || '')}</textarea>
       </div>
@@ -5573,7 +5573,7 @@ function renderAbuseReportCard(container, info) {
       const b = $('.abuse-copy-btn'); const t = b.textContent; b.textContent = 'Copied ✓';
       setTimeout(() => { b.textContent = t; }, 1500);
     }).catch(() => {
-      statusEl.innerHTML = '<span class="text-yellow-400">Clipboard blocked — select the text above to copy.</span>';
+      statusEl.innerHTML = '<span class="text-yellow-400">Clipboard blocked, select the text above to copy.</span>';
     });
   });
 
@@ -5584,7 +5584,7 @@ function renderAbuseReportCard(container, info) {
     downloadAbusePdf(composed, info);
   });
 
-  // 4) send via Mailgun — credentials travel ONLY in the JSON body (never an
+  // 4) send via Mailgun, credentials travel ONLY in the JSON body (never an
   //    Authorization header / Basic Auth), so the browser's native auth dialog
   //    can never appear and race the in-page form (v3.8.1 fix). The in-page form
   //    is the single credential surface; creds are remembered for the session so
@@ -5728,12 +5728,12 @@ async function runUsernameScan() {
     renderUsernameResult(resultEl, data);
   } catch (e) {
     // A SyntaxError here means res.json() choked on a non-JSON body (nginx/CF
-    // gateway error page, plain-text 500, etc.) — show a clean message instead
+    // gateway error page, plain-text 500, etc.), show a clean message instead
     // of the raw parse error.
     const msg = e instanceof SyntaxError
       ? (scope === 'full'
-          ? 'Full scan timed out or failed — try Quick scope or retry.'
-          : 'Scan timed out or failed — try again.')
+          ? 'Full scan timed out or failed, try Quick scope or retry.'
+          : 'Scan timed out or failed, try again.')
       : `Request failed: ${escapeHtml(e.message)}`;
     resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
   } finally {
@@ -5838,7 +5838,7 @@ function usernamePivotTelegram(handle) {
 // ============================================================================
 //  Client-side PDF export (v3.9.1)
 //  jsPDF is vendored at /static/lib/jspdf.umd.min.js (self-hosted, no CDN).
-//  One shared builder (fePdfNew + fe* primitives) drives both report types —
+//  One shared builder (fePdfNew + fe* primitives) drives both report types -
 //  the IP reputation report and the abuse report. Everything runs in the
 //  browser; no bytes are sent to the server and nothing is written to disk
 //  server-side, consistent with the app's privacy posture.
@@ -6228,7 +6228,7 @@ function feKeyVal(st, label, value, opts) {
   const lw = doc.getTextWidth(labelText);
   doc.setFont(opts.mono ? FE_PDF.MONO : FE_PDF.SANS, 'normal'); _c(doc, FE_PDF.ink);
   const valMaxW = st.contentW - lw;
-  const vlines = doc.splitTextToSize(String(value == null ? '—' : value), valMaxW);
+  const vlines = doc.splitTextToSize(String(value == null ? '-' : value), valMaxW);
   doc.text(vlines[0] || '', st.M + lw, baseY);
   st.y += lh;
   for (let i = 1; i < vlines.length; i++) {
@@ -6364,7 +6364,7 @@ function feSourceHead(st, name, s) {
   doc.text(name, st.M, baseY);
   const nw = doc.getTextWidth(name);
   doc.setFont(FE_PDF.SANS, 'normal'); doc.setFontSize(8.5); _c(doc, stt.rgb);
-  doc.text('— ' + stt.txt, st.M + nw + 2, baseY);
+  doc.text('- ' + stt.txt, st.M + nw + 2, baseY);
   st.y += 5.5;
 }
 
@@ -6379,8 +6379,8 @@ function feIpAbuseIpdb(st, s) {
   feSourceHead(st, 'AbuseIPDB', s);
   if (s && s.state === 'ok') {
     const d = s.data || {};
-    feKeyVal(st, 'Abuse confidence', (d.confidence != null ? d.confidence + '%' : '—'));
-    feKeyVal(st, 'Reports', (d.total_reports != null ? d.total_reports : '—') +
+    feKeyVal(st, 'Abuse confidence', (d.confidence != null ? d.confidence + '%' : '-'));
+    feKeyVal(st, 'Reports', (d.total_reports != null ? d.total_reports : '-') +
       (d.distinct_users != null ? '  (' + d.distinct_users + ' distinct reporters)' : ''));
     if (d.usage_type) feKeyVal(st, 'Usage type', d.usage_type);
     if (d.isp) feKeyVal(st, 'ISP', d.isp);
@@ -6394,7 +6394,7 @@ function feIpVirusTotal(st, s) {
   if (s && s.state === 'ok') {
     const d = s.data || {};
     feKeyVal(st, 'Detections', (d.malicious || 0) + ' malicious / ' + (d.suspicious || 0) +
-      ' suspicious of ' + (d.total_engines != null ? d.total_engines : '—') + ' engines');
+      ' suspicious of ' + (d.total_engines != null ? d.total_engines : '-') + ' engines');
     if (d.flagged_vendors && d.flagged_vendors.length) feKeyVal(st, 'Flagged by', feListShort(d.flagged_vendors, 12));
     if (d.as_owner) feKeyVal(st, 'AS owner', d.as_owner);
   }
@@ -6490,7 +6490,7 @@ function feIpPortsTable(st, ports, shodan) {
   const sorted = rows.slice().sort((a, b) => (a.port || 0) - (b.port || 0));
   feTable(st,
     [{ title: 'PORT', width: 26, mono: true }, { title: 'SERVICE', width: 60 }, { title: 'SOURCE(S)', width: st.contentW - 86 }],
-    sorted.map(p => [String(p.port != null ? p.port : '—'), (p.service || '—'), (p.sources || []).join(', ')]));
+    sorted.map(p => [String(p.port != null ? p.port : '-'), (p.service || '-'), (p.sources || []).join(', ')]));
 }
 
 function fePdfSourcesQueried(data) {
@@ -6504,16 +6504,16 @@ function fePdfSourcesQueried(data) {
 
 function downloadIpReportPdf(data) {
   try {
-    if (!fePdfReady()) { alert('PDF library did not load — reload the page and try again.'); return; }
+    if (!fePdfReady()) { alert('PDF library did not load, reload the page and try again.'); return; }
     const st = fePdfNew();
     const rep = (data && data.reputation) || {};
     const rs = (data && data.ripestat) || {};
     const ip = (data && data.ip) || 'unknown';
     const stamp = fePdfUtcStamp();
 
-    feBrandHeader(st, 'IP Reputation Report — ' + ip, [
+    feBrandHeader(st, 'IP Reputation Report, ' + ip, [
       'Generated ' + stamp,
-      'OSINT intelligence summary — aggregated third-party signals, provided as-is.',
+      'OSINT intelligence summary, aggregated third-party signals, provided as-is.',
     ]);
 
     if (rep.verdict) { feVerdictBanner(st, rep.verdict.verdict, rep.verdict.reasoning); st.y += 1; }
@@ -6536,7 +6536,7 @@ function downloadIpReportPdf(data) {
           feKeyVal(st, code, (labels || []).join(', '));
         }
       }
-      if (rep.geo.is_hosting_asn) feText(st, 'Note: hosting/VPS/cloud ASN — geolocation is least reliable here.', { size: 8.5, color: FE_PDF.muted, gapAfter: 1 });
+      if (rep.geo.is_hosting_asn) feText(st, 'Note: hosting/VPS/cloud ASN, geolocation is least reliable here.', { size: 8.5, color: FE_PDF.muted, gapAfter: 1 });
     }
 
     feHeading(st, 'Sources');
@@ -6585,7 +6585,7 @@ function feAbuseBody(st, body) {
 
 function downloadAbusePdf(composed, info) {
   try {
-    if (!fePdfReady()) { alert('PDF library did not load — reload the page and try again.'); return; }
+    if (!fePdfReady()) { alert('PDF library did not load, reload the page and try again.'); return; }
     if (!composed) { alert('Compose the report first (click Preview Report).'); return; }
     const st = fePdfNew();
     const target = (info && info.target) || 'target';
@@ -6622,7 +6622,7 @@ function downloadAbusePdf(composed, info) {
 // ============================================================================
 //  Theme toggle (v3.10.0). data-theme on <html> is set pre-paint by the inline
 //  head script from the fe_theme cookie (default dark). Here we wire the header
-//  button to flip it and persist the choice. No localStorage — a cookie only.
+//  button to flip it and persist the choice. No localStorage, a cookie only.
 // ============================================================================
 (function initThemeToggle() {
   const btn = document.getElementById('theme-toggle');
@@ -6645,10 +6645,10 @@ function downloadAbusePdf(composed, info) {
 })();
 
 // ============================================================================
-//  Breach Check — Have I Been Pwned (v3.14.0)
+//  Breach Check, Have I Been Pwned (v3.14.0)
 // ============================================================================
 //  Pwned Passwords (Section 2) is deliberately the ONLY fetch in this whole
-//  section that does not go to our own /api/breach/* — it calls
+//  section that does not go to our own /api/breach/*, it calls
 //  api.pwnedpasswords.com directly from the browser so the password never
 //  reaches our server, verifiable in DevTools. Everything else (email/domain
 //  lookups, recent/browse-all reference data) goes through our backend, which
@@ -6786,7 +6786,7 @@ async function runBreachEmailCheck() {
     renderBreachEmailResult(data, email);
   } catch (e) {
     const msg = e instanceof SyntaxError
-      ? 'Check timed out or failed — try again.'
+      ? 'Check timed out or failed, try again.'
       : `Request failed: ${escapeHtml(e.message)}`;
     resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
   } finally {
@@ -6826,8 +6826,8 @@ function renderBreachEmailResult(data, email) {
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
       <div><p class="text-2xl font-bold ${data.breach_count ? 'text-red-400' : 'text-green-400'}">${data.breach_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">breaches</p></div>
       <div><p class="text-2xl font-bold text-gray-200">${data.paste_count}</p><p class="text-xs text-gray-500 uppercase tracking-wide">pastes</p></div>
-      <div><p class="text-sm font-bold text-gray-300 mt-1.5">${escapeHtml(data.earliest_breach_date || '—')}</p><p class="text-xs text-gray-500 uppercase tracking-wide">earliest</p></div>
-      <div><p class="text-sm font-bold text-gray-300 mt-1.5">${escapeHtml(data.latest_breach_date || '—')}</p><p class="text-xs text-gray-500 uppercase tracking-wide">latest</p></div>
+      <div><p class="text-sm font-bold text-gray-300 mt-1.5">${escapeHtml(data.earliest_breach_date || '-')}</p><p class="text-xs text-gray-500 uppercase tracking-wide">earliest</p></div>
+      <div><p class="text-sm font-bold text-gray-300 mt-1.5">${escapeHtml(data.latest_breach_date || '-')}</p><p class="text-xs text-gray-500 uppercase tracking-wide">latest</p></div>
     </div>
   </div>`;
 
@@ -6852,7 +6852,7 @@ function renderBreachEmailResult(data, email) {
 function renderBreachPastes(pastes) {
   if (!pastes.length) return '';
   const rows = pastes.map(p => `<div class="flex items-center justify-between py-1.5 border-b border-gray-800/60 text-sm gap-3">
-    <span class="text-gray-300 truncate">${escapeHtml(p.source || '?')}${p.title ? ' — ' + escapeHtml(p.title) : ''}</span>
+    <span class="text-gray-300 truncate">${escapeHtml(p.source || '?')}${p.title ? ', ' + escapeHtml(p.title) : ''}</span>
     <span class="text-xs text-gray-500 flex-shrink-0">${escapeHtml(p.date || '?')} &middot; ${escapeHtml(p.id || '')}</span>
   </div>`).join('');
   return `<div class="bg-gray-900 border border-gray-800 rounded p-4">
@@ -6881,7 +6881,7 @@ function exportBreachCsv(breaches, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-// ---- Section 2: Check a password (client-side K-anonymity — never proxied) ----
+// ---- Section 2: Check a password (client-side K-anonymity, never proxied) ----
 
 document.getElementById('breach-password-btn').addEventListener('click', runBreachPasswordCheck);
 document.getElementById('breach-password-input').addEventListener('keydown', e => {
@@ -6913,7 +6913,7 @@ async function runBreachPasswordCheck() {
     const suffix = hex.slice(5);
 
     // Direct browser -> api.pwnedpasswords.com fetch. Never routed through our
-    // backend — that is the whole point (verify in DevTools Network tab).
+    // backend, that is the whole point (verify in DevTools Network tab).
     const res = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
@@ -6931,7 +6931,7 @@ async function runBreachPasswordCheck() {
     } else {
       resultEl.innerHTML = `<div class="bg-green-900/20 border border-green-700/40 rounded p-4">
         <p class="text-green-400 text-sm font-bold">This password has not appeared in known breaches indexed by HIBP.</p>
-        <p class="text-xs text-gray-400 mt-1">"Not appeared" means "not in this corpus" — it does not mean the password is strong or unique. Use a password manager to generate unique passwords for every service.</p>
+        <p class="text-xs text-gray-400 mt-1">"Not appeared" means "not in this corpus", it does not mean the password is strong or unique. Use a password manager to generate unique passwords for every service.</p>
       </div>`;
     }
     resultEl.innerHTML += breachAttribution();
@@ -6989,7 +6989,7 @@ async function runBreachDomainCheck() {
     renderBreachDomainResult(data);
   } catch (e) {
     const msg = e instanceof SyntaxError
-      ? 'Check timed out or failed — try again.'
+      ? 'Check timed out or failed, try again.'
       : `Request failed: ${escapeHtml(e.message)}`;
     resultEl.innerHTML = `<p class="text-red-400 text-sm">${msg}</p>`;
   } finally {
@@ -7126,7 +7126,7 @@ function renderBreachAllTable() {
 }
 
 // ============================================================================
-//  Ransomware Watch (v3.16.0). Reads app/ransomware/routes.py only — this tab
+//  Ransomware Watch (v3.16.0). Reads app/ransomware/routes.py only, this tab
 //  never calls ransomware.live or RansomLook from the browser (see Part 1 of
 //  the v3.16.0 brief). Every panel carries its own "as of" / staleness line
 //  sourced from the collector_runs metadata each endpoint returns.
@@ -7621,7 +7621,7 @@ function rwFormatRangeLabel(range, start, end) {
 function rwSetRangeLabel(elId, range, bucket) {
   const el = document.getElementById(elId);
   if (!el) return;
-  el.textContent = (bucket && bucket.start) ? `— ${rwFormatRangeLabel(range, bucket.start, bucket.end)}` : '';
+  el.textContent = (bucket && bucket.start) ? `- ${rwFormatRangeLabel(range, bucket.start, bucket.end)}` : '';
 }
 
 function rwDiscoveredInRange(discovered, start, end) {
@@ -7876,7 +7876,7 @@ function loadRansomwareTab() {
 
 function downloadRansomwarePdf() {
   try {
-    if (!fePdfReady()) { alert('PDF library did not load — reload the page and try again.'); return; }
+    if (!fePdfReady()) { alert('PDF library did not load, reload the page and try again.'); return; }
     const st = fePdfNew();
     const stamp = fePdfUtcStamp();
     feBrandHeader(st, 'Ransomware Watch Report', [
@@ -8027,8 +8027,8 @@ function rwCountryProvenanceLine(data) {
   // cached | fetched_now
   const verb = data.coverage_state === 'fetched_now' ? 'Fetched just now, on demand' : 'Fetched on demand';
   let line = '<span>' + verb + (data.last_fetched ? (' · ' + rwTimeAgo(data.last_fetched)) : '') + '</span>';
-  if (data.rate_limited) line += ' <span class="text-amber-500">(showing cached data — rate limit reached)</span>';
-  if (data.upstream_status === 'unavailable') line += ' <span class="text-amber-500">(showing cached data — ransomware.live unavailable)</span>';
+  if (data.rate_limited) line += ' <span class="text-amber-500">(showing cached data, rate limit reached)</span>';
+  if (data.upstream_status === 'unavailable') line += ' <span class="text-amber-500">(showing cached data, ransomware.live unavailable)</span>';
   return line;
 }
 
@@ -8049,7 +8049,7 @@ async function runRwCountryLookup(cc) {
   }
   statusEl.innerHTML = rwCountryProvenanceLine(data);
   if (!data.victims || !data.victims.length) {
-    const emptyMsg = data.coverage_state === 'not_yet_queried' ? 'Not yet queried.' : 'Checked — zero victims found.';
+    const emptyMsg = data.coverage_state === 'not_yet_queried' ? 'Not yet queried.' : 'Checked, zero victims found.';
     tbody.innerHTML = '<tr><td colspan="7" class="py-2 text-gray-600">' + escapeHtml(emptyMsg) + '</td></tr>';
     return;
   }
@@ -8091,13 +8091,13 @@ async function rwBuildCountrySelectOptions() {
     }
   }
   const monitoredHtml = RW_SEA_COUNTRIES.map(cc =>
-    `<option value="${cc}">${escapeHtml(cc)} — ${escapeHtml(names[cc] || RW_SEA_COUNTRY_FALLBACK_NAMES[cc] || cc)}</option>`
+    `<option value="${cc}">${escapeHtml(cc)}, ${escapeHtml(names[cc] || RW_SEA_COUNTRY_FALLBACK_NAMES[cc] || cc)}</option>`
   ).join('');
   const otherCodes = Object.keys(names)
     .filter(cc => !RW_SEA_COUNTRIES.includes(cc))
     .sort((a, b) => names[a].localeCompare(names[b]));
   const othersHtml = otherCodes.map(cc =>
-    `<option value="${cc}">${escapeHtml(cc)} — ${escapeHtml(names[cc])}</option>`
+    `<option value="${cc}">${escapeHtml(cc)}, ${escapeHtml(names[cc])}</option>`
   ).join('');
   const current = select.value;
   select.innerHTML = '<option value="">Select a country&hellip;</option>' +

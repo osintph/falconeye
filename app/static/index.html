@@ -17,7 +17,7 @@
 
   <!-- Sidebar collapse init (v3.15.0): same pattern as theme init. Only sets the
        attribute when the user has EXPLICITLY toggled before (fe_sidebar_collapsed
-       cookie) — otherwise it's left unset and pure CSS media queries decide the
+       cookie), otherwise it's left unset and pure CSS media queries decide the
        default per breakpoint (expanded >=1280px, collapsed 1024-1279px), which
        keeps first-time visitors' sidebar genuinely responsive to a live resize. -->
   <script>
@@ -82,8 +82,8 @@
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "softwareVersion": "3.33.0",
     "featureList": [
-      "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
-      "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
+      "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
+      "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
       "Light and dark theme with a header toggle",
       "Multi-source IP reputation (AbuseIPDB, VirusTotal, OTX, Censys, ThreatFox) with consensus verdict",
       "Client-side PDF export for IP reputation and abuse reports",
@@ -92,7 +92,7 @@
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
       "Domain intelligence with RDAP, DNS, and CT logs",
-      "Telegram Intelligence — tiered entity resolution (t.me scrape, Bot API, MTProto) for users, bots, channels, and groups",
+      "Telegram Intelligence, tiered entity resolution (t.me scrape, Bot API, MTProto) for users, bots, channels, and groups",
       "IP reputation with Shodan and GreyNoise",
       "File-hash reputation (URLhaus / MalwareBazaar) inline in Email Header and Script Decoder",
       "Email header analyzer with BEC and scam detection",
@@ -184,14 +184,14 @@
   <!-- Navigation shell (v3.15.0): desktop sidebar (>=1024px, Tailwind `lg`) +
        mobile bottom-sheet drawer (<1024px). Both render from the same NAV_GROUPS
        registry in app.js so the tool list/order/labels can never drift between
-       devices — see app.js's "Navigation registry" section. Viewport-driven via
+       devices, see app.js's "Navigation registry" section. Viewport-driven via
        CSS only; no user-agent sniffing (see style.css breakpoint comments). -->
   <div class="flex flex-1 min-h-0">
 
     <!-- Desktop/tablet sidebar. Width + label visibility default responsively:
          collapsed icon-rail (~56px) at 1024-1279px, expanded (~208px) >=1280px.
          An explicit user toggle overrides both via [data-sidebar-collapsed] on
-         <html> (style.css) — an attribute selector beats the plain Tailwind
+         <html> (style.css), an attribute selector beats the plain Tailwind
          utility class on specificity, no !important needed. Sticky + its own
          overflow-y so a tall grouped list never fights the page's own scroll. -->
     <aside id="sidebar" class="hidden lg:flex flex-col w-14 xl:w-56 shrink-0 border-r border-gray-800 sticky top-0 h-screen overflow-y-auto">
@@ -210,7 +210,7 @@
     </aside>
 
     <!-- Collapsed-rail tooltip: one shared, JS-positioned (fixed) element, not a
-         CSS ::after per item — see style.css's #nav-tooltip comment for why. -->
+         CSS ::after per item, see style.css's #nav-tooltip comment for why. -->
     <div id="nav-tooltip" class="hidden" role="tooltip"></div>
 
     <div class="flex-1 min-w-0 flex flex-col">
@@ -222,13 +222,13 @@
 
       <main class="max-w-6xl mx-auto px-6 py-8 w-full flex-grow">
 
-    <!-- HOME TAB — default landing -->
+    <!-- HOME TAB, default landing -->
     <div id="tab-home" class="tab-content hidden">
 
       <!-- Launcher grid (v3.15.0): every tool, one click away, icon + name +
            one-line description. Built from the same NAV_GROUPS registry as the
            sidebar/drawer (app.js) so it can't drift out of sync with them. This
-           leads the tab per the nav rework — the intro prose below is unchanged. -->
+           leads the tab per the nav rework, the intro prose below is unchanged. -->
       <div id="home-launcher-grid" class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 mb-8"></div>
 
       <!-- About FalconEye story block -->
@@ -237,7 +237,7 @@
           <div class="lg:col-span-2">
             <h1 class="text-2xl font-bold text-white mb-3">An investigator's toolkit for the open web.</h1>
             <p class="text-gray-300 leading-relaxed mb-3">
-              FalconEye is a free, self-hosted OSINT workbench built for cybersecurity investigators, fraud analysts, and journalists. It collapses the dozen browser tabs an investigator usually juggles — wallet explorers, RDAP lookups, certificate transparency, ASN tools, phishing kit analysis, malware databases, Telegram intelligence — into one focused interface.
+              FalconEye is a free, self-hosted OSINT workbench built for cybersecurity investigators, fraud analysts, and journalists. It collapses the dozen browser tabs an investigator usually juggles, wallet explorers, RDAP lookups, certificate transparency, ASN tools, phishing kit analysis, malware databases, Telegram intelligence, into one focused interface.
             </p>
             <p class="text-gray-300 leading-relaxed mb-3">
               Every tab takes a single indicator as input and returns structured intelligence pulled from free, reputable public data sources. There is no paywall, no enterprise sales call, no API budget. Just the tools.
@@ -363,7 +363,7 @@
 
     </div>
 
-    <!-- CRYPTO TAB — focused workbench, no landing content -->
+    <!-- CRYPTO TAB, focused workbench, no landing content -->
     <div id="tab-crypto" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Crypto Investigation Workbench</h2>
       <p class="text-gray-400 text-sm mb-4">Paste a Bitcoin, Ethereum, or USDT TRC20 wallet address to investigate transaction history and counterparties.</p>
@@ -1075,7 +1075,7 @@
               data-sample="osintph.info" data-target="breach-domain-input" data-trigger="breach-domain-btn">
         ↳ Try sample (osintph.info)
       </button>
-      <p class="text-xs text-gray-600 mb-6 max-w-2xl">This lists breaches that included any addresses at this domain. It does not require you to own or verify the domain — anyone can look up any domain.</p>
+      <p class="text-xs text-gray-600 mb-6 max-w-2xl">This lists breaches that included any addresses at this domain. It does not require you to own or verify the domain, anyone can look up any domain.</p>
       <div id="breach-domain-result" class="hidden mb-8 space-y-4"></div>
 
       <!-- Section 4: Recent breaches -->
@@ -1314,7 +1314,7 @@
   </div>
 
   <!-- Mobile drawer trigger: bottom-anchored (thumb zone on a 6"+ phone), not a
-       top-left hamburger — the top-left corner needs a hand shuffle to reach. -->
+       top-left hamburger, the top-left corner needs a hand shuffle to reach. -->
   <button id="drawer-trigger" class="lg:hidden fixed left-1/2 -translate-x-1/2 z-40 bg-amber-400 text-gray-950 rounded-full w-14 h-14 flex items-center justify-center shadow-lg shadow-black/40 touch-manipulation" aria-haspopup="true" aria-expanded="false" aria-controls="mobile-drawer" aria-label="Open tool navigation">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>
   </button>
@@ -1337,7 +1337,7 @@
     <nav id="drawer-nav" class="overflow-y-auto px-2 pb-4 flex-1" aria-label="Tool list"></nav>
   </div>
 
-  <!-- Command palette (Cmd/Ctrl+K). Keyboard-only by design — the daily-driver
+  <!-- Command palette (Cmd/Ctrl+K). Keyboard-only by design, the daily-driver
        path for anyone who already knows the tool name; no mobile affordance. -->
   <div id="palette-backdrop" class="hidden fixed inset-0 bg-black/60 z-[60]"></div>
   <div id="cmd-palette" class="hidden fixed inset-x-0 top-24 z-[70] max-w-lg mx-auto px-4" role="dialog" aria-modal="true" aria-label="Command palette">
@@ -1354,19 +1354,19 @@
   <footer class="border-t border-gray-800 px-6 py-6 mt-8">
     <p class="text-xs text-gray-600 uppercase tracking-widest mb-3 text-center">Powered by free, public data sources</p>
     <div class="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 text-gray-500 text-xs">
-      <a href="https://blockstream.info/" target="_blank" rel="noopener noreferrer" class="data-source" title="Blockstream — Bitcoin blockchain explorer">Blockstream</a>
-      <a href="https://www.blockcypher.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="BlockCypher — Ethereum">BlockCypher</a>
-      <a href="https://trongrid.io/" target="_blank" rel="noopener noreferrer" class="data-source" title="TronGrid — TRON / USDT TRC20">TronGrid</a>
-      <a href="https://rdap.org/" target="_blank" rel="noopener noreferrer" class="data-source" title="rdap.org — Universal RDAP proxy">RDAP.org</a>
-      <a href="https://crt.sh/" target="_blank" rel="noopener noreferrer" class="data-source" title="crt.sh — Certificate Transparency search">crt.sh</a>
+      <a href="https://blockstream.info/" target="_blank" rel="noopener noreferrer" class="data-source" title="Blockstream, Bitcoin blockchain explorer">Blockstream</a>
+      <a href="https://www.blockcypher.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="BlockCypher, Ethereum">BlockCypher</a>
+      <a href="https://trongrid.io/" target="_blank" rel="noopener noreferrer" class="data-source" title="TronGrid, TRON / USDT TRC20">TronGrid</a>
+      <a href="https://rdap.org/" target="_blank" rel="noopener noreferrer" class="data-source" title="rdap.org, Universal RDAP proxy">RDAP.org</a>
+      <a href="https://crt.sh/" target="_blank" rel="noopener noreferrer" class="data-source" title="crt.sh, Certificate Transparency search">crt.sh</a>
       <a href="https://sslmate.com/certspotter/" target="_blank" rel="noopener noreferrer" class="data-source" title="Cert Spotter by SSLMate">Cert Spotter</a>
-      <a href="https://stat.ripe.net/" target="_blank" rel="noopener noreferrer" class="data-source" title="RIPEstat — ASN and routing data">RIPEstat</a>
+      <a href="https://stat.ripe.net/" target="_blank" rel="noopener noreferrer" class="data-source" title="RIPEstat, ASN and routing data">RIPEstat</a>
       <a href="https://www.shodan.io/" target="_blank" rel="noopener noreferrer" class="data-source" title="Shodan InternetDB">Shodan</a>
       <a href="https://www.greynoise.io/" target="_blank" rel="noopener noreferrer" class="data-source" title="GreyNoise Community">GreyNoise</a>
       <a href="https://urlhaus.abuse.ch/" target="_blank" rel="noopener noreferrer" class="data-source" title="URLhaus by abuse.ch">URLhaus</a>
       <a href="https://bazaar.abuse.ch/" target="_blank" rel="noopener noreferrer" class="data-source" title="MalwareBazaar by abuse.ch">MalwareBazaar</a>
-      <a href="https://openphish.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="OpenPhish — phishing URL feed">OpenPhish</a>
-      <a href="https://haveibeenpwned.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="Have I Been Pwned — breach corpus, CC BY 4.0">Have I Been Pwned</a>
+      <a href="https://openphish.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="OpenPhish, phishing URL feed">OpenPhish</a>
+      <a href="https://haveibeenpwned.com/" target="_blank" rel="noopener noreferrer" class="data-source" title="Have I Been Pwned, breach corpus, CC BY 4.0">Have I Been Pwned</a>
     </div>
     <p class="text-center text-xs text-gray-700 mt-4">
       FalconEye is open source · <a href="https://github.com/osintph/falconeye" class="hover:text-amber-400 transition" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>
@@ -1408,8 +1408,8 @@
             <ul class="list-disc list-inside space-y-2">
               <li><strong>Input you submit.</strong> Crypto addresses, domains, URLs, IPs, email headers, email bodies, file hashes, Telegram channel names, search goals. This is what the tool is for.</li>
               <li><strong>Uploaded files (Email Header and QR Analyzer tabs).</strong> Email .eml / .msg files and QR images are parsed or decoded in server memory and discarded immediately. The original file content is never written to persistent storage and never logged.</li>
-              <li><strong>Source IP address.</strong> Used for rate limiting on the rate-limited features (the LLM tabs — Email Header, Dork Generator, Script Decoder — plus URL Expander and QR Analyzer). The IP is read from Cloudflare's <code class="text-amber-300">CF-Connecting-IP</code> header, stored in our SQLite database with a timestamp, and older rows are automatically deleted.</li>
-              <li><strong>Abuse-report send audit (operator sends only).</strong> The Report Abuse cards compose a report you can copy and send from your own email. If the FalconEye operator sends one via Mailgun, an append-only audit row records the timestamp, source IP, recipient abuse-desk address, the reported target and category, the subject line, and the Mailgun message ID — never the report body or evidence.</li>
+              <li><strong>Source IP address.</strong> Used for rate limiting on the rate-limited features (the LLM tabs, Email Header, Dork Generator, Script Decoder, plus URL Expander and QR Analyzer). The IP is read from Cloudflare's <code class="text-amber-300">CF-Connecting-IP</code> header, stored in our SQLite database with a timestamp, and older rows are automatically deleted.</li>
+              <li><strong>Abuse-report send audit (operator sends only).</strong> The Report Abuse cards compose a report you can copy and send from your own email. If the FalconEye operator sends one via Mailgun, an append-only audit row records the timestamp, source IP, recipient abuse-desk address, the reported target and category, the subject line, and the Mailgun message ID, never the report body or evidence.</li>
               <li><strong>nginx access logs.</strong> Standard web server logs: timestamp, source IP, requested URL, response status, user agent. Used for security monitoring and capacity planning. Retained for 30 days, then deleted by log rotation.</li>
             </ul>
           </section>
@@ -1418,7 +1418,7 @@
             <h3 class="text-base font-bold text-white mb-2">What we do NOT collect</h3>
             <ul class="list-disc list-inside space-y-2">
               <li>User accounts. There is no signup, no login, no profile.</li>
-              <li>Tracking cookies. FalconEye sets one functional cookie — <code class="text-amber-300">fe_theme</code>, which stores your light/dark theme preference in your own browser — and nothing else. It carries no identifier and is never transmitted to any third party. (Cloudflare may set its own security cookies; see the Cloudflare section below.)</li>
+              <li>Tracking cookies. FalconEye sets one functional cookie, <code class="text-amber-300">fe_theme</code>, which stores your light/dark theme preference in your own browser, and nothing else. It carries no identifier and is never transmitted to any third party. (Cloudflare may set its own security cookies; see the Cloudflare section below.)</li>
               <li>Browser fingerprints, device IDs, or behavioral analytics.</li>
               <li>Email addresses or personal identifiers, unless you voluntarily paste them as input.</li>
               <li>The raw content of uploaded .eml / .msg files or QR images after parsing.</li>
