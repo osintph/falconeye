@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.33.3] - 2026-09-21
+
+The per-source log line added in v3.33.2 produced nothing at all.
+
+The app had **no logging configuration**: the root logger sat at `WARNING` with
+zero handlers, so every `log.info()` in the codebase was discarded at the logger
+and only `WARNING` and above escaped, through Python's last-resort stderr
+handler. Verified on the live box after deploying v3.33.2: zero `event=ip_source`
+lines in journald and in the gunicorn error log, with
+`logging.getLogger("falconeye.ip_sources").isEnabledFor(logging.INFO)` returning
+`False`.
+
+The unit test passed throughout, because `caplog` installs its own handler and
+sets its own level. That is the thing that hid the problem, so the new test
+asserts the real runtime configuration rather than using `caplog`.
+
+`app/main.py` now configures the `falconeye` logger at `FALCONEYE_LOG_LEVEL`
+(default `INFO`) with a stderr handler, which is what gunicorn captures into
+`--error-logfile` and what journald reads. Scoped to our own loggers rather than
+the root, so turning ours up does not also enable httpx and uvicorn INFO chatter.
+
+```
+2026-09-21 22:07:08,152 INFO falconeye.ip_sources event=ip_source source=abuseipdb target=203.0.113.5 status=ok latency_ms=142 cached=false
+```
+
+Every other `log.info()` in the app starts reaching the journal as a result.
+
+---
+
 ## [3.33.2] - 2026-09-21
 
 An unavailable reputation source was being counted as a clean one.

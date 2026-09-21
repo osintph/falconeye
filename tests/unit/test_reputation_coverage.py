@@ -162,3 +162,36 @@ def test_an_unavailable_source_still_logs_its_state(caplog):
         reputation.log_cached_sources("203.0.113.5", sources)
     otx = [r.getMessage() for r in caplog.records if "source=otx" in r.getMessage()][0]
     assert f"status={QUOTA}" in otx
+
+
+# ---------- the log line has to actually reach a handler ----------
+
+def test_info_logging_is_actually_enabled_for_the_app():
+    """v3.33.2 shipped the log calls but nothing that let them through.
+
+    The app had no logging configuration at all: the root logger sat at WARNING
+    with zero handlers, so every log.info() in the codebase was discarded at the
+    logger. The structured per-source line was written, tested in isolation with
+    caplog (which installs its own handler, so it passed), and produced nothing
+    whatsoever in journald on the live box.
+
+    caplog cannot catch that, because caplog is the thing that hides it. This
+    asserts the real runtime configuration instead.
+    """
+    import logging
+
+    import app.main  # noqa: F401  - imported for its logging setup side effect
+
+    fe = logging.getLogger("falconeye.ip_sources")
+    assert fe.isEnabledFor(logging.INFO), (
+        "falconeye INFO logging is disabled, so the per-source line is dropped "
+        "before it reaches a handler. Check the logging setup in app/main.py."
+    )
+
+    # And a handler has to exist somewhere up the chain, or the record is
+    # formatted and then thrown away.
+    node, handlers = fe, []
+    while node:
+        handlers.extend(node.handlers)
+        node = node.parent if node.propagate else None
+    assert handlers, "no handler on the falconeye logger chain: records go nowhere"

@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, Redirect
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app import config
+from app.utils.env import getenv_clean
 from app.ip_sources import reputation
 from app.utils.client_ip import get_client_ip_key
 from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet
@@ -21,7 +22,23 @@ from app.ransomware import routes as ransomware_routes
 from app.prospect.client import SearchAPINotConfigured
 from app.image_search.upload import ImageUploadNotConfigured
 
+# Logging configuration. Without this the app has NO logging setup at all: the
+# root logger sits at WARNING with zero handlers, so every log.info() in the
+# codebase is discarded at the logger and only WARNING+ escapes, via Python's
+# last-resort stderr handler. That is why v3.33.2 could add a structured
+# per-source log line and still produce nothing in journald.
+#
+# Scoped to the "falconeye" logger rather than the root so turning our own
+# logging up does not also switch on httpx and uvicorn INFO chatter. Records
+# propagate to the handler below, which writes to stderr, which is what gunicorn
+# captures into --error-logfile and what journald reads.
 log = logging.getLogger("falconeye")
+log.setLevel(getenv_clean("FALCONEYE_LOG_LEVEL", "INFO").upper() or "INFO")
+if not log.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(name)s %(message)s"))
+    log.addHandler(_handler)
 
 limiter = Limiter(key_func=get_client_ip_key)
 
@@ -29,7 +46,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.33.2",
+    version="3.33.3",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -84,7 +101,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.33.2"}
+    return {"status": "ok", "version": "3.33.3"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
