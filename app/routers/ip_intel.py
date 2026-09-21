@@ -12,7 +12,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 
-from app.config import DB_PATH, GREYNOISE_API_KEY, ABUSECH_AUTH_KEY
+from app.config import ABUSECH_AUTH_KEY, DB_PATH, GREYNOISE_API_KEY, OPERATOR_CONTACT_UA
 from app.database import get_db
 from app.ip_sources import reputation, asn_intel
 from app.utils import abusech, cache
@@ -24,7 +24,7 @@ log = logging.getLogger("falconeye.ip")
 
 CACHE_TTL_HOURS = 6
 FETCH_TIMEOUT = 10.0
-USER_AGENT = "FalconEye/3.0 (osintph.info; OSINT research)"
+USER_AGENT = f"FalconEye/3.0 ({OPERATOR_CONTACT_UA}; OSINT research)"
 
 
 def validate_ip(raw: str) -> str | None:

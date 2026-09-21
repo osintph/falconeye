@@ -11,7 +11,7 @@ import httpx
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 
-from app.config import DB_PATH, ABUSECH_AUTH_KEY
+from app.config import ABUSECH_AUTH_KEY, DB_PATH, OPERATOR_CONTACT_UA
 from app.database import get_db
 from app.utils import abusech, cache
 from app.utils.client_ip import get_client_ip_key
@@ -22,7 +22,7 @@ log = logging.getLogger("falconeye.threat_pulse")
 
 CACHE_TTL_MINUTES = 60  # URLhaus PH feed updates roughly hourly
 FETCH_TIMEOUT = 20.0
-USER_AGENT = "FalconEye/3.0 (osintph.info; threat research)"
+USER_AGENT = f"FalconEye/3.0 ({OPERATOR_CONTACT_UA}; threat research)"
 
 BRAND_PATTERNS = {
     "GCash": ["gcash", "g-cash", "gcsh"],

@@ -20,11 +20,12 @@ from urllib.parse import urlparse
 from app.abuse import store
 from app.utils.domain import normalize_domain
 from app.utils.safe_fetch import safe_fetch, SafeFetchError
+from app.config import OPERATOR_CONTACT_UA
 
 log = logging.getLogger("falconeye.abuse")
 
 RDAP_TIMEOUT = 10.0
-USER_AGENT = "FalconEye/3.7 (osintph.info; abuse contact lookup)"
+USER_AGENT = f"FalconEye/3.7 ({OPERATOR_CONTACT_UA}; abuse contact lookup)"
 
 # Strict per the plan; rejects display names, comments, and multiple addresses.
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")

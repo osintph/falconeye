@@ -12,7 +12,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 
-from app.config import DB_PATH
+from app.config import DB_PATH, OPERATOR_CONTACT_UA
 from app.database import get_db
 from app.hudsonrock import client as hudsonrock
 from app.utils.client_ip import get_client_ip, get_client_ip_key
@@ -94,7 +94,7 @@ async def fetch_rdap(client: httpx.AsyncClient, domain: str) -> dict | None:
         r = await client.get(
             f"https://rdap.org/domain/{domain}",
             headers={
-                "User-Agent": "FalconEye/3.0 (osintph.info; OSINT research)",
+                "User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA}; OSINT research)",
                 "Accept": "application/rdap+json, application/json",
             },
             follow_redirects=True,
@@ -251,7 +251,7 @@ async def fetch_ct_crtsh(client: httpx.AsyncClient, domain: str) -> dict | None:
             r = await client.get(
                 f"https://crt.sh/?q={domain}&output=json",
                 timeout=CT_TIMEOUT,
-                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+                headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"},
             )
             if r.status_code == 200 and "json" in r.headers.get("content-type", "").lower():
                 try:
@@ -300,7 +300,7 @@ async def fetch_ct_certspotter(client: httpx.AsyncClient, domain: str) -> dict |
                 ("expand", "issuer"),
             ],
             timeout=CT_TIMEOUT,
-            headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+            headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"},
         )
         if r.status_code != 200:
             log.warning(f"Certspotter returned {r.status_code} for {domain}")
@@ -433,7 +433,7 @@ async def fetch_network(client: httpx.AsyncClient, ip: str) -> dict | None:
             f"https://stat.ripe.net/data/network-info/data.json",
             params={"resource": ip},
             timeout=RIPESTAT_TIMEOUT,
-            headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+            headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"},
         )
         if r.status_code != 200:
             return None
@@ -455,7 +455,7 @@ async def fetch_network(client: httpx.AsyncClient, ip: str) -> dict | None:
                 f"https://stat.ripe.net/data/as-overview/data.json",
                 params={"resource": f"AS{asns[0]}"},
                 timeout=RIPESTAT_TIMEOUT,
-                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+                headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"},
             )
             if asn_r.status_code == 200:
                 asn_data = asn_r.json().get("data", {})

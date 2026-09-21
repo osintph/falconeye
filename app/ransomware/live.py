@@ -23,7 +23,7 @@ import time
 
 import httpx
 
-from app.config import RANSOMWARE_LIVE_API_KEY
+from app.config import OPERATOR_CONTACT_UA, RANSOMWARE_LIVE_API_KEY
 
 log = logging.getLogger("falconeye.ransomware.live")
 
@@ -35,7 +35,7 @@ SEARCH_RESULT_CAP = 100
 def _headers() -> dict:
     # Built per-call (not a module-level constant) so a test can
     # monkeypatch RANSOMWARE_LIVE_API_KEY and have it actually take effect.
-    return {"X-API-KEY": RANSOMWARE_LIVE_API_KEY, "User-Agent": "FalconEye/3.17 (osintph.info; on-demand lookup)"}
+    return {"X-API-KEY": RANSOMWARE_LIVE_API_KEY, "User-Agent": f"FalconEye/3.17 ({OPERATOR_CONTACT_UA}; on-demand lookup)"}
 
 
 def normalize_query(q: str) -> str:

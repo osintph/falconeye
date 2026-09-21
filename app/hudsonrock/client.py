@@ -41,6 +41,7 @@ from app.config import (
     HUDSONROCK_CACHE_TTL_HOURS,
     HUDSONROCK_ENABLED,
     HUDSONROCK_PER_DAY,
+    OPERATOR_CONTACT_UA,
 )
 from app.utils import cache, rate_limit
 from app.utils.safe_fetch import SafeFetchError, safe_fetch
@@ -48,7 +49,7 @@ from app.utils.safe_fetch import SafeFetchError, safe_fetch
 log = logging.getLogger("falconeye.hudsonrock")
 
 BASE_URL = "https://cavalier.hudsonrock.com/api/json/v2/osint-tools"
-USER_AGENT = "FalconEye/3.33 (osintph.info; infostealer exposure check)"
+USER_AGENT = f"FalconEye/3.33 ({OPERATOR_CONTACT_UA}; infostealer exposure check)"
 TIMEOUT = 12.0
 
 CACHE_TABLE = "hudsonrock_cache"

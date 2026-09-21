@@ -23,10 +23,11 @@ import httpx
 
 from app.utils.safe_fetch import resolve_and_check, SafeFetchError
 from app.username.parser import Site
+from app.config import OPERATOR_SITE_ORIGIN
 
 log = logging.getLogger("falconeye.username")
 
-USER_AGENT = "FalconEye/3.8.0 (+https://falconeye.osintph.info; OSINT username enumeration)"
+USER_AGENT = f"FalconEye/3.8.0 (+{OPERATOR_SITE_ORIGIN}; OSINT username enumeration)"
 _MAX_BODY = 200_000  # cap body used for substring detection
 
 

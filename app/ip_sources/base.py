@@ -12,9 +12,10 @@ which is reserved for attacker-controlled URLs. The IP is validated public by
 the caller before any of this runs.
 """
 from dataclasses import asdict, dataclass, field
+from app.config import OPERATOR_CONTACT_UA
 
 FETCH_TIMEOUT = 12.0
-USER_AGENT = "FalconEye/3.9 (osintph.info; IP reputation)"
+USER_AGENT = f"FalconEye/3.9 ({OPERATOR_CONTACT_UA}; IP reputation)"
 
 # state values
 OK = "ok"

@@ -94,6 +94,14 @@ OPERATOR_PRIVACY_EMAIL = getenv_clean("OPERATOR_PRIVACY_EMAIL", "privacy@osintph
 # Public origin of this instance, used in canonical/OG tags and the privacy policy.
 OPERATOR_SITE_ORIGIN = getenv_clean("SITE_ORIGIN", "https://falconeye.osintph.info")
 
+# The contact token every outbound User-Agent carries, so an upstream API that
+# wants to complain about our traffic knows who to complain to. Until v3.33.1
+# this was hardcoded to the upstream operator's domain, which meant every API a
+# self-hoster queried saw osintph.info as the responsible party for traffic it
+# had nothing to do with. Some upstreams (ransomware.live) require attribution,
+# so this is a value to set rather than remove.
+OPERATOR_CONTACT_UA = getenv_clean("OPERATOR_CONTACT_UA", "osintph.info")
+
 # The Contact tab. "true" (the default) keeps it exactly as the public instance
 # has it. A self-hoster who does not want to field mail sets this to "false":
 # the nav entry disappears, the panel is not rendered, and GET /contact returns

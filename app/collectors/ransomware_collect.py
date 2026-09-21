@@ -39,7 +39,7 @@ from datetime import datetime, timezone
 
 import httpx
 
-from app.config import RANSOMWARE_LIVE_API_KEY, RANSOMWARE_WATCHLIST_PATH
+from app.config import OPERATOR_CONTACT_UA, RANSOMWARE_LIVE_API_KEY, RANSOMWARE_WATCHLIST_PATH
 from app.ransomware import store
 
 log = logging.getLogger("falconeye.ransomware.collect")
@@ -53,7 +53,7 @@ MIRROR_HEALTH_INTERVAL_SECONDS = 6 * 3600
 CORROBORATION_WINDOW_DAYS = 3
 WATCHLIST_MIN_CHARS = 2
 
-USER_AGENT = "FalconEye/3.16 (osintph.info; ransomware watch, non-commercial, attributed)"
+USER_AGENT = f"FalconEye/3.16 ({OPERATOR_CONTACT_UA}; ransomware watch, non-commercial, attributed)"
 
 
 def _now_iso() -> str:

@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Request
 from slowapi import Limiter
 from app.database import get_db
-from app.config import NEWS_CACHE_TTL_MINUTES
+from app.config import NEWS_CACHE_TTL_MINUTES, OPERATOR_CONTACT_UA
 from app.utils.client_ip import get_client_ip_key
 
 router = APIRouter(prefix="/api/news", tags=["news"])
@@ -61,7 +61,7 @@ def refresh_category(db: sqlite3.Connection, category: str) -> None:
             # (parse-on-content does no network I/O).
             resp = httpx.get(
                 feed["url"], timeout=10.0, follow_redirects=True,
-                headers={"User-Agent": "FalconEye/3.0 (osintph.info)"},
+                headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"},
             )
             resp.raise_for_status()
             parsed = feedparser.parse(resp.content)

@@ -19,14 +19,14 @@ import logging
 
 import httpx
 
-from app.config import ABUSECH_AUTH_KEY
+from app.config import ABUSECH_AUTH_KEY, OPERATOR_CONTACT_UA
 
 log = logging.getLogger("falconeye.abusech")
 
 _URLHAUS_API = "https://urlhaus-api.abuse.ch/v1"
 _MALWAREBAZAAR_API = "https://mb-api.abuse.ch/api/v1/"
 _URLHAUS_FEED = "https://urlhaus.abuse.ch/feeds"
-USER_AGENT = "FalconEye/3.0 (osintph.info)"
+USER_AGENT = f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"
 TIMEOUT = 10.0
 
 
@@ -84,7 +84,7 @@ async def urlhaus_country_feed(cc: str, timeout: float = 20.0) -> httpx.Response
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
             r = await client.get(
                 f"{_URLHAUS_FEED}/country/{cc}/",
-                headers={"User-Agent": "FalconEye/3.0 (osintph.info; threat research)"},
+                headers={"User-Agent": f"FalconEye/3.0 ({OPERATOR_CONTACT_UA}; threat research)"},
             )
             r.raise_for_status()
             return r

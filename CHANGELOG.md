@@ -5,6 +5,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.33.1] - 2026-09-21
+
+Follow-ups to v3.33.0, both raised in review.
+
+### Outbound User-Agent no longer names the upstream operator
+
+Every request FalconEye makes to an upstream carries a User-Agent with a
+contact token, so an API with a complaint about the traffic knows who to
+contact. That token was hardcoded to `osintph.info` in 18 places across 13
+modules, which meant a self-hoster's queries to AbuseIPDB, VirusTotal, OTX,
+Censys, abuse.ch, RDAP, ransomware.live and the rest were attributed to someone
+with no connection to them, and no ability to answer for them.
+
+`OPERATOR_CONTACT_UA` now supplies it, defaulting to the current value so the
+strings are byte-for-byte what they were. The two `+https://...` forms read
+`SITE_ORIGIN` instead. `tests/unit/test_user_agent.py` pins all ten defaults
+exactly and fails if any module reintroduces a literal domain.
+
+`app/routers/crypto.py` is untouched: its five requests send a bare
+`FalconEye/3.0` with no contact token at all, which is a different gap (no
+operator is named, so nothing is misattributed) and not one to fix by changing
+outbound headers in the same commit.
+
+### Em-dash sweep
+
+520 em and en dashes replaced across 77 files, in two commits: 95 in the
+user-facing strings of `app.js` and `index.html`, then 425 in docstrings,
+comments and docs. Spaced dashes became commas, label patterns became colons,
+numeric ranges became hyphens. Line for line, no rewording.
+
+Four things were deliberately left alone. `app/routers/sockpuppet.py` and
+`app/static/app.js` each keep one dash inside a text normaliser that **matches**
+the character; rewriting those would have silently stopped them stripping dashes
+from generated text. `CHANGELOG.md` keeps its 242, because its entries are a
+record of what was written at the time. The five untracked review documents at
+the repo root are not in git. And `tests/fixtures/` turned out to be gitignored,
+which settles the captured kit artefact question.
+
+An earlier count of 1569 across 237 files was wrong and is corrected here: the
+scan excluded `.venv` by substring while the local virtualenv is `.venv312`, so
+it swept site-packages and counted third-party code. The real scope was 524 in
+78 tracked files.
+
+---
+
 ## [3.33.0] - 2026-09-21
 
 Two additions that came from outside: an offer of data, and a question about

@@ -8,7 +8,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from slowapi import Limiter
 
-from app.config import DB_PATH, ABUSECH_AUTH_KEY
+from app.config import ABUSECH_AUTH_KEY, DB_PATH, OPERATOR_CONTACT_UA
 from app.database import get_db
 from app.utils import abusech
 from app.utils.client_ip import get_client_ip_key
@@ -20,7 +20,7 @@ log = logging.getLogger("falconeye.sandbox")
 
 CACHE_TTL_HOURS = 6
 FETCH_TIMEOUT = 10.0
-USER_AGENT = "FalconEye/3.0 (osintph.info)"
+USER_AGENT = f"FalconEye/3.0 ({OPERATOR_CONTACT_UA})"
 
 
 def get_cached(db: sqlite3.Connection, key: str) -> dict | None:

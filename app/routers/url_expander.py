@@ -23,7 +23,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 from slowapi import Limiter
 
-from app.config import HTTPX_TIMEOUT, URL_EXPAND_RATE_LIMIT_PER_DAY
+from app.config import HTTPX_TIMEOUT, OPERATOR_SITE_ORIGIN, URL_EXPAND_RATE_LIMIT_PER_DAY
 from app.utils import rate_limit
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.safe_fetch import SafeFetchError, pinned_request, resolve_pinned
@@ -32,7 +32,7 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/url", tags=["url_expander"])
 limiter = Limiter(key_func=get_client_ip_key)
 
-USER_AGENT = "FalconEye/3.6.0 (+https://falconeye.osintph.info)"
+USER_AGENT = f"FalconEye/3.6.0 (+{OPERATOR_SITE_ORIGIN})"
 MAX_URL_LENGTH = 2048
 DEFAULT_MAX_HOPS = 10
 # This endpoint only needs headers plus enough HTML to spot a meta-refresh, so it
