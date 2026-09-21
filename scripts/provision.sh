@@ -200,4 +200,16 @@ echo "  2. Secure it: chmod 600 $INSTALL_DIR/.env"
 echo "  3. Restart: systemctl restart falconeye"
 echo ""
 echo "Health check:"
-curl -sk https://falconeye.osintph.info/health || curl -s http://127.0.0.1:8000/health
+# Read the hostname from the vhost that was just installed rather than
+# hardcoding the upstream operator's domain, which a self-hoster does not own
+# and cannot reach. Falls back to the local origin, which is also the right
+# answer before DNS is pointed at the box.
+SERVER_NAME=$(awk '$1 == "server_name" { sub(/;$/, "", $2); print $2; exit }' \
+    /etc/nginx/sites-available/falconeye 2>/dev/null || true)
+if [[ -n "${SERVER_NAME:-}" && "$SERVER_NAME" != "_" && "$SERVER_NAME" != "localhost" ]]; then
+    echo "  via $SERVER_NAME (from the installed vhost)"
+    curl -sk "https://${SERVER_NAME}/health" || curl -s http://127.0.0.1:8000/health
+else
+    echo "  via the local origin (no usable server_name in the vhost)"
+    curl -s http://127.0.0.1:8000/health
+fi

@@ -1,13 +1,13 @@
 # FalconEye deploy / release runbook
 
 The canonical, verified deploy sequence for FalconEye. This is the **real**
-mechanism the production box uses — earlier briefs that described a `git pull`
+mechanism the production box uses. Earlier briefs that described a `git pull`
 deploy did not match it. Keep this doc in sync with reality.
 
 ## Where it runs
 
 - Host: single OVH VPS, SSH on port 9999 as `ubuntu` (see private ops notes).
-- App: gunicorn under systemd unit **`falconeye`** — `User=ubuntu`,
+- App: gunicorn under systemd unit **`falconeye`**: `User=ubuntu`,
   `WorkingDirectory=/opt/falconeye/app_src`, bound `127.0.0.1:8000`, 3 workers,
   `--timeout 90`. nginx in front; Cloudflare at the edge.
 - Code tree: `/opt/falconeye/app_src` (a git checkout, deployed by resetting to a
@@ -90,17 +90,17 @@ cd /opt/falconeye/app_src && /opt/falconeye/venv/bin/python -c "import app.main"
 Clean output and exit 0 means every native dependency resolved. An `ImportError`
 naming a shared library means a missing apt package, not a missing Python one.
 
-## Ownership invariant (root cause of past deploy friction — normalized 2026-07-25)
+## Ownership invariant (root cause of past deploy friction, normalized 2026-07-25)
 
 The whole tree under `/opt/falconeye/app_src` must be owned by **`ubuntu:ubuntu`**
 (the service user). For a long time the tracked **files** were `ubuntu`-owned but
 several **directories** (`app/`, `app/static/`, `app/utils/`, `app/ip_sources/`,
-`tests/`) were owned by uid **501** (the Mac account) — the leftover of an
+`tests/`) were owned by uid **501** (the Mac account), the leftover of an
 `rsync -a` run as root whose follow-up `chown` step was skipped (macOS `rsync`
 has no `--chown`, so the chown is a *separate* step and is easy to miss). Effect:
 `ubuntu` could edit existing files in place but **could not create or delete**
 files in those dirs, so `git pull` / `git reset --hard` and any new-file or
-deletion deploy failed with permission errors — which is why deploys quietly
+deletion deploy failed with permission errors, which is why deploys quietly
 became "overwrite existing files in place" and the git checkout drifted.
 
 **Fixed once, on 2026-07-25:**
@@ -135,15 +135,15 @@ Verify none exist: `ssh … 'sudo find /opt/falconeye/app_src/.git/objects -user
 Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirror.
 
 1. **Make the change** on the Mac.
-2. **Version bump — 5 places** (only when cutting a release). There is no shared
+2. **Version bump, 5 places** (only when cutting a release). There is no shared
    version constant; every one of these is hand-edited, so grep before you push:
    `grep -rn "<old-version>" README.md app/main.py app/static/index.html`.
-   - `app/main.py` — `FastAPI(version=…)` **and** the `/health` return.
-   - `app/static/index.html` — JSON-LD `softwareVersion`.
-   - `app/static/index.html` — the `?v=` cache-bust on **both** `app.js` and
-     `style.css` (this is what makes browsers/Cloudflare refetch — no manual
+   - `app/main.py`: `FastAPI(version=…)` **and** the `/health` return.
+   - `app/static/index.html`: JSON-LD `softwareVersion`.
+   - `app/static/index.html`: the `?v=` cache-bust on **both** `app.js` and
+     `style.css` (this is what makes browsers/Cloudflare refetch, no manual
      purge needed).
-   - `README.md` — the `Current version: **x.y.z**` line near the top, **and**
+   - `README.md`: the `Current version: **x.y.z**` line near the top, **and**
      the "controls are in place as of vX.Y.Z" line under Security posture. This
      one is easy to miss and silently drifted from v3.20.0 to v3.28.0, eight
      releases, before anyone noticed.
@@ -157,7 +157,7 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    **Never remove `--forwarded-allow-ips 127.0.0.1` from the ExecStart line, and
    never set `FORWARDED_ALLOW_IPS` in `.env`.** Every per-IP rate limit depends
    on it. uvicorn rewrites the client peer from `X-Forwarded-For` only for peers
-   in that list, taking the **right-most** entry — which nginx sets to the
+   in that list, taking the **right-most** entry, which nginx sets to the
    Cloudflare edge IP, and which `app/utils/client_ip.py` then checks against the
    Cloudflare ranges. With `*` uvicorn takes the **left-most** entry instead,
    which is fully caller-supplied: the peer becomes attacker-chosen and the paid
@@ -165,10 +165,10 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    is why the flag is there rather than a comment. `tests/unit/test_client_ip.py`
    fails if it is removed. If the unit file changed, `sudo systemctl
    daemon-reload` before restarting or systemd keeps running the old ExecStart.
-3. **CHANGELOG.md** — Keep a Changelog format: `## [x.y.z] - YYYY-MM-DD`, newest
+3. **CHANGELOG.md**. Keep a Changelog format: `## [x.y.z] - YYYY-MM-DD`, newest
    on top, `---` between entries. That separator is a **plain ASCII hyphen**, not
    an en/em dash; check an existing heading before writing a new one.
-4. **Merge, tag, push — all from the Mac** (Mac `origin` is SSH with a key; `gh`
+4. **Merge, tag, push: all from the Mac** (Mac `origin` is SSH with a key; `gh`
    is authed as `osintph` and is **not** on the VPS). History is **linear, no
    merge commits**, so land feature work with a fast-forward:
    `git checkout main && git merge --ff-only <branch>`. Tags are **annotated**
@@ -596,7 +596,7 @@ in it.
 
 ## Notes
 
-- **Do NOT `git push` from the VPS** — its `origin` is HTTPS with no credentials.
+- **Do NOT `git push` from the VPS**: its `origin` is HTTPS with no credentials.
   Push from the Mac. `git fetch` from the VPS is fine (public repo).
 - **Cloudflare purge is not a release step.** The `?v=<version>` cache-bust from
   step 2 changes the cache key, so the edge refetches on its own. Verified on the
