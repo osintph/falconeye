@@ -56,24 +56,24 @@ had no way to stop the report.
 
 ---
 
-## v3.8.1 — inline comment in `.env` broke bcrypt admin-hash validation
+## v3.8.1, inline comment in `.env` broke bcrypt admin-hash validation
 
 **What broke.** After the v3.8.1 "Send via Mailgun" auth fix, the correct admin
 password was rejected as "invalid credentials". The `FALCONEYE_ABUSE_ADMIN_PASS_HASH`
 line in `/opt/falconeye/.env` carried a trailing inline comment
 (`$2b$12$...  # bcrypt hash you generate`). The code read the value with
-`os.getenv(...).strip()`, which strips whitespace but **not** inline comments —
-and systemd's `EnvironmentFile` does not strip them either — so an 88-character
+`os.getenv(...).strip()`, which strips whitespace but **not** inline comments -
+and systemd's `EnvironmentFile` does not strip them either, so an 88-character
 string (hash + comment) reached `bcrypt.checkpw`, which then always returned False.
 The observable tell was hash length: 88 characters instead of a real bcrypt hash's 60.
 
-**Why it happened — and a correction to the first hypothesis.** The initial
+**Why it happened, and a correction to the first hypothesis.** The initial
 theory was that the v3.8.1 hotfix "touched env loading as a side effect, out of
 scope." That is **not** what happened. The env read was byte-identical before and
 after v3.8.1 (`os.getenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH", "").strip()` in both
 `require_admin` and `_verify_admin`), and no module parses `.env` directly. The
 inline-comment gap had existed since the abuse feature shipped in v3.7.1; it stayed
-**latent** because no successful authenticated send had ever been exercised — the
+**latent** because no successful authenticated send had ever been exercised, the
 v3.7.1/v3.8.0 Basic Auth path was never driven to a real success in testing, and
 the v3.8.1 duplicate-popup bug blocked sends entirely. Fixing the popup in v3.8.1
 enabled the first real send attempt, which is when the pre-existing hash bug first

@@ -1,7 +1,7 @@
 """
 Cache for the Telegram Intelligence tab, self-initializing at import like every
 other tab (username, abuse, ip_intel) so a fresh (non-migrated) DB never 500s.
-Keyed by normalized identifier, not "channel" — the old telegram_cache table
+Keyed by normalized identifier, not "channel", the old telegram_cache table
 was channel-only; this is a new table since the schema and key semantics
 changed (any entity type, tiered result shape). The old table is left in place,
 unused and harmless.

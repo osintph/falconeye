@@ -3,7 +3,7 @@
 The property under test is not "CF-Connecting-IP is read" but "the rate-limit key
 cannot be chosen by the caller". Every per-IP limit in this app keys on
 get_client_ip, so a caller who can pick its own value gets an unlimited number of
-fresh counters — and the LLM endpoints behind those counters cost real money.
+fresh counters, and the LLM endpoints behind those counters cost real money.
 
 Written against the bug CLASS: a header is only honoured when the peer that
 delivered it is a trusted proxy, so a future header added on the same pattern
@@ -17,7 +17,7 @@ import pytest
 from app.utils.client_ip import get_client_ip
 from app.utils.cloudflare_ips import is_cloudflare_ip, is_trusted_proxy
 
-# A real Cloudflare edge address (172.64.0.0/13) — gunicorn's access log shows
+# A real Cloudflare edge address (172.64.0.0/13), gunicorn's access log shows
 # exactly this shape arriving in production.
 CF_EDGE = "172.70.186.138"
 
@@ -125,7 +125,7 @@ def test_no_client_at_all_is_unknown():
 
 
 def test_ignores_x_forwarded_for():
-    # XFF must NOT be used — only CF-Connecting-IP from a trusted peer, or client.host
+    # XFF must NOT be used, only CF-Connecting-IP from a trusted peer, or client.host
     req = _make_request(
         {"X-Forwarded-For": "1.2.3.4, 5.6.7.8"},
         client_host="198.51.100.7",

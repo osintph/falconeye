@@ -2,7 +2,7 @@
 Structural guard against the v3.15.3 class of bug: app.js's Breach Check
 password lookup deliberately fetch()es https://api.pwnedpasswords.com
 directly from the browser (never through our backend, so the password itself
-never leaves the client — see app/static/app.js's "Section 2" comment), but
+never leaves the client, see app/static/app.js's "Section 2" comment), but
 nginx's CSP connect-src still said 'self' only. The browser silently blocked
 the request; nothing in the test suite caught it because the only prior
 coverage was of the request's *shape* (right prefix, right endpoint), not
@@ -62,11 +62,11 @@ def _direct_fetch_origins():
 def test_every_direct_fetch_origin_is_allowed_by_connect_src():
     connect_src = _csp_directive_values("connect-src")
     origins = _direct_fetch_origins()
-    assert origins, "expected at least one direct https:// fetch() in app.js (e.g. pwnedpasswords) — did it move or get removed?"
+    assert origins, "expected at least one direct https:// fetch() in app.js (e.g. pwnedpasswords), did it move or get removed?"
     for origin in origins:
         assert origin in connect_src, (
             f"app.js fetch()es {origin} directly but nginx's CSP connect-src "
-            f"({sorted(connect_src)}) doesn't allow it — the browser will "
+            f"({sorted(connect_src)}) doesn't allow it, the browser will "
             f"silently block the request. Add it to connect-src in "
             f"nginx/snippets/security-headers.conf and in the live copy "
             f"(/etc/nginx/snippets/security-headers.conf)."

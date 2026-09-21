@@ -3,7 +3,7 @@ Parse the vendored WhatsMyName (WMN) and Sherlock data files into one unified
 internal site list.
 
 Both are static MIT-licensed JSON files under app/data/. We do not depend on
-either project's runtime code — we vendor the data and drive our own checker
+either project's runtime code, we vendor the data and drive our own checker
 (app/username/checker.py).
 
 Design decisions taken here (per the v3.8.0 runbook, which left them to us):
@@ -13,7 +13,7 @@ Design decisions taken here (per the v3.8.0 runbook, which left them to us):
     platforms (prefix-matched because WMN suffixes names, e.g. "GitHub (User)");
     2 = mid-tier developer / gaming / forum; 1 = everything else.
 
-Nothing in this module raises on bad data — a malformed file yields [].
+Nothing in this module raises on bad data, a malformed file yields [].
 """
 import json
 import logging

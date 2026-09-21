@@ -95,7 +95,7 @@ def test_send_success_inserts_audit(monkeypatch):
 
 def test_send_service_does_not_self_rate_limit(monkeypatch):
     """v3.12.0 (M-1): rate limiting lives at the /send ROUTE, not the send SERVICE.
-    Calling send_via_mailgun directly performs no throttling — repeated calls all
+    Calling send_via_mailgun directly performs no throttling, repeated calls all
     send and write no rate-limit rows (the route is where the caps live)."""
     _mailgun_env(monkeypatch)
     _seed_recipient()
@@ -159,7 +159,7 @@ def _client():
 
 def test_send_endpoint_never_returns_401(monkeypatch):
     """v3.8.1 regression: /api/abuse/send must never return HTTP 401 or emit
-    WWW-Authenticate — that pops the browser's Basic Auth dialog, which races the
+    WWW-Authenticate, that pops the browser's Basic Auth dialog, which races the
     in-page credential form and rejects correct passwords."""
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH",
@@ -241,7 +241,7 @@ def _no_401(r):
 def test_send_endpoint_rate_limits_burst(monkeypatch):
     """M-1: more than SEND_PER_MINUTE sends/min from one IP are throttled with a
     structured 200 (rate_limited=true), and the throttled request never reaches the
-    send service — capping bcrypt CPU cost. Never a 401."""
+    send service, capping bcrypt CPU cost. Never a 401."""
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_PASS_HASH",
                        bcrypt.hashpw(b"pw", bcrypt.gensalt()).decode())
@@ -271,7 +271,7 @@ def test_send_endpoint_rate_limits_burst(monkeypatch):
 
 def test_send_endpoint_backoff_on_repeated_failures(monkeypatch):
     """M-1: consecutive wrong-password attempts from one IP trigger exponential
-    backoff — after SEND_FAIL_FREE failures a further attempt is rejected
+    backoff, after SEND_FAIL_FREE failures a further attempt is rejected
     (rate_limited=true) without running bcrypt, still 200, never 401. This throttles
     online password guessing."""
     monkeypatch.setenv("FALCONEYE_ABUSE_ADMIN_USER", "admin")

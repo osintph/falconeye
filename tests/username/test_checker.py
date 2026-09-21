@@ -73,7 +73,7 @@ def test_build_url_substitutes_verbatim():
 
 def test_check_one_url_encodes_defensively():
     # A space never passes router validation, but check_one still quote()s the
-    # username before substitution — belt and braces.
+    # username before substitution, belt and braces.
     site = _wmn_site(e_code=200, e_string="")
     client = _FakeClient(_FakeResp(200, ""))
     r = asyncio.run(checker.check_one(client, site, "a b", {"w.example": (True, None)}))
@@ -122,7 +122,7 @@ def test_check_one_network_error_no_raise():
 
 
 def test_sweep_respects_concurrency_cap(monkeypatch):
-    # No DNS, no HTTP — just observe how many check_one run at once.
+    # No DNS, no HTTP, just observe how many check_one run at once.
     monkeypatch.setattr(checker, "resolve_and_check", lambda host: [])
     state = {"cur": 0, "max": 0}
 

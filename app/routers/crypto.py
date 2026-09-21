@@ -28,7 +28,7 @@ def _validate_host(url: str) -> None:
     These are fixed-host APIs with a strictly format-validated address in the
     path (no host injection reachable), so this is defense-in-depth routed
     through the single guard (resolve_and_check) rather than the safe_fetch
-    fetcher — the fetcher is for attacker-controlled URLs, not fixed hosts.
+    fetcher, the fetcher is for attacker-controlled URLs, not fixed hosts.
     """
     try:
         resolve_and_check(urlparse(url).hostname or "")

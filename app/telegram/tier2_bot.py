@@ -1,15 +1,15 @@
 """
-Tier 2 — Telegram Bot API enrichment via getChat / getChatMemberCount.
+Tier 2, Telegram Bot API enrichment via getChat / getChatMemberCount.
 
 Confirmed against the current Bot API docs (core.telegram.org/bots/api,
 2026-07-21): ChatFullInfo has no member-count field, so getChatMemberCount is
 a required second call. Bots cannot resolve arbitrary users or other bots by
 username (getChat only works for chats/channels the bot has a relationship
-to) — that's an expected, permanent limitation, not a bug, so this tier is
+to), that's an expected, permanent limitation, not a bug, so this tier is
 skipped entirely (NOT_APPLICABLE) for user/bot entity types rather than making
 a call we already know will fail.
 
-The bot token NEVER appears in a log line or an API response — every error
+The bot token NEVER appears in a log line or an API response, every error
 path below returns a fixed, generic message.
 """
 import json
@@ -73,7 +73,7 @@ async def run(identifier: str, entity_type: str) -> dict:
         if count_resp.get("ok"):
             member_count = count_resp.get("result")
     except RuntimeError:
-        pass  # non-fatal — getChat's data still stands without a count
+        pass  # non-fatal, getChat's data still stands without a count
 
     pinned = chat.get("pinned_message") or {}
     data = {

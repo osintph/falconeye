@@ -2,7 +2,7 @@
 Ransomware Watch collector.
 
 Standalone script, run by the ransomware-collect.timer systemd unit (unit and
-timer live outside the git tree — see docs/ransomware-watch-runbook.md).
+timer live outside the git tree, see docs/ransomware-watch-runbook.md).
 Invoked as:
 
     /opt/falconeye/venv/bin/python -m app.collectors.ransomware_collect
@@ -10,7 +10,7 @@ Invoked as:
 with WorkingDirectory=/opt/falconeye/app_src so `app.*` imports resolve.
 
 This is the ONLY code in FalconEye that calls ransomware.live or RansomLook.
-The tab (app/ransomware/routes.py) reads local SQLite only — see Part 1 of
+The tab (app/ransomware/routes.py) reads local SQLite only, see Part 1 of
 the v3.16.0 brief: a browser request must never trigger an outbound call to
 either upstream.
 
@@ -22,12 +22,12 @@ Split cadence within a single process per run:
   - watchlist search, RansomLook /api/search: every run
   - mirror health, RansomLook /api/health, scoped to relevant groups only
     (see store.mirror_health_candidate_groups): gated to once per ~6h via
-    collector_runs, not every run — polling all ~588 RansomLook groups every
+    collector_runs, not every run, polling all ~588 RansomLook groups every
     30 minutes would be ~28k calls/day against a free single-operator service.
 
 Credential handling: /api/health/{name} returns the raw mirror URL, which for
 some groups embeds live leak-site credentials. This script never lets a raw
-slug survive past the single line that hashes it — see store.hash_mirror_slug
+slug survive past the single line that hashes it, see store.hash_mirror_slug
 and the write-guard in store.upsert_mirror.
 """
 import asyncio
@@ -80,7 +80,7 @@ class ProClient:
 
     async def validate(self, client: httpx.AsyncClient) -> bool:
         """Startup key check. Logs a pass/fail line without ever echoing the
-        key itself. Returns False for both a missing key and a rejected one —
+        key itself. Returns False for both a missing key and a rejected one -
         callers treat both as "PRO unavailable this run, fall back to v2"."""
         if not self._key:
             log.error("ransomware collector: RANSOMWARE_LIVE_API_KEY is not set - PRO key validation FAIL")
@@ -251,7 +251,7 @@ def load_watchlist_terms(path: str) -> list[tuple[str, int]]:
 def _extract_victim_fields(raw: dict) -> dict:
     """PRO's /victims/* and v2's /recentvictims use near-identical field
     names (group, victim, country, activity[=sector], discovered, attackdate,
-    infostealer) — one extractor covers both sources.
+    infostealer), one extractor covers both sources.
 
     `permalink` is deliberately read from the `permalink` key only - PRO's
     own ransomware.live-hosted link for the victim - never from `post_url`/

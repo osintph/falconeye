@@ -2,12 +2,12 @@
 
 Run manually before a Username Enumeration release cycle (suggested every 4-6
 weeks). Fetches upstream, validates the shape and a minimum site count, and only
-then overwrites the vendored file under app/data/ — so a bad upstream fetch can
+then overwrites the vendored file under app/data/, so a bad upstream fetch can
 never leave FalconEye with an empty or truncated data file.
 
     python3 scripts/refresh_username_data.py
 
-Confirm the upstream paths below if a fetch 404s — WebBreacher and
+Confirm the upstream paths below if a fetch 404s, WebBreacher and
 sherlock-project have both restructured their repos in the past.
 """
 import json
@@ -44,7 +44,7 @@ def fetch_and_validate(url: str, target: Path, min_sites: int, source_name: str)
 
     count = _count(data)
     if count < min_sites:
-        print(f"  ERROR: {source_name} returned {count} sites, expected {min_sites}+ — NOT written",
+        print(f"  ERROR: {source_name} returned {count} sites, expected {min_sites}+, NOT written",
               file=sys.stderr)
         return False
 
@@ -61,10 +61,10 @@ def main() -> int:
         SHERLOCK_URL, DATA_DIR / "sherlock" / "data.json", 300, "Sherlock")
 
     if not ok_wmn:
-        print("WhatsMyName refresh FAILED — vendored file left unchanged.", file=sys.stderr)
+        print("WhatsMyName refresh FAILED, vendored file left unchanged.", file=sys.stderr)
         return 1
     if not ok_sher:
-        print("Sherlock refresh failed — WhatsMyName updated, Sherlock left unchanged. "
+        print("Sherlock refresh failed, WhatsMyName updated, Sherlock left unchanged. "
               "The tab still runs (WMN-only if Sherlock data is stale/absent).", file=sys.stderr)
         return 2
     return 0

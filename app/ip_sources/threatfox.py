@@ -1,5 +1,5 @@
 """
-ThreatFox (abuse.ch) — IOC matches with malware family. Free.
+ThreatFox (abuse.ch), IOC matches with malware family. Free.
 
 abuse.ch made Auth-Key mandatory in 2024; ThreatFox uses the same auth.abuse.ch
 key as URLhaus, so we reuse the existing ABUSECH_AUTH_KEY.

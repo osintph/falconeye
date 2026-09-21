@@ -1,10 +1,10 @@
 """
-Mailgun sender for composed abuse reports (optional feature — Option B).
+Mailgun sender for composed abuse reports (optional feature, Option B).
 
 Before contacting Mailgun this module:
   * validates the recipient against the strict email regex,
   * refuses any recipient the tool did not itself resolve via RDAP
-    (store.recipient_seen_in_cache) — so valid admin auth still cannot be used
+    (store.recipient_seen_in_cache), so valid admin auth still cannot be used
     to send mail to an arbitrary address,
   * enforces per-IP, per-recipient, and global rate limits.
 

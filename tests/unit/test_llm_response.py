@@ -1,5 +1,5 @@
 """
-Unit tests for app/utils/llm_response.py — LLM output sanitization helpers.
+Unit tests for app/utils/llm_response.py, LLM output sanitization helpers.
 """
 
 import pytest

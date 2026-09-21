@@ -1,6 +1,6 @@
 """
 CRITICAL regression guard: /api/ip/lookup/{ip} must return 200 with partial data
-when reputation sources (or core fetchers) fail — one broken source must never
+when reputation sources (or core fetchers) fail, one broken source must never
 500 the endpoint or blank the result.
 """
 from fastapi import FastAPI

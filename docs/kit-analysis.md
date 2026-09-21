@@ -121,17 +121,17 @@ almost certainly belongs in the signature instead.
 
 Add a record to `SIGNATURES` in `rabbithunt_sig.py`. A record is pure data:
 
-- `crypto_pairs` — `{role, key, iv, mode, padding}`. Roles are what let the report
+- `crypto_pairs`: `{role, key, iv, mode, padding}`. Roles are what let the report
   label a recovered pair; without a signature the engine still finds the key
   material, it just cannot name the role.
-- `storage_keys` — plaintext key names, so an MD5-hashed key in a live browser can
+- `storage_keys`: plaintext key names, so an MD5-hashed key in a live browser can
   be cracked back.
-- `socket` — `{path, channels, transports}`.
-- `hash_routes` — client-side routes. Never write a detection rule against these
+- `socket`: `{path, channels, transports}`.
+- `hash_routes`: client-side routes. Never write a detection rule against these
   as URL paths; they are fragment routes and will match nothing server-side.
-- `cjk_glossary` — developer debug strings and their English glosses. The engine
+- `cjk_glossary`: developer debug strings and their English glosses. The engine
   extracts CJK strings generically; the glosses are per-kit data.
-- `content_tokens` — `{name: (regex, weight)}`, the scored content signals.
+- `content_tokens`: `{name: (regex, weight)}`, the scored content signals.
 - `aes_literals`, `session_cookie`, `operator_path`.
 
 Scoring is deliberately transparent: every signal is returned with its weight and

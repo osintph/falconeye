@@ -112,7 +112,7 @@ async def image_search_endpoint(request: Request, body: SearchRequest):
     if not is_upload:
         if not image_url.startswith("https://"):
             raise HTTPException(status_code=400, detail="image_url must use https://")
-        # image_url is handed to SearchAPI, not fetched by us — validate its host
+        # image_url is handed to SearchAPI, not fetched by us, validate its host
         # against the canonical guard (reject private/reserved targets) rather
         # than using the safe_fetch fetcher.
         try:

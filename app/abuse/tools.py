@@ -1,7 +1,7 @@
 """
 Operator CLI for FalconEye rate-limit maintenance.
 
-Run on the VPS as the falconeye user (no auth — it is a local admin tool):
+Run on the VPS as the falconeye user (no auth, it is a local admin tool):
 
     python -m app.abuse.tools reset-rate-limit --ip 1.2.3.4
     python -m app.abuse.tools reset-rate-limit --ip 1.2.3.4 --endpoint compose
@@ -47,18 +47,18 @@ def reset_rate_limit(ip: str, endpoints: list, dry_run: bool = False, db_path: s
                     f"SELECT COUNT(*) FROM {table} WHERE {column} = ?", (value,)
                 ).fetchone()[0]
             except sqlite3.OperationalError:
-                print(f"  {key:<9} {table:<28} — table not present, skipped")
+                print(f"  {key:<9} {table:<28}, table not present, skipped")
                 continue
             if not dry_run and count:
                 conn.execute(f"DELETE FROM {table} WHERE {column} = ?", (value,))
             total += count
             verb = "would delete" if dry_run else "deleted"
-            print(f"  {key:<9} {table:<28} — {verb} {count} row(s)  [{column}={value}]")
+            print(f"  {key:<9} {table:<28}, {verb} {count} row(s)  [{column}={value}]")
         if not dry_run:
             conn.commit()
     finally:
         conn.close()
-    prefix = "DRY RUN — " if dry_run else ""
+    prefix = "DRY RUN, " if dry_run else ""
     print(f"{prefix}Total: {total} row(s) across {len(endpoints)} table(s) for IP {ip}")
     return total
 

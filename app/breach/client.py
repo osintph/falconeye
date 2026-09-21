@@ -1,7 +1,7 @@
 """
 Have I Been Pwned (HIBP) API v3 client.
 
-Every outbound call goes through `app.utils.safe_fetch` — the HIBP hosts are
+Every outbound call goes through `app.utils.safe_fetch`: the HIBP hosts are
 fixed and trusted, but this keeps the app to its one SSRF primitive by policy
 (the same choice `app.abuse.lookup` makes for rdap.org). See safe_fetch's
 docstring: fixed-host calls may use httpx directly, but consistency here is a
@@ -15,7 +15,7 @@ classes) are free and unauthenticated, and do NOT send the key header.
 Retry-After handling: on a 429, every call sleeps for the header's value (or
 _DEFAULT_RETRY_AFTER if absent/invalid) then retries, doubling the wait on
 each subsequent 429, up to _MAX_RETRIES attempts. Pwned Passwords (K-anonymity)
-is deliberately NOT here — that call is made directly by the browser so it is
+is deliberately NOT here, that call is made directly by the browser so it is
 verifiable via DevTools that the password never reaches our server.
 """
 import asyncio
@@ -41,7 +41,7 @@ _DEFAULT_RETRY_AFTER = 6  # ~= 60s / 10rpm, used when HIBP omits Retry-After
 class HibpError(Exception):
     """Raised when HIBP returns an unexpected (non-200, non-404) status, or
     the request could not complete at all. Callers turn this into a
-    structured JSON error — never propagate raw exception text to the client
+    structured JSON error, never propagate raw exception text to the client
     beyond a short, safe message."""
 
 
@@ -54,7 +54,7 @@ def _headers(use_key: bool) -> dict:
 
 async def _get(path: str, params: dict | None = None, use_key: bool = False):
     """GET one HIBP endpoint. Returns the parsed JSON body, or None for a 404
-    (HIBP's "nothing found" response — a normal, expected state, not an
+    (HIBP's "nothing found" response, a normal, expected state, not an
     error). Raises HibpError on anything else after exhausting retries."""
     url = f"{BASE_URL}{path}"
     if params:
@@ -105,7 +105,7 @@ async def _get(path: str, params: dict | None = None, use_key: bool = False):
 # ---------- paid endpoints (count toward the 10 RPM ceiling) ----------
 
 async def fetch_breached_account(email: str):
-    """List of breach hits for *email* (name + full context — truncateResponse=false).
+    """List of breach hits for *email* (name + full context, truncateResponse=false).
     Returns [] if the email has no known breaches (HIBP 404)."""
     data = await _get(f"/breachedaccount/{urllib.parse.quote(email)}",
                        params={"truncateResponse": "false"}, use_key=True)
@@ -152,7 +152,7 @@ _TAG_RE = re.compile(r"<[^>]+>")
 
 def _strip_html(desc) -> str:
     """HIBP's Description field is 'HTML-safe' per their docs but still
-    contains markup (mostly <a> links). Strip all tags to plain text — the
+    contains markup (mostly <a> links). Strip all tags to plain text, the
     frontend escapes again before rendering, so this is defense in depth,
     not the only safeguard."""
     if not isinstance(desc, str):

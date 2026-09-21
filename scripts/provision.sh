@@ -1,5 +1,5 @@
 #!/bin/bash
-# FalconEye provisioning script — Ubuntu 22.04 / 24.04
+# FalconEye provisioning script, Ubuntu 22.04 / 24.04
 # Run as root: sudo bash scripts/provision.sh [--test]
 #
 # Flags:
@@ -35,17 +35,17 @@ echo "=== FalconEye Provisioning ==="
 preflight_warn() {
     local env_file="$INSTALL_DIR/.env"
     if [[ ! -f "$env_file" ]]; then
-        echo "[WARNING] No .env found at $env_file — copy and fill in .env.example after provisioning."
+        echo "[WARNING] No .env found at $env_file, copy and fill in .env.example after provisioning."
         return
     fi
     for var in IMAGE_UPLOAD_SECRET FALCONEYE_DB; do
         if ! grep -q "^${var}=.\+" "$env_file" 2>/dev/null; then
-            echo "[WARNING] $env_file: $var is missing or empty — some features will not work."
+            echo "[WARNING] $env_file: $var is missing or empty, some features will not work."
         fi
     done
     # Detect old DB_PATH alias from pre-v3.5.0 .env files
     if grep -q "^DB_PATH=" "$env_file" 2>/dev/null && ! grep -q "^FALCONEYE_DB=" "$env_file" 2>/dev/null; then
-        echo "[WARNING] $env_file uses DB_PATH= (pre-v3.5.0 name). Rename to FALCONEYE_DB= — the app will not find the database otherwise."
+        echo "[WARNING] $env_file uses DB_PATH= (pre-v3.5.0 name). Rename to FALCONEYE_DB=, the app will not find the database otherwise."
     fi
 }
 
@@ -87,7 +87,7 @@ apt-get install -y --no-install-recommends \
 
 echo "[4/9] Cloning repository..."
 if [[ -d "$INSTALL_DIR/app_src/.git" ]]; then
-    echo "  Repository already present — pulling latest..."
+    echo "  Repository already present, pulling latest..."
     git -C "$INSTALL_DIR/app_src" pull --ff-only
 else
     git clone "$REPO_URL" "$INSTALL_DIR/app_src"
@@ -101,7 +101,7 @@ python3 -m venv "$INSTALL_DIR/venv"
 # LLM tabs and .msg upload require packages not in requirements.txt.
 # Install them if not already present; failures are non-fatal.
 "$INSTALL_DIR/venv/bin/pip" install "anthropic>=0.25" "extract-msg>=0.28" --quiet 2>/dev/null || \
-    echo "  [NOTE] anthropic / extract-msg install failed — LLM tabs and .msg upload will be unavailable."
+    echo "  [NOTE] anthropic / extract-msg install failed, LLM tabs and .msg upload will be unavailable."
 
 echo "[6/9] Initializing database..."
 FALCONEYE_DB="$INSTALL_DIR/data/falconeye.db" \

@@ -1,5 +1,5 @@
 """
-Tier 1 — free scraping of t.me's public preview pages. No credentials needed,
+Tier 1, free scraping of t.me's public preview pages. No credentials needed,
 always attempted first, works for ANY entity type (the old Channel Inspector
 only handled t.me/s/{channel}, which 404s for users, bots, and channels/groups
 without preview enabled).
@@ -9,13 +9,13 @@ t.me/{identifier} pages for a known user, bot, channel, and supergroup, since
 t.me's HTML has no explicit "type" field:
   - No .tgme_page_title element at all -> t.me has nothing on this identifier
     (this is also what a syntactically-valid-but-unowned username returns, so
-    it means "unresolved", not a confirmed absence — tier 3 gets a chance to
+    it means "unresolved", not a confirmed absence, tier 3 gets a chance to
     resolve it before we call it not-found).
   - Action button text "Start Bot" -> bot.
   - .tgme_page_extra text containing "member(s)" -> group/supergroup.
   - .tgme_page_extra text containing "subscriber(s)" (incl. "no subscribers")
     -> channel (a personal account with public broadcast enabled, e.g. @durov,
-    also lands here — tier 3's entity type is authoritative when available).
+    also lands here, tier 3's entity type is authoritative when available).
   - Anything else (no counter, "Send Message"/"View in Telegram" action) -> user.
   - .verified-icon inside .tgme_page_title -> verified badge.
   - .tgme_page_context_link_wrap a[href^="/s/"] -> a channel-style preview page
@@ -70,7 +70,7 @@ def _parse_profile_page(html: str, identifier: str) -> dict | None:
 
     title_el = soup.select_one(".tgme_page_title")
     if not title_el:
-        return None  # unresolved — see module docstring
+        return None  # unresolved, see module docstring
 
     name_span = title_el.select_one("span")
     display_name = name_span.get_text(strip=True) if name_span else title_el.get_text(strip=True)

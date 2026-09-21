@@ -2,14 +2,14 @@
 Async httpx sweep of a site list for one username.
 
 Every constructed URL is validated with the canonical SSRF primitive
-(app.utils.safe_fetch.resolve_and_check) before it is fetched — the vendored
+(app.utils.safe_fetch.resolve_and_check) before it is fetched, the vendored
 hosts are trusted and the username is strictly validated + URL-encoded upstream,
 but we keep the guard for consistency with the other tabs. Hosts are resolved
 once per sweep (cached) off the event loop via asyncio.to_thread.
 
 check_one never raises: failures become a CheckResult with `error` populated.
 The sweep is wall-clock bounded so a slow tail can't hold a worker past the
-gunicorn timeout — un-checked sites are reported, not awaited forever.
+gunicorn timeout, un-checked sites are reported, not awaited forever.
 """
 import asyncio
 import logging
@@ -169,7 +169,7 @@ async def _validate_hosts(hosts: set, dns_deadline: float) -> dict:
         return result
 
     loop = asyncio.get_running_loop()
-    # Isolated, generous pool — DNS is I/O-bound and releases the GIL; the default
+    # Isolated, generous pool, DNS is I/O-bound and releases the GIL; the default
     # executor (~8 workers) serializes hundreds of lookups.
     pool = ThreadPoolExecutor(max_workers=min(64, len(to_resolve)))
 

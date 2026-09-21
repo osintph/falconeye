@@ -86,7 +86,7 @@ PAPER_RABBIT = {
          "note": "wraps socket messages and exfil"},
     ],
 
-    # localStorage.setItem(MD5(name), AES(value)) — the key name is hashed
+    # localStorage.setItem(MD5(name), AES(value)), the key name is hashed
     # before write, so MD5("t_config") = 2e14a1ac17c37597f4579a51c5f26330.
     "storage_keys": ["t_config"],
 

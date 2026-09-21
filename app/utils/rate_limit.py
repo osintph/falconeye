@@ -2,8 +2,8 @@
 
 Replaces the byte-identical `_init_rl`/`_check_rate_limit`/`_record_call` that were
 copy-pasted into dork_generator, qr_analyzer, url_expander, and script_decoder.
-Every table keeps its existing name and schema — `(source_ip TEXT, called_at
-DATETIME DEFAULT CURRENT_TIMESTAMP)` — so no production DB migration is needed.
+Every table keeps its existing name and schema, `(source_ip TEXT, called_at
+DATETIME DEFAULT CURRENT_TIMESTAMP)`: so no production DB migration is needed.
 
 Table/column names are interpolated into SQL (SQLite can't parameterize
 identifiers), so they are validated as plain identifiers first; all call sites
@@ -58,7 +58,7 @@ def check(table: str, source_ip: str, limit: int, window_hours: int = 24) -> tup
 def record(table: str, source_ip: str, retain_hours: int = 48) -> None:
     """Record one call and prune rows older than the retention window.
 
-    Swallows DB errors (logged) — a rate-limiter write failing must not 500 the
+    Swallows DB errors (logged), a rate-limiter write failing must not 500 the
     request it is protecting, matching the original per-router behavior.
     """
     _ident(table)

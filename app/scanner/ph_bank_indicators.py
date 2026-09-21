@@ -2,14 +2,14 @@
 PH banking and e-wallet phishing kit indicators.
 
 Each indicator is a dict with:
-  id          — unique snake_case identifier
-  type        — "url_path", "domain_pattern", "html_content", or "html_structure"
-  pattern     — string to search for (case-insensitive substring match)
-  severity    — "high" | "medium" | "low"
-  description — human-readable explanation for the analyst
-  category    — short tag for grouping in the UI
+  id         , unique snake_case identifier
+  type       , "url_path", "domain_pattern", "html_content", or "html_structure"
+  pattern    , string to search for (case-insensitive substring match)
+  severity   , "high" | "medium" | "low"
+  description, human-readable explanation for the analyst
+  category   , short tag for grouping in the UI
 
-TODO: Google Safe Browsing enrichment (GSB_API_KEY) — requires
+TODO: Google Safe Browsing enrichment (GSB_API_KEY), requires
   https://developers.google.com/safe-browsing/v4/lookup-api
   Add as a separate enrichment pass similar to urlscan, so GSB verdict
   supplements rather than overwrites indicator matching.
@@ -18,7 +18,7 @@ TODO: Google Safe Browsing enrichment (GSB_API_KEY) — requires
 from typing import Optional
 
 # ---------------------------------------------------------------------------
-# URL path patterns — suspicious path segments combined with PH bank context
+# URL path patterns, suspicious path segments combined with PH bank context
 # ---------------------------------------------------------------------------
 URL_PATH_INDICATORS = [
     {
@@ -26,7 +26,7 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/cancel/",
         "severity": "medium",
-        "description": "Suspicious /cancel/ path — common in PH banking phish URLs (e.g. BPI cancel-account flows)",
+        "description": "Suspicious /cancel/ path, common in PH banking phish URLs (e.g. BPI cancel-account flows)",
         "category": "ph_banking",
     },
     {
@@ -34,7 +34,7 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/verify/",
         "severity": "medium",
-        "description": "Suspicious /verify/ path — common in credential-harvesting flows targeting PH banks",
+        "description": "Suspicious /verify/ path, common in credential-harvesting flows targeting PH banks",
         "category": "ph_banking",
     },
     {
@@ -42,7 +42,7 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/update/",
         "severity": "low",
-        "description": "Suspicious /update/ path — used in account-update phishing flows",
+        "description": "Suspicious /update/ path, used in account-update phishing flows",
         "category": "ph_banking",
     },
     {
@@ -50,7 +50,7 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/confirm/",
         "severity": "low",
-        "description": "Suspicious /confirm/ path — used in transaction-confirm phishing flows",
+        "description": "Suspicious /confirm/ path, used in transaction-confirm phishing flows",
         "category": "ph_banking",
     },
     {
@@ -58,7 +58,7 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/suspended/",
         "severity": "high",
-        "description": "Suspicious /suspended/ path — account-suspension lure, high phishing signal",
+        "description": "Suspicious /suspended/ path, account-suspension lure, high phishing signal",
         "category": "ph_banking",
     },
     {
@@ -66,7 +66,7 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/reactivate/",
         "severity": "high",
-        "description": "Suspicious /reactivate/ path — account-reactivation lure, high phishing signal",
+        "description": "Suspicious /reactivate/ path, account-reactivation lure, high phishing signal",
         "category": "ph_banking",
     },
     {
@@ -74,13 +74,13 @@ URL_PATH_INDICATORS = [
         "type": "url_path",
         "pattern": "/otp/",
         "severity": "high",
-        "description": "OTP path in URL — direct OTP-capture flow indicator",
+        "description": "OTP path in URL, direct OTP-capture flow indicator",
         "category": "ph_banking",
     },
 ]
 
 # ---------------------------------------------------------------------------
-# Domain impersonation patterns — typosquats and lookalikes
+# Domain impersonation patterns, typosquats and lookalikes
 # ---------------------------------------------------------------------------
 DOMAIN_INDICATORS = [
     # BPI impersonation
@@ -89,7 +89,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "gobpi",
         "severity": "high",
-        "description": "gobpi* domain pattern — known BPI impersonation TLD family (gobpi.cc etc.)",
+        "description": "gobpi* domain pattern, known BPI impersonation TLD family (gobpi.cc etc.)",
         "category": "ph_banking",
     },
     {
@@ -97,7 +97,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "bpiverify",
         "severity": "high",
-        "description": "bpiverify* domain — BPI verification page impersonation",
+        "description": "bpiverify* domain, BPI verification page impersonation",
         "category": "ph_banking",
     },
     {
@@ -105,7 +105,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "bpi-online",
         "severity": "high",
-        "description": "bpi-online* domain — BPI online banking impersonation with hyphen",
+        "description": "bpi-online* domain, BPI online banking impersonation with hyphen",
         "category": "ph_banking",
     },
     {
@@ -113,7 +113,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "bpisecure",
         "severity": "high",
-        "description": "bpisecure* domain — BPI secure login impersonation",
+        "description": "bpisecure* domain, BPI secure login impersonation",
         "category": "ph_banking",
     },
     # BDO impersonation
@@ -122,7 +122,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "bdo-online",
         "severity": "high",
-        "description": "bdo-online* domain — BDO online banking impersonation with hyphen",
+        "description": "bdo-online* domain, BDO online banking impersonation with hyphen",
         "category": "ph_banking",
     },
     {
@@ -130,7 +130,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "bdoverify",
         "severity": "high",
-        "description": "bdoverify* domain — BDO verification page impersonation",
+        "description": "bdoverify* domain, BDO verification page impersonation",
         "category": "ph_banking",
     },
     # GCash impersonation
@@ -139,7 +139,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "gcash-verify",
         "severity": "high",
-        "description": "gcash-verify* domain — GCash verification impersonation",
+        "description": "gcash-verify* domain, GCash verification impersonation",
         "category": "ph_banking",
     },
     {
@@ -147,7 +147,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "gcash-update",
         "severity": "high",
-        "description": "gcash-update* domain — GCash update page impersonation",
+        "description": "gcash-update* domain, GCash update page impersonation",
         "category": "ph_banking",
     },
     # Maya / PayMaya impersonation
@@ -156,7 +156,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "maya-cancel",
         "severity": "high",
-        "description": "maya-cancel* domain — Maya cancel-account lure impersonation",
+        "description": "maya-cancel* domain, Maya cancel-account lure impersonation",
         "category": "ph_banking",
     },
     {
@@ -164,7 +164,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "maya-verify",
         "severity": "high",
-        "description": "maya-verify* domain — Maya verify page impersonation",
+        "description": "maya-verify* domain, Maya verify page impersonation",
         "category": "ph_banking",
     },
     {
@@ -172,7 +172,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "paymaya-",
         "severity": "high",
-        "description": "paymaya-* domain — PayMaya impersonation with hyphen suffix",
+        "description": "paymaya-* domain, PayMaya impersonation with hyphen suffix",
         "category": "ph_banking",
     },
     # UnionBank / Metrobank / Landbank / DBP
@@ -181,7 +181,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "unionbank-verify",
         "severity": "high",
-        "description": "unionbank-verify* domain — UnionBank verification page impersonation",
+        "description": "unionbank-verify* domain, UnionBank verification page impersonation",
         "category": "ph_banking",
     },
     {
@@ -189,7 +189,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "metrobank-verify",
         "severity": "high",
-        "description": "metrobank-verify* domain — Metrobank verification page impersonation",
+        "description": "metrobank-verify* domain, Metrobank verification page impersonation",
         "category": "ph_banking",
     },
     {
@@ -197,7 +197,7 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "landbank-ph",
         "severity": "high",
-        "description": "landbank-ph* domain — Landbank PH impersonation",
+        "description": "landbank-ph* domain, Landbank PH impersonation",
         "category": "ph_banking",
     },
     {
@@ -205,13 +205,13 @@ DOMAIN_INDICATORS = [
         "type": "domain_pattern",
         "pattern": "dbp-online",
         "severity": "high",
-        "description": "dbp-online* domain — Development Bank of the Philippines impersonation",
+        "description": "dbp-online* domain, Development Bank of the Philippines impersonation",
         "category": "ph_banking",
     },
 ]
 
 # ---------------------------------------------------------------------------
-# HTML content indicators — brand references + credential capture signals
+# HTML content indicators, brand references + credential capture signals
 # ---------------------------------------------------------------------------
 HTML_CONTENT_INDICATORS = [
     # Brand mention + OTP field combos
@@ -220,7 +220,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "one-time password",
         "severity": "high",
-        "description": "OTP field label in HTML — credential-capture signal",
+        "description": "OTP field label in HTML, credential-capture signal",
         "category": "ph_banking",
     },
     {
@@ -228,7 +228,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": 'name="otp"',
         "severity": "high",
-        "description": 'OTP input field (name="otp") — credential-capture signal',
+        "description": 'OTP input field (name="otp"), credential-capture signal',
         "category": "ph_banking",
     },
     {
@@ -236,7 +236,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": 'id="otp"',
         "severity": "high",
-        "description": 'OTP input field (id="otp") — credential-capture signal',
+        "description": 'OTP input field (id="otp"), credential-capture signal',
         "category": "ph_banking",
     },
     # TIN / government ID capture
@@ -245,7 +245,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "tin number",
         "severity": "high",
-        "description": "TIN (Tax Identification Number) field — identity theft signal, PH-specific",
+        "description": "TIN (Tax Identification Number) field, identity theft signal, PH-specific",
         "category": "ph_banking",
     },
     {
@@ -253,7 +253,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": 'name="tin"',
         "severity": "high",
-        "description": 'TIN input field (name="tin") — identity theft signal',
+        "description": 'TIN input field (name="tin"), identity theft signal',
         "category": "ph_banking",
     },
     # Brand references (page content, not URL)
@@ -262,7 +262,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "bank of the philippine islands",
         "severity": "medium",
-        "description": "BPI full brand name in HTML — confirm with form action check",
+        "description": "BPI full brand name in HTML, confirm with form action check",
         "category": "ph_banking",
     },
     {
@@ -270,7 +270,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "banco de oro",
         "severity": "medium",
-        "description": "BDO full brand name in HTML — confirm with form action check",
+        "description": "BDO full brand name in HTML, confirm with form action check",
         "category": "ph_banking",
     },
     {
@@ -303,7 +303,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": 'name="card_number"',
         "severity": "high",
-        "description": 'Card number input field (name="card_number") — card data exfil signal',
+        "description": 'Card number input field (name="card_number"), card data exfil signal',
         "category": "ph_banking",
     },
     {
@@ -311,7 +311,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": 'name="cvv"',
         "severity": "high",
-        "description": 'CVV input field (name="cvv") — card data exfil signal',
+        "description": 'CVV input field (name="cvv"), card data exfil signal',
         "category": "ph_banking",
     },
     {
@@ -319,7 +319,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": 'name="pin"',
         "severity": "high",
-        "description": 'PIN input field (name="pin") — credential-capture signal',
+        "description": 'PIN input field (name="pin"), credential-capture signal',
         "category": "ph_banking",
     },
     # PHP capture scripts seen in PH banking kit families
@@ -328,7 +328,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "submit.php",
         "severity": "high",
-        "description": "submit.php action in HTML — PHP credential-capture endpoint",
+        "description": "submit.php action in HTML, PHP credential-capture endpoint",
         "category": "ph_banking",
     },
     {
@@ -336,7 +336,7 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "process.php",
         "severity": "high",
-        "description": "process.php action — PHP credential processing endpoint",
+        "description": "process.php action, PHP credential processing endpoint",
         "category": "ph_banking",
     },
     {
@@ -344,13 +344,13 @@ HTML_CONTENT_INDICATORS = [
         "type": "html_content",
         "pattern": "send.php",
         "severity": "medium",
-        "description": "send.php action — PHP data-send endpoint seen in phishing kits",
+        "description": "send.php action, PHP data-send endpoint seen in phishing kits",
         "category": "ph_banking",
     },
 ]
 
 # ---------------------------------------------------------------------------
-# HTML structure indicators — form action mismatch, hidden fields
+# HTML structure indicators, form action mismatch, hidden fields
 # ---------------------------------------------------------------------------
 HTML_STRUCTURE_INDICATORS = [
     {
@@ -358,7 +358,7 @@ HTML_STRUCTURE_INDICATORS = [
         "type": "html_structure",
         "pattern": 'name="bank_name"',
         "severity": "high",
-        "description": 'Hidden bank_name field — multi-bank kit targeting signal',
+        "description": 'Hidden bank_name field, multi-bank kit targeting signal',
         "category": "ph_banking",
     },
     {
@@ -366,7 +366,7 @@ HTML_STRUCTURE_INDICATORS = [
         "type": "html_structure",
         "pattern": 'name="account_type"',
         "severity": "medium",
-        "description": 'Hidden account_type field — kit infrastructure signal',
+        "description": 'Hidden account_type field, kit infrastructure signal',
         "category": "ph_banking",
     },
     {
@@ -374,7 +374,7 @@ HTML_STRUCTURE_INDICATORS = [
         "type": "html_structure",
         "pattern": 'name="target_bank"',
         "severity": "high",
-        "description": 'Hidden target_bank field — multi-bank kit routing field',
+        "description": 'Hidden target_bank field, multi-bank kit routing field',
         "category": "ph_banking",
     },
 ]
@@ -388,7 +388,7 @@ CERT_INDICATORS = [
         "type": "cert",
         "pattern": "WE1",
         "severity": "medium",
-        "description": "WE1 Let's Encrypt issuer — free short-lived cert heavily used by phishing infra",
+        "description": "WE1 Let's Encrypt issuer, free short-lived cert heavily used by phishing infra",
         "category": "ph_banking",
     },
     {
@@ -396,13 +396,13 @@ CERT_INDICATORS = [
         "type": "cert",
         "pattern": "R3",
         "severity": "low",
-        "description": "R3 Let's Encrypt issuer — common on phishing kits (also used by legitimate sites)",
+        "description": "R3 Let's Encrypt issuer, common on phishing kits (also used by legitimate sites)",
         "category": "ph_banking",
     },
 ]
 
 # ---------------------------------------------------------------------------
-# Master list — combine all groups for simple iteration
+# Master list, combine all groups for simple iteration
 # ---------------------------------------------------------------------------
 PH_BANK_INDICATORS = (
     URL_PATH_INDICATORS
@@ -433,12 +433,12 @@ def match_age_indicators(age_result: dict) -> list[dict]:
     """
     Returns domain-age-based indicators given the result of check_domain_age().
 
-    Fires nothing when age_result["found"] is False — no false positives
+    Fires nothing when age_result["found"] is False, no false positives
     from lookup failures.
 
-    dom_age_recent  — HIGH  if age_days ≤ 7
-                    — MEDIUM if 8 ≤ age_days ≤ 30
-    dom_age_moderate — LOW  if 31 ≤ age_days ≤ 90
+    dom_age_recent , HIGH  if age_days ≤ 7
+                   , MEDIUM if 8 ≤ age_days ≤ 30
+    dom_age_moderate, LOW  if 31 ≤ age_days ≤ 90
     """
     if not age_result.get("found"):
         return []

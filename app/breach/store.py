@@ -8,7 +8,7 @@ regardless of import order.
 
 One generic cache table (`breach_cache`) backs every HIBP cache kind (email
 breach+paste results, per-breach metadata, domain results, the bulk breach
-list, the latest-breach pointer, the data-classes list) — the caller supplies
+list, the latest-breach pointer, the data-classes list), the caller supplies
 the TTL, so a single get/set pair covers the 24h/12h/6h/1h/indefinite tiers
 the spec calls for. `ttl_seconds=None` means "never expires" (breach metadata
 and the data-classes list don't change).

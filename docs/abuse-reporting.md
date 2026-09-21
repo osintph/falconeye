@@ -2,7 +2,7 @@
 
 FalconEye v3.7.0 adds abuse report composition to the **IP Reputation** and
 **Email Header** tabs. When an investigation lands on a piece of hostile
-infrastructure — a scanning IP, a spam sending host, a phishing sender domain —
+infrastructure, a scanning IP, a spam sending host, a phishing sender domain -
 FalconEye can look up the responsible provider's abuse contact, compose a
 report, and either hand it to you to copy or (optionally) send it via Mailgun.
 
@@ -11,11 +11,11 @@ report, and either hand it to you to copy or (optionally) send it via Mailgun.
 Two modes exist because sending email from a real domain through a public web UI
 is itself a legitimate abuse vector:
 
-- **Compose and Copy** — the default. Works with no configuration and no
+- **Compose and Copy**: the default. Works with no configuration and no
   authentication. FalconEye resolves the abuse contact, renders a report, and
   gives you a *Copy to Clipboard* button. You paste into your own mail client
   and send from there. No Mailgun code path runs.
-- **Send via Mailgun** — optional, off unless you configure it. Adds a *Send via
+- **Send via Mailgun**: optional, off unless you configure it. Adds a *Send via
   Mailgun* button gated behind admin credentials, rate limits, an audit log,
   and an allowlist that restricts recipients to addresses FalconEye itself
   resolved via RDAP.
@@ -26,7 +26,7 @@ logic. Only the send layer differs.
 ## What makes an abuse report actionable
 
 Provider abuse desks and registrars triage by whether a report carries enough
-**forensic evidence to verify and act on** — not by how strongly it is worded. An
+**forensic evidence to verify and act on**: not by how strongly it is worded. An
 actionable report includes the raw material: the full header block with every
 `Received` line in original order, the message's `Subject`, `Message-ID`, `Date`,
 `From`, `Return-Path`, and `Authentication-Results` (SPF/DKIM/DMARC), plus the
@@ -41,7 +41,7 @@ Beyond the evidence, keep the report **specific, factual, and self-contained**:
 one incident per report, a real monitored reply-to address (desks reply asking
 for clarification), UTC timestamps, and no overstatement. Registrars care most
 about what the mail *linked to* (the URLs); hosting abuse desks care about what
-their IP *did* — FalconEye tailors each report accordingly. Because the body is
+their IP *did*, FalconEye tailors each report accordingly. Because the body is
 included as evidence, **review it and remove any of your own PII before sending**
 (the evidence field is editable for exactly that). See M3AAWG's
 [Sender Best Common Practices](https://www.m3aawg.org/documents/en/m3aawg-sender-best-common-practices-version-30)
@@ -60,7 +60,7 @@ FALCONEYE_REPORTER_EMAIL="abuse-reports@example.com"
 ```
 
 `FALCONEYE_REPORTER_EMAIL` becomes the report's reply-to. Use an inbox you
-actually monitor — abuse desks reply there for more information. If either
+actually monitor, abuse desks reply there for more information. If either
 variable is unset, `POST /api/abuse/compose` returns HTTP 503 with a message
 telling you which variable to set; it never falls back to a default identity.
 
@@ -99,7 +99,7 @@ Add to `/opt/falconeye/.env` (loaded by the systemd `EnvironmentFile`):
 ```
 MAILGUN_API_KEY=key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 MAILGUN_DOMAIN=email.example.com
-MAILGUN_REGION=eu            # "us" or "eu" — bare value, no inline comment
+MAILGUN_REGION=eu            # "us" or "eu", bare value, no inline comment
 MAILGUN_FROM=reports@email.example.com
 ```
 
@@ -130,7 +130,7 @@ FALCONEYE_ABUSE_ADMIN_USER=admin
 FALCONEYE_ABUSE_ADMIN_PASS_HASH=$2b$12$............................................
 ```
 
-Do **not** reuse the Mailgun API key as the password — they are two different
+Do **not** reuse the Mailgun API key as the password, they are two different
 secrets. Restart the service after editing `.env` (`sudo systemctl restart
 falconeye`) so the new environment is loaded.
 
@@ -138,7 +138,7 @@ The **Send via Mailgun** button reveals an in-page authentication form with
 username and password fields (username defaults to `admin`). Credentials are
 sent in the JSON request body and validated against the bcrypt hash in
 `FALCONEYE_ABUSE_ADMIN_PASS_HASH`. **No browser authentication dialog is
-triggered at any point** — the endpoint never returns `401` or a
+triggered at any point**: the endpoint never returns `401` or a
 `WWW-Authenticate` header (that would pop the browser's native Basic Auth prompt
 and race the in-page form; see v3.8.1). Credentials are kept in memory for the
 browser session so you authenticate once; a wrong password shows an inline error
@@ -149,8 +149,8 @@ under the form.
 **Send is rate-limited** (reinstated in v3.12.1, security finding M-1). Because
 `/api/abuse/send` runs `bcrypt.checkpw` on every call and always returns HTTP 200,
 an unthrottled endpoint was both an unauthenticated bcrypt CPU-exhaustion primitive
-and an unthrottled online password-guessing oracle. It now enforces — all **before**
-bcrypt runs — a per-IP burst cap (5/min), a per-IP hourly cap (20/hr), and a global
+and an unthrottled online password-guessing oracle. It now enforces, all **before**
+bcrypt runs, a per-IP burst cap (5/min), a per-IP hourly cap (20/hr), and a global
 hourly ceiling (60/hr), plus exponential backoff on consecutive failed auth from the
 same IP (first 3 failures free; each further failure requires a cooldown that doubles
 2→4→8… seconds up to 5 minutes, reset on a successful auth). A throttled or
@@ -188,10 +188,10 @@ The table is append-only and unbounded; prune old rows manually if desired.
 ### Clearing a rate-limit counter
 
 Each client IP is capped on the public endpoints (compose 3/hour, lookup
-10/hour; send is not limited — it is admin-only; the Username tab and other tabs
+10/hour; send is not limited, it is admin-only; the Username tab and other tabs
 have their own caps). If a
-legitimate investigator hits their own cap mid-casework — or you hit it while
-debugging — clear that IP's counters with the operator CLI instead of
+legitimate investigator hits their own cap mid-casework, or you hit it while
+debugging, clear that IP's counters with the operator CLI instead of
 hand-writing SQLite `DELETE`s against the right table and column:
 
 ```bash
@@ -208,7 +208,7 @@ cd /opt/falconeye/app_src
 
 `--endpoint` accepts `lookup`, `compose`, `send`, `username`, `url`, `qr`, `dork`,
 `decoder`, `llm`, or `all` (default). It prints how many rows it cleared per
-table. The IP is the value FalconEye records — the real client IP from
+table. The IP is the value FalconEye records, the real client IP from
 `CF-Connecting-IP`. Use it for debugging or when a real investigator is blocked;
 it is not a way to disable rate limiting.
 
@@ -216,7 +216,7 @@ it is not a way to disable rate limiting.
 
 If Send returns "invalid credentials" for a password you know is right, check the
 `FALCONEYE_ABUSE_ADMIN_PASS_HASH` line in `/opt/falconeye/.env` for a trailing
-inline comment — a real bcrypt hash is exactly 60 characters and starts with
+inline comment, a real bcrypt hash is exactly 60 characters and starts with
 `$2b$`. As of v3.8.2 the app strips inline comments from env values defensively,
 but confirm the value and restart the service after any `.env` edit. Background:
 `docs/regressions.md`.
@@ -227,7 +227,7 @@ Mailgun's pricing changes periodically and you are responsible for staying
 within your own account's sending allowance. As of mid-2026:
 
 - **Free plan:** ~100 messages/day, one custom domain, one day of data
-  retention — a "forever free" tier with no time limit. For abuse reporting this
+  retention, a "forever free" tier with no time limit. For abuse reporting this
   is usually plenty.
 - **Flex** is a legacy pay-as-you-go plan (~$0.80 per 1,000 emails) retained for
   older accounts; newer accounts see tiered plans (Basic ~$15/mo for 10k,
@@ -245,7 +245,7 @@ RIR for IPs or registry/registrar for domains). When RDAP returns no abuse
 contact, fails, or the TLD does not support RDAP:
 
 - The card shows an explanation instead of a contact address.
-- **Compose and Copy still work** — you can send the report manually to a contact
+- **Compose and Copy still work**: you can send the report manually to a contact
   you find another way.
 - **Send is unavailable** for that target, because the send path refuses any
   recipient it did not itself resolve via RDAP.
@@ -262,7 +262,7 @@ Design decisions and why they exist:
   abuse vector. That gate is the minimum bar.
 - **Recipients are allowlisted to RDAP results.** Even with valid admin
   credentials, the send endpoint will only mail an address that a recent RDAP
-  lookup returned — so the endpoint cannot be repurposed to send to arbitrary
+  lookup returned, so the endpoint cannot be repurposed to send to arbitrary
   addresses. The one exception is your own configured `FALCONEYE_REPORTER_EMAIL`,
   which is always allowed so you can send yourself a delivery test.
 - **Email header injection is prevented** in the composition layer: CR, LF, and

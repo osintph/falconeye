@@ -17,7 +17,7 @@ an inline state on that source's sub-card and never blanks the result.
 | **ThreatFox** | IOC matches (malware family, confidence) | free | `ABUSECH_AUTH_KEY` (shared) | <https://auth.abuse.ch/> |
 
 Notes:
-- **ThreatFox reuses `ABUSECH_AUTH_KEY`** — the same auth.abuse.ch key URLhaus
+- **ThreatFox reuses `ABUSECH_AUTH_KEY`**: the same auth.abuse.ch key URLhaus
   already uses (abuse.ch made an Auth-Key mandatory in 2024). No separate key.
 - **Censys uses the PAT alone.** The PAT is organization-scoped, so no
   `organization_id` is needed. FalconEye only sends `X-Organization-ID` if
@@ -32,18 +32,18 @@ Notes:
 The verdict combines the sources into one of three levels with a reasoning
 string. Thresholds are named constants in `app/ip_sources/reputation.py`:
 
-- **MALICIOUS** — AbuseIPDB confidence ≥ 75, **or** VirusTotal malicious ≥ 3,
+- **MALICIOUS**: AbuseIPDB confidence ≥ 75, **or** VirusTotal malicious ≥ 3,
   **or** a ThreatFox IOC match, **or** OTX pulses ≥ 3.
-- **SUSPICIOUS** — AbuseIPDB 25–74, **or** VirusTotal malicious 1–2, **or** OTX
-  pulses 1–2, **or** GreyNoise classified malicious.
-- **CLEAN** — nothing flagged it.
+- **SUSPICIOUS**: AbuseIPDB 25-74, **or** VirusTotal malicious 1-2, **or** OTX
+  pulses 1-2, **or** GreyNoise classified malicious.
+- **CLEAN**: nothing flagged it.
 
 A source that errored, is missing a key, or hit its quota contributes nothing to
-the verdict (it never counts as "clean" evidence — it counts as *unknown*).
+the verdict (it never counts as "clean" evidence, it counts as *unknown*).
 
 ## Geolocation consensus and why single-source geo is unreliable
 
-IP geolocation is an estimate, and different providers disagree — especially for
+IP geolocation is an estimate, and different providers disagree, especially for
 hosting/VPS/cloud ranges, where the registered country, the datacenter country,
 and the vendor's guess can all differ. Asserting one country (as the old tab did)
 is often simply wrong. FalconEye instead collects the country from every source
@@ -60,7 +60,7 @@ and the ASN registration country) and:
 
 Censys host services are merged with Shodan InternetDB ports, deduplicated by
 port number, each tagged with the source(s) that saw it. "No open ports observed"
-is shown only when **both** sources returned nothing — and it names which sources
+is shown only when **both** sources returned nothing, and it names which sources
 were actually consulted, so an empty result from one source alone is never
 mistaken for "no ports".
 

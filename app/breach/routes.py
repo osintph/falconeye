@@ -8,13 +8,13 @@ Breach Check API (Have I Been Pwned integration).
   GET  /api/breach/dataclasses
 
 Email and domain use POST + a JSON body (never a query string) specifically so
-the address/domain never lands in an access log — nginx logs the request
+the address/domain never lands in an access log, nginx logs the request
 line, not the body. Rate-limit hits on /email and /domain return HTTP 200 with
-`{"rate_limited": true, ...}` (not 429) — a deliberate choice for this tab,
+`{"rate_limited": true, ...}` (not 429), a deliberate choice for this tab,
 matching the testing contract, not the 429 raised by /api/abuse/lookup.
 
 Pwned Passwords (K-anonymity) has NO endpoint here at all: the browser calls
-api.pwnedpasswords.com directly so the password never reaches this server —
+api.pwnedpasswords.com directly so the password never reaches this server -
 proxying it would break the one property that makes the check trustworthy.
 """
 import asyncio
@@ -35,7 +35,7 @@ log = logging.getLogger("falconeye.breach")
 router = APIRouter(prefix="/api/breach", tags=["breach"])
 limiter = Limiter(key_func=get_client_ip_key)
 
-# Basic RFC 5322 shape (mirrors app.abuse.lookup's EMAIL_RE) — a security
+# Basic RFC 5322 shape (mirrors app.abuse.lookup's EMAIL_RE), a security
 # boundary, not just UX: this value is path-embedded into the HIBP URL.
 EMAIL_RE = re.compile(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$")
 
@@ -67,7 +67,7 @@ class DomainCheckRequest(BaseModel):
 # ---------- shared helpers ----------
 
 async def _get_breach_meta(name: str) -> dict | None:
-    """Cache-first fetch of one breach's full metadata (indefinite TTL —
+    """Cache-first fetch of one breach's full metadata (indefinite TTL -
     breach details don't change)."""
     key = store.meta_cache_key(name)
     cached = store.get_cached(key, None)

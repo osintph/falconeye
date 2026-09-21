@@ -165,7 +165,7 @@ def recipient_seen_in_cache(email: str) -> bool:
     """True if *email* was returned as an abuse contact by some prior RDAP lookup.
 
     Gate for the send endpoint: never send to an address the tool did not itself
-    resolve, even with valid admin auth. TTL is intentionally ignored here — an
+    resolve, even with valid admin auth. TTL is intentionally ignored here, an
     address that was ever a legitimate RDAP-derived contact stays sendable.
     """
     if not email:

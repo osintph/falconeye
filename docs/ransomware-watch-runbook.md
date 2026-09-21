@@ -1,7 +1,7 @@
-# Ransomware Watch — ops runbook
+# Ransomware Watch, ops runbook
 
 v3.16.0 adds a Ransomware Watch tab. Per Part 1 of its brief, the tab never
-calls ransomware.live or RansomLook directly — a scheduled collector writes
+calls ransomware.live or RansomLook directly, a scheduled collector writes
 to a local SQLite database, and the tab (`app/ransomware/routes.py`) only
 ever reads that database. This doc covers the three pieces that are
 deliberately **not** in the git tree: the systemd unit/timer, the SQLite
@@ -12,7 +12,7 @@ database, and the watchlist config.
 Same convention as `FALCONEYE_DB` (the main app database) and the Telegram
 session file: runtime state and host-specific service config don't belong in
 a portable app checkout. `app/collectors/ransomware_collect.py` (the
-collector script itself) **is** tracked — only its scheduling unit and the
+collector script itself) **is** tracked, only its scheduling unit and the
 data/config it produces/reads are not.
 
 ## Paths on the VPS
@@ -30,7 +30,7 @@ loaded via the service's `EnvironmentFile=`). `RANSOMWARE_DB` and
 `RANSOMWARE_WATCHLIST_PATH` default to the paths above in `app/config.py` if
 not overridden.
 
-## systemd unit (reference copy — the live files are deployed directly, not via git)
+## systemd unit (reference copy, the live files are deployed directly, not via git)
 
 `/etc/systemd/system/ransomware-collect.service`:
 
@@ -71,7 +71,7 @@ WantedBy=timers.target
 `OnBootSec` anchors to the last boot; on a VPS that's been up for days/weeks,
 that instant is long past and won't recur until the next reboot.
 `OnUnitActiveSec` anchors to the service's *last activation*, which doesn't
-exist yet the first time the timer is ever enabled. With only those two, `systemctl list-timers` shows no computed NEXT time at all — the timer is
+exist yet the first time the timer is ever enabled. With only those two, `systemctl list-timers` shows no computed NEXT time at all, the timer is
 enabled but will never fire on its own. `OnActiveSec` anchors to when the
 *timer itself* was activated (i.e. now), giving it a real near-term trigger
 regardless of host uptime; `OnUnitActiveSec` takes over for the recurring
@@ -88,7 +88,7 @@ timer's own idea of its schedule).
 fires roughly every 30 minutes; the script itself decides internally whether
 the ~6-hourly mirror-health phase is also due this run (it checks
 `collector_runs` for the last `mirror_health` row and skips if under 6h old)
-— there's only one timer, not one per cadence.
+- there's only one timer, not one per cadence.
 
 Install/enable:
 
@@ -106,30 +106,30 @@ tier. Terms shorter than 2 characters are dropped before any outbound call
 is made (RansomLook's `/api/search` requires `q` to be at least 2
 characters).
 
-- **Tier 1** — high-precision proper nouns only. Meant to alert (the actual
+- **Tier 1**: high-precision proper nouns only. Meant to alert (the actual
   alert wiring into the daily operator report is a follow-up, not part of
-  this release — see below). Prefer the full legal/brand name over a bare
-  word that collides with something unrelated: `BDO Unibank`, not `bdo` —
+  this release, see below). Prefer the full legal/brand name over a bare
+  word that collides with something unrelated: `BDO Unibank`, not `bdo` -
   BDO is also a large global accounting network that shows up in unrelated
   breach reporting, so the bare term throws confident false positives.
-- **Tier 2** — broad geographic terms. Logged to `watchlist_hits` and shown
-  in the tab for manual review, but never alerts — these terms are
+- **Tier 2**: broad geographic terms. Logged to `watchlist_hits` and shown
+  in the tab for manual review, but never alerts, these terms are
   deliberately noisy (a hit for `philippines` or `.ph` can be any unrelated
   org whose site happens to use that TLD or word). Confirmed live before
   including `.ph`: `GET /api/search?q=.ph` does match on domain fragments
   (`FAST.COM.PH`, `jumpsolutions.ph`, etc.), ~47 posts / 14 leaks / 11 notes
-  at time of writing — contained enough to be worth the noise. Re-check this
+  at time of writing, contained enough to be worth the noise. Re-check this
   if RansomLook's search behavior ever changes.
 
 ```
-# Ransomware Watch watchlist — RansomLook /api/search terms
+# Ransomware Watch watchlist, RansomLook /api/search terms
 # [tier1] / [tier2] section headers, '#' comments and blank lines ignored.
 # Terms under 2 characters are skipped before any outbound call.
 # Tier 1 = high-precision named orgs (alerting). Tier 2 = broad geographic
 # terms, logged for review only, never alerts.
 
 [tier1]
-# Government and health — where actual PH incidents have landed
+# Government and health, where actual PH incidents have landed
 PhilHealth
 Department of Health Philippines
 DOH Philippines
@@ -185,17 +185,17 @@ usable search term) and bare `bdo`/`bank` style single-word financial terms
 (collision risk, see above).
 
 Hits land in the `watchlist_hits` table in `ransomware.db` with a `tier`
-column (1, 2, or `NULL` for hits recorded before tiering existed — the
+column (1, 2, or `NULL` for hits recorded before tiering existed, the
 column was added via an additive `ALTER TABLE`, so pre-existing rows aren't
 retroactively classified). Same shape as the other rate-limit/event tables
-the daily operator report already reads from `falconeye.db` — wiring
+the daily operator report already reads from `falconeye.db`: wiring
 tier-1-only alerts into that report is a follow-up, not part of this
 release.
 
 ## Database
 
 SQLite, 6 tables (`victims`, `groups`, `mirrors`, `press`, `watchlist_hits`,
-`collector_runs`) — see `app/ransomware/store.py` for schema. Self-creates on
+`collector_runs`), see `app/ransomware/store.py` for schema. Self-creates on
 first collector run or first app request via `init_tables()` (same
 self-initializing-table convention as every other FalconEye router).
 
@@ -208,8 +208,8 @@ sudo rm -f /opt/falconeye/data/ransomware.db
 sudo systemctl start ransomware-collect.timer
 ```
 
-(Stopping the timer isn't strictly required — the collector recreates the
-schema on its next run either way — but avoids a race with an in-flight run.)
+(Stopping the timer isn't strictly required, the collector recreates the
+schema on its next run either way, but avoids a race with an in-flight run.)
 
 **Trigger a manual collection** (doesn't wait for the timer):
 
@@ -219,7 +219,7 @@ journalctl -u ransomware-collect.service -n 50 --no-pager
 ```
 
 The first line of output on every run is the PRO key validation result
-(`PRO key validation PASS` or `FAIL`) — check this first if panels look
+(`PRO key validation PASS` or `FAIL`), check this first if panels look
 empty or stale. The key itself is never printed, logged, or returned in any
 API response under any code path (see `tests/test_ransomware_collect.py`).
 
@@ -229,7 +229,7 @@ RansomLook's `/api/health/{name}` returns the raw mirror URL, and for some
 groups that URL embeds live leak-site credentials
 (`scheme://user:pass@host`). The collector hashes the slug immediately on
 receipt (`store.hash_mirror_slug`) and never lets the raw string reach a
-variable that outlives that line — not the database, not a log line, not an
+variable that outlives that line, not the database, not a log line, not an
 exception message. `store.upsert_mirror()` independently refuses to write
 anything that still matches a credential-bearing URI pattern, as a backstop
 against a future call site skipping the hash. The UI shows positional labels
@@ -237,14 +237,14 @@ only ("Mirror 1", "Mirror 2", …), never a URL or hostname.
 
 ## Permalink
 
-Every victim entry links out to `https://www.ransomware.live/id/...` —
+Every victim entry links out to `https://www.ransomware.live/id/...` -
 ransomware.live's own hosted page for that claim, populated from PRO's
 `permalink` field only. Never from `post_url`/`claim_url`/`url`, which are
 the raw leak-site address (confirmed live: `post_url` for a real victim was
 an `.onion` link). `store.safe_permalink()` enforces an https + hostname
 allowlist (`ransomware.live`/`www.ransomware.live`) at write time as a
 backstop, and `app.js`'s `rwSafePermalink()` re-checks the same thing
-client-side before rendering a link — belt and suspenders on a field that,
+client-side before rendering a link, belt and suspenders on a field that,
 if it ever pointed at a leak site instead, would be exactly the "become the
 thing that republishes" risk Part 6 exists to prevent. v2 fallback records
 have no `permalink` field at all, so a victim ingested via the v2 fallback
@@ -253,12 +253,12 @@ simply has no permalink until PRO recovers and re-supplies one.
 ## first_seen_via (diagnostic column, no UI surface yet)
 
 `victims.first_seen_via` records the *trigger* that caused a row to first
-exist, not the endpoint used — `'collector'` for anything the scheduled
+exist, not the endpoint used, `'collector'` for anything the scheduled
 collector ingests (including its own per-country queries), reserved values
 `'country_filter'`/`'search'` for a future user-triggered on-demand lookup.
 Set once on INSERT, deliberately excluded from the `ON CONFLICT DO UPDATE`
 column list so it's never overwritten on a later re-ingestion of the same
-victim. Existing rows from before this column existed are `NULL` — that's
+victim. Existing rows from before this column existed are `NULL`: that's
 the honest answer ("predates this column"), not backfilled, since a v3.16.0
 review found no reliable way to reconstruct which of the two collector
 ingestion paths (`/victims/recent` vs `/victims/?country=`) first surfaced
@@ -267,34 +267,34 @@ each of the already-live 1,189 rows.
 ## country_coverage (forward-compat table, no consumer yet)
 
 Created empty in v3.16.0 even though nothing reads it until a later release
-— the point is avoiding a schema migration against a much larger `victims`
+- the point is avoiding a schema migration against a much larger `victims`
 table by then. On every collector run, `run_victims_phase()` stamps one row
 per standing-scope country (`store.SEA_COUNTRIES`: PH, SG, MY, ID, TH, VN,
 HK, TW) with the API's own all-time `count` for that country filter,
 `last_fetched`, and `source='collector'`. A failed per-country call leaves
 the existing row untouched rather than overwriting a good prior count with a
-false "just checked, zero" — `victim_count`/`last_fetched` only update when
+false "just checked, zero", `victim_count`/`last_fetched` only update when
 the upstream call actually succeeds that run.
 
 ## Expected behavior: some groups have hundreds of mirror entries
 
 Observed live during development: `lockbit3` alone returned ~640 distinct
-entries from `/api/health/lockbit3` — RansomLook keeps a long historical
+entries from `/api/health/lockbit3`: RansomLook keeps a long historical
 record of every mirror/proxy URL it has ever seen for a group, not just the
 currently-live ones, and long-established groups accumulate a lot of dead
 history. This is expected, not a bug. `store.mirrors_by_group()` ranks by
 `uptime_30d` and shows at most 8 per group, with a "+N more mirror(s) with
-historical/offline entries, not shown" note for the rest — if a group's
+historical/offline entries, not shown" note for the rest, if a group's
 Leak Site Health card looks capped, that's the cap working as intended, not
 missing data.
 
 ## v3.17.0: company search and on-demand country lookup
 
-Two guarded exceptions to "collector-only" — see CHANGELOG.md `[3.17.0]`
+Two guarded exceptions to "collector-only", see CHANGELOG.md `[3.17.0]`
 for the full design. Operationally:
 
 **Force a re-fetch for an on-demand country** (clear its 24h cache before
-TTL expires — e.g. to pick up a correction, or to re-test after an upstream
+TTL expires, e.g. to pick up a correction, or to re-test after an upstream
 outage):
 
 ```bash
@@ -302,14 +302,14 @@ sqlite3 /opt/falconeye/data/ransomware.db "DELETE FROM country_coverage WHERE co
 ```
 
 Only removes the coverage/freshness marker, not the `victims` rows already
-written back — those stay (still real, still attributed), they just won't
+written back, those stay (still real, still attributed), they just won't
 block the next lookup for that country from hitting upstream again. Never
-run this for a standing-scope country (PH/SG/MY/ID/TH/VN/HK/TW) — it's a
+run this for a standing-scope country (PH/SG/MY/ID/TH/VN/HK/TW), it's a
 no-op for them either way, since that branch never consults
 `country_coverage` to decide whether to call upstream.
 
 **Clear the search result cache.** It's deliberately in-memory only
-(`app/ransomware/live.py`'s `_search_cache` dict) — not a database table, so
+(`app/ransomware/live.py`'s `_search_cache` dict), not a database table, so
 there's nothing to `DELETE FROM`. The only way to clear it is a process
 restart:
 
@@ -318,16 +318,16 @@ sudo systemctl restart falconeye
 ```
 
 This is a heavier hammer than a targeted cache clear, so don't reach for it
-casually — the cache is 1-hour TTL anyway, so a stale search result self-
+casually, the cache is 1-hour TTL anyway, so a stale search result self-
 corrects within the hour without any operator action. Restart only if you
 need it cleared *now* (e.g. verifying a fix to a specific query's results).
 
 **Rate limits** for both on-demand paths live in
 `ransomware_country_ondemand_rate_limit` and `ransomware_search_rate_limit`
 (same `source_ip` + `called_at`, 48h retention shape as every other rate
-limit table in the app — the daily operator report needs no changes).
+limit table in the app, the daily operator report needs no changes).
 Neither table ever holds a country code or a search string, only IP and
-timestamp — reset a specific IP's limit early (rare, only if a real user
+timestamp, reset a specific IP's limit early (rare, only if a real user
 got legitimately rate-limited and needs unblocking sooner than the window
 would otherwise clear) with:
 

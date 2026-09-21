@@ -1,7 +1,7 @@
 """GET /api/scanner/history is unauthenticated, so it must not return secrets.
 
 The finding was `SELECT *`: whatever the phishing_scans table happens to hold ends
-up in an anonymous response. Today that includes telegram_bot_id — the live bot
+up in an anonymous response. Today that includes telegram_bot_id, the live bot
 token lifted out of a kit's exfiltration call. Returning it burns the token for
 investigative use and hands it to whoever asks.
 

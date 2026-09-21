@@ -22,7 +22,7 @@ changes these rarely; when it does, update BOTH files together.
 ``TRUSTED_PROXY_CIDRS`` (comma-separated, unset by default) adds extra networks whose
 ``CF-Connecting-IP`` header is trusted. It exists for deployments where the app sees the
 reverse proxy's own address instead of the edge address (e.g. proxy headers disabled).
-Leave it unset unless that is actually the case — every CIDR added to it is a network
+Leave it unset unless that is actually the case, every CIDR added to it is a network
 that can set the rate-limit key to anything it likes.
 """
 import ipaddress

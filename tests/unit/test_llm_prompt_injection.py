@@ -2,8 +2,8 @@
 
 These test the wiring, not the helper: prompt_safety can be perfect and still be
 bypassed by one call site that interpolates raw input. Every attacker-controlled
-value on each endpoint is checked — the script decoder's `code` and `hint`, the
-email analyser's `sender_email` and body — because the finding was that ALL of
+value on each endpoint is checked, the script decoder's `code` and `hint`, the
+email analyser's `sender_email` and body, because the finding was that ALL of
 them were f-string-interpolated straight into the user message.
 
 The captured message is inspected rather than the model's behaviour: what we can

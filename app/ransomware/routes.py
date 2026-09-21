@@ -1,5 +1,5 @@
 """
-Ransomware Watch API — read-only, local SQLite only.
+Ransomware Watch API, read-only, local SQLite only.
 
 Per Part 1 of the v3.16.0 brief: this router NEVER calls ransomware.live or
 RansomLook. All data comes from ransomware.db, written on a schedule by

@@ -1,4 +1,4 @@
-"""AlienVault OTX — community pulses. Free with API key."""
+"""AlienVault OTX, community pulses. Free with API key."""
 import httpx
 
 from app.utils.env import getenv_clean

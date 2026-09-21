@@ -3,7 +3,7 @@ QR Code Analyzer.
 
 Decodes one or more QR codes from an uploaded image (multipart file="image") or
 a base64 data URI (JSON {"data_uri": ...}). Processing is fully in-memory: the
-image bytes are never written to disk. This endpoint NEVER fetches a URL — if a
+image bytes are never written to disk. This endpoint NEVER fetches a URL, if a
 decoded payload is a URL, the frontend forwards it to /api/url/expand separately
 (which runs its own SSRF checks and rate limit).
 """
@@ -27,7 +27,7 @@ limiter = Limiter(key_func=get_client_ip_key)
 MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 
 
-# ---------- rate limit (10 / IP / 24h) — shared store ----------
+# ---------- rate limit (10 / IP / 24h), shared store ----------
 
 _RL_TABLE = "qr_decode_rate_limit"
 rate_limit.init_table(_RL_TABLE)

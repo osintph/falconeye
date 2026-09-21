@@ -2,14 +2,14 @@
 urlscan.io enrichment for the phishing scanner.
 
 Queries the urlscan.io search API for the most recent scan of a target domain.
-Used as a separate enrichment pass — urlscan verdict is returned alongside
+Used as a separate enrichment pass, urlscan verdict is returned alongside
 FalconEye's own indicator matching but does NOT overwrite indicators_matched,
 so the two verdicts stay distinct in the response.
 
 Free tier works without an API key (lower rate limit, no private scans).
 Set URLSCAN_API_KEY to raise the rate limit.
 
-TODO: Google Safe Browsing enrichment (GSB_API_KEY) — see
+TODO: Google Safe Browsing enrichment (GSB_API_KEY), see
   https://developers.google.com/safe-browsing/v4/lookup-api
   Similar pattern: separate enrichment pass, returned as gsb_result alongside
   urlscan_result, does not overwrite indicators_matched.

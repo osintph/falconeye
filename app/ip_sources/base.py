@@ -3,7 +3,7 @@ Shared types for the multi-source IP reputation feature (v3.9.0).
 
 Every source module returns a normalized SourceResult with an explicit `state`
 so one source failing (timeout, 429, 401, malformed, missing key) never blanks
-the card or 500s the endpoint — the frontend renders each sub-card from its own
+the card or 500s the endpoint, the frontend renders each sub-card from its own
 state. Source fetchers NEVER raise; they map failures onto a state.
 
 These are fixed-host vendor APIs (like the existing Shodan/GreyNoise/RIPEstat

@@ -1,5 +1,5 @@
 """
-Tier 3 — MTProto via Telethon, using the API_ID/API_HASH/session file bootstrapped
+Tier 3, MTProto via Telethon, using the API_ID/API_HASH/session file bootstrapped
 by scripts/telegram_login.py (run once, interactively, over SSH). Reaches depth
 scraping and the Bot API can't: user resolution, verified/scam/fake flags,
 DC geolocation, and a rough account-age estimate.
@@ -8,7 +8,7 @@ Connection lifecycle: one client is lazily connected on first use per gunicorn
 worker process and reused after that (repeatedly connecting/disconnecting per
 request is slow and looks anomalous to Telegram). Known caveat: gunicorn runs
 multiple worker processes, and Telethon's sqlite session file is not designed
-for concurrent multi-process access — under concurrent load this can
+for concurrent multi-process access, under concurrent load this can
 occasionally raise "database is locked", which is caught below and surfaces as
 a transient tier-3 error rather than a crash. Revisit if this proves frequent
 in practice (e.g. pin tier-3 traffic to one worker).
@@ -54,7 +54,7 @@ _DC_LOCATIONS = {
 # and the ID space was widened from 32-bit to 64-bit in 2021, which breaks
 # naive linear interpolation across that boundary. Checkpoints are derived
 # from Telegram's own publicly announced user-count milestones, not a
-# verified ID audit — treat this as an order-of-magnitude estimate, not a date.
+# verified ID audit, treat this as an order-of-magnitude estimate, not a date.
 _ID_ERA_CHECKPOINTS = [
     (10_000_000, "2013-2014"),
     (100_000_000, "2015-2016"),

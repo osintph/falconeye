@@ -2,9 +2,9 @@
 Domain age lookup for the phishing scanner.
 
 Query strategy:
-  1. RDAP via rdap.org — structured JSON, no API key, preferred.
-  2. whois fallback — covers registrars without RDAP support.
-  3. Failure — returns {"found": False, "error": "..."}.
+  1. RDAP via rdap.org, structured JSON, no API key, preferred.
+  2. whois fallback, covers registrars without RDAP support.
+  3. Failure, returns {"found": False, "error": "..."}.
 
 Results cached 24 hours in domain_age_cache. The registration date never
 changes, so 24h is conservatively short; the cache stores created_at and
@@ -48,7 +48,7 @@ _EMPTY: dict = {
 
 
 # ---------------------------------------------------------------------------
-# Table bootstrap (lazy — also in db_init.py for fresh installs)
+# Table bootstrap (lazy, also in db_init.py for fresh installs)
 # ---------------------------------------------------------------------------
 
 def _ensure_table(db: sqlite3.Connection) -> None:
@@ -167,7 +167,7 @@ def _whois_lookup(domain: str) -> Optional[datetime]:
     if not candidates:
         return None
 
-    # Return the most recent date — the actual domain registration is always
+    # Return the most recent date, the actual domain registration is always
     # newer than any TLD or root-zone creation event that may appear earlier
     # in multi-section whois output.
     return max(candidates)

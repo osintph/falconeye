@@ -2,7 +2,7 @@
 Privacy + correctness lock for the breach cache/rate-limit store: emails must
 never be persisted in plaintext, cache TTLs must actually expire, and the
 rate limiter must fail CLOSED (never silently let a caller through) on a
-DB read error — the same contract app.username.store establishes.
+DB read error, the same contract app.username.store establishes.
 """
 import sqlite3
 import time

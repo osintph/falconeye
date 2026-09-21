@@ -31,7 +31,7 @@ _CF_INDICATOR = {
     "description": (
         "Target is behind Cloudflare bot protection; live rendering required for full "
         "analysis. Phishing infra behind Cloudflare Tunnel/Workers commonly blocks "
-        "automated scanners — this is a meaningful signal, not a benign 403."
+        "automated scanners, this is a meaningful signal, not a benign 403."
     ),
     "category": "infrastructure",
 }

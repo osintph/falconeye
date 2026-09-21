@@ -260,7 +260,7 @@ async def fetch_ct_crtsh(client: httpx.AsyncClient, domain: str) -> dict | None:
                     log.warning(f"crt.sh JSON parse failed for {domain}: {e}")
                     return None
             elif r.status_code == 200:
-                # 200 with HTML body — error page
+                # 200 with HTML body, error page
                 log.warning(f"crt.sh returned 200 with non-JSON content for {domain}")
                 if attempt == 0:
                     await asyncio.sleep(3)

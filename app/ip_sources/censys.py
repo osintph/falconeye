@@ -1,5 +1,5 @@
 """
-Censys Platform — host services / ports. Free tier includes host lookup.
+Censys Platform, host services / ports. Free tier includes host lookup.
 
 Auth: Personal Access Token as `Authorization: Bearer`. The PAT is org-scoped,
 so no organization_id is needed (a bad/placeholder org id returns 422). We send

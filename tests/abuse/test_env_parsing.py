@@ -1,6 +1,6 @@
 """
 v3.8.2 regression: env values with inline comments must not break credential /
-config reads. See docs/regressions.md (v3.8.1) — a `# comment` on the
+config reads. See docs/regressions.md (v3.8.1), a `# comment` on the
 FALCONEYE_ABUSE_ADMIN_PASS_HASH line reached bcrypt.checkpw and rejected the
 correct password.
 """

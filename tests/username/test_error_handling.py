@@ -2,7 +2,7 @@
 
 Forces an unhandled exception deep in the scan path (bypassing the endpoint's
 own explicit error handling) and confirms app.main's global handler converts it
-to a JSON 500 — never Starlette's default PlainTextResponse.
+to a JSON 500, never Starlette's default PlainTextResponse.
 """
 from fastapi.testclient import TestClient
 

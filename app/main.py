@@ -47,7 +47,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 async def _not_configured_handler(request: Request, exc: Exception) -> JSONResponse:
     # A required API key (SEARCHAPI_KEY / IMAGE_UPLOAD_SECRET) is unset. Convert the
-    # deep-raised NotConfigured exception into a clean 503 instead of a 500 — and,
+    # deep-raised NotConfigured exception into a clean 503 instead of a 500, and,
     # unlike a route-level pre-check, this never fires when the service layer is
     # mocked in tests, only when a real client construction is actually attempted.
     log.warning("Feature not configured on %s %s: %s", request.method, request.url.path, exc)

@@ -1,6 +1,6 @@
 """
 Privacy lock (v3.8.3): the Email Header tab promises the raw email is "never
-written to disk" — only the derived analysis is cached. Since the abuse report
+written to disk", only the derived analysis is cached. Since the abuse report
 body now flows CLIENT-SIDE, analyze()'s response/cache must still contain no raw
 body content. This test fails loudly if a future change starts leaking the body
 into the parsed/cached object.

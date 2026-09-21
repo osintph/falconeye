@@ -8,7 +8,7 @@ Threat model and the three bypass classes this closes:
      ANY resolved address is private.
   2. Redirect-chain bypass: `follow_redirects=False`; each hop's Location is parsed
      and the new URL is fully re-resolved-validated-pinned before it is fetched.
-  3. DNS rebinding (TOCTOU) — the v3.11.0 fix: we resolve the hostname ONCE, then
+  3. DNS rebinding (TOCTOU), the v3.11.0 fix: we resolve the hostname ONCE, then
      open the HTTP connection to the VALIDATED IP address, never to the hostname.
      httpx is given an IP-literal URL (so it performs no second resolution), while
      the original hostname is preserved for the TLS SNI / certificate check
@@ -25,7 +25,7 @@ content-encoding/content-length framing headers are dropped.
 
 Reusable primitives for callers that run their own hop loop (e.g. url_expander):
 `resolve_pinned(url)` -> PinnedConnection, and `pinned_request(client, method, url)`
-which performs a single IP-pinned request. Do NOT introduce a second SSRF guard —
+which performs a single IP-pinned request. Do NOT introduce a second SSRF guard -
 these are the single source of truth.
 """
 
@@ -48,9 +48,9 @@ DEFAULT_MAX_BYTES = 10_000_000
 
 # Explicit blocks for ranges that ipaddress stdlib does not classify via the
 # is_private / is_loopback / is_link_local / is_reserved / is_unspecified flags:
-#   0.0.0.0/8      — "This" network (RFC 1122 §3.2.1.3)
-#   100.64.0.0/10  — CGNAT (RFC 6598): NOT in is_private on older Pythons
-#   64:ff9b::/96   — NAT64 well-known prefix (RFC 6052): NOT reliably in stdlib flags
+#   0.0.0.0/8     , "This" network (RFC 1122 §3.2.1.3)
+#   100.64.0.0/10 , CGNAT (RFC 6598): NOT in is_private on older Pythons
+#   64:ff9b::/96  , NAT64 well-known prefix (RFC 6052): NOT reliably in stdlib flags
 # Remaining ranges (169.254.0.0/16, fe80::/10, ::/128, ::1, ::ffff:a.b.c.d)
 # are caught by is_link_local, is_unspecified, is_loopback, or the ipv4_mapped
 # unwrap below.
@@ -68,7 +68,7 @@ class PinnedConnection:
     """A validated target: the original hostname (for SNI + Host) plus the set of
     resolved public IPs the connection may be pinned to."""
     scheme: str
-    host: str          # original hostname — used for TLS SNI, cert check, Host header
+    host: str          # original hostname, used for TLS SNI, cert check, Host header
     port: int
     ips: list[str]     # validated public IP strings (all passed is_private_ip == False)
 
@@ -175,7 +175,7 @@ async def _read_capped(response: httpx.Response, max_bytes: int) -> httpx.Respon
 
     Returns an equivalent non-streaming Response so callers keep using `.text`,
     `.content` and `.json()` unchanged. Raises SafeFetchError if the body exceeds
-    the cap — truncating instead would hand the caller a half-body it cannot tell
+    the cap, truncating instead would hand the caller a half-body it cannot tell
     apart from a complete one.
     """
     body = bytearray()

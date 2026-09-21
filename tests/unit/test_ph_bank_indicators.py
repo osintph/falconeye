@@ -46,7 +46,7 @@ def test_path_otp_matches():
 
 def test_path_does_not_match_clean_url():
     matched = match_ph_indicators("", "https://bpi.com.ph/personal/login")
-    # /cancel/ /verify/ etc are not present — only URL-path indicators could fire, and none match here
+    # /cancel/ /verify/ etc are not present, only URL-path indicators could fire, and none match here
     path_ids = {"ph_path_cancel", "ph_path_verify", "ph_path_suspended", "ph_path_reactivate"}
     assert not (path_ids & {m["id"] for m in matched})
 
@@ -126,7 +126,7 @@ def test_tin_text_matches():
     assert "html_tin_field" in matched
 
 def test_bpi_brand_in_html_matches():
-    html = "<title>Bank of the Philippine Islands – Secure Login</title>"
+    html = "<title>Bank of the Philippine Islands, Secure Login</title>"
     matched = {m["id"] for m in match_ph_indicators(html, "")}
     assert "html_bpi_brand" in matched
 

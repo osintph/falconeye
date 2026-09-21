@@ -2,14 +2,14 @@
 Telegram Intelligence API.
 
   POST /api/telegram/lookup
-    Body: {"query": str}   — @handle, bare username, or any t.me link
+    Body: {"query": str}  , @handle, bare username, or any t.me link
     Auth: none (public tool)
     Rate limit: 10/minute per IP (burst only; results cache 6h)
 
 Tier 1 (free scrape) always runs first. If it can't resolve the identifier at
 all (t.me shows the same generic fallback page for "doesn't exist" and "exists
-but no public page" — see tier1_scrape's docstring), tier 3 gets a chance to
-resolve it via MTProto before this returns a 404 — the free tier's ambiguity
+but no public page", see tier1_scrape's docstring), tier 3 gets a chance to
+resolve it via MTProto before this returns a 404, the free tier's ambiguity
 should never produce a false "not found" when a better tier is available and
 authenticated. Tier 2 and tier 3 run concurrently once an entity type is known.
 """
@@ -78,7 +78,7 @@ async def lookup(req: LookupRequest, request: Request):
 
     if t1["state"] == tier1_scrape.UNRESOLVED:
         # Ambiguous at the free tier (t.me can't tell us "doesn't exist" from
-        # "exists but no public page") — give MTProto a chance before 404ing.
+        # "exists but no public page"), give MTProto a chance before 404ing.
         t3 = await tier3_mtproto.run(identifier)
         if t3["state"] == tier3_mtproto.NOT_FOUND:
             raise HTTPException(status_code=404, detail="No Telegram entity found for this username.")

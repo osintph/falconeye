@@ -43,7 +43,7 @@ def test_crlf_in_target_no_header_line_survives():
 
 
 def test_evidence_under_cap_not_truncated():
-    # 9000 chars is now under the v3.8.3 cap (20000) — no truncation.
+    # 9000 chars is now under the v3.8.3 cap (20000), no truncation.
     r = compose.compose_report("x", "ip", "other", "A" * 9000, "2026", "N", "n@e.com")
     assert not any("truncated" in w for w in r["warnings"])
     assert "A" * 9000 in r["body_text"]

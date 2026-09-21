@@ -2,10 +2,10 @@
 Abuse-reporting API.
 
 Endpoints (all under /api/abuse):
-  POST /lookup          — RDAP abuse contact for an IP or domain (no auth)
-  POST /compose         — render a report from env reporter identity (no auth)
-  POST /send            — send via Mailgun (admin creds in JSON body, Option B only)
-  GET  /send_available  — is the send path configured? (drives the UI button)
+  POST /lookup         , RDAP abuse contact for an IP or domain (no auth)
+  POST /compose        , render a report from env reporter identity (no auth)
+  POST /send           , send via Mailgun (admin creds in JSON body, Option B only)
+  GET  /send_available , is the send path configured? (drives the UI button)
 
 Compose and copy work with zero configuration. Send additionally requires the
 MAILGUN_* env vars and admin credentials (FALCONEYE_ABUSE_ADMIN_USER +
@@ -97,7 +97,7 @@ def _verify_admin(admin_user: str, admin_password: str) -> str | None:
     """Validate admin credentials (from the JSON body) against the bcrypt hash.
 
     Returns None on success, or a short error string on failure. It NEVER raises
-    a 401 or emits WWW-Authenticate — doing so would pop the browser's native
+    a 401 or emits WWW-Authenticate, doing so would pop the browser's native
     Basic Auth dialog and race the in-page form (the v3.8.1 bug). The password is
     never logged, returned, or stored.
     """
@@ -194,7 +194,7 @@ async def compose(req: ComposeRequest, request: Request):
 
 def _send_rate_error(message: str) -> dict:
     """Structured 200 body for a throttled/backed-off send (never 401, so the
-    browser's Basic Auth dialog stays closed — v3.8.1). The frontend already
+    browser's Basic Auth dialog stays closed, v3.8.1). The frontend already
     surfaces {rate_limited: true}."""
     return {"sent": False, "mailgun_message_id": None, "error": message, "rate_limited": True}
 
@@ -202,8 +202,8 @@ def _send_rate_error(message: str) -> dict:
 @router.post("/send")
 async def send(req: SendRequest, request: Request):
     # Credentials arrive in the JSON body and are validated here. This endpoint
-    # ALWAYS returns HTTP 200 with a structured {sent, rate_limited, error} body —
-    # never 401, never WWW-Authenticate — so the browser cannot open its native
+    # ALWAYS returns HTTP 200 with a structured {sent, rate_limited, error} body -
+    # never 401, never WWW-Authenticate, so the browser cannot open its native
     # Basic Auth dialog (v3.8.1). See test_send_endpoint_never_returns_401.
     client_ip = get_client_ip(request)
 

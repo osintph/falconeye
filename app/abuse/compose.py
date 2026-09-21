@@ -8,7 +8,7 @@ layer, before it can ever reach the Mailgun send layer.
 
 All templates share one body shape (only the category title changes), so the
 "one file per category" idea in the original plan collapses to a single
-template plus a category->title map — DRY, and easy to reword in one place.
+template plus a category->title map, DRY, and easy to reword in one place.
 
 compose_report() never raises.
 """
@@ -138,8 +138,8 @@ def compose_report(
 
     subject = f"Abuse Report: {category_title} from {clean_target or '(unspecified target)'}"
 
-    # NOTE: str.format substitutes values literally — braces inside the
-    # substituted values are NOT re-interpreted — so untrusted evidence
+    # NOTE: str.format substitutes values literally, braces inside the
+    # substituted values are NOT re-interpreted, so untrusted evidence
     # containing { } cannot break rendering.
     body_text = BODY_TEMPLATE.format(
         target=clean_target or "(unspecified)",

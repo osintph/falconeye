@@ -15,7 +15,7 @@ EnvironmentFile=/opt/falconeye/.env
 # app/utils/client_ip.py checks against the Cloudflare ranges.
 #
 # Setting it to "*" would make uvicorn take the LEFT-most X-Forwarded-For entry,
-# which is fully caller-supplied — the peer address becomes attacker-chosen and
+# which is fully caller-supplied, the peer address becomes attacker-chosen and
 # every rate limit falls over. gunicorn reads FORWARDED_ALLOW_IPS from the
 # environment, and EnvironmentFile= below puts .env into that environment, so
 # without this explicit flag one line in .env could do exactly that. An explicit

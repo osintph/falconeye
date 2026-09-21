@@ -3,7 +3,7 @@ Input normalization and IOC extraction for the Telegram Intelligence tab.
 
 Accepts any of: @handle, bare handle, https://t.me/handle, https://t.me/s/handle,
 t.me/handle. Unlike the old Channel Inspector, this covers users and bots too,
-not just channels — Telegram usernames are namespace-shared across all entity
+not just channels, Telegram usernames are namespace-shared across all entity
 types, so the same normalization applies regardless of what the identifier
 turns out to resolve to.
 """
@@ -74,7 +74,7 @@ def detect_brands(text: str) -> list[str]:
 def extract_iocs(text: str, *, exclude_handle: str | None = None) -> dict:
     """Pull IOCs out of a blob of text (bio, description, or a message body).
 
-    URLs and t.me links are kept in separate buckets — a t.me link is itself a
+    URLs and t.me links are kept in separate buckets, a t.me link is itself a
     pivot target back into this tab, distinct from a generic URL Expander pivot.
     The entity's own handle/canonical link is excluded from "other handles" /
     "other t.me links" so results don't just point back at themselves.

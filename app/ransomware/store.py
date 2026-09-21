@@ -2,7 +2,7 @@
 SQLite persistence for the Ransomware Watch tab.
 
 Separate database from the main falconeye.db (RANSOMWARE_DB, default
-/opt/falconeye/data/ransomware.db) — same convention as the daily report and
+/opt/falconeye/data/ransomware.db), same convention as the daily report and
 Telegram session: outside the git tree, resolved dynamically so tests can
 point it at a throwaway file via the env var.
 
@@ -14,8 +14,8 @@ credential write-guard live in exactly one place.
 Credential handling (see docs/ransomware-watch-runbook.md and the v3.16.0
 brief, Part 3): RansomLook's mirror-health endpoint returns the raw mirror
 URL, and for some groups that URL embeds working leak-site credentials
-(scheme://user:pass@host). This module never accepts a raw slug — callers
-must hash it first (hash_mirror_slug) — and upsert_mirror() independently
+(scheme://user:pass@host). This module never accepts a raw slug, callers
+must hash it first (hash_mirror_slug), and upsert_mirror() independently
 refuses to write anything that still looks like a credentialed URI, as a
 backstop against a future call site that skips the hash.
 """
@@ -35,7 +35,7 @@ log = logging.getLogger("falconeye.ransomware")
 SEA_COUNTRIES = ["PH", "SG", "MY", "ID", "TH", "VN", "HK", "TW"]
 
 # A longer-than-30d uptime figure is only computed locally once the health
-# series has meaningfully more depth than the API's own 30d figure — otherwise
+# series has meaningfully more depth than the API's own 30d figure, otherwise
 # it would just be a near-duplicate number under a different label.
 _MIN_SERIES_LEN_FOR_COMPUTED_UPTIME = 45
 
@@ -102,7 +102,7 @@ def init_tables() -> None:
         # collector ingests, including its own per-country queries.
         # 'country_filter' = a future user-triggered on-demand country fetch.
         # 'search' = a future user-triggered company search. NULL means the
-        # row predates this column (true statement, not backfilled — a v3.16.0
+        # row predates this column (true statement, not backfilled, a v3.16.0
         # decision, see docs/ransomware-watch-runbook.md).
         _ensure_column(conn, "victims", "first_seen_via", "TEXT")
         # permalink: ransomware.live's OWN hosted link for this victim
@@ -146,7 +146,7 @@ def init_tables() -> None:
             """
         )
 
-        # mirror_hash is sha256(raw slug)[:16] — the raw slug (which can embed
+        # mirror_hash is sha256(raw slug)[:16], the raw slug (which can embed
         # live leak-site credentials) is never a valid value here; see
         # upsert_mirror()'s guard below.
         conn.execute(
@@ -326,7 +326,7 @@ _ALLOWED_PERMALINK_HOSTS = {"ransomware.live", "www.ransomware.live"}
 def safe_permalink(url: str | None) -> str | None:
     """Only ever pass through ransomware.live's OWN link (their `permalink`
     field). Never the raw leak-site address (`post_url`/`claim_url`/`url` in
-    their schemas) — this is a host-check backstop in case a future field
+    their schemas), this is a host-check backstop in case a future field
     rename or a v2-fallback record's differently-named field ever gets passed
     in here by mistake."""
     if not url:
@@ -380,7 +380,7 @@ def upsert_country_coverage(conn: sqlite3.Connection, *, country: str, victim_co
 
 def mark_corroborated(conn: sqlite3.Connection, match_keys, now_iso: str) -> None:
     """Flag victims whose match_key also appeared in the other source's
-    current snapshot. One-directional (never unflags) — a victim that drops
+    current snapshot. One-directional (never unflags), a victim that drops
     out of RansomLook's rolling recent-posts window on a later cycle doesn't
     retroactively become single-source again."""
     keys = [k for k in set(match_keys or []) if k]
@@ -393,7 +393,7 @@ def mark_corroborated(conn: sqlite3.Connection, match_keys, now_iso: str) -> Non
 
 
 def replace_group_activity(conn: sqlite3.Connection, window_days: int, rows: list[dict], now_iso: str) -> None:
-    """rows: [{group, count, last_post}, ...] straight from /api/hot/{days} —
+    """rows: [{group, count, last_post}, ...] straight from /api/hot/{days} -
     no local ranking. Full replace per window so a group that fell out of the
     top of the ranking doesn't linger."""
     conn.execute("DELETE FROM groups WHERE window_days = ?", (window_days,))
@@ -484,7 +484,7 @@ def last_run(conn: sqlite3.Connection, phase: str) -> sqlite3.Row | None:
 
 
 def last_attempted_run(conn: sqlite3.Connection) -> sqlite3.Row | None:
-    """Most recent run of any kind, finished or not — for the cold-start banner."""
+    """Most recent run of any kind, finished or not, for the cold-start banner."""
     return conn.execute("SELECT * FROM collector_runs ORDER BY id DESC LIMIT 1").fetchone()
 
 
@@ -616,7 +616,7 @@ _MIRRORS_SHOWN_PER_GROUP = 8
 
 
 def mirrors_by_group(conn: sqlite3.Connection) -> dict:
-    """Positional labels only (Part 3) — never the slug. Some groups have
+    """Positional labels only (Part 3), never the slug. Some groups have
     hundreds of historical mirror entries (observed live: qilin alone had
     ~640), mostly long-dead, so this ranks by uptime and caps what's shown per
     group rather than dumping the full list."""
@@ -651,7 +651,7 @@ def mirrors_by_group(conn: sqlite3.Connection) -> dict:
 def mirror_health_candidate_groups(conn: sqlite3.Connection) -> list[str]:
     """Groups worth polling /api/health/{name} for: PH/SEA-relevant (appeared
     in a SEA-country victim) plus globally active (appeared in the last hot/30
-    ranking). Deliberately NOT "all RansomLook-tracked groups" (~588) — see
+    ranking). Deliberately NOT "all RansomLook-tracked groups" (~588), see
     Part 4 of the v3.16.0 brief on polite consumption of a free service."""
     placeholders = ",".join("?" for _ in SEA_COUNTRIES)
     sea_rows = conn.execute(

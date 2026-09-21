@@ -3,7 +3,7 @@ URL Expander + Redirect Chain Analyzer.
 
 Follows a user-supplied URL hop-by-hop, re-validating SSRF safety at every hop
 via the shared app.utils.safe_fetch primitives (do NOT introduce a second SSRF
-guard — resolve_and_check / is_private_ip are the single source of truth). For
+guard, resolve_and_check / is_private_ip are the single source of truth). For
 each hop it records status, TLS certificate details (HTTPS), headers of interest,
 and timing, then computes shortener / TLD-switch / punycode / port signals.
 
@@ -54,7 +54,7 @@ _META_REFRESH_RE = re.compile(
 )
 
 
-# ---------- rate limit (10 / IP / 24h) — shared store ----------
+# ---------- rate limit (10 / IP / 24h), shared store ----------
 
 _RL_TABLE = "url_expand_rate_limit"
 rate_limit.init_table(_RL_TABLE)
@@ -65,8 +65,8 @@ rate_limit.init_table(_RL_TABLE)
 def _grab_tls(host: str, port: int, pinned_ip: str) -> dict | None:
     """Best-effort TLS peer-cert summary for an HTTPS hop.
 
-    Connects to *pinned_ip* — the same validated IP the HTTP fetch is pinned to
-    (resolved once by resolve_pinned) — so the cert grab and the fetch hit the
+    Connects to *pinned_ip*, the same validated IP the HTTP fetch is pinned to
+    (resolved once by resolve_pinned), so the cert grab and the fetch hit the
     same host, and neither can be pointed at a private address. The cert is
     verified against the original hostname (invalid/self-signed -> returns None
     rather than trusting it).
@@ -165,7 +165,7 @@ async def expand_url(url: str, max_hops: int = DEFAULT_MAX_HOPS) -> dict:
 
             # Resolve + SSRF-validate + pin ONCE per hop. resolve_pinned raises
             # (fail closed) on a bad scheme, embedded userinfo, a missing/private
-            # host, or an unresolvable name — so a redirect to an internal IP is
+            # host, or an unresolvable name, so a redirect to an internal IP is
             # caught here exactly like the initial URL.
             try:
                 conn = resolve_pinned(current)

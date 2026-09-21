@@ -1,6 +1,6 @@
 # FastAPI / Starlette upgrade plan (H-2 part 2)
 
-**Status:** scoped, NOT executed. Deferred out of v3.11.0 by design — a framework
+**Status:** scoped, NOT executed. Deferred out of v3.11.0 by design, a framework
 upgrade with regression risk across every endpoint must not ride in the same
 release as the SSRF-guard rewrite (H-1), so that a regression can be isolated to
 one change. This becomes its own release after v3.11.0.
@@ -22,7 +22,7 @@ Remaining advisories (from `pip-audit -r requirements.txt`):
 | starlette | 0.37.2 | PYSEC-2026-248  | 1.3.0 | request path not validated before `request.url` reconstruction |
 | starlette | 0.37.2 | PYSEC-2026-161  | 1.0.1 | Host header not validated before `request.url` reconstruction |
 | starlette | 0.37.2 | PYSEC-2026-2280/2281 | 1.1.0 | StaticFiles / HTTPEndpoint (SSRF is Windows-only; we run Linux) |
-| lxml | 5.2.1 | PYSEC-2026-87 | 6.1.0 | XML entity expansion (NOT reachable — see note) |
+| lxml | 5.2.1 | PYSEC-2026-87 | 6.1.0 | XML entity expansion (NOT reachable, see note) |
 
 To clear **all** Starlette advisories the floor is **Starlette >= 1.3.1**.
 
@@ -35,7 +35,7 @@ To clear **all** Starlette advisories the floor is **Starlette >= 1.3.1**.
 - `pydantic` 2.x (via FastAPI 0.111; app already uses Pydantic v2 models)
 - `slowapi==0.1.9` (depends on Starlette internals + `limits`)
 - `python-multipart>=0.0.31` (already bumped)
-- `lxml==5.2.1` (only used via `bs4` HTML parser — advisory not reachable)
+- `lxml==5.2.1` (only used via `bs4` HTML parser, advisory not reachable)
 
 ## Target versions
 
@@ -43,7 +43,7 @@ To clear **all** Starlette advisories the floor is **Starlette >= 1.3.1**.
 - **`fastapi`**: the latest release whose dependency pin permits `starlette>=1.3.1`.
   Confirm the exact minimum at execution time against the FastAPI release notes /
   compatibility matrix (FastAPI adopted Starlette 0.40+ in the 0.115 line; Starlette
-  1.x support lands in a later FastAPI — pin to that release, do not float).
+  1.x support lands in a later FastAPI, pin to that release, do not float).
 - **`uvicorn`**: bump to current stable alongside (ASGI-compatible; low risk).
 - **`slowapi`**: verify against the target Starlette. slowapi 0.1.9 reaches into
   Starlette request/response internals; if it is incompatible with Starlette 1.x,
@@ -58,27 +58,27 @@ To clear **all** Starlette advisories the floor is **Starlette >= 1.3.1**.
 1. **Multipart form parsing.** Starlette 0.40+ enforces `max_part_size` (default
    1 MB per field) and changed spooling for large files. The three upload endpoints
    (`/api/qr/decode`, `/api/email-header/upload`, `/api/image/upload`) read the file
-   with `await file.read()` and then apply their own 5 MB / 10 MB caps — confirm the
+   with `await file.read()` and then apply their own 5 MB / 10 MB caps, confirm the
    new per-part default does not reject legitimate uploads below those caps, and that
    `UploadFile.read()` semantics (SpooledTemporaryFile threshold) are unchanged for
    our sizes. `qr_analyzer.decode` also branches on `await request.json()` when no
-   file is present — verify the JSON branch is unaffected.
+   file is present, verify the JSON branch is unaffected.
 2. **`request.url` / Host reconstruction.** The advisories change how Starlette
    validates the Host header and path. We derive the client IP from
-   `CF-Connecting-IP` (not `request.url`), so low risk — but audit any use of
+   `CF-Connecting-IP` (not `request.url`), so low risk, but audit any use of
    `request.url` / `request.base_url` for absolute-URL construction.
 3. **Deprecated `@app.on_event`.** Not used (verified: no `on_event`/lifespan in the
    codebase; routers self-initialize their SQLite tables at import). No migration
    needed, but keep it that way (don't add `on_event` during the upgrade).
-4. **Exception handlers.** `app.add_exception_handler(RateLimitExceeded, …)` — confirm
+4. **Exception handlers.** `app.add_exception_handler(RateLimitExceeded, …)`: confirm
    the slowapi handler signature still matches Starlette's expected
    `(Request, exc) -> Response`.
 5. **`StaticFiles` mount** (`/static`). Behavior stable on Linux; the SSRF advisory is
    Windows-only. Smoke-test static asset serving after the bump.
-6. **Pydantic.** Already v2 — no v1→v2 migration. Still, re-run all request-model
+6. **Pydantic.** Already v2, no v1→v2 migration. Still, re-run all request-model
    validation tests (every router defines `BaseModel` request bodies).
 7. **`TestClient`.** Not used in the test suite (tests call functions directly or use
-   `httpx`), so Starlette's TestClient changes don't affect CI — but if any smoke
+   `httpx`), so Starlette's TestClient changes don't affect CI, but if any smoke
    harness adopts it, note httpx-based `TestClient` differences.
 
 ## Affected surface (must be regression-tested)
@@ -93,7 +93,7 @@ To clear **all** Starlette advisories the floor is **Starlette >= 1.3.1**.
   per-IP SQLite rate-limit tables keyed on it.
 - **StaticFiles** mount and the security headers applied at nginx (unchanged by the
   Python upgrade, but re-verify the response header set after deploy).
-- **The H-1 SSRF guard** — re-run its full battery + rebinding test to confirm the
+- **The H-1 SSRF guard**: re-run its full battery + rebinding test to confirm the
   upgrade did not change httpx/transport behavior underlying `pinned_request`.
 
 ## Test plan
@@ -104,7 +104,7 @@ To clear **all** Starlette advisories the floor is **Starlette >= 1.3.1**.
    `tests/unit/test_safe_fetch.py` and all upload-endpoint tests).
 3. Upload-endpoint matrix per endpoint: valid small file, file at the cap, file over
    the cap (expect the endpoint's own 413/400, not an opaque 500), malformed
-   multipart, many-small-parts (the DoS shape — confirm bounded), and the JSON/data-URI
+   multipart, many-small-parts (the DoS shape, confirm bounded), and the JSON/data-URI
    branch for QR.
 4. Rate-limit behavior unchanged: per-IP hour/day caps and slowapi burst limits still
    fire (spot-check username `/scan`, url `/expand`, abuse `/lookup`).
@@ -121,4 +121,4 @@ Until this upgrade ships, the Starlette multipart DoS is blunted (not eliminated
 nginx `client_max_body_size` and request timeouts, Cloudflare upload-size limits in
 front of the origin, and the per-IP daily caps on the upload endpoints. These do not
 remove the advisory (the parser runs before the handler's size check), so the upgrade
-remains required — just not in the same release as H-1.
+remains required, just not in the same release as H-1.

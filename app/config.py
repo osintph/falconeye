@@ -8,7 +8,7 @@ NEWS_CACHE_TTL_MINUTES = 30
 URL_EXPAND_RATE_LIMIT_PER_DAY = 10
 QR_DECODE_RATE_LIMIT_PER_DAY = 10
 
-# Secrets — loaded from /opt/falconeye/.env via systemd EnvironmentFile.
+# Secrets, loaded from /opt/falconeye/.env via systemd EnvironmentFile.
 # DO NOT log, print, or expose these values anywhere in application code.
 GREYNOISE_API_KEY = getenv_clean("GREYNOISE_API_KEY")
 ABUSECH_AUTH_KEY = getenv_clean("ABUSECH_AUTH_KEY")
@@ -36,7 +36,7 @@ KIT_REPORT_RATE_LIMIT_PER_DAY = 10   # per source IP per rolling 24-hour window
 ANTHROPIC_API_KEY = getenv_clean("ANTHROPIC_API_KEY")
 URLSCAN_API_KEY = getenv_clean("URLSCAN_API_KEY")
 
-# Telegram Intelligence tab — tier 2 (Bot API) and tier 3 (MTProto/Telethon).
+# Telegram Intelligence tab, tier 2 (Bot API) and tier 3 (MTProto/Telethon).
 # Any of these being empty is a normal, expected configuration (graceful
 # per-tier degradation), not an error.
 TELEGRAM_API_ID = getenv_clean("TELEGRAM_API_ID")

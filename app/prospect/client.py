@@ -32,7 +32,7 @@ class SearchAPIClient:
                 if resp.status_code == 429:
                     rl_count += 1
                     if rl_count > 3:
-                        # Cap 429 retries like 5xx — a persistent upstream throttle
+                        # Cap 429 retries like 5xx, a persistent upstream throttle
                         # must not spin a worker indefinitely (the counter used to
                         # never increment, so wait stayed 1s forever).
                         log.warning("SearchAPI 429, retries exhausted (3/3), giving up")

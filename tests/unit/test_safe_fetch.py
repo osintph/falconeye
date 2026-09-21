@@ -1,5 +1,5 @@
 """
-Unit tests for app/utils/safe_fetch.py — H-1 SSRF guard.
+Unit tests for app/utils/safe_fetch.py, H-1 SSRF guard.
 
 Covers:
   - Scheme validation
@@ -9,7 +9,7 @@ Covers:
   - Redirect-to-private-IP rejection (per-hop revalidation)
   - Redirect cap enforcement
 
-Uses asyncio.run() — no pytest-asyncio dependency required.
+Uses asyncio.run(), no pytest-asyncio dependency required.
 """
 
 import asyncio
@@ -70,7 +70,7 @@ def test_blocks_ipv6_loopback():
 
 
 def test_blocks_nat64():
-    # 64:ff9b::/96 — NAT64 well-known prefix
+    # 64:ff9b::/96, NAT64 well-known prefix
     assert is_private_ip("64:ff9b::1")
     assert is_private_ip("64:ff9b::7f00:1")  # maps to 127.0.0.1
 
@@ -82,7 +82,7 @@ def test_allows_public_ip():
 
 
 # ---------------------------------------------------------------------------
-# resolve_and_check — uses socket mock
+# resolve_and_check, uses socket mock
 # ---------------------------------------------------------------------------
 
 def _getaddrinfo_returning(addr: str):
@@ -110,7 +110,7 @@ def test_resolve_raises_on_dns_failure():
 
 
 # ---------------------------------------------------------------------------
-# safe_fetch — scheme check (no network)
+# safe_fetch, scheme check (no network)
 # ---------------------------------------------------------------------------
 
 def test_blocks_non_https_and_non_http():
@@ -124,7 +124,7 @@ def test_blocks_file_scheme():
 
 
 # ---------------------------------------------------------------------------
-# safe_fetch — private IP blocks (resolve_and_check raises before any HTTP)
+# safe_fetch, private IP blocks (resolve_and_check raises before any HTTP)
 # ---------------------------------------------------------------------------
 
 def test_blocks_private_ipv4_url():
@@ -140,7 +140,7 @@ def test_blocks_loopback_url():
 
 
 # ---------------------------------------------------------------------------
-# safe_fetch — redirect to private IP is rejected (per-hop revalidation)
+# safe_fetch, redirect to private IP is rejected (per-hop revalidation)
 # ---------------------------------------------------------------------------
 
 def test_redirect_to_private_ip_raises():
@@ -173,7 +173,7 @@ def test_redirect_to_private_ip_raises():
 
 
 # ---------------------------------------------------------------------------
-# safe_fetch — max_redirects cap
+# safe_fetch, max_redirects cap
 # ---------------------------------------------------------------------------
 
 def test_redirect_cap_exceeded():
@@ -198,7 +198,7 @@ def test_redirect_cap_exceeded():
 # Helpers
 # ---------------------------------------------------------------------------
 
-# Bound before any test patches httpx.AsyncClient — the helper below builds a real
+# Bound before any test patches httpx.AsyncClient, the helper below builds a real
 # client while that patch is active, so it must not go through the patched name.
 _REAL_ASYNC_CLIENT = httpx.AsyncClient
 
@@ -209,7 +209,7 @@ def _client_from_handler(handler):
     Real clients rather than hand-rolled stubs on purpose: these tests assert on
     what safe_fetch puts on the wire (pinned IP, SNI, Host), not on which httpx
     method it happens to call to get there. A stub implementing only `.request`
-    breaks the moment the transport changes — which is how the body-cap change
+    breaks the moment the transport changes, which is how the body-cap change
     (build_request + send(stream=True)) broke five of them.
     """
     return _REAL_ASYNC_CLIENT(
@@ -305,7 +305,7 @@ def test_dns_rebind_blocked_no_second_resolution():
 
 def test_pins_to_first_reachable_validated_ip():
     """When a host has multiple validated IPs, a connect failure on the first
-    falls through to the next — and every candidate is a validated public IP."""
+    falls through to the next, and every candidate is a validated public IP."""
     sink = []
     ok = httpx.Response(200, request=httpx.Request("GET", "http://x/"))
 
@@ -338,7 +338,7 @@ def test_userinfo_url_rejected():
 
 
 # ---------------------------------------------------------------------------
-# Response body cap — the target does not get to choose how much memory it costs
+# Response body cap, the target does not get to choose how much memory it costs
 # ---------------------------------------------------------------------------
 
 def _fetch_with_body(body: bytes, headers=None, **kwargs):

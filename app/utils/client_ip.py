@@ -11,8 +11,8 @@ Two independent defences stop that:
    ranges, so an arbitrary caller cannot reach the origin at all.
 2. This module only trusts ``CF-Connecting-IP`` when the direct TCP peer is itself a
    Cloudflare edge address (or an explicitly configured ``TRUSTED_PROXY_CIDRS``
-   network). If the origin is ever exposed directly — a second listener, a changed
-   allowlist, a misconfigured firewall — the header is ignored and the limit keys on
+   network). If the origin is ever exposed directly, a second listener, a changed
+   allowlist, a misconfigured firewall, the header is ignored and the limit keys on
    the real peer address instead.
 
 Defence 2 is what makes the limits hold without depending on config that lives outside
@@ -31,7 +31,7 @@ UNKNOWN_IP = "unknown"
 
 # One warning per process, not per request: the condition below is reachable by
 # any caller, so logging it every time hands an attacker a log-flooding primitive.
-# Once is enough — it is a standing configuration signal, not a per-request event.
+# Once is enough, it is a standing configuration signal, not a per-request event.
 _warned_untrusted_header = False
 
 

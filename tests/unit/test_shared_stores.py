@@ -50,7 +50,7 @@ def test_cache_respects_ttl(db):
 
 
 def test_cache_fractional_ttl_hours(db):
-    """threat_pulse uses a 60-minute (1.0h) TTL — fractional/small windows must work."""
+    """threat_pulse uses a 60-minute (1.0h) TTL, fractional/small windows must work."""
     cache.init_table("t_cache", key_col="id")
     cache.set("t_cache", "ph", {"v": 1}, key_col="id")
     _age_row(db, "t_cache", "id", "ph", "-90 minutes")

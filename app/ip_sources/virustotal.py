@@ -1,4 +1,4 @@
-"""VirusTotal v3 — multi-vendor detection. Free tier 500/day, 4/min."""
+"""VirusTotal v3, multi-vendor detection. Free tier 500/day, 4/min."""
 import httpx
 
 from app.utils.env import getenv_clean

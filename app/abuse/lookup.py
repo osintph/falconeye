@@ -3,12 +3,12 @@ RDAP-based abuse contact resolution for IPs and domains.
 
 Bootstrap via rdap.org, which 3xx-redirects to the authoritative RIR (for IPs)
 or registry/registrar (for domains). Every hop is validated by
-app.utils.safe_fetch — rdap.org is trusted, but outbound fetches all go through
+app.utils.safe_fetch, rdap.org is trusted, but outbound fetches all go through
 the one SSRF primitive by policy (no second guard).
 
 RDAP JSON is untrusted input: the abuse email is validated against a strict
 regex before it is ever displayed or handed to the send layer, and lookups
-NEVER raise — on any error they return the result dict with `error` populated
+NEVER raise, on any error they return the result dict with `error` populated
 and the rest None.
 """
 import ipaddress
@@ -198,7 +198,7 @@ async def lookup_ip_abuse(ip: str) -> dict:
 
     result = _blank_result(target, "ip")
 
-    # Non-public IPs have no abuse contact — skip the network call entirely.
+    # Non-public IPs have no abuse contact, skip the network call entirely.
     try:
         parsed = ipaddress.ip_address(target)
         if parsed.is_private or parsed.is_loopback or parsed.is_link_local or \

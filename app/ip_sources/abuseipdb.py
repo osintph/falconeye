@@ -1,4 +1,4 @@
-"""AbuseIPDB — abuse-confidence scoring. Free tier 1000 checks/day."""
+"""AbuseIPDB, abuse-confidence scoring. Free tier 1000 checks/day."""
 import httpx
 
 from app.utils.env import getenv_clean
