@@ -17,6 +17,79 @@ deploy did not match it. Keep this doc in sync with reality.
 - Staging tree: `/opt/falconeye/staging_src`, a second independent git checkout.
   **There is no staging systemd unit** and nothing normally listens on `:8001`.
 
+## Prerequisites: system packages
+
+`requirements.txt` does not cover everything the app needs. Two kinds of native
+dependency exist outside pip, both invisible to `ldd` and to `pip install`, and
+both failing only later:
+
+- a shared library **dlopened at runtime through ctypes**, which fails at import
+- a **binary invoked as a subprocess**, which fails when the feature is used
+
+Compiled extension modules are not the problem. The wheels for `lxml`, `Pillow`
+and `rapidfuzz` statically link what they need, verified with `ldd` against the
+installed venv: every `.so` resolves only `libc`, `libm`, `libstdc++`, `libgcc_s`
+and `libz`, all of which are on any Ubuntu. So the full list is short:
+
+```
+sudo apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv \
+    git redis-server \
+    libzbar0 whois
+```
+
+| Package | Needed by | Failure if missing |
+|---|---|---|
+| `python3`, `python3-pip`, `python3-venv` | the venv | provisioning cannot start |
+| `git` | `scripts/provision.sh` clone, and tag deploys | provisioning cannot start |
+| `redis-server` | Prospect tab response cache | cache disabled, tab still works |
+| `libzbar0` | `pyzbar`, QR Code tab | **`ImportError: Unable to find zbar shared library`, and the whole app fails to import** |
+| `whois` | `app/routers/domain_intel.py`, `app/utils/domain_age.py` | silent: the whois fallback returns nothing |
+
+Two traps in that table.
+
+**`libzbar0` is the one that takes the app down completely.** `pyzbar` loads the
+library with `ctypes.util.find_library("zbar")` rather than linking it, so
+nothing in `pip install` or `ldd` reveals the dependency. `app/main.py` imports
+the QR router at module level, so the failure is not confined to that tab: the
+process will not start at all. On Ubuntu 24.04 the real package is
+`libzbar0t64` after the `time_t` transition, but it declares
+`Provides: libzbar0`, so the name `libzbar0` resolves correctly on 22.04 and
+24.04 alike. Use that name.
+
+**`whois` fails quietly, which is worse to diagnose.** Both call sites wrap the
+subprocess in a broad `except` and log, so a missing binary shows up
+as a Domain Intel tab that simply has no whois text, with nothing in the UI to
+say why. Its Debian priority is `standard`, meaning it is present on a full
+Ubuntu install but **not** on the minimal cloud images most VPS and AWS
+instances boot from, which is exactly where this bites.
+
+Optional, not required by the service:
+
+- `sqlite3` for the CLI used by the verification commands throughout this
+  runbook. The app itself uses Python's built-in `sqlite3` module and needs no
+  package.
+- `build-essential` and `python3-dev` only if pip has to build a wheel from
+  source, which happens on architectures without prebuilt wheels. On amd64 and
+  arm64 every pinned dependency ships one, so these are not installed by
+  default.
+
+### The provisioning smoke test
+
+`scripts/provision.sh` step 7 runs `venv/bin/python -c "import app.main"` before
+enabling the service, and aborts if it fails. This exists because a missing
+native library otherwise surfaces inside a gunicorn worker: systemd restarts it
+every 5 seconds, the real traceback scrolls past in the journal, and the
+operator sees a restart loop rather than an error. Run it by hand any time the
+service will not start:
+
+```
+cd /opt/falconeye/app_src && /opt/falconeye/venv/bin/python -c "import app.main"
+```
+
+Clean output and exit 0 means every native dependency resolved. An `ImportError`
+naming a shared library means a missing apt package, not a missing Python one.
+
 ## Ownership invariant (root cause of past deploy friction — normalized 2026-07-25)
 
 The whole tree under `/opt/falconeye/app_src` must be owned by **`ubuntu:ubuntu`**

@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.32.2**
+Current version: **3.32.3**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -65,7 +65,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.32.2:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.32.3:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -109,7 +109,20 @@ Memory footprint at idle: ~120 MB RAM. Disk: ~50 MB for code + ~20 MB SQLite cac
 - Ubuntu 22.04 or 24.04 VPS (1 vCPU, 1 GB RAM minimum; 2 GB recommended)
 - A domain name pointed at the VPS
 - Python 3.10 or later (3.11+ recommended)
-- Redis installed and running locally (`sudo apt install redis-server`)
+- System packages beyond Python. `pip` does not install these, and two of them
+  fail only at runtime:
+  ```bash
+  sudo apt-get install -y --no-install-recommends \
+      python3 python3-pip python3-venv git redis-server libzbar0 whois
+  ```
+  `libzbar0` is required: `pyzbar` loads it via ctypes for the QR Code tab, and
+  because that router is imported at module level, without it the whole app
+  fails to start with `ImportError: Unable to find zbar shared library`. On
+  Ubuntu 24.04 the package is really `libzbar0t64`, but it provides `libzbar0`,
+  so this name works on 22.04 and 24.04. `whois` is used as a subprocess by the
+  Domain Intel tab and fails silently when absent. See
+  [docs/deploy-runbook.md](docs/deploy-runbook.md) ("Prerequisites: system
+  packages") for the full audit.
 - Optional: Cloudflare account for TLS termination and DDoS protection.
   The shipped nginx config assumes it. Deploying behind another proxy, or
   none, needs the steps in [docs/deploy-runbook.md](docs/deploy-runbook.md)
@@ -142,6 +155,12 @@ sudo systemctl restart falconeye
 ### Manual install
 
 ```bash
+# 0. System packages (pip does not install these; libzbar0 is required or the
+#    app will not import at all)
+sudo apt-get update
+sudo apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv git redis-server libzbar0 whois
+
 # 1. Clone
 sudo mkdir -p /opt/falconeye
 sudo chown $USER:$USER /opt/falconeye
@@ -165,12 +184,16 @@ chmod 600 /opt/falconeye/.env
 FALCONEYE_DB=/opt/falconeye/data/falconeye.db \
   /opt/falconeye/venv/bin/python scripts/db_init.py
 
-# 5. Install systemd unit
+# 5. Smoke test before enabling anything. A missing native library fails here,
+#    not in a gunicorn restart loop where the traceback scrolls past.
+/opt/falconeye/venv/bin/python -c "import app.main" && echo "imports OK"
+
+# 6. Install systemd unit
 sudo cp falconeye.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now falconeye
 
-# 6. Install nginx vhost.
+# 7. Install nginx vhost.
 # Copy the snippets FIRST: the vhost includes them, so in the other order
 # `nginx -t` fails and the reload is refused.
 sudo mkdir -p /etc/nginx/snippets

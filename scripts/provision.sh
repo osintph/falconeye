@@ -49,19 +49,43 @@ preflight_warn() {
     fi
 }
 
-echo "[1/8] Creating directories..."
+echo "[1/9] Creating directories..."
 mkdir -p "$INSTALL_DIR/data"
 mkdir -p /var/log/falconeye
 chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
 chown "$SERVICE_USER:$SERVICE_USER" /var/log/falconeye
 
-echo "[2/8] Updating package index..."
+echo "[2/9] Updating package index..."
 apt-get update -qq
 
-echo "[3/8] Installing system dependencies..."
-apt-get install -y --no-install-recommends python3 python3-pip python3-venv git redis-server
+echo "[3/9] Installing system dependencies..."
+# Native dependencies, and why each is here. pip installs none of them.
+#
+# The wheels for lxml, Pillow and rapidfuzz statically link what they need
+# (verified with ldd: their .so files resolve only libc, libm, libstdc++ and
+# libz), so compiled extension modules are self-contained. The real gaps are
+# the two mechanisms ldd cannot see: libraries dlopened at runtime through
+# ctypes, and binaries invoked as subprocesses. Both fail late, and neither
+# shows up as a pip error.
+#
+#   libzbar0  pyzbar dlopens it via ctypes.util.find_library("zbar") for the
+#             QR Code tab. Without it, importing the app dies with
+#             "ImportError: Unable to find zbar shared library".
+#             On Ubuntu 24.04 the real package is libzbar0t64 after the time_t
+#             transition, but it Provides: libzbar0, so this one name resolves
+#             correctly on both 22.04 and 24.04.
+#   whois     app/routers/domain_intel.py runs "whois <domain>" as the fallback
+#             when RDAP returns nothing useful. Its absence is caught and
+#             logged, so the tab silently loses that fallback rather than
+#             erroring, which makes it easy to miss. Priority "standard", so it
+#             is present on a full Ubuntu install but NOT on the minimal cloud
+#             images most VPS and AWS instances use.
+apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv \
+    git redis-server \
+    libzbar0 whois
 
-echo "[4/8] Cloning repository..."
+echo "[4/9] Cloning repository..."
 if [[ -d "$INSTALL_DIR/app_src/.git" ]]; then
     echo "  Repository already present — pulling latest..."
     git -C "$INSTALL_DIR/app_src" pull --ff-only
@@ -70,7 +94,7 @@ else
 fi
 chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/app_src"
 
-echo "[5/8] Creating virtualenv and installing dependencies..."
+echo "[5/9] Creating virtualenv and installing dependencies..."
 python3 -m venv "$INSTALL_DIR/venv"
 "$INSTALL_DIR/venv/bin/pip" install --upgrade pip --quiet
 "$INSTALL_DIR/venv/bin/pip" install -r "$INSTALL_DIR/app_src/requirements.txt" --quiet
@@ -79,7 +103,7 @@ python3 -m venv "$INSTALL_DIR/venv"
 "$INSTALL_DIR/venv/bin/pip" install "anthropic>=0.25" "extract-msg>=0.28" --quiet 2>/dev/null || \
     echo "  [NOTE] anthropic / extract-msg install failed — LLM tabs and .msg upload will be unavailable."
 
-echo "[6/8] Initializing database..."
+echo "[6/9] Initializing database..."
 FALCONEYE_DB="$INSTALL_DIR/data/falconeye.db" \
     "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/app_src/scripts/db_init.py"
 chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/data/falconeye.db"
@@ -102,7 +126,32 @@ if [[ "$RUN_TESTS" == "true" ]]; then
     echo "[--test] Tests passed."
 fi
 
-echo "[7/8] Installing systemd service..."
+echo "[7/9] Smoke test: importing the application..."
+# A missing native library does not fail "pip install". It fails at import, and
+# without this check the first import happens inside a gunicorn worker, where
+# systemd restarts it every 5 seconds and the real traceback scrolls past in the
+# journal. Fail here instead, once, with the actual error in front of the
+# operator and the service left disabled.
+cd "$INSTALL_DIR/app_src"
+if ! "$INSTALL_DIR/venv/bin/python" -c "import app.main"; then
+    echo "" >&2
+    echo "[FAIL] 'import app.main' failed. The service was NOT enabled." >&2
+    echo "       An ImportError naming a shared library means a missing system" >&2
+    echo "       package rather than a missing Python one. See the dependency" >&2
+    echo "       list in step 3 above, and 'Prerequisites: system packages' in" >&2
+    echo "       docs/deploy-runbook.md." >&2
+    exit 1
+fi
+echo "  import app.main OK"
+
+# Checked separately because it is a subprocess, not an import: nothing above
+# would have caught it. Not fatal, because the app handles its absence.
+if ! command -v whois >/dev/null 2>&1; then
+    echo "  [WARNING] the 'whois' binary is missing, so Domain Intel's whois"
+    echo "            fallback will quietly return nothing. Fix: apt-get install whois"
+fi
+
+echo "[8/9] Installing systemd service..."
 cp "$INSTALL_DIR/app_src/falconeye.service" /etc/systemd/system/falconeye.service
 systemctl daemon-reload
 systemctl enable falconeye
@@ -110,7 +159,7 @@ systemctl restart falconeye
 sleep 2
 systemctl status falconeye --no-pager -l
 
-echo "[8/8] Installing nginx config..."
+echo "[9/9] Installing nginx config..."
 # The vhost has two file dependencies. Install them BEFORE the vhost itself or
 # "nginx -t" fails on an unresolved reference and provisioning aborts here.
 #

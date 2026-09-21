@@ -5,6 +5,80 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.32.3] - 2026-09-21
+
+Second report from the same external self-hoster, on a fresh Ubuntu box:
+
+```
+ImportError: Unable to find zbar shared library
+```
+
+`libzbar0` was not installed by `scripts/provision.sh`. Nothing made that
+dependency visible: `pyzbar` loads the library with
+`ctypes.util.find_library("zbar")` rather than linking it, so it appears in
+neither `pip install` output nor `ldd`. And because `app/main.py` imports the QR
+router at module level, the missing library does not just disable that one tab,
+it stops the whole application from importing.
+
+Reported by an external self-hoster deploying on AWS, 2026-09-21.
+
+### Native dependency audit
+
+Audited all three mechanisms by which a native dependency can enter, against the
+installed venv rather than by reading requirements:
+
+- **Compiled extension modules.** `ldd` over all 39 `.so` files in the venv:
+  every one resolves only `libc`, `libm`, `libdl`, `libpthread`, `librt`,
+  `libstdc++`, `libgcc_s` and `libz`. The wheels for `lxml`, `Pillow` and
+  `rapidfuzz` statically link what they need, so none of them requires an apt
+  package. Nothing to add here, which is why the gap went unnoticed.
+- **Libraries dlopened through ctypes**, invisible to `ldd`. Two across the
+  venv: `zbar` (pyzbar) and `ssl` (telethon). `libssl3t64` is Debian priority
+  `required` and present on every Ubuntu, so only **`libzbar0`** was missing.
+- **Binaries invoked as subprocesses**, invisible to both. One:
+  **`whois`**, called by `app/routers/domain_intel.py` and
+  `app/utils/domain_age.py`. Both wrap it in a broad `except` and log, so a
+  missing binary is silent: Domain Intel simply shows no whois text. Its
+  priority is `standard`, so it ships on a full Ubuntu install but not on the
+  minimal cloud images that VPS and AWS instances boot from.
+
+Both are now in the apt step:
+
+```
+apt-get install -y --no-install-recommends \
+    python3 python3-pip python3-venv git redis-server libzbar0 whois
+```
+
+On Ubuntu 24.04 the real package is `libzbar0t64` after the `time_t`
+transition, but it declares `Provides: libzbar0`, so the single name `libzbar0`
+resolves on 22.04 and 24.04 alike (verified with `apt-get install -s`).
+
+### Fail at provision time, not in a restart loop
+
+`scripts/provision.sh` gained a step 7 that runs
+`venv/bin/python -c "import app.main"` and aborts before the service is enabled.
+Previously a missing native library surfaced inside a gunicorn worker, where
+systemd restarted it every 5 seconds and the real traceback scrolled past in the
+journal, so the operator saw a restart loop rather than an error. The script is
+now 9 steps rather than 8, and also warns when the `whois` binary is absent,
+which no import check can catch.
+
+`tests/unit/test_provision_deps.py` guards the class rather than the two
+packages: it fails if any binary the app invokes with `subprocess` is not
+installed by `provision.sh`, if a known ctypes-loaded library is missing from
+the apt step, or if the smoke test is moved after `systemctl enable`.
+
+### Documentation
+
+- `docs/deploy-runbook.md` gained "Prerequisites: system packages": the full
+  list, a table of what breaks without each one, and why the two failure modes
+  differ (libzbar0 takes the whole app down, `whois` degrades silently).
+- `README.md`'s prerequisites now carry the same list, and the manual install
+  path gained the apt step it never had, plus the import smoke test before the
+  unit is enabled.
+
+---
+
 ## [3.32.2] - 2026-09-21
 
 FalconEye could not be deployed from a clean clone. The first external
