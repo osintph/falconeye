@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.32.3**
+Current version: **3.33.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -65,13 +65,23 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.32.3:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.33.0:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
 **Rate limiting.** All per-IP limits, including LLM cost controls and phishing scanner, are keyed on `get_client_ip()`, which honours the `CF-Connecting-IP` header **only when the direct TCP peer is inside a published Cloudflare range** (`app/utils/cloudflare_ips.py`) or an operator-configured `TRUSTED_PROXY_CIDRS` network. From any other peer the header is ignored and the limit keys on the real peer address, so a caller that reaches the origin directly cannot rotate a header to mint fresh counters. Header values that are not well-formed IP addresses are ignored rather than becoming their own bucket. This is deliberately independent of the nginx allowlist below: the limits hold even if the origin is exposed. The fallback for local development (no trusted peer, no header) is `request.client.host`.
 
 **XSS.** Attacker-controlled strings from Telegram channel metadata, RDAP registration fields, RSS feeds, and threat intelligence APIs are escaped with `escapeHtml()` / `escapeAttr()` before any DOM insertion. The existing escape helpers are used consistently; no `innerHTML` is assigned with unescaped external data.
+
+**Optional third-party source: Hudson Rock.** Off by default
+(`HUDSONROCK_ENABLED`). When on, Domain Intel and the Email Header risk
+assessment gain infostealer exposure data. Only stealer family names,
+compromise dates and counts are ever rendered: the client reduces every upstream
+response to an allowlist of safe fields, because Hudson Rock's schema also
+carries plaintext credentials, session cookies and victims' search history.
+Enabling it forwards your visitors' lookups to a third party, and the endpoints
+publish no rate limit and no terms of use, so it is treated as best effort. See
+"Hudson Rock" in [docs/deploy-runbook.md](docs/deploy-runbook.md).
 
 **Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings. `script-src` also allows `cdn.tailwindcss.com` for Tailwind and `cdnjs.cloudflare.com` for D3. These live in `nginx/snippets/security-headers.conf`, which is included at server level **and** inside every location that sets an `add_header` of its own. nginx does not merge `add_header` across levels: a location defining any header of its own inherits none of the server-level ones, which silently stripped CSP, HSTS and `nosniff` from `/static/` and the favicon routes until v3.32.2. `tests/unit/test_nginx_config.py` fails if a location reintroduces that.
 
@@ -128,6 +138,15 @@ Memory footprint at idle: ~120 MB RAM. Disk: ~50 MB for code + ~20 MB SQLite cac
   none, needs the steps in [docs/deploy-runbook.md](docs/deploy-runbook.md)
   ("Deploying without Cloudflare"), which also covers AWS and Cloudflare Tunnel.
 - Optional: Anthropic API key for LLM-powered tabs; the rest of the tool runs without it
+- **If you self-host publicly, set the operator identity.** Out of the box the
+  page carries the upstream operator's name, inbox, blog and privacy policy, and
+  before v3.33.0 the contact form posted to their Formspree endpoint. Set
+  `OPERATOR_NAME`, `OPERATOR_URL`, `OPERATOR_CONTACT_EMAIL`,
+  `OPERATOR_PRIVACY_EMAIL` and `SITE_ORIGIN`, or set `CONTACT_ENABLED=false` to
+  remove the Contact page entirely (nav entry gone, panel gone from the HTML,
+  `/contact` returns 404). See "Operator identity" in
+  [docs/deploy-runbook.md](docs/deploy-runbook.md). The AGPL notice and the link
+  to this repository are not affected by any of these: that is the licence.
 
 ### Quick install (automated)
 

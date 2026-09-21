@@ -14,7 +14,8 @@ from slowapi import Limiter
 
 from app.config import DB_PATH
 from app.database import get_db
-from app.utils.client_ip import get_client_ip_key
+from app.hudsonrock import client as hudsonrock
+from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain, extract_tld
 
 router = APIRouter(prefix="/api/domain", tags=["domain"])
@@ -477,6 +478,12 @@ async def lookup_domain(request: Request, domain: str, db: sqlite3.Connection = 
             detail="Invalid domain format. Provide a hostname like example.com (no protocol or path).",
         )
 
+    # Hudson Rock keeps its own cache and its own per-IP cap, so it is resolved
+    # on both the cached and uncached paths below. It returns None whenever it
+    # is disabled, over quota, or upstream is unhappy, and every caller treats
+    # None as "this source has nothing", never as an error.
+    hudsonrock_data = await hudsonrock.lookup_domain(normalized, get_client_ip(request))
+
     # Cache check
     cached = get_cached(db, normalized)
     if cached:
@@ -490,6 +497,7 @@ async def lookup_domain(request: Request, domain: str, db: sqlite3.Connection = 
             "network": cached.get("network"),
             "cache_hit": True,
             "fetched_at": cached["fetched_at"],
+            "hudsonrock": hudsonrock_data,
         }
 
     # Parallel fetches
@@ -535,4 +543,5 @@ async def lookup_domain(request: Request, domain: str, db: sqlite3.Connection = 
         "ct": ct_data,
         "network": network_data,
         "cache_hit": False,
+        "hudsonrock": hudsonrock_data,
     }

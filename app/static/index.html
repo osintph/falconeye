@@ -32,17 +32,18 @@
   <!-- Primary SEO -->
   <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
   <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram intelligence, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
-  <meta name="keywords" content="OSINT toolkit, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, OSINT-PH" />
-  <meta name="author" content="OSINT-PH" />
+  <meta name="keywords" content="OSINT toolkit, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, {{OPERATOR_NAME}}" />
+  <meta name="author" content="{{OPERATOR_NAME}}" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
-  <link rel="canonical" href="https://falconeye.osintph.info/" />
+  <!--OPERATOR_CONFIG-->
+  <link rel="canonical" href="{{SITE_ORIGIN}}/" />
 
   <!-- OpenGraph -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://falconeye.osintph.info/" />
+  <meta property="og:url" content="{{SITE_ORIGIN}}/" />
   <meta property="og:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
   <meta property="og:description" content="13 OSINT modules in one self-hosted interface: crypto tracing, phishing fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email BEC analysis, Google dorks, script deobfuscation, commercial prospect dossier. AGPL-3.0." />
-  <meta property="og:image" content="https://falconeye.osintph.info/static/og-image.png" />
+  <meta property="og:image" content="{{SITE_ORIGIN}}/static/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="FalconEye" />
@@ -50,10 +51,10 @@
 
   <!-- Twitter / X Card -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://falconeye.osintph.info/" />
+  <meta name="twitter:url" content="{{SITE_ORIGIN}}/" />
   <meta name="twitter:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
   <meta name="twitter:description" content="13-module OSINT workbench: crypto tracing, phishing scanner, domain intel, email BEC analyzer, Google dorks, script decoder, commercial prospect dossier. Free, open source, AGPL-3.0." />
-  <meta name="twitter:image" content="https://falconeye.osintph.info/static/og-image.png" />
+  <meta name="twitter:image" content="{{SITE_ORIGIN}}/static/og-image.png" />
 
   <!-- Favicons -->
   <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
@@ -70,16 +71,16 @@
     "@type": "SoftwareApplication",
     "name": "FalconEye",
     "alternateName": "FalconEye OSINT Toolkit",
-    "url": "https://falconeye.osintph.info/",
+    "url": "{{SITE_ORIGIN}}/",
     "description": "Free self-hosted OSINT investigator's toolkit combining crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram intelligence, IP reputation, email header analysis with BEC detection, Google dork generation, suspicious script deobfuscation, Have I Been Pwned breach checks, and commercial prospect dossiers into a single interface.",
     "applicationCategory": "SecurityApplication",
     "applicationSubCategory": "OSINT Tool",
     "operatingSystem": "Any (web-based)",
     "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
-    "author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "publisher": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" },
-    "softwareVersion": "3.32.3",
+    "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
+    "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
+    "softwareVersion": "3.33.0",
     "featureList": [
       "Responsive navigation — sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check — Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -111,10 +112,10 @@
   {
     "@context": "https://schema.org",
     "@type": "Organization",
-    "name": "OSINT-PH",
-    "url": "https://blog.osintph.info",
-    "logo": "https://falconeye.osintph.info/static/favicon-32x32.png",
-    "sameAs": ["https://github.com/osintph", "https://blog.osintph.info"]
+    "name": "{{OPERATOR_NAME}}",
+    "url": "{{OPERATOR_URL}}",
+    "logo": "{{SITE_ORIGIN}}/static/favicon-32x32.png",
+    "sameAs": {{OPERATOR_SAMEAS}}
   }
   </script>
 
@@ -149,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.32.3" />
+  <link rel="stylesheet" href="/static/style.css?v=3.33.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -242,7 +243,7 @@
               Every tab takes a single indicator as input and returns structured intelligence pulled from free, reputable public data sources. There is no paywall, no enterprise sales call, no API budget. Just the tools.
             </p>
             <p class="text-gray-400 text-sm leading-relaxed">
-              Built and maintained by <a href="https://blog.osintph.info" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">OSINT-PH</a> — a Philippine-based OSINT and incident response practice. The platform is open source under AGPL-3.0 at <a href="https://github.com/osintph/falconeye" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">github.com/osintph/falconeye</a>.
+              Built and maintained by <a href="{{OPERATOR_URL}}" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">{{OPERATOR_NAME}}</a>{{OPERATOR_TAGLINE_CLAUSE}}. The platform is open source under AGPL-3.0 at <a href="https://github.com/osintph/falconeye" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">github.com/osintph/falconeye</a>.
             </p>
           </div>
 
@@ -591,7 +592,7 @@
       </div>
       <div class="flex items-center gap-4">
         <button id="qr-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Analyze</button>
-        <button id="qr-sample" class="text-xs text-gray-500 hover:text-amber-400 transition">↳ Try sample (falconeye.osintph.info QR)</button>
+        <button id="qr-sample" class="text-xs text-gray-500 hover:text-amber-400 transition">↳ Try sample QR</button>
       </div>
       <p id="qr-filename" class="text-xs text-gray-500 mt-2"></p>
 
@@ -845,13 +846,16 @@
     </div>
 
     <!-- CONTACT TAB -->
+    <!-- Removed server-side when CONTACT_ENABLED is false. Do not move these
+         markers or the panel stops being removable. See render_index() in app/main.py. -->
+    <!--CONTACT_PANEL_START-->
     <div id="tab-contact" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Contact</h2>
-      <p class="text-gray-400 text-sm mb-6">Found a bug, have a feature request, or want to suggest a new OSINT tab? Send a note. Replies go to the OSINT-PH operator inbox.</p>
+      <p class="text-gray-400 text-sm mb-6">Found a bug, have a feature request, or want to suggest a new OSINT tab? Send a note. Replies go to the {{OPERATOR_NAME}} operator inbox.</p>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-2">
-          <form action="https://formspree.io/f/mojoezkp" method="POST" class="space-y-4">
+          <form action="{{CONTACT_FORM_ACTION}}" method="POST" class="space-y-4">
             <div>
               <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block" for="contact-name">Your name (optional)</label>
               <input id="contact-name" type="text" name="name"
@@ -883,7 +887,7 @@
                         class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-y"></textarea>
             </div>
             <input type="hidden" name="_subject" value="FalconEye contact form" />
-            <input type="hidden" name="_source" value="falconeye.osintph.info" />
+            <input type="hidden" name="_source" value="{{SITE_HOST}}" />
             <input type="text" name="_gotcha" style="display:none" tabindex="-1" autocomplete="off" />
             <button type="submit" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
               Send Message
@@ -897,11 +901,11 @@
             <div class="space-y-3 text-sm">
               <div>
                 <p class="text-gray-500 text-xs uppercase mb-1">Security disclosures</p>
-                <a href="mailto:security@osintph.info" class="text-amber-400 hover:text-amber-300 font-mono text-xs break-all">security@osintph.info</a>
+                <a href="mailto:{{OPERATOR_CONTACT_EMAIL}}" class="text-amber-400 hover:text-amber-300 font-mono text-xs break-all">{{OPERATOR_CONTACT_EMAIL}}</a>
               </div>
               <div class="border-t border-gray-800 pt-3">
                 <p class="text-gray-500 text-xs uppercase mb-1">Blog</p>
-                <a href="https://blog.osintph.info" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">blog.osintph.info</a>
+                <a href="{{OPERATOR_URL}}" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">{{OPERATOR_URL_LABEL}}</a>
               </div>
               <div class="border-t border-gray-800 pt-3">
                 <p class="text-gray-500 text-xs uppercase mb-1">Source code</p>
@@ -924,6 +928,7 @@
         </div>
       </div>
     </div>
+    <!--CONTACT_PANEL_END-->
 
     <!-- COMPANY TAB -->
     <div id="tab-prospect" class="tab-content hidden">
@@ -1366,7 +1371,7 @@
     <p class="text-center text-xs text-gray-700 mt-4">
       FalconEye is open source · <a href="https://github.com/osintph/falconeye" class="hover:text-amber-400 transition" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>
       · <a href="#" id="open-privacy-policy" class="hover:text-amber-400 transition">Privacy Policy<span id="privacy-updated-badge" class="hidden text-amber-400"> · updated</span></a>
-      · <a href="mailto:security@osintph.info" class="hover:text-amber-400 transition">Contact</a>
+      {{FOOTER_CONTACT}}
     </p>
   </footer>
 
@@ -1387,14 +1392,14 @@
           <p class="text-xs text-gray-500">
             <strong>Effective date:</strong> 25 June 2026<br>
             <strong>Last updated:</strong> 20 July 2026<br>
-            <strong>Operator:</strong> OSINT-PH (<a href="https://blog.osintph.info" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">blog.osintph.info</a>)
+            <strong>Operator:</strong> {{OPERATOR_NAME}} (<a href="{{OPERATOR_URL}}" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">{{OPERATOR_URL_LABEL}}</a>)
           </p>
 
           <hr class="border-gray-800">
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Summary</h3>
-            <p>FalconEye is a free, self-hosted OSINT investigator's toolkit. This policy explains what data we collect when you use the live instance at <code class="text-amber-300">falconeye.osintph.info</code>, what we do with it, and who it is shared with.</p>
+            <p>FalconEye is a free, self-hosted OSINT investigator's toolkit. This policy explains what data we collect when you use the live instance at <code class="text-amber-300">{{SITE_HOST}}</code>, what we do with it, and who it is shared with.</p>
             <p class="mt-2">Short version: input you submit is processed to produce analysis results, cached for 24 hours by content hash, and then discarded. We do not maintain user accounts. We do not sell data. We do not run third-party advertising or analytics. The only third parties that ever see your input are the OSINT data providers we query on your behalf (when applicable) and Anthropic (only for LLM-powered tabs).</p>
           </section>
 
@@ -1520,7 +1525,7 @@
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Cloudflare</h3>
-            <p>FalconEye sits behind Cloudflare for caching, DDoS protection, and TLS. This means Cloudflare sees every request you make to <code class="text-amber-300">falconeye.osintph.info</code>, including your IP address and the URL path. Cloudflare may set its own cookies for security purposes (e.g., bot detection). See <a href="https://www.cloudflare.com/privacypolicy/" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">Cloudflare's privacy policy</a> for details.</p>
+            <p>FalconEye sits behind Cloudflare for caching, DDoS protection, and TLS. This means Cloudflare sees every request you make to <code class="text-amber-300">{{SITE_HOST}}</code>, including your IP address and the URL path. Cloudflare may set its own cookies for security purposes (e.g., bot detection). See <a href="https://www.cloudflare.com/privacypolicy/" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">Cloudflare's privacy policy</a> for details.</p>
           </section>
 
           <section>
@@ -1530,7 +1535,7 @@
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Self-hosting</h3>
-            <p>FalconEye is open source under AGPL-3.0. If you do not want to send your input to the live instance at <code class="text-amber-300">falconeye.osintph.info</code>, you can self-host your own copy from <a href="https://github.com/osintph/falconeye" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>. Self-hosted instances do not communicate with this site or its operator.</p>
+            <p>FalconEye is open source under AGPL-3.0. If you do not want to send your input to the live instance at <code class="text-amber-300">{{SITE_HOST}}</code>, you can self-host your own copy from <a href="https://github.com/osintph/falconeye" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>. Self-hosted instances do not communicate with this site or its operator.</p>
           </section>
 
           <section>
@@ -1553,8 +1558,8 @@
             <h3 class="text-base font-bold text-white mb-2">Contact</h3>
             <p>For privacy questions, data requests, or security disclosures:</p>
             <ul class="list-disc list-inside mt-2 space-y-1">
-              <li>Privacy and general: <a href="mailto:privacy@osintph.info" class="text-amber-400 hover:text-amber-300">privacy@osintph.info</a></li>
-              <li>Security disclosures: <a href="mailto:security@osintph.info" class="text-amber-400 hover:text-amber-300">security@osintph.info</a></li>
+              <li>Privacy and general: <a href="mailto:{{OPERATOR_PRIVACY_EMAIL}}" class="text-amber-400 hover:text-amber-300">{{OPERATOR_PRIVACY_EMAIL}}</a></li>
+              <li>Security disclosures: <a href="mailto:{{OPERATOR_CONTACT_EMAIL}}" class="text-amber-400 hover:text-amber-300">{{OPERATOR_CONTACT_EMAIL}}</a></li>
             </ul>
           </section>
 
@@ -1573,6 +1578,6 @@
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.32.3"></script>
+  <script src="/static/app.js?v=3.33.0"></script>
 </body>
 </html>

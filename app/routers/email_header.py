@@ -33,6 +33,7 @@ from app.config import (
     REGEX_MAX_BODY_BYTES,
 )
 from app.utils import cache
+from app.hudsonrock import client as hudsonrock
 from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import clamp_int, safe_str, validate_findings_list
 from app.utils.prompt_safety import (
@@ -1064,6 +1065,14 @@ def _score_bec_indicators(parsed: dict[str, Any]) -> dict[str, Any]:
 
 # ---------- main analyze endpoint ----------
 
+def _sender_email(parsed: dict) -> str:
+    """The From address out of a parsed result, or "" when there is not one."""
+    addrs = parsed.get("from") or []
+    if isinstance(addrs, list) and addrs and isinstance(addrs[0], dict):
+        return (addrs[0].get("email") or "").strip()
+    return ""
+
+
 @router.post("/api/email-header/analyze")
 async def analyze(req: HeaderAnalyzeRequest, request: Request):
     raw = req.raw_header.strip()
@@ -1091,6 +1100,11 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
 
     cached = cache.get(_CACHE_TABLE, header_id, CACHE_TTL_HOURS, key_col="id")
     if cached:
+        # Attached after the cache read, never written into it: Hudson Rock has
+        # its own cache and its own per-IP cap, and a header analysis cached for
+        # hours should not pin an exposure result alongside it.
+        cached["hudsonrock"] = await hudsonrock.lookup_email(
+            _sender_email(cached), get_client_ip(request))
         return cached
 
     # M-2: a deeply nested multipart (~85 bytes/level, so depth ~2000 fits the
@@ -1257,6 +1271,10 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     parsed["fetched_at"] = datetime.now(timezone.utc).isoformat()
 
     cache.set(_CACHE_TABLE, header_id, parsed, key_col="id")
+
+    # After cache.set, so the exposure result is never stored in this cache.
+    parsed["hudsonrock"] = await hudsonrock.lookup_email(
+        _sender_email(parsed), get_client_ip(request))
 
     return parsed
 

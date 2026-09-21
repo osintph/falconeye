@@ -5,6 +5,118 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.33.0] - 2026-09-21
+
+Two additions that came from outside: an offer of data, and a question about
+branding.
+
+Credits: Hudson Rock, who offered their complimentary infostealer data in
+[GitHub issue #1](https://github.com/osintph/falconeye/issues/1). And an
+external self-hoster, whose third report in a week asked how to hide the Contact
+page and exposed a worse problem behind it.
+
+### Hudson Rock infostealer intelligence, domain and email only
+
+Domain Intel gains an Infostealer Exposure card, and the Email Header tab's risk
+assessment gains one for the sender address. **Off by default**
+(`HUDSONROCK_ENABLED`).
+
+Hudson Rock offered four endpoints. Two are implemented. `search-by-username`
+and `search-by-phone` are not, and should not be: on a public, unauthenticated
+tool they turn a compromise check into people-search, which is not what this is
+for.
+
+**Only stealer family names, compromise dates and counts are ever rendered.**
+Hudson Rock's published stealer schema also carries plaintext `credentials`
+(URL, username, password), `employee_session_cookies`, `malware_path`, `ip`,
+`computer_name`, `installed_software` and `search_data`, which is the victim's
+own search history. `app/hudsonrock/client.py` reduces every response to an
+**allowlist** of safe fields before it leaves the server, so a field Hudson Rock
+adds later cannot leak by default. The stripping is at the client, not the
+template, and the tests feed it a record containing every dangerous field and
+scan the serialised output rather than checking named keys.
+
+Verified before any code was written, on 2026-09-21:
+
+- **No API key** is required for the `osint-tools` endpoints (HTTP 200 with no
+  auth header, both endpoints).
+- **No published rate limit.** Not in the vendor's docs index, not in the issue
+  they filed, and no rate-limit headers on responses. Secondhand figures
+  circulate; none could be confirmed from a primary source.
+- **No published terms of use** for the free endpoints. The published docs cover
+  the paid Cavalier product.
+- Responses carry `Cache-Control: max-age=14400`, so FalconEye caches for four
+  hours and no longer.
+
+No published limit and no published terms is exactly why it ships off. The
+source is treated as best effort throughout, and that is stated in
+`docs/deploy-runbook.md` rather than implied: every failure path, including a
+timeout, a 429, a 5xx, an HTML error page, a changed schema and being over the
+per-IP cap, renders precisely what the source renders when disabled. One log
+line, no user-facing error, no partial render.
+
+It also inherits the public instance's cost-abuse posture. The upstream quota is
+not ours to spend, so calls are capped per client IP per day
+(`HUDSONROCK_PER_DAY`, default 25) the same way the paid LLM endpoints are, with
+a four-hour cache in its own table. Cache hits do not consume the cap.
+
+One bug the tests caught before release: a stealer record whose family and date
+were both unreadable produced "appears in 1 infostealer log" with nothing under
+it. That is the partial render this source is not allowed to do, and it now
+resolves to the same inert result as everything else.
+
+### Operator identity is configurable
+
+A self-hoster asked how to hide the Contact page. The honest answer was that
+they could not, and that the page was the smaller half of the problem.
+
+**The contact form posted to the upstream operator's Formspree endpoint,
+hardcoded.** Anyone self-hosting a public instance was silently forwarding their
+visitors' messages to `osintph.info`. That is fixed with everything else.
+
+Baked-in operator identity was found in 33 places in `app/static/index.html`:
+the `author` meta, the canonical, OG and Twitter URLs, three JSON-LD blocks, the
+About box, the Contact panel, the footer, and the privacy policy. All of it now
+comes from config, substituted **server-side** in `render_index()`
+(`app/main.py`), not patched in by JavaScript, because half of it is markup a
+crawler reads without running scripts.
+
+New settings, every default reproducing the public instance: `OPERATOR_NAME`,
+`OPERATOR_URL`, `OPERATOR_PROFILE_URL`, `OPERATOR_TAGLINE`,
+`OPERATOR_CONTACT_EMAIL`, `OPERATOR_PRIVACY_EMAIL`, `CONTACT_ENABLED`,
+`CONTACT_FORM_ACTION`. `SITE_ORIGIN`, which already existed for signed upload
+URLs, now also drives the canonical, OG and privacy-policy origin.
+
+`CONTACT_ENABLED=false` removes the nav entry, returns **404** from
+`GET /contact` (a new route, added so hiding the page has something honest to
+answer with), and strips the panel from the served HTML entirely. Hiding it in
+CSS or dropping only the nav entry would still ship the operator's address in
+the page source, which is the whole point of hiding it.
+
+The privacy policy reads from the same settings, so it can no longer name the
+wrong operator. It keeps a contact address even when the Contact tab is hidden,
+deliberately: a policy nobody can reply to is not a policy.
+
+**The AGPL-3.0 notice and the link to the upstream repository render regardless
+of every setting above.** That is the licence, not branding, and a test fails if
+either disappears.
+
+Defaults were checked by rendering the page before and after and diffing: the
+only changes are the injected config script, the HTML comment markers around the
+Contact panel, and one em-dash replaced by a comma.
+
+### Housekeeping folded in
+
+- `provision.sh` no longer hardcodes the upstream operator's domain in its
+  closing health check; it reads `server_name` from the vhost it just installed.
+- All 32 em-dashes in `README.md` and `docs/deploy-runbook.md` replaced. A
+  repo-wide sweep found 1569 more across 237 files, almost all in Python
+  docstrings, plus the CHANGELOG's own history and one captured phishing-kit
+  fixture that must not be edited. Those are recorded, not changed.
+- GitHub releases cut for v3.32.2 and v3.32.3, which had tags but no releases.
+
+---
+
 ## [3.32.3] - 2026-09-21
 
 Second report from the same external self-hoster, on a fresh Ubuntu box:

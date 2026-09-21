@@ -594,6 +594,120 @@ Every CIDR listed in the variable is a network permitted to name any IP as the
 rate-limited client, so keep it as narrow as possible and never put `0.0.0.0/0`
 in it.
 
+## Hudson Rock (optional, best effort)
+
+Adds infostealer exposure to Domain Intel and to the Email Header tab's risk
+assessment. Offered by Hudson Rock in GitHub issue #1. **Off by default**, and
+it should stay off unless an operator has read this section.
+
+```
+HUDSONROCK_ENABLED=true
+# HUDSONROCK_PER_DAY=25
+```
+
+### Why it is off by default
+
+Verified against the live endpoints and the vendor's own documentation on
+2026-09-21:
+
+| Question | Answer | How it was established |
+|---|---|---|
+| API key required? | **No** for the `osint-tools` endpoints | `curl` with no auth returned HTTP 200 for both search-by-domain and search-by-email |
+| Published rate limit? | **None found** | Absent from the docs index (`docs.hudsonrock.com/llms.txt`), absent from the issue Hudson Rock filed, and no rate-limit headers on responses. 12 rapid requests all returned 200 |
+| Published terms of use? | **None found** | The published docs cover the paid Cavalier product. Nothing states terms for the free endpoints |
+| Caching allowed? | **Not stated**, but responses carry `Cache-Control: max-age=14400` | The vendor caches them at its own edge for 4 hours, so FalconEye caches for 4 hours and no longer |
+| Public display allowed? | **Not stated** | The vendor solicited integrations publicly, which is an invitation, not a licence |
+
+No published rate limit and no published terms is why this is opt-in. Hudson
+Rock invited the integration, but an invitation is not a commitment, and an
+operator switching this on is accepting a dependency that can change or vanish
+without notice. It is built so that it can: every failure path renders exactly
+what the source renders when disabled.
+
+### What it sends and what it shows
+
+Sent upstream: the domain being looked up, or the sender address parsed from a
+pasted email header. Nothing else. **An operator running a public instance is
+forwarding their visitors' lookups to a third party**, which is worth saying in
+a privacy policy if you enable it.
+
+Shown to the user: **stealer family names, compromise dates, and counts.**
+Nothing else, ever.
+
+That restriction is not cosmetic. Hudson Rock's published stealer schema carries
+plaintext `credentials` (URL, username, password), `employee_session_cookies`,
+`malware_path`, `ip`, `computer_name`, `installed_software` and `search_data`,
+the victim's own search history. `app/hudsonrock/client.py` reduces every
+response to an **allowlist** of safe fields before it leaves the server, so a
+field Hudson Rock adds later cannot leak by default. Do not "improve" this into
+a denylist, and do not move the filtering into the template.
+
+### Operating it
+
+- Cached 4 hours per query in `hudsonrock_cache`, its own table.
+- Capped per client IP per day in `hudsonrock_rate_limit`, its own table,
+  default 25. Cache hits do not consume the cap. The upstream quota is not ours
+  to spend, so this is metered the same way the paid LLM endpoints are.
+- Both tables self-create on import.
+- Every failure (timeout, 429, 5xx, HTML error page, changed schema, over quota)
+  produces one log line under `falconeye.hudsonrock` and renders nothing.
+  Grep for it if the card is unexpectedly absent:
+  `sudo journalctl -u falconeye --since today | grep hudsonrock`
+
+Only domain and email are implemented. The issue also offers search-by-username
+and search-by-phone. Neither is built, and neither should be: on a public,
+unauthenticated tool they turn a compromise check into people-search.
+
+## Operator identity
+
+Everything that names who runs the instance is configurable, and every default
+reproduces the public instance exactly, so an existing deployment that sets none
+of these is unchanged.
+
+```
+# OPERATOR_NAME=Your Name or Org
+# OPERATOR_URL=https://example.com
+# OPERATOR_PROFILE_URL=https://github.com/you
+# OPERATOR_TAGLINE=a short description rendered after the name
+# OPERATOR_CONTACT_EMAIL=contact@example.com
+# OPERATOR_PRIVACY_EMAIL=privacy@example.com
+# CONTACT_ENABLED=false
+# CONTACT_FORM_ACTION=https://formspree.io/f/yourform
+```
+
+These feed the `<meta>` and JSON-LD tags, the About box, the footer, the Contact
+tab and the privacy policy. They are substituted **server-side** in
+`render_index()` (`app/main.py`), not patched in by JavaScript, because half of
+it is markup a crawler reads without running scripts.
+
+**`SITE_ORIGIN` does double duty.** It already existed for signed image-upload
+URLs; it is now also the canonical, OG and privacy-policy origin. Set it.
+
+### Hiding the Contact page
+
+`CONTACT_ENABLED=false` does three things, and the third is the one that
+matters: the nav entry disappears, `GET /contact` returns **404**, and the panel
+is **removed from the served HTML entirely**. Hiding it with CSS or dropping
+only the nav entry would still ship the operator's address in the page source,
+which is the thing a self-hoster is trying not to publish.
+
+**Before v3.33.0 the contact form posted to the upstream operator's Formspree
+endpoint.** Any self-hoster running a build older than this was silently
+forwarding their visitors' messages to `osintph.info`. If you run Contact,
+set `CONTACT_FORM_ACTION` to your own endpoint, or leave it empty to drop the
+form and keep only the contact details.
+
+### What is not configurable, on purpose
+
+The AGPL-3.0 notice and the link to the upstream repository render regardless of
+every setting above. That is the licence, not branding, and
+`tests/unit/test_operator_identity.py` fails if either disappears.
+
+The sample inputs (`osintph.info` in the Domain and Breach tabs, and the home
+page example card) are deliberately left alone. They are demo values sitting
+beside a WannaCry wallet address and a `stripe.com` example, not a claim about
+who runs the site, and swapping in a domain with no data makes the demo worse.
+
 ## Notes
 
 - **Do NOT `git push` from the VPS**: its `origin` is HTTPS with no credentials.

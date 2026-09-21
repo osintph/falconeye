@@ -62,9 +62,23 @@ const NAV_GROUPS = [
   ]},
 ];
 
+// Operator settings, injected server-side by render_index() in app/main.py.
+// Absent only if the page was opened straight off disk, so every read falls
+// back to the public instance's values.
+const FE_CONFIG = (typeof window !== 'undefined' && window.FALCONEYE_CONFIG) || {};
+const CONTACT_ENABLED = FE_CONFIG.contactEnabled !== false;
+
 const UNGROUPED_TABS = [
-  { id: 'contact', label: 'Contact', desc: 'Report a bug or suggest a feature',
-    icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
+  // Contact drops out entirely when the operator disables it. This is the one
+  // place it is declared, so removing it here removes it from the nav, the
+  // command palette, the launcher grid and VALID_TABS at once, which is what
+  // makes #contact fall back to home instead of showing an empty panel. The
+  // panel itself is stripped from the HTML server-side, so the operator's
+  // address is not in the page source either.
+  ...(CONTACT_ENABLED ? [
+    { id: 'contact', label: 'Contact', desc: 'Report a bug or suggest a feature',
+      icon: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
+  ] : []),
 ];
 
 const HOME_TAB = { id: 'home', label: 'Home', desc: 'Landing page and tool launcher',
@@ -1682,7 +1696,118 @@ function renderDomainResult(el, data) {
     ${renderNetworkCard(data.network)}
     ${renderCtCard(data.ct)}
     ${renderSubdomainsCard(data.ct)}
+    ${renderHudsonRockDomainCard(data.hudsonrock)}
   `;
+}
+
+// --- Hudson Rock infostealer exposure (v3.33.0) ---
+//
+// The server has already reduced the upstream response to families, dates and
+// counts (app/hudsonrock/client.py). Nothing here reaches for a field outside
+// that set, and nothing here should ever be extended to: credential material,
+// password strength stats, stealer log URLs and file paths are all stripped at
+// the client, deliberately, so that a template change cannot leak them.
+//
+// A null value means the source is disabled, over its per-IP cap, or upstream
+// failed. All three render as nothing at all, which is the point.
+
+function hudsonRockAttribution() {
+  return `<p class="text-xs text-gray-600 mt-3">Data: <a href="https://www.hudsonrock.com" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">Hudson Rock</a></p>`;
+}
+
+function hudsonRockFamilyChips(families) {
+  const entries = Object.entries(families || {});
+  if (!entries.length) return '';
+  return `
+      <div class="mb-3">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Stealer Families</p>
+        <div class="flex flex-wrap gap-2">
+          ${entries.map(([name, count]) => `<span class="text-xs bg-gray-800 px-2 py-1 rounded text-amber-300">${escapeHtml(name)} <span class="text-gray-500">${escapeHtml(String(count))}</span></span>`).join('')}
+        </div>
+      </div>`;
+}
+
+function hudsonRockShell(inner) {
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Infostealer Exposure</h3>
+      ${inner}
+      ${hudsonRockAttribution()}
+    </div>`;
+}
+
+function renderHudsonRockDomainCard(hr) {
+  if (!hr) return '';
+
+  if (!hr.found) {
+    return hudsonRockShell(
+      `<p class="text-sm text-gray-400">No infostealer-compromised machines are associated with this domain.</p>`
+    );
+  }
+
+  const counts = [
+    ['Total', hr.total],
+    ['Employees', hr.employees],
+    ['Users', hr.users],
+    ['Third parties', hr.third_parties],
+  ].filter(([, v]) => typeof v === 'number' && v > 0);
+
+  return hudsonRockShell(`
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+        ${counts.map(([label, value]) => `
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">${escapeHtml(label)}</p>
+          <p class="text-lg font-bold text-amber-300">${escapeHtml(String(value))}</p>
+        </div>`).join('')}
+      </div>
+      ${hudsonRockFamilyChips(hr.stealer_families)}
+      ${hr.last_employee_compromised ? `
+      <div class="mb-2">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last Employee Compromise</p>
+        <p class="text-sm text-white">${escapeHtml(fmtPHT(hr.last_employee_compromised))}</p>
+      </div>` : ''}
+      ${hr.last_user_compromised ? `
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last User Compromise</p>
+        <p class="text-sm text-white">${escapeHtml(fmtPHT(hr.last_user_compromised))}</p>
+      </div>` : ''}`);
+}
+
+function renderHudsonRockEmailCard(hr) {
+  if (!hr) return '';
+
+  if (!hr.found) {
+    return hudsonRockShell(
+      `<p class="text-sm text-gray-400">This sender address does not appear in infostealer logs.</p>`
+    );
+  }
+
+  const services = [
+    ['Corporate services', hr.total_corporate_services],
+    ['User services', hr.total_user_services],
+  ].filter(([, v]) => typeof v === 'number' && v > 0);
+
+  return hudsonRockShell(`
+      <p class="text-sm text-red-300 font-bold mb-3">The sender address appears in ${escapeHtml(String(hr.total))} infostealer log${hr.total === 1 ? '' : 's'}.</p>
+      ${hudsonRockFamilyChips(hr.stealer_families)}
+      ${services.length ? `
+      <div class="grid grid-cols-2 gap-3 mb-3">
+        ${services.map(([label, value]) => `
+        <div>
+          <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">${escapeHtml(label)}</p>
+          <p class="text-lg font-bold text-amber-300">${escapeHtml(String(value))}</p>
+        </div>`).join('')}
+      </div>` : ''}
+      ${hr.first_compromised ? `
+      <div class="mb-2">
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">First Compromise</p>
+        <p class="text-sm text-white">${escapeHtml(fmtPHT(hr.first_compromised))}</p>
+      </div>` : ''}
+      ${hr.last_compromised ? `
+      <div>
+        <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Last Compromise</p>
+        <p class="text-sm text-white">${escapeHtml(fmtPHT(hr.last_compromised))}</p>
+      </div>` : ''}`);
 }
 
 function renderRdapCard(rdap, whoisText) {
@@ -3046,6 +3171,11 @@ function renderEmailHeaderResult(d) {
       </div>
     </div>
   `;
+
+  // Sits directly under the risk verdict: a sender whose address is in stealer
+  // logs is a material part of that assessment. Renders nothing when the source
+  // is disabled, over its cap, or upstream failed.
+  html += renderHudsonRockEmailCard(d.hudsonrock);
 
   if (d.llm_analysis && d.llm_analysis._usage) {
     const u = d.llm_analysis._usage;

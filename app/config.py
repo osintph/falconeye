@@ -44,6 +44,19 @@ TELEGRAM_API_HASH = getenv_clean("TELEGRAM_API_HASH")
 TELEGRAM_BOT_TOKEN = getenv_clean("TELEGRAM_BOT_TOKEN")
 TELEGRAM_SESSION_PATH = getenv_clean("TELEGRAM_SESSION_PATH")
 
+# Hudson Rock infostealer intelligence (v3.33.0, GitHub issue #1).
+# Default OFF. The free "osint-tools" endpoints need no API key, but they carry
+# no published rate limit and no published terms of use, so this is a
+# best-effort source an operator opts into rather than one that is on by
+# default. See "Hudson Rock" in docs/deploy-runbook.md.
+HUDSONROCK_ENABLED = getenv_clean("HUDSONROCK_ENABLED", "false").lower() == "true"
+# Upstream answers with Cache-Control: max-age=14400, so 4 hours matches what
+# the vendor itself considers fresh. Do not raise it above that without reason.
+HUDSONROCK_CACHE_TTL_HOURS = 4
+# Per-IP daily cap. The upstream quota is not ours to spend, so this is capped
+# the same way the paid LLM endpoints are.
+HUDSONROCK_PER_DAY = max(1, int(getenv_clean("HUDSONROCK_PER_DAY", "25")))
+
 # Breach Check tab (Have I Been Pwned, Core 1 subscription).
 HIBP_API_KEY = getenv_clean("HIBP_API_KEY")
 
@@ -56,3 +69,37 @@ RANSOMWARE_DB = getenv_clean("RANSOMWARE_DB", "/opt/falconeye/data/ransomware.db
 # the git tree deliberately (see docs/ransomware-watch-runbook.md) since it's
 # operational config, not application code.
 RANSOMWARE_WATCHLIST_PATH = getenv_clean("RANSOMWARE_WATCHLIST_PATH", "/opt/falconeye/private/ransomware_watchlist.txt")
+
+
+# ----- Operator identity (v3.33.0) -----
+# Who runs THIS instance. Every default reproduces the public instance exactly,
+# so an existing deployment that sets none of these is unchanged.
+#
+# A self-hoster sets these so the site does not present someone else's name,
+# inbox and privacy policy as its own. The AGPL attribution and the link to the
+# upstream repository are NOT covered by these settings and always render: that
+# is the licence, not branding.
+OPERATOR_NAME = getenv_clean("OPERATOR_NAME", "OSINT-PH")
+OPERATOR_URL = getenv_clean("OPERATOR_URL", "https://blog.osintph.info")
+OPERATOR_CONTACT_EMAIL = getenv_clean("OPERATOR_CONTACT_EMAIL", "security@osintph.info")
+# One clause describing the operator, rendered after the name in the About box.
+# Operator-specific prose, so it has to be settable; the default is what the
+# public instance says. Set it empty to render just the name.
+OPERATOR_TAGLINE = getenv_clean(
+    "OPERATOR_TAGLINE", "a Philippine-based OSINT and incident response practice")
+# A second profile URL for the JSON-LD sameAs array (the public instance lists
+# its GitHub org alongside the blog). Set empty to publish only OPERATOR_URL.
+OPERATOR_PROFILE_URL = getenv_clean("OPERATOR_PROFILE_URL", "https://github.com/osintph")
+OPERATOR_PRIVACY_EMAIL = getenv_clean("OPERATOR_PRIVACY_EMAIL", "privacy@osintph.info")
+# Public origin of this instance, used in canonical/OG tags and the privacy policy.
+OPERATOR_SITE_ORIGIN = getenv_clean("SITE_ORIGIN", "https://falconeye.osintph.info")
+
+# The Contact tab. "true" (the default) keeps it exactly as the public instance
+# has it. A self-hoster who does not want to field mail sets this to "false":
+# the nav entry disappears, the panel is not rendered, and GET /contact returns
+# 404 rather than an empty page.
+CONTACT_ENABLED = getenv_clean("CONTACT_ENABLED", "true").lower() != "false"
+# Where the contact form posts. Hardcoded to the upstream operator's Formspree
+# form until v3.33.0, which meant a self-hoster's visitors mailed someone else.
+# Empty disables the form while leaving the rest of the tab intact.
+CONTACT_FORM_ACTION = getenv_clean("CONTACT_FORM_ACTION", "https://formspree.io/f/mojoezkp")
