@@ -157,15 +157,36 @@ def test_ipv4_mapped_cloudflare_peer_is_recognised():
 
 
 def test_app_list_matches_the_nginx_allowlist():
-    """Both files gate on the same ranges; drift makes one of them a lie."""
+    """Both files gate on the same ranges; drift makes one of them a lie.
+
+    The allow list moved out of the vhost and into its own snippet in v3.32.2 so
+    that a self-hoster who is not behind Cloudflare can drop one include instead
+    of editing the vhost. Covers IPv6 as well as IPv4: the snippet carries both,
+    and a v6 range present in one file but not the other is the same lie.
+    """
     import pathlib
     import re
 
-    from app.utils.cloudflare_ips import CLOUDFLARE_IPV4
+    from app.utils.cloudflare_ips import CLOUDFLARE_IPV4, CLOUDFLARE_IPV6
 
-    conf = pathlib.Path(__file__).resolve().parents[2] / "nginx" / "falconeye.conf"
-    nginx_allowed = set(re.findall(r"allow\s+([0-9./]+);", conf.read_text()))
-    assert nginx_allowed == set(CLOUDFLARE_IPV4)
+    nginx_dir = pathlib.Path(__file__).resolve().parents[2] / "nginx"
+    snippet = nginx_dir / "snippets" / "cloudflare-origin-allow.conf"
+
+    body = "\n".join(
+        line for line in snippet.read_text().splitlines()
+        if not line.lstrip().startswith("#")
+    )
+    nginx_allowed = set(re.findall(r"allow\s+([0-9a-fA-F.:]+/\d+);", body))
+    assert nginx_allowed == set(CLOUDFLARE_IPV4) | set(CLOUDFLARE_IPV6)
+
+    # An allow list nothing includes protects nothing, so the two halves of the
+    # first defence have to be checked together.
+    vhost = (nginx_dir / "falconeye.conf").read_text()
+    assert re.search(r"^\s*include\s+snippets/cloudflare-origin-allow\.conf;", vhost, re.M), (
+        "nginx/falconeye.conf no longer includes the Cloudflare allow snippet, "
+        "so the origin accepts connections from anywhere"
+    )
+    assert "deny all;" in body, "the allow list is inert without a closing deny"
 
 
 def test_untrusted_header_is_logged_once_not_per_request(caplog):

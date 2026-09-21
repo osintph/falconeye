@@ -111,6 +111,33 @@ sleep 2
 systemctl status falconeye --no-pager -l
 
 echo "[8/8] Installing nginx config..."
+# The vhost has two file dependencies. Install them BEFORE the vhost itself or
+# "nginx -t" fails on an unresolved reference and provisioning aborts here.
+#
+# 1. snippets/cloudflare-origin-allow.conf is REQUIRED: the vhost includes it.
+#    It locks the origin to Cloudflare edge ranges. If this deployment is not
+#    behind Cloudflare, see "Deploying without Cloudflare" in
+#    docs/deploy-runbook.md before going live: as shipped it denies everyone.
+# 2. conf.d/goaccess-logformat.conf is OPTIONAL and is NOT installed here. It
+#    defines log_format goaccess_cf, which only makes sense behind Cloudflare.
+#    See "GoAccess log format" in docs/deploy-runbook.md.
+mkdir -p /etc/nginx/snippets
+cp "$INSTALL_DIR/app_src/nginx/snippets/cloudflare-origin-allow.conf" /etc/nginx/snippets/cloudflare-origin-allow.conf
+
+# The vhost terminates TLS with a Cloudflare Origin CA certificate at these
+# paths. Nothing in this script creates them, and "nginx -t" treats a missing
+# certificate as a fatal error, so say so plainly rather than let nginx fail
+# with a bare "cannot load certificate".
+for cert in /etc/ssl/falconeye/origin.crt /etc/ssl/falconeye/origin.key; do
+    if [[ ! -f "$cert" ]]; then
+        echo "[WARNING] $cert is missing. nginx will refuse to start until it exists."
+        echo "          Behind Cloudflare: issue an Origin CA certificate in the"
+        echo "          dashboard (SSL/TLS > Origin Server) and save it there."
+        echo "          Not behind Cloudflare: use a publicly trusted certificate"
+        echo "          (certbot) and point ssl_certificate at it instead."
+    fi
+done
+
 cp "$INSTALL_DIR/app_src/nginx/falconeye.conf" /etc/nginx/sites-available/falconeye
 ln -sf /etc/nginx/sites-available/falconeye /etc/nginx/sites-enabled/falconeye
 rm -f /etc/nginx/sites-enabled/default

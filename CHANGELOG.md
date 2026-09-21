@@ -5,6 +5,120 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.32.2] - 2026-09-21
+
+FalconEye could not be deployed from a clean clone. The first external
+self-host report (AWS, 2026-09-21) hit this immediately:
+
+```
+unknown log format "goaccess_cf" in /etc/nginx/sites-enabled/falconeye:68
+```
+
+`nginx/falconeye.conf` named a `log_format` whose only definition lived in an
+uncommitted file on the production box, `/etc/nginx/conf.d/goaccess-logformat.conf`.
+Nobody noticed because the production box already had it. Behind that first
+failure sat a second undocumented assumption, which the same reporter asked
+about next: the vhost locks the origin to Cloudflare's edge ranges, so a
+deployment that is not behind Cloudflare denies every request it receives.
+
+Reported by an external self-hoster deploying on AWS, 2026-09-21.
+
+### Deployability
+
+- **Ship the GoAccess log format.** `nginx/conf.d/goaccess-logformat.conf` is
+  now in the repo, copied verbatim from the box. The vhost's `access_log` line
+  is plain `combined` by default, so the file is valid on its own, and enabling
+  the GoAccess format is a documented opt-in step.
+- **The Cloudflare origin lock is now its own file**,
+  `nginx/snippets/cloudflare-origin-allow.conf`, included from the vhost.
+  Not behind Cloudflare means deleting one `include` rather than editing the
+  vhost. Now carries Cloudflare's **IPv6** ranges as well as IPv4, verified
+  against the published lists on 2026-09-21; the IPv6 entries are inert until
+  an IPv6 listener exists and stop it locking out v6 visitors the day one is
+  added.
+- **`scripts/provision.sh` and the README manual install** now install the
+  snippets before the vhost, and warn explicitly when the Origin CA certificate
+  the vhost expects at `/etc/ssl/falconeye/origin.crt` is absent, instead of
+  failing later with a bare "cannot load certificate".
+- **New `tests/unit/test_nginx_config.py`.** Assembles a throwaway nginx prefix
+  from the repo's `nginx/` tree alone and runs a real `nginx -t` over it, so any
+  reference to something the repo does not ship fails in testing rather than on
+  a stranger's server. Two tests are positive controls that assert `nginx -t`
+  fails, so the suite cannot quietly stop checking. Needs the `nginx` and
+  `openssl` binaries; the parsing tests run everywhere.
+
+### Security: static assets were served without any security headers
+
+`add_header` does not merge across configuration levels in nginx. A location
+that sets any `add_header` of its own inherits **none** of the server-level
+ones. All three static locations set their own `Cache-Control`, so every one of
+them silently dropped the full security header set. Confirmed against the live
+origin before the fix: `/static/app.js` returned HTTP 200
+`content-type: application/javascript` with no `X-Content-Type-Options`, no
+`Content-Security-Policy`, no `Strict-Transport-Security`, no
+`X-Frame-Options` and no `Referrer-Policy`, while `/` returned all five and
+looked correct. Same for `/favicon.ico` and `/favicon.svg`.
+
+Serving JavaScript with no `nosniff` was the most consequential part.
+
+The headers moved to `nginx/snippets/security-headers.conf`, included at server
+level and inside every location that sets an `add_header` of its own. The
+regression test checks the rule rather than those three routes, so a location
+added later cannot reintroduce it.
+
+### Documentation
+
+`docs/deploy-runbook.md` gained the deployment topologies that were previously
+only in one person's head, each verified against the pinned uvicorn 0.29.0
+rather than reasoned about:
+
+- **Behind Cloudflare on other infrastructure (AWS).** Origin CA certificate,
+  SSL/TLS mode Full (strict), inbound 443 restricted to the published IPv4 and
+  IPv6 ranges. Records that Cloudflare Access is enforced at the edge only:
+  FalconEye does **not** validate `Cf-Access-Jwt-Assertion`, so anything that
+  reaches the origin directly is unauthenticated and gets the paid LLM
+  endpoints.
+- **Cloudflare Tunnel.** `cloudflared` connects over loopback, so the origin
+  allow list becomes `allow 127.0.0.1`. It sets `CF-Connecting-IP` correctly,
+  but it does not sanitise `X-Forwarded-For`: it appends the visitor to whatever
+  the caller sent (cloudflared issue 1426, still open). With the shipped config
+  the right-most untrusted entry is the real visitor only because of that
+  append order, so rate limiting is currently correct by accident. If that issue
+  is ever fixed in the obvious way, `get_client_ip()` starts returning an
+  attacker-chosen address. The documented configuration pins the result to the
+  header instead: clear `X-Forwarded-For` in nginx and set
+  `TRUSTED_PROXY_CIDRS=127.0.0.1/32`.
+- **Without Cloudflare, with a worked AWS ALB example.** The fix is nginx's
+  `realip` module, not the environment variable. Setting only
+  `TRUSTED_PROXY_CIDRS` behind an ALB collapses every per-IP limit into a single
+  shared bucket, because that variable decides only whose `CF-Connecting-IP` to
+  believe and an ALB does not send one, so requests still key on the load
+  balancer's address. It also suppresses the warning that would have flagged it.
+  Verified: with the variable set and no `realip`, `get_client_ip()` returns the
+  ALB's address for every caller.
+- Why `--forwarded-allow-ips` stays `127.0.0.1` when a local nginx fronts
+  gunicorn, and that uvicorn 0.29.0 matches it as literal addresses, not CIDRs.
+- Upgrading an install whose nginx files were hand-edited to work around the
+  `goaccess_cf` failure.
+
+### Configuration
+
+- **Ten environment variables the code reads were missing from `.env.example`**,
+  seven of them set on the production box: `TELEGRAM_BOT_TOKEN`,
+  `TELEGRAM_API_ID`, `TELEGRAM_API_HASH`, `TELEGRAM_SESSION_PATH`,
+  `HIBP_API_KEY`, `RANSOMWARE_LIVE_API_KEY`, `LLM_SOCKPUPPET_ENABLED`,
+  plus `RANSOMWARE_DB`, `RANSOMWARE_WATCHLIST_PATH` and
+  `SOCKPUPPET_LLM_PER_DAY`. A self-hoster copying `.env.example` got a silently
+  degraded Telegram Intelligence tab, no Breach Check lookups and no ransomware
+  collector.
+- The allow-list drift test now reads the snippet, covers IPv6 as well as IPv4,
+  and also fails if the vhost stops including the snippet, since an allow list
+  nothing includes protects nothing.
+- `README.md` was still reporting 3.32.0 in both version lines, missed during
+  the v3.32.1 release.
+
+---
+
 ## [3.32.1] - 2026-09-15
 
 The Ransomware Watch Overview map had been showing "Map library did not load."

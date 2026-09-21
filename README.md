@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.32.0**
+Current version: **3.32.2**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -65,7 +65,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.32.0:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.32.2:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -73,7 +73,7 @@ FalconEye is a public, unauthenticated OSINT tool with no login. The following c
 
 **XSS.** Attacker-controlled strings from Telegram channel metadata, RDAP registration fields, RSS feeds, and threat intelligence APIs are escaped with `escapeHtml()` / `escapeAttr()` before any DOM insertion. The existing escape helpers are used consistently; no `innerHTML` is assigned with unescaped external data.
 
-**Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings. `script-src` also allows `cdn.tailwindcss.com` for Tailwind and `cdnjs.cloudflare.com` for D3.
+**Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings. `script-src` also allows `cdn.tailwindcss.com` for Tailwind and `cdnjs.cloudflare.com` for D3. These live in `nginx/snippets/security-headers.conf`, which is included at server level **and** inside every location that sets an `add_header` of its own. nginx does not merge `add_header` across levels: a location defining any header of its own inherits none of the server-level ones, which silently stripped CSP, HSTS and `nosniff` from `/static/` and the favicon routes until v3.32.2. `tests/unit/test_nginx_config.py` fails if a location reintroduces that.
 
 **Error isolation.** Exception strings from httpx and upstream APIs are logged server-side with `log.exception` and never echoed to the client. Client responses get generic messages only (`"Upstream service unavailable."`).
 
@@ -83,7 +83,7 @@ FalconEye is a public, unauthenticated OSINT tool with no login. The following c
 
 **Input validation.** All SQL uses parameterized queries. The only subprocess is `whois` in list-arg form over a strictly validated domain. No `eval`, `exec`, `pickle`, `yaml.load`, or `shell=True` anywhere in the codebase.
 
-**Origin protection.** nginx is configured to only accept inbound connections from Cloudflare IP ranges. The gunicorn listener binds to `127.0.0.1:8000` only, and pins `--forwarded-allow-ips 127.0.0.1` so uvicorn trusts `X-Forwarded-For` from the local nginx alone — with `*` it would take the caller-supplied left-most entry and the peer address that Rate limiting depends on would become attacker-chosen. The same range list is enforced a second time in the application (see Rate limiting), so the two must be kept in step — a unit test fails if `nginx/falconeye.conf` and `app/utils/cloudflare_ips.py` drift apart.
+**Origin protection.** nginx only accepts inbound connections from Cloudflare IP ranges (IPv4 and IPv6), via `nginx/snippets/cloudflare-origin-allow.conf`. It is a separate file so a deployment that is not behind Cloudflare can drop one `include` rather than edit the vhost; see [docs/deploy-runbook.md](docs/deploy-runbook.md). The gunicorn listener binds to `127.0.0.1:8000` only, and pins `--forwarded-allow-ips 127.0.0.1` so uvicorn trusts `X-Forwarded-For` from the local nginx alone — with `*` it would take the caller-supplied left-most entry and the peer address that Rate limiting depends on would become attacker-chosen. The same range list is enforced a second time in the application (see Rate limiting), so the two must be kept in step — a unit test fails if `nginx/snippets/cloudflare-origin-allow.conf` and `app/utils/cloudflare_ips.py` drift apart, or if the vhost stops including the snippet.
 
 **Unauthenticated endpoints.** `GET /api/scanner/history` is public and returns an explicit column allowlist from `phishing_scans`. `telegram_bot_id` — the live bot token extracted from a kit's exfiltration call — is never in that list; it is returned only to the caller who submitted the scan that found it. Any column added to the table later is withheld until it is listed on purpose.
 
@@ -110,7 +110,10 @@ Memory footprint at idle: ~120 MB RAM. Disk: ~50 MB for code + ~20 MB SQLite cac
 - A domain name pointed at the VPS
 - Python 3.10 or later (3.11+ recommended)
 - Redis installed and running locally (`sudo apt install redis-server`)
-- Optional: Cloudflare account for TLS termination and DDoS protection
+- Optional: Cloudflare account for TLS termination and DDoS protection.
+  The shipped nginx config assumes it. Deploying behind another proxy, or
+  none, needs the steps in [docs/deploy-runbook.md](docs/deploy-runbook.md)
+  ("Deploying without Cloudflare"), which also covers AWS and Cloudflare Tunnel.
 - Optional: Anthropic API key for LLM-powered tabs; the rest of the tool runs without it
 
 ### Quick install (automated)
@@ -167,10 +170,18 @@ sudo cp falconeye.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now falconeye
 
-# 6. Install nginx vhost
+# 6. Install nginx vhost.
+# Copy the snippets FIRST: the vhost includes them, so in the other order
+# `nginx -t` fails and the reload is refused.
+sudo mkdir -p /etc/nginx/snippets
+sudo cp nginx/snippets/*.conf /etc/nginx/snippets/
 sudo cp nginx/falconeye.conf /etc/nginx/sites-available/falconeye
 sudo ln -sf /etc/nginx/sites-available/falconeye /etc/nginx/sites-enabled/falconeye
 sudo nginx -t && sudo systemctl reload nginx
+
+# Not behind Cloudflare? The vhost denies every request until you remove or
+# replace the origin allow snippet. See "Deploying without Cloudflare" in
+# docs/deploy-runbook.md before going live.
 ```
 
 ### Required and optional API keys
@@ -295,7 +306,12 @@ falconeye/
 │   └── kitdecrypt.py            # Decrypts captured kit blobs; CLI only, deliberately
 │                                #   never wired into an endpoint. Needs `cryptography`.
 ├── nginx/
-│   └── falconeye.conf           # nginx vhost with security headers
+│   ├── falconeye.conf           # nginx vhost
+│   ├── snippets/
+│   │   ├── cloudflare-origin-allow.conf   # Origin lock; drop it if not behind Cloudflare
+│   │   └── security-headers.conf          # CSP/HSTS/nosniff, included per location
+│   └── conf.d/
+│       └── goaccess-logformat.conf        # Optional GoAccess log format
 ├── falconeye.service            # systemd unit
 ├── requirements.txt
 ├── .env.example

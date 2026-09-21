@@ -185,6 +185,342 @@ Two traps, both hit on 2026-08-23:
   sqlite3 /tmp/falconeye_staging.db < /tmp/ps.sql
   ```
 
+## nginx files, and what the repo ships
+
+The vhost `nginx/falconeye.conf` does not stand alone. It has one required
+dependency and one optional one, both of which live in the repo:
+
+| File | Installs to | Required |
+|---|---|---|
+| `nginx/falconeye.conf` | `/etc/nginx/sites-available/falconeye` | yes |
+| `nginx/snippets/cloudflare-origin-allow.conf` | `/etc/nginx/snippets/` | yes, the vhost includes it |
+| `nginx/conf.d/goaccess-logformat.conf` | `/etc/nginx/conf.d/` | no, opt in |
+
+`scripts/provision.sh` installs the first two. The third is a deliberate manual
+step, described below.
+
+History worth keeping: until v3.32.2 the vhost named `log_format goaccess_cf`,
+whose only definition sat in an uncommitted file on the production box. Every
+deploy from a clean clone died at `nginx -t` with
+`unknown log format "goaccess_cf" in /etc/nginx/sites-enabled/falconeye:68`.
+`tests/unit/test_nginx_config.py` now assembles a throwaway nginx prefix out of
+the repo's `nginx/` tree alone and runs a real `nginx -t` over it, so any
+reference to something the repo does not ship fails in CI rather than on a
+stranger's server. That test needs the `nginx` and `openssl` binaries and skips
+without them, so it does not run on the Mac. Run it on the VPS before a release
+that touches nginx.
+
+### Upgrading an install whose nginx files were hand-edited
+
+The v3.32.1 vhost did not deploy from a clean clone, so anyone who hit the
+`goaccess_cf` error most likely fixed it by editing
+`/etc/nginx/sites-available/falconeye` by hand, usually by deleting the format
+name from the `access_log` line. That edit and v3.32.2 do not conflict.
+
+Re-running the provision step overwrites the live file with the repo's copy,
+which now carries the same plain `access_log` line as the hand edit, plus the
+snippet includes:
+
+```
+cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard v3.32.2
+sudo cp nginx/snippets/*.conf /etc/nginx/snippets/
+sudo cp /etc/nginx/sites-available/falconeye /etc/nginx/sites-available/falconeye.bak-$(date +%Y%m%d-%H%M%S)
+sudo cp nginx/falconeye.conf /etc/nginx/sites-available/falconeye
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Copy the snippets **before** the vhost. The vhost includes them, so in the other
+order `nginx -t` fails and the reload is refused, leaving the old config running.
+
+Anything else that was hand-edited in that file is overwritten too, so diff
+first if the install has local changes beyond the `access_log` line:
+
+```
+diff -u /etc/nginx/sites-available/falconeye /opt/falconeye/app_src/nginx/falconeye.conf
+```
+
+To keep real visitor IPs in the log after upgrading, follow the GoAccess step
+below. It is now an explicit opt-in rather than a hidden dependency.
+
+### GoAccess log format (optional, Cloudflare only)
+
+The default `access_log` line uses nginx's built-in `combined` format, which
+logs `$remote_addr`. Behind Cloudflare that is the edge IP, so every line looks
+like it came from Cloudflare and GoAccess reports are useless. To log the real
+visitor IP instead:
+
+```
+sudo cp /opt/falconeye/app_src/nginx/conf.d/goaccess-logformat.conf /etc/nginx/conf.d/
+sudo vi /etc/nginx/sites-available/falconeye     # append goaccess_cf to the access_log line
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+The line becomes:
+
+```
+access_log /var/log/nginx/falconeye_access.log goaccess_cf;
+```
+
+Order matters and is already correct: `nginx.conf` includes `conf.d/*.conf`
+before `sites-enabled/*`, so the format is defined by the time the vhost refers
+to it. Install the conf.d file first, or `nginx -t` fails.
+
+**This format only works behind Cloudflare.** It logs
+`$http_cf_connecting_ip`, which is empty when nothing sets that header, and
+every log line then starts with a bare `-`. Without Cloudflare, stay on the
+default format.
+
+## Deploying behind Cloudflare on other infrastructure
+
+The stock config assumes Cloudflare in front, which is the supported path, but
+it also assumes a single VPS with a public IP. Running it behind Cloudflare on
+AWS or similar needs four things settled. Nothing in `nginx/falconeye.conf`
+changes for this topology: keep the origin allow include exactly as shipped.
+
+**1. Origin certificate.** Generate one in the Cloudflare dashboard under
+SSL/TLS > Origin Server, and save the pair at the paths the vhost already
+expects:
+
+```
+/etc/ssl/falconeye/origin.crt
+/etc/ssl/falconeye/origin.key
+```
+
+`sudo chmod 600 /etc/ssl/falconeye/origin.key`. An Origin CA certificate is
+trusted by Cloudflare and by nothing else, which is the point: it is only ever
+presented to the edge.
+
+**2. SSL/TLS mode: Full (strict).** Anything less undermines the rest of this
+section. *Flexible* sends plaintext from the edge to the origin. *Full* accepts
+any certificate the origin presents, including a self-signed one, so it does not
+authenticate the origin at all. Only *Full (strict)* validates it.
+
+**3. Inbound firewall: Cloudflare ranges only.** On AWS this is the security
+group on the instance or load balancer, and it replaces nothing in nginx: the
+`allow`/`deny` snippet stays as a second, independent layer. Allow **443 from
+the published IPv4 and IPv6 ranges only**, from
+https://www.cloudflare.com/ips-v4 and https://www.cloudflare.com/ips-v6.
+`nginx/snippets/cloudflare-origin-allow.conf` carries the same two lists and is
+the convenient copy source. Do not leave 443 open to `0.0.0.0/0` on the theory
+that nginx will deny it: that is one config mistake away from an exposed origin,
+and it lets anyone confirm the origin address.
+
+Both lists matter. An IPv6-only inbound rule is easy to forget on AWS, and
+Cloudflare will reach an instance over IPv6 if the subnet has it.
+
+**4. Cloudflare Access is enforced at the edge only.** If you put Zero Trust
+Access with SSO in front, understand where the boundary is: **FalconEye does not
+validate `Cf-Access-Jwt-Assertion`.** There is no JWT verification anywhere in
+the application. Access is a door in front of the origin, not a check inside it,
+so anything that reaches the origin directly is unauthenticated and gets the
+full tool, including the endpoints that spend money on LLM calls.
+
+That makes step 3 load-bearing rather than defence in depth. The origin must be
+unreachable except through Cloudflare, or Access is decorative.
+
+### Cloudflare Tunnel
+
+Tunnel is the usual pairing with Access on AWS, and it changes the client IP
+handling, because `cloudflared` connects to nginx over the loopback interface.
+
+**Origin allow list.** The peer is `127.0.0.1`, which is not a Cloudflare edge
+range, so the shipped snippet denies everything. Replace its contents with:
+
+```
+allow 127.0.0.1;
+deny all;
+```
+
+With a Tunnel there is no inbound port to firewall, so this replaces step 3
+above: `cloudflared` makes an outbound connection and the instance need not
+accept any inbound traffic at all.
+
+**Client IP: use the header, not the chain.** Verified behaviour of
+`cloudflared`, which is not what the naive reading suggests:
+
+- It sets `CF-Connecting-IP` to the real visitor, correctly. Cloudflare
+  overwrites any client-supplied value at the edge, so it is not spoofable.
+- It does **not** sanitise `X-Forwarded-For`. It *appends* the visitor to
+  whatever `X-Forwarded-For` the caller sent
+  (https://github.com/cloudflare/cloudflared/issues/1426, still open), so that
+  header arrives partly caller-controlled.
+
+With the shipped nginx config the right-most untrusted entry happens to be the
+real visitor today, so rate limiting is correct **by accident**: it depends on
+`cloudflared` appending rather than prepending. If that open issue is ever fixed
+in the obvious way, the right-most untrusted entry becomes the caller's own
+first value and `get_client_ip()` starts returning an attacker-chosen address.
+Do not rely on it. Pin the behaviour to the header instead.
+
+In the `location /` block, stop forwarding the chain:
+
+```
+proxy_set_header X-Forwarded-For "";
+```
+
+An empty value means nginx omits the header entirely, so uvicorn has nothing to
+rewrite the peer from and the app's peer stays `127.0.0.1`. `CF-Connecting-IP`
+passes through untouched. Then, in `/opt/falconeye/.env`:
+
+```
+TRUSTED_PROXY_CIDRS=127.0.0.1/32
+```
+
+Now the peer is a trusted proxy, the authoritative header is believed, and the
+result is correct regardless of what `cloudflared` does to `X-Forwarded-For`.
+
+**Both halves are required.** Clearing `X-Forwarded-For` without setting
+`TRUSTED_PROXY_CIDRS` makes every request key on `127.0.0.1`: one shared
+rate-limit bucket for the entire internet. This is the one topology where that
+variable is the right answer, and it is why it exists.
+
+Verify after deploying, from two different networks, that the rate-limit
+counters move independently.
+
+## Deploying without Cloudflare
+
+The stock config assumes Cloudflare is in front. Three separate things encode
+that assumption, and they have to be dealt with together, because fixing one
+and not the others is worse than fixing none.
+
+**1. The origin allow list.** `nginx/falconeye.conf` includes
+`snippets/cloudflare-origin-allow.conf`, which allows Cloudflare's published
+edge ranges and denies everything else. On a deployment that is not behind
+Cloudflare this denies every request, because no client ever matches. Either
+delete the `include` line, or replace the snippet's contents with the CIDRs of
+whatever actually fronts the origin.
+
+**2. TLS.** `ssl_certificate` points at `/etc/ssl/falconeye/origin.crt`, a
+Cloudflare Origin CA certificate. It is only trusted by Cloudflare, so a browser
+reaching the origin directly will reject it. Issue a publicly trusted
+certificate (certbot) and repoint both `ssl_certificate` and
+`ssl_certificate_key`.
+
+**3. The real client IP, which is what every rate limit keys on.** This is the
+one that fails silently, so read the next section rather than skipping it.
+
+### Rate limiting off Cloudflare: the failure to avoid
+
+Every per-IP limit, including the daily caps on the paid LLM endpoints, keys on
+`get_client_ip()` in `app/utils/client_ip.py`. It returns the app's TCP peer
+address unless that peer is a trusted proxy that also sent `CF-Connecting-IP`.
+
+Put a load balancer in front without adjusting nginx and the peer the app sees
+becomes **the load balancer**, identically for every visitor on the internet.
+Limits do not break loudly. They collapse into a single shared bucket: the
+first ten callers that day consume the global allowance and everyone else gets
+429s. Nothing in the UI says so.
+
+**Setting `TRUSTED_PROXY_CIDRS` to the load balancer's CIDR does not fix this
+on its own, and makes it harder to spot.** That variable only decides whose
+`CF-Connecting-IP` header to believe. If nothing is setting that header, the
+code still falls through to the peer address, so you keep the single bucket and
+additionally suppress the one warning that would have told you
+(`CF-Connecting-IP arrived from untrusted peer ...`). Leave it unset unless the
+recipe below says otherwise.
+
+The fix belongs in nginx: make `$remote_addr` the real client before it is
+forwarded, using the realip module.
+
+### Worked example: AWS Application Load Balancer
+
+Placeholder CIDRs. Substitute the subnets your ALB's network interfaces live in
+(the VPC subnets you attached it to), not the ALB's DNS name.
+
+In the `server` block of `/etc/nginx/sites-available/falconeye`, replace the
+Cloudflare include with:
+
+```
+# Trust X-Forwarded-For only from the ALB's own subnets, and resolve the chain
+# back to the originating client. After this, $remote_addr IS the real visitor.
+set_real_ip_from 10.0.0.0/24;      # ALB subnet A
+set_real_ip_from 10.0.1.0/24;      # ALB subnet B
+real_ip_header    X-Forwarded-For;
+real_ip_recursive on;
+```
+
+Leave the rest of the `location /` block exactly as shipped. With `realip`
+active, `$proxy_add_x_forwarded_for` already carries the real client, uvicorn
+takes the right-most untrusted entry from it, and the app's peer becomes the
+visitor. Rate limits then key correctly with no application change and
+**`TRUSTED_PROXY_CIDRS` stays unset**. The default `combined` log format also
+starts logging real visitor IPs, which is why the GoAccess format is not needed
+here.
+
+**In one sentence: behind an ALB, setting only `TRUSTED_PROXY_CIDRS` collapses
+rate limiting because that variable only decides whose `CF-Connecting-IP` to
+believe, and an ALB does not send that header, so every request still falls
+through to the peer address, which is the load balancer, which is the same for
+everyone.** Verified against the pinned uvicorn 0.29.0: with
+`TRUSTED_PROXY_CIDRS` set to the ALB subnet and no `realip`, `get_client_ip()`
+returns the ALB's address for every caller. The `set_real_ip_from` block above
+is the fix; the variable is not.
+
+Two traps specific to this layout:
+
+- **Do not pair `realip` with `allow`/`deny` on the ALB CIDRs.** The realip
+  module runs in the post-read phase, before the access phase, so by the time
+  `allow`/`deny` is evaluated `$remote_addr` is already the visitor's address
+  and an ALB-CIDR allow list denies everyone. Restrict the origin with the EC2
+  security group instead: accept 443 only from the ALB's security group. That is
+  the equivalent of the Cloudflare origin lock, and it is enforced before the
+  packet reaches nginx.
+- **The ALB must be the only thing that can reach the instance.** `realip`
+  trusts `X-Forwarded-For` from those subnets. If a caller can hit the instance
+  directly from inside them, it can name any client IP it likes.
+
+### `--forwarded-allow-ips` off Cloudflare
+
+`falconeye.service` pins `--forwarded-allow-ips 127.0.0.1` on the gunicorn
+ExecStart line. **In the layout above it does not change.** That flag is about
+gunicorn's immediate TCP peer, which is still the local nginx on the loopback
+address no matter what sits upstream of nginx.
+
+It only changes if you drop the local nginx and point the load balancer straight
+at gunicorn. Then list the proxy's own addresses:
+
+```
+--forwarded-allow-ips 10.0.0.17,10.0.1.23
+```
+
+Two constraints on that value, both verified against the pinned uvicorn 0.29.0:
+
+- **It matches literal addresses, not CIDRs.** `trusted_hosts` is a set of
+  strings compared with `in`, so `10.0.0.0/24` matches nothing and silently
+  leaves the peer as the proxy. An ALB's node addresses are not stable, which is
+  a good reason to keep nginx on the instance.
+- **Never `*`.** With `*` uvicorn stops scanning from the right and takes the
+  **left-most** `X-Forwarded-For` entry, which is entirely caller-supplied. The
+  peer address becomes attacker-chosen, and with it every rate-limit key.
+  `tests/unit/test_client_ip.py` fails if the flag is removed or set to `*`.
+
+### When `TRUSTED_PROXY_CIDRS` is the right tool
+
+Exactly one condition: the fronting proxy sets `CF-Connecting-IP` itself, **and**
+the app sees that proxy's own address as its peer. Both halves, or it does
+nothing useful.
+
+The Cloudflare Tunnel recipe above is the worked example, and is the case the
+variable was added for: `cloudflared` supplies the header, nginx is configured
+so the peer stays `127.0.0.1`, and `TRUSTED_PROXY_CIDRS=127.0.0.1/32` is what
+connects the two.
+
+It is the wrong tool everywhere else. Behind a plain load balancer that does not
+send `CF-Connecting-IP`, setting it changes no behaviour and suppresses the one
+warning that would have flagged the problem:
+
+```
+CF-Connecting-IP arrived from untrusted peer ... and was ignored;
+rate limits are keying on the peer address.
+```
+
+Seeing that in the journal means the client IP is not being resolved correctly.
+Fix the proxy configuration; do not silence it.
+
+Every CIDR listed in the variable is a network permitted to name any IP as the
+rate-limited client, so keep it as narrow as possible and never put `0.0.0.0/0`
+in it.
+
 ## Notes
 
 - **Do NOT `git push` from the VPS** — its `origin` is HTTPS with no credentials.
@@ -196,9 +532,13 @@ Two traps, both hit on 2026-08-23:
   content, while `index.html` stayed `cf-cache-status: DYNAMIC`. There is no CF
   API token on either machine and none should be added; if a purge is ever wanted,
   it is a manual dashboard action, never a gate on the release.
-- nginx config exists in **two** places (repo `nginx/falconeye.conf` and live
-  `/etc/nginx/sites-available/falconeye`); patch both, `sudo systemctl reload
-  nginx`.
+- nginx config exists in **two** places, and as of v3.32.2 it is more than one
+  file in each. Repo: `nginx/falconeye.conf` plus `nginx/snippets/*.conf`.
+  Live: `/etc/nginx/sites-available/falconeye` plus `/etc/nginx/snippets/*.conf`
+  (and optionally `/etc/nginx/conf.d/goaccess-logformat.conf`). Patch both
+  sides, copy snippets **before** the vhost that includes them, then
+  `sudo nginx -t && sudo systemctl reload nginx`. Security headers and the
+  Cloudflare allow list now live in the snippets, not the vhost.
 - Verify origin CSP (bypassing the Cloudflare challenge):
   `curl -skI --resolve falconeye.osintph.info:443:127.0.0.1
   https://falconeye.osintph.info/`.
