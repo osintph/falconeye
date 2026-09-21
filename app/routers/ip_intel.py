@@ -208,6 +208,11 @@ async def lookup_ip(request: Request, ip: str, db: sqlite3.Connection = Depends(
 
     cached = get_cached(db, validated)
     if cached:
+        # Replay the per-source lines so a cached answer is not a silent one.
+        # Without this the log shows nothing for the majority of lookups, which
+        # is what forced the v3.33.2 diagnosis through the database by hand.
+        reputation.log_cached_sources(
+            validated, ((cached.get("reputation") or {}).get("sources") or {}))
         return cached
 
     async with httpx.AsyncClient(follow_redirects=True) as client:

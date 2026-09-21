@@ -4,6 +4,11 @@ import httpx
 from app.utils.env import getenv_clean
 from app.ip_sources.base import SourceResult, FETCH_TIMEOUT, USER_AGENT, OK, NO_KEY, QUOTA, ERROR
 
+# The credential this source needs. Declared here so availability can be
+# reported before any lookup runs, without duplicating the name elsewhere.
+KEY_ENV = "ABUSEIPDB_KEY"
+LABEL = "AbuseIPDB"
+
 # AbuseIPDB report category IDs -> labels
 _CATEGORIES = {
     1: "DNS Compromise", 2: "DNS Poisoning", 3: "Fraud Orders", 4: "DDoS Attack",

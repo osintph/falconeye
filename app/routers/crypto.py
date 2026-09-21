@@ -7,9 +7,14 @@ from slowapi import Limiter
 
 from urllib.parse import urlparse
 
-from app.config import HTTPX_TIMEOUT
+from app.config import HTTPX_TIMEOUT, OPERATOR_CONTACT_UA
 from app.utils.client_ip import get_client_ip_key
 from app.utils.safe_fetch import resolve_and_check, SafeFetchError
+
+# These five blockchain API calls went out as a bare "FalconEye/3.0" with no
+# contact token, so an upstream with a complaint about the traffic had nothing
+# to act on. Matches the shape every other outbound User-Agent uses.
+CRYPTO_USER_AGENT = f"FalconEye/3.0 ({OPERATOR_CONTACT_UA}; blockchain lookup)"
 
 log = logging.getLogger(__name__)
 
@@ -76,11 +81,11 @@ async def lookup_btc(address: str) -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
-            r_info = await client.get(info_url, headers={"User-Agent": "FalconEye/3.0"})
+            r_info = await client.get(info_url, headers={"User-Agent": CRYPTO_USER_AGENT})
             r_info.raise_for_status()
             info = r_info.json()
 
-            r_txs = await client.get(txs_url, headers={"User-Agent": "FalconEye/3.0"})
+            r_txs = await client.get(txs_url, headers={"User-Agent": CRYPTO_USER_AGENT})
             r_txs.raise_for_status()
             raw_txs = r_txs.json()
     except httpx.HTTPStatusError as e:
@@ -160,7 +165,7 @@ async def lookup_eth(address: str) -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
-            r = await client.get(url, headers={"User-Agent": "FalconEye/3.0"})
+            r = await client.get(url, headers={"User-Agent": CRYPTO_USER_AGENT})
             r.raise_for_status()
             info = r.json()
     except httpx.HTTPStatusError as e:
@@ -214,7 +219,7 @@ async def lookup_trc20(address: str) -> dict:
 
     try:
         async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
-            acc_r = await client.get(acc_url, headers={"User-Agent": "FalconEye/3.0"})
+            acc_r = await client.get(acc_url, headers={"User-Agent": CRYPTO_USER_AGENT})
             tx_r = await client.get(
                 tx_url,
                 params={
@@ -222,7 +227,7 @@ async def lookup_trc20(address: str) -> dict:
                     "contract_address": USDT_TRC20_CONTRACT,
                     "only_confirmed": "true",
                 },
-                headers={"User-Agent": "FalconEye/3.0"},
+                headers={"User-Agent": CRYPTO_USER_AGENT},
             )
     except Exception:
         log.exception("TRC20 lookup failed for %s", address)

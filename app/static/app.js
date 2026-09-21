@@ -2517,16 +2517,62 @@ function renderAsnRouting(data) {
 // ---- v3.9.0 multi-source reputation rendering ----
 function renderReputationVerdict(rep) {
   if (!rep || !rep.verdict) return '';
-  const v = rep.verdict.verdict || 'CLEAN';
-  const color = {MALICIOUS: 'red', SUSPICIOUS: 'amber', CLEAN: 'green'}[v] || 'gray';
+  const vd = rep.verdict;
+  const v = vd.verdict || 'CLEAN';
+  // INCOMPLETE is not a judgement about the IP, it is a statement about our
+  // coverage, so it renders gray rather than green: the absence of a flag from
+  // a source that was never asked is not a clean result.
+  const color = {MALICIOUS: 'red', SUSPICIOUS: 'amber', CLEAN: 'green', INCOMPLETE: 'gray'}[v] || 'gray';
+  const unavailable = vd.sources_unavailable || [];
+
+  // Always state coverage, whatever the verdict. An operator reading CLEAN needs
+  // to know it means "all five answered and none flagged it", not "nothing came back".
+  const coverage = vd.coverage_note
+    ? `<p class="text-xs text-gray-500 mt-2">${escapeHtml(vd.coverage_note)}</p>`
+    : '';
+
+  const missing = unavailable.length ? `
+      <div class="mt-2 text-xs text-gray-400">
+        <span class="text-gray-500 uppercase tracking-wide">Not consulted:</span>
+        ${unavailable.map(u => `<span class="ml-1 px-1.5 py-0.5 rounded bg-gray-800 border border-gray-700">${escapeHtml(u.label || u.source)} <span class="text-gray-500">${escapeHtml(u.state || '')}</span></span>`).join('')}
+      </div>` : '';
+
   return `
     <div class="bg-gray-900 border-l-4 border-${color}-500 rounded p-4 mb-4">
       <div class="flex items-center gap-3 flex-wrap">
         <span class="text-${color}-400 font-bold text-lg uppercase tracking-wide">${escapeHtml(v)}</span>
-        <span class="text-sm text-gray-300">${escapeHtml(rep.verdict.reasoning || '')}</span>
+        <span class="text-sm text-gray-300">${escapeHtml(vd.reasoning || '')}</span>
       </div>
+      ${coverage}
+      ${missing}
       ${renderGeoConsensus(rep.geo)}
     </div>`;
+}
+
+// Shown before any lookup runs when the instance has no reputation credentials
+// at all. Without it the tab returns a verdict computed from nothing and never
+// says why, which is exactly how a misleading CLEAN reaches an operator.
+function renderReputationSourceNotice() {
+  const cfg = (FE_CONFIG && FE_CONFIG.ipReputation) || null;
+  if (!cfg) return '';
+  if (cfg.none_configured) {
+    return `
+      <div class="bg-amber-950 border border-amber-800 rounded p-3 mb-4 text-xs text-amber-200">
+        <strong class="text-amber-300">No reputation sources are configured on this instance.</strong>
+        All ${escapeHtml(String(cfg.total))} of AbuseIPDB, VirusTotal, AlienVault OTX, Censys and ThreatFox
+        need an API key, so a lookup cannot return a reputation verdict. Set the keys listed under
+        "IP Reputation" in <code class="text-amber-300">.env.example</code> and restart.
+      </div>`;
+  }
+  if (cfg.configured < cfg.total) {
+    const names = (cfg.missing || []).map(m => `${m.label} (${m.env})`).join(', ');
+    return `
+      <div class="bg-gray-900 border border-gray-800 rounded p-3 mb-4 text-xs text-gray-400">
+        ${escapeHtml(String(cfg.configured))} of ${escapeHtml(String(cfg.total))} reputation sources are configured.
+        Verdicts will be marked INCOMPLETE. Missing: ${escapeHtml(names)}. See <code class="text-gray-300">.env.example</code>.
+      </div>`;
+  }
+  return '';
 }
 
 function renderGeoConsensus(geo) {
@@ -3169,6 +3215,10 @@ function renderEmailHeaderResult(d) {
           </div>
         `).join('') || '<p class="text-xs text-gray-500">No suspicious indicators found.</p>'}
       </div>
+      ${bec.coverage_note ? `
+      <p class="text-xs ${bec.llm_contributed ? 'text-gray-500' : 'text-amber-400/90'} mt-3">
+        ${bec.llm_contributed ? '' : '&#9888; '}${escapeHtml(bec.coverage_note)}
+      </p>` : ''}
     </div>
   `;
 
@@ -6257,7 +6307,7 @@ function feBrandHeader(st, title, subtitleLines) {
 }
 
 function feVerdictBanner(st, verdict, reasoning) {
-  const rgb = { MALICIOUS: FE_PDF.red, SUSPICIOUS: FE_PDF.amber, CLEAN: FE_PDF.green }[verdict] || FE_PDF.muted;
+  const rgb = { MALICIOUS: FE_PDF.red, SUSPICIOUS: FE_PDF.amber, CLEAN: FE_PDF.green, INCOMPLETE: FE_PDF.muted }[verdict] || FE_PDF.muted;
   const doc = st.doc;
   feEnsure(st, 13);
   doc.setFillColor(rgb[0], rgb[1], rgb[2]);
@@ -8113,4 +8163,12 @@ async function rwBuildCountrySelectOptions() {
   select.addEventListener('change', () => {
     if (select.value) runRwCountryLookup(select.value);
   });
+})();
+
+
+// Render the reputation source notice once, on load, so it is visible before
+// anyone runs a lookup rather than after an unexplained verdict.
+(function showReputationSourceNotice() {
+  const el = document.getElementById('ip-source-notice');
+  if (el) el.innerHTML = renderReputationSourceNotice();
 })();

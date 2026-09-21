@@ -99,4 +99,11 @@ def test_endpoint_200_when_reputation_fetch_raises(monkeypatch):
 
     r = _client().get("/api/ip/lookup/8.8.8.8")
     assert r.status_code == 200                            # reputation blowing up must not 500
-    assert r.json()["reputation"]["verdict"]["verdict"] == "CLEAN"  # no sources → clean
+    # Resilience is the point of this test and is unchanged: the endpoint still
+    # returns 200 rather than 500 when the reputation fetch blows up. What
+    # changed in v3.33.2 is the verdict. "no sources -> clean" was the bug: a
+    # total reputation failure now reads INCOMPLETE, because nothing was asked.
+    verdict = r.json()["reputation"]["verdict"]
+    assert verdict["verdict"] == "INCOMPLETE"
+    assert verdict["sources_responded"] == 0
+    assert len(verdict["sources_unavailable"]) == 5

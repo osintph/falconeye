@@ -4,6 +4,11 @@ import httpx
 from app.utils.env import getenv_clean
 from app.ip_sources.base import SourceResult, FETCH_TIMEOUT, USER_AGENT, OK, NO_KEY, QUOTA, ERROR
 
+# The credential this source needs. Declared here so availability can be
+# reported before any lookup runs, without duplicating the name elsewhere.
+KEY_ENV = "VT_KEY"
+LABEL = "VirusTotal"
+
 
 async def fetch(ip: str, client: httpx.AsyncClient) -> SourceResult:
     key = getenv_clean("VT_KEY")

@@ -1236,6 +1236,28 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
             }
     parsed["llm_analysis"] = llm_analysis
 
+    # The LLM is the one keyed contributor to this verdict. When it does not run,
+    # say so on the assessment rather than presenting a regex-only score as if it
+    # were the complete picture. Same principle as the IP reputation coverage
+    # note: a contributor that was never asked is not a contributor that found
+    # nothing. See app/ip_sources/reputation.py.
+    if llm_analysis and not llm_analysis.get("rate_limited"):
+        coverage = "LLM body analysis contributed to this assessment."
+    elif not body_provided:
+        coverage = "Regex analysis only: no message body was supplied, so LLM body analysis did not run."
+    elif not LLM_ANALYSIS_ENABLED:
+        coverage = "Regex analysis only: LLM analysis is disabled on this instance (LLM_ANALYSIS_ENABLED)."
+    elif not ANTHROPIC_API_KEY:
+        coverage = ("Regex analysis only: no ANTHROPIC_API_KEY is configured on this instance, "
+                    "so LLM body analysis did not run. See .env.example.")
+    elif llm_analysis and llm_analysis.get("rate_limited"):
+        coverage = "Regex analysis only: the LLM daily limit for this IP was reached."
+    else:
+        coverage = "Regex analysis only: LLM body analysis was unavailable."
+    parsed["bec_assessment"]["coverage_note"] = coverage
+    parsed["bec_assessment"]["llm_contributed"] = bool(
+        llm_analysis and not llm_analysis.get("rate_limited"))
+
     # Merge LLM verdict into BEC score
     if llm_analysis and not llm_analysis.get("rate_limited"):
         llm_score = clamp_int(llm_analysis.get("scam_score"), 0, 100, default=0)

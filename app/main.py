@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, Redirect
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from app import config
+from app.ip_sources import reputation
 from app.utils.client_ip import get_client_ip_key
 from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet
 from app.prospect import routes as prospect_routes
@@ -28,7 +29,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.33.1",
+    version="3.33.2",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -83,7 +84,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.33.1"}
+    return {"status": "ok", "version": "3.33.2"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -164,6 +165,10 @@ def _operator_config_script() -> str:
         "privacyEmail": config.OPERATOR_PRIVACY_EMAIL,
         "siteOrigin": config.OPERATOR_SITE_ORIGIN,
         "contactEnabled": config.CONTACT_ENABLED,
+        # Which IP reputation sources have credentials. Capability, not secrets:
+        # no key material, only which source is usable. Lets the tab warn before
+        # a lookup rather than return an unexplained verdict after one.
+        "ipReputation": reputation.configured_sources(),
     }
     # </script> inside a JSON string would end the block early.
     blob = json.dumps(payload).replace("<", "\\u003c")

@@ -11,6 +11,11 @@ import httpx
 from app.utils.env import getenv_clean
 from app.ip_sources.base import SourceResult, FETCH_TIMEOUT, USER_AGENT, OK, NO_KEY, ERROR, NOT_FOUND
 
+# The credential this source needs. Declared here so availability can be
+# reported before any lookup runs, without duplicating the name elsewhere.
+KEY_ENV = "ABUSECH_AUTH_KEY"
+LABEL = "ThreatFox"
+
 
 async def fetch(ip: str, client: httpx.AsyncClient) -> SourceResult:
     key = getenv_clean("ABUSECH_AUTH_KEY")

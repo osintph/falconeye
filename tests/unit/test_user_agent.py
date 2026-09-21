@@ -24,6 +24,7 @@ APP = pathlib.Path(__file__).resolve().parents[2] / "app"
 # regression test against the defaults drifting, not just a shape check.
 EXPECTED_DEFAULTS = {
     "FalconEye/3.0 (osintph.info)",
+    "FalconEye/3.0 (osintph.info; blockchain lookup)",
     "FalconEye/3.0 (osintph.info; OSINT research)",
     "FalconEye/3.0 (osintph.info; threat research)",
     "FalconEye/3.6.0 (+https://falconeye.osintph.info)",

@@ -13,6 +13,11 @@ import httpx
 from app.utils.env import getenv_clean
 from app.ip_sources.base import SourceResult, FETCH_TIMEOUT, USER_AGENT, OK, NO_KEY, QUOTA, ERROR, NOT_FOUND
 
+# The credential this source needs. Declared here so availability can be
+# reported before any lookup runs, without duplicating the name elsewhere.
+KEY_ENV = "CENSYS_PAT"
+LABEL = "Censys"
+
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 
 

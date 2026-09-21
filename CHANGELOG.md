@@ -5,6 +5,82 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.33.2] - 2026-09-21
+
+An unavailable reputation source was being counted as a clean one.
+
+`compute_verdict` read a source's value only when its `ok` flag was true, and
+every threshold test was `if value is not None`. A source with no API key, an
+error, a timeout or an exhausted quota therefore produced `None`, which is
+exactly what a source that answered and found nothing produces. The verdict
+then returned `CLEAN` with the reasoning **"No source flagged this IP"**, when
+in truth that source had never been asked.
+
+All five keys are set on the public instance, so this only bit during a quota
+exhaustion or an upstream outage. It bit silently, and always in the direction
+of "looks clean", which is the worst direction for this particular tool.
+
+### Coverage is now stated, never assumed
+
+- A source that has no key, errored, timed out or hit quota is **unavailable**.
+- `CLEAN` requires that **all five** sources actually responded.
+- When any are unavailable and nothing flagged the IP, the verdict is
+  **`INCOMPLETE`**, naming each source that was not consulted and its state.
+- Every verdict, including `MALICIOUS` and `SUSPICIOUS`, now carries
+  "N of M reputation sources responded".
+- A positive hit still stands on its own. One source finding something bad is
+  evidence even when another never answered, so a real detection is never
+  downgraded to `INCOMPLETE`.
+- The tab warns **before** a lookup when the instance has no reputation
+  credentials at all, pointing at `.env.example`, instead of returning a verdict
+  computed from nothing.
+
+The AbuseIPDB threshold is deliberately unchanged at 25. That was a separate
+question and is not part of this fix.
+
+### Per-source structured logging
+
+The app logged nothing at all about source calls, which is why diagnosing this
+meant reading the SQLite cache by hand. Each call now emits one INFO line:
+
+```
+event=ip_source source=abuseipdb target=203.0.113.5 status=ok latency_ms=142 cached=false
+```
+
+Cache hits replay the same shape with `cached=true`, so the majority of lookups
+are no longer invisible. No key material is logged, only which source was asked
+and what it returned.
+
+### The other tabs
+
+- **Email Header.** Its BEC assessment has one keyed contributor, the LLM. When
+  it does not run, because no body was supplied, the feature is disabled, no
+  `ANTHROPIC_API_KEY` is set, or the daily cap was reached, the assessment now
+  says so and marks itself regex-only. Previously a regex-only score was
+  presented identically to a complete one.
+- **Domain Intel.** No change, and none needed: it aggregates RDAP, DNS, CT
+  logs, RIPEstat and `whois`, none of which are keyed, and its one optional
+  keyed source (Hudson Rock) already has an explicit "absent renders nothing"
+  contract rather than folding into a verdict.
+
+### Also
+
+- `app/routers/crypto.py` sent a bare `FalconEye/3.0` with no contact token on
+  five blockchain API calls, so an upstream with a complaint had nothing to act
+  on. It now carries `OPERATOR_CONTACT_UA` like every other outbound request.
+
+### Two tests asserted the bug
+
+`test_failed_source_ignored_in_verdict` asserted that an errored AbuseIPDB
+carrying `confidence=100` produced `CLEAN`, on the reasoning that a failed
+source "contributes nothing". The first half is right and still holds: its
+payload must not become a signal. The second half was the defect. Likewise
+`test_endpoint_200_when_reputation_fetch_raises` carried the comment
+`# no sources -> clean`. Both are rewritten to the new contract, with the
+resilience intent of the second preserved.
+
+---
+
 ## [3.33.1] - 2026-09-21
 
 Follow-ups to v3.33.0, both raised in review.
