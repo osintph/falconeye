@@ -116,6 +116,7 @@ def _rebuild_reputation(response: dict) -> None:
         shodan_ports=shodan_ports,
         existing_country=(ripestat or {}).get("country"),
         network_name=(ripestat or {}).get("asn_holder"),
+        ip=response.get("ip"),
     )
     response["reputation"] = {**block, "_target": response.get("ip")}
 
@@ -398,6 +399,9 @@ async def lookup_ip(request: Request, ip: str, refresh: bool = False,
         shodan_ports=shodan_ports,
         existing_country=(_ripestat or {}).get("country"),
         network_name=(_ripestat or {}).get("asn_holder"),
+        # Lets the verdict recognise a public resolver or a CDN edge, where an
+        # abuse report is about one client rather than about the address.
+        ip=validated,
     )
 
     response = {

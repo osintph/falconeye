@@ -2570,10 +2570,24 @@ function renderReputationVerdict(rep) {
   const unavailable = vd.sources_unavailable || [];
 
   // Always state coverage, whatever the verdict. An operator reading CLEAN needs
-  // to know it means "all five answered and none flagged it", not "nothing came back".
+  // to know it means "all four answered and none flagged it", not "nothing came back".
   const coverage = vd.coverage_note
     ? `<p class="text-xs text-gray-500 mt-2">${escapeHtml(vd.coverage_note)}</p>`
     : '';
+
+  // What the address is, when it is published infrastructure (v3.34.1). An abuse
+  // report against a public resolver or a CDN edge is about one client or one
+  // tenant, not about an address millions of people use on purpose, so the
+  // verdict is capped at SUSPICIOUS and the card says so with the vendor page it
+  // was read from. Shown even when nothing was capped, because "this is Quad9"
+  // is context an operator wants before reading anything else on the card.
+  const infra = vd.infrastructure ? `
+      <div class="mt-2 text-xs ${vd.infrastructure.capped ? 'text-amber-300' : 'text-gray-400'}">
+        <span class="uppercase tracking-wide text-gray-500">Widely-used infrastructure:</span>
+        ${escapeHtml(vd.infrastructure.label)} <span class="text-gray-500">(${escapeHtml(vd.infrastructure.kind)})</span>
+        ${vd.infrastructure.capped ? ' &middot; verdict capped at SUSPICIOUS' : ''}
+        <a href="${escapeAttr(vd.infrastructure.source)}" target="_blank" rel="noopener noreferrer" class="ml-1 text-gray-600 hover:text-amber-400 underline">published list</a>
+      </div>` : '';
 
   const missing = unavailable.length ? `
       <div class="mt-2 text-xs text-gray-400">
@@ -2608,6 +2622,7 @@ function renderReputationVerdict(rep) {
       </div>
       ${signals}
       ${coverage}
+      ${infra}
       ${missing}
       ${renderGeoConsensus(rep.geo)}
     </div>`;

@@ -51,7 +51,13 @@ def test_verdict_virustotal_boundaries():
 
 
 def test_verdict_otx_and_threatfox_and_greynoise():
-    assert rep.compute_verdict(full(otx=src("otx", pulse_count=3)))["verdict"] == "MALICIOUS"
+    # v3.34.1: OTX pulses are corroboration, not a finding. Alone they are
+    # SUSPICIOUS however high the count; with any other source they are
+    # MALICIOUS. See tests/unit/test_verdict_evidence.py for the full rule.
+    assert rep.compute_verdict(full(otx=src("otx", pulse_count=3)))["verdict"] == "SUSPICIOUS"
+    assert rep.compute_verdict(full(otx=src("otx", pulse_count=50)))["verdict"] == "SUSPICIOUS"
+    assert rep.compute_verdict(full(otx=src("otx", pulse_count=3),
+                                    virustotal=src("virustotal", malicious=1)))["verdict"] == "MALICIOUS"
     assert rep.compute_verdict(full(otx=src("otx", pulse_count=2)))["verdict"] == "SUSPICIOUS"
     assert rep.compute_verdict(full(threatfox=src("threatfox", matched=True)))["verdict"] == "MALICIOUS"
     # GreyNoise is not one of the keyed verdict sources, so it can raise a

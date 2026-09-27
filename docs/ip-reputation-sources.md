@@ -58,10 +58,11 @@ Notes:
 The verdict combines the sources into one of three levels with a reasoning
 string. Thresholds are named constants in `app/ip_sources/reputation.py`:
 
-- **MALICIOUS**: AbuseIPDB confidence ≥ 75, **or** VirusTotal malicious ≥ 3,
-  **or** a ThreatFox IOC match, **or** OTX pulses ≥ 3.
+- **MALICIOUS**: a **primary** finding. AbuseIPDB confidence ≥ 75, **or**
+  VirusTotal malicious ≥ 3, **or** a ThreatFox IOC match. Also OTX pulses ≥ 3
+  **plus at least one other source** that saw something.
 - **SUSPICIOUS**: AbuseIPDB 25-74, **or** VirusTotal malicious 1-2, **or** OTX
-  pulses 1-2, **or** GreyNoise classified malicious.
+  pulses (any count) on their own, **or** GreyNoise classified malicious.
 - **CLEAN**: nothing flagged it **and all four verdict sources answered**.
 - **INCOMPLETE**: nothing flagged it but at least one verdict source did not
   answer. Silence is not evidence of innocence (v3.33.2).
@@ -69,6 +70,42 @@ string. Thresholds are named constants in `app/ip_sources/reputation.py`:
 A source that errored, is missing a key, or hit its quota contributes nothing to
 the verdict (it never counts as "clean" evidence, it counts as *unknown*).
 Censys is outside this count entirely.
+
+### Why OTX pulses are not a verdict (v3.34.1)
+
+An OTX pulse is a community submission saying an indicator appeared in something
+someone was investigating. Public resolvers and CDN edges appear in enormous
+numbers of them, because malware resolves DNS and phishing is hosted behind
+CDNs. Until v3.34.1 a pulse count over the cutoff was enough on its own, and
+`9.9.9.9` (Quad9) and `185.199.110.153` (a GitHub Pages address) were both
+reported **MALICIOUS** with the reasoning "Malicious: OTX 50 pulses" and nothing
+else.
+
+Pulses now corroborate rather than decide: they raise a verdict when another
+source also saw something, and on their own they produce SUSPICIOUS with the
+count shown and a reasoning line that says no other source flagged the address.
+
+### The widely-used infrastructure allowlist (v3.34.1)
+
+`app/ip_sources/infrastructure.py` holds addresses that vendors **publish** as
+their own: the Google, Cloudflare, Quad9 and OpenDNS public resolvers, the four
+GitHub Pages A records (and their AAAA records), and the Cloudflare and Fastly
+edge ranges. Every entry carries the vendor URL it was read from and the date it
+was checked.
+
+A match caps the verdict at **SUSPICIOUS** and says why on the card. The reason
+is not that these addresses are trustworthy: it is that an abuse report against a
+shared address is about one tenant or one resolver client, and the operator
+reading MALICIOUS will block an address millions of people use on purpose. The
+evidence stays on the card; only the headline is capped, and the cap never
+*raises* a verdict.
+
+Admission rule: only vendor-published lists, cited in the file. AWS CloudFront,
+Akamai and Azure Front Door are deliberately absent because their ranges are
+large and change often, so a literal snapshot would go stale silently; they would
+need a fetcher with a refresh job. Hosting and VPS ranges are absent because a
+VPS address belongs to one customer, which is exactly the case where the abuse
+report is right.
 
 ## Geolocation consensus and why single-source geo is unreliable
 

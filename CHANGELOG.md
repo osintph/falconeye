@@ -5,6 +5,68 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.34.1] - 2026-09-27
+
+### An OTX pulse count is not a verdict
+
+`9.9.9.9` and `185.199.110.153` were both reported **MALICIOUS**, with the
+reasoning "Malicious: OTX 50 pulses" and nothing else. The first is Quad9's
+public resolver. The second is one of the four addresses GitHub tells every Pages
+user to point their apex domain at.
+
+An OTX pulse is a community submission saying an indicator appeared in something
+someone was investigating. Shared infrastructure appears in enormous numbers of
+them, because malware resolves DNS and phishing is hosted behind CDNs. Treating
+the count as a finding meant one community feed could label an address that
+millions of people use on purpose.
+
+MALICIOUS now requires a **primary** source: AbuseIPDB over its cutoff,
+VirusTotal over its cutoff, or a ThreatFox IOC match. OTX pulses over the cutoff
+plus **at least one other source** that saw something is also MALICIOUS, because
+then the pulses are no longer the only thing speaking. OTX alone is SUSPICIOUS,
+with the count shown and a reasoning line saying no other source flagged the
+address. The cutoffs themselves are unchanged.
+
+### Widely-used infrastructure caps the verdict
+
+Even with a real primary finding, a shared CDN edge or a public resolver is not
+"a malicious host": the reports are about one tenant or one resolver client, and
+the address is shared by everyone else. An operator reading MALICIOUS will block
+it.
+
+`app/ip_sources/infrastructure.py` recognises addresses that vendors publish as
+their own and caps the verdict at SUSPICIOUS with a note naming what the address
+is and linking the published list. The evidence stays on the card; the cap never
+*raises* a verdict, so a resolver with nothing against it is still CLEAN.
+
+| Entry | What | Published list, checked 2026-09-27 |
+|---|---|---|
+| Google Public DNS | resolver | <https://developers.google.com/speed/public-dns/docs/using> |
+| Cloudflare 1.1.1.1 (incl. Families) | resolver | <https://developers.cloudflare.com/1.1.1.1/ip-addresses/> |
+| Quad9 (secured, ECS, unsecured) | resolver | <https://quad9.net/service/service-addresses-and-features/> |
+| OpenDNS (incl. FamilyShield) | resolver | <https://www.opendns.com/setupguide/> |
+| GitHub Pages A and AAAA records | CDN | GitHub Pages custom-domain docs |
+| Cloudflare edge ranges | CDN | <https://www.cloudflare.com/ips/> (shared with `app/utils/cloudflare_ips.py`) |
+| Fastly edge ranges | CDN | <https://api.fastly.com/public-ip-list> |
+
+Admission rule: only vendor-published lists, with the URL and check date in the
+file. No heuristics, no ASN guesses, no third-party aggregations, because an
+allowlist that suppresses findings has to be auditable. AWS CloudFront, Akamai
+and Azure Front Door are deliberately absent: their ranges are large and change
+often, so a pinned snapshot would go stale silently. Hosting and VPS ranges are
+absent because a VPS address belongs to one customer, which is the case where the
+abuse report is right.
+
+### Documentation: the MCP server was invisible
+
+The v3.34.0 MCP server was findable only by reading the CHANGELOG. README gained
+a "Use FalconEye from Claude Code or Claude Desktop" section immediately after
+Quick Start, `docs/mcp-server.md` became `docs/mcp.md` and gained the SSH pattern
+for driving a remote instance, and the repository description and topics now say
+that this ships an MCP server.
+
+---
+
 ## [3.34.0] - 2026-09-27
 
 Three parts: Censys leaves the reputation consensus and failures stop being

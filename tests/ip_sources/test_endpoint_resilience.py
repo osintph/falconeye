@@ -77,7 +77,10 @@ def test_endpoint_200_when_sources_partially_fail(monkeypatch):
     monkeypatch.setattr(ip_intel.reputation, "fetch_sources", repsrc)
     monkeypatch.setattr(ip_intel.asn_intel, "fetch", boom)
 
-    r = _client().get("/api/ip/lookup/8.8.8.8")
+    # Not 8.8.8.8: from v3.34.1 that is recognised as Google Public DNS and the
+    # verdict is capped at SUSPICIOUS, which would make this a test of the cap
+    # rather than of resilience. An ordinary address keeps the subject the same.
+    r = _client().get("/api/ip/lookup/45.148.10.242")
     assert r.status_code == 200                            # never 500 on failure
     rep = r.json()["reputation"]
     assert rep["verdict"]["verdict"] == "MALICIOUS"        # VirusTotal alone still fires

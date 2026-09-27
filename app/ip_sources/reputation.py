@@ -26,7 +26,7 @@ import time
 import httpx
 
 from app import config
-from app.ip_sources import abuseipdb, virustotal, otx, censys, threatfox
+from app.ip_sources import abuseipdb, virustotal, otx, censys, threatfox, infrastructure
 from app.ip_sources.base import SourceResult, DISABLED, ERROR
 from app.utils.env import getenv_clean
 from app.utils.logsafe import tag
@@ -162,7 +162,32 @@ def collect_signals(sources: dict) -> list:
     return out
 
 
-def compute_verdict(sources: dict, greynoise_malicious: bool = False) -> dict:
+def compute_verdict(sources: dict, greynoise_malicious: bool = False,
+                    ip: str | None = None) -> dict:
+    """The consensus verdict, with two rules added in v3.34.1.
+
+    WHAT COUNTS AS A FINDING
+    ------------------------
+    MALICIOUS needs a *primary* source: AbuseIPDB over its cutoff, VirusTotal
+    over its cutoff, or a ThreatFox IOC match. Those three are assertions about
+    the address, made by something that looked at it.
+
+    An OTX pulse count is not one of those. A pulse is a community submission
+    saying an indicator turned up in something someone was investigating, and
+    shared infrastructure turns up in thousands of them: `9.9.9.9` had 50 and
+    was reported MALICIOUS on that alone, which is what prompted this. OTX is
+    corroboration. Pulses over the cutoff plus any other source that saw
+    something is MALICIOUS; pulses on their own are SUSPICIOUS with the count
+    shown, so the operator sees the evidence and its weight at the same time.
+
+    WHAT THE ADDRESS IS
+    -------------------
+    A match against the published infrastructure lists (see infrastructure.py)
+    caps the verdict at SUSPICIOUS: an abuse report against a public resolver or
+    a CDN edge is about one client or one tenant, not about an address millions
+    of people use deliberately. The evidence stays on the card; only the headline
+    is capped, and the reasoning says why. Capping never raises a verdict.
+    """
     def sig(name, field):
         s = sources.get(name, {})
         return (s.get("data") or {}).get(field) if s.get("ok") else None
@@ -174,6 +199,7 @@ def compute_verdict(sources: dict, greynoise_malicious: bool = False) -> dict:
 
     responded, unavailable = _availability(sources)
     total = len(_NAMES)
+    infra = infrastructure.classify(ip) if ip else None
     coverage = {
         "sources_responded": responded,
         "sources_total": total,
@@ -181,34 +207,67 @@ def compute_verdict(sources: dict, greynoise_malicious: bool = False) -> dict:
         "coverage_note": f"{responded} of {total} reputation sources responded",
         # Always present, whatever the verdict: see collect_signals().
         "signals": collect_signals(sources),
+        # What this address is, when it is published infrastructure. Present on
+        # every verdict so the card can say so even when nothing flagged it.
+        "infrastructure": dict(infra, capped=False) if infra else None,
     }
 
     def result(verdict, reasoning):
-        return {"verdict": verdict, "reasoning": reasoning, **coverage}
+        out = {"verdict": verdict, "reasoning": reasoning, **coverage}
+        if verdict == MALICIOUS and infra:
+            out["verdict"] = SUSPICIOUS
+            out["infrastructure"] = dict(infra, capped=True)
+            out["reasoning"] = (
+                f"{reasoning} Capped at SUSPICIOUS: this address is "
+                f"widely-used infrastructure ({infra['label']}), where a report "
+                "is about one client or tenant rather than about the address."
+            )
+        return out
 
-    reasons = []
-    if (ab is not None and ab >= ABUSEIPDB_MALICIOUS):
-        reasons.append(f"AbuseIPDB {ab}%")
-    if (vt is not None and vt >= VT_MALICIOUS):
-        reasons.append(f"VirusTotal {vt} vendors")
+    # ---- primary findings: each one stands on its own ----
+    primary = []
+    if ab is not None and ab >= ABUSEIPDB_MALICIOUS:
+        primary.append(f"AbuseIPDB {ab}%")
+    if vt is not None and vt >= VT_MALICIOUS:
+        primary.append(f"VirusTotal {vt} vendors")
     if tf_matched:
-        reasons.append("ThreatFox IOC match")
-    if (pulses is not None and pulses >= OTX_MALICIOUS_PULSES):
-        reasons.append(f"OTX {pulses} pulses")
-    if reasons:
-        # A positive hit stands on its own: one source finding something bad is
-        # evidence even if another never answered.
+        primary.append("ThreatFox IOC match")
+
+    # ---- corroboration: real signals, none of them conclusive alone ----
+    corroborating = []
+    if ab is not None and ABUSEIPDB_SUSPICIOUS <= ab < ABUSEIPDB_MALICIOUS:
+        corroborating.append(f"AbuseIPDB {ab}%")
+    if vt is not None and 1 <= vt < VT_MALICIOUS:
+        corroborating.append(f"VirusTotal {vt} vendor(s)")
+    if greynoise_malicious:
+        corroborating.append("GreyNoise malicious")
+
+    otx_high = pulses is not None and pulses >= OTX_MALICIOUS_PULSES
+    otx_low = pulses is not None and 1 <= pulses < OTX_MALICIOUS_PULSES
+
+    if primary:
+        reasons = list(primary)
+        if otx_high:
+            reasons.append(f"OTX {pulses} pulses")
+        reasons.extend(corroborating)
         return result(MALICIOUS, "Malicious: " + ", ".join(reasons))
 
-    if (ab is not None and ABUSEIPDB_SUSPICIOUS <= ab < ABUSEIPDB_MALICIOUS):
-        reasons.append(f"AbuseIPDB {ab}%")
-    if (vt is not None and 1 <= vt < VT_MALICIOUS):
-        reasons.append(f"VirusTotal {vt} vendor(s)")
-    if (pulses is not None and 1 <= pulses < OTX_MALICIOUS_PULSES):
-        reasons.append(f"OTX {pulses} pulse(s)")
-    if greynoise_malicious:
-        reasons.append("GreyNoise malicious")
-    if reasons:
+    if otx_high and corroborating:
+        # Corroborated: the pulse count is no longer the only thing speaking.
+        return result(MALICIOUS, "Malicious: "
+                      + ", ".join([f"OTX {pulses} pulses"] + corroborating))
+
+    if otx_high:
+        return result(SUSPICIOUS, (
+            f"Suspicious: OTX {pulses} pulses, and no other source flagged this "
+            "IP. Community pulses alone are corroboration, not a finding: shared "
+            "infrastructure appears in large numbers of them."
+        ))
+
+    if corroborating or otx_low:
+        reasons = list(corroborating)
+        if otx_low:
+            reasons.append(f"OTX {pulses} pulse(s)")
         return result(SUSPICIOUS, "Suspicious: " + ", ".join(reasons))
 
     # Nothing flagged it. That is only CLEAN if everything actually answered.
@@ -365,11 +424,15 @@ def failed_sources(sources: dict) -> list:
 
 
 def assemble(sources: dict, *, greynoise_malicious: bool = False, shodan_ports=None,
-             existing_country=None, network_name=None) -> dict:
-    """Build the verdict / geo-consensus / merged-ports block from fetched sources."""
+             existing_country=None, network_name=None, ip: str | None = None) -> dict:
+    """Build the verdict / geo-consensus / merged-ports block from fetched sources.
+
+    `ip` is what lets compute_verdict recognise published infrastructure. A
+    caller that does not pass it gets the verdict with no cap applied.
+    """
     return {
         "sources": sources,
-        "verdict": compute_verdict(sources, greynoise_malicious),
+        "verdict": compute_verdict(sources, greynoise_malicious, ip=ip),
         "geo": compute_geo(sources, existing_country, network_name),
         "ports": merge_ports(shodan_ports, sources.get("censys")),
     }
