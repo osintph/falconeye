@@ -1,8 +1,23 @@
 """
-Aggregate the five IP-reputation sources into a consensus verdict, a geo-consensus
+Aggregate the IP-reputation sources into a consensus verdict, a geo-consensus
 block, and a merged port list. Every source is fetched concurrently and every
 failure is contained per-source, so a slow/broken source never blanks the result
 or 500s the endpoint.
+
+VERDICT SOURCES AND ENRICHMENT ARE NOT THE SAME THING (v3.34.0)
+--------------------------------------------------------------
+Four sources vote: AbuseIPDB, VirusTotal, AlienVault OTX and ThreatFox. All four
+are unmetered on their free tiers, so on a healthy instance all four answer and
+CLEAN means all four answered and none of them flagged the address.
+
+Censys is enrichment: ports, services, OS and ASN attribution. It never
+contributed a reputation signal (nothing below reads a Censys field for the
+verdict), and its host lookup costs one Censys credit against a 100 credit
+monthly allowance, so it is the first source to fall silent on a public
+instance. Counting it made the card report missing threat intelligence when what
+was actually missing was a port scan. It is therefore outside the coverage count
+entirely: absent, exhausted, erroring or switched off, it cannot make a verdict
+INCOMPLETE. It still contributes ports and a geolocation opinion.
 """
 import asyncio
 import logging
@@ -10,14 +25,24 @@ import time
 
 import httpx
 
+from app import config
 from app.ip_sources import abuseipdb, virustotal, otx, censys, threatfox
-from app.ip_sources.base import SourceResult, ERROR
+from app.ip_sources.base import SourceResult, DISABLED, ERROR
 from app.utils.env import getenv_clean
 from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.ip_sources")
 
-_NAMES = ["abuseipdb", "virustotal", "otx", "censys", "threatfox"]
+# The sources the verdict is computed over. Order matches
+# app.ip_sources.catalog.REPUTATION_SOURCES.
+_NAMES = ["abuseipdb", "virustotal", "otx", "threatfox"]
+
+# Fetched with them, rendered alongside them, never counted with them.
+ENRICHMENT_NAMES = ("censys",)
+
+# Everything one lookup asks, in one list, for callers that fetch or retry by name.
+ALL_NAMES = tuple(_NAMES) + ENRICHMENT_NAMES
+
 _MODULES = {
     "abuseipdb": abuseipdb, "virustotal": virustotal, "otx": otx,
     "censys": censys, "threatfox": threatfox,
@@ -35,11 +60,19 @@ INCOMPLETE = "INCOMPLETE"
 
 
 def configured_sources() -> dict:
-    """Which reputation sources have credentials, without calling anything.
+    """Which verdict sources have credentials, without calling anything.
 
     Used to tell the operator up front that a lookup cannot be conclusive,
-    rather than after a lookup that silently consulted nothing.
+    rather than after a lookup that silently consulted nothing. Censys is not in
+    here: it does not vote, so its absence says nothing about whether a verdict
+    can be reached.
+
+    `labels` is the rendered list the page prints. It comes from the catalog so
+    the notice cannot drift from the tab intro and the privacy note, which is
+    exactly how app.js ended up with a hand-written list of five names.
     """
+    from app.ip_sources import catalog
+
     configured, missing = [], []
     for name in _NAMES:
         mod = _MODULES[name]
@@ -51,6 +84,7 @@ def configured_sources() -> dict:
         "total": len(_NAMES),
         "missing": missing,
         "none_configured": not configured,
+        "labels": catalog.reputation_labels(),
     }
 
 
@@ -261,7 +295,9 @@ def log_source_call(name: str, target: str, status: str, latency_ms: int, cached
 
 def log_cached_sources(ip: str, sources: dict) -> None:
     """Replay the same line shape for a cache hit, so the log is not silent."""
-    for name in _NAMES:
+    for name in ALL_NAMES:
+        if name not in sources:
+            continue
         entry = sources.get(name) or {}
         status = entry.get("state") or ERROR
         log_source_call(name, ip, status, 0, True)
@@ -282,12 +318,50 @@ async def _timed_fetch(name: str, ip: str, client: httpx.AsyncClient):
     return result
 
 
-async def fetch_sources(ip: str, client: httpx.AsyncClient) -> dict:
-    """Fetch all five sources concurrently. Never raises; each failure is contained.
+def should_fetch(name: str) -> bool:
+    """Is this source switched on for this instance?
+
+    Only the metered enrichment source has a switch. Asking here rather than
+    inside the fetcher keeps the "disabled" answer free of an HTTP client.
+    """
+    if name == "censys":
+        return bool(config.CENSYS_ENABLED)
+    return True
+
+
+async def fetch_sources(ip: str, client: httpx.AsyncClient, only=None) -> dict:
+    """Fetch the sources concurrently. Never raises; each failure is contained.
+
     Kept separate from assemble() so callers can run this concurrently with the
-    existing IP fetchers (latency bounded by the slowest source, not the sum)."""
-    results = await asyncio.gather(*(_timed_fetch(n, ip, client) for n in _NAMES))
-    return {name: r.as_dict() for name, r in zip(_NAMES, results)}
+    existing IP fetchers (latency bounded by the slowest source, not the sum).
+
+    `only` restricts the fetch to named sources, which is how a cached row
+    re-attempts just the sources that failed without spending the quotas of the
+    ones that answered.
+    """
+    names = [n for n in (list(only) if only else list(ALL_NAMES)) if n in _MODULES]
+    wanted = [n for n in names if should_fetch(n)]
+    results = await asyncio.gather(*(_timed_fetch(n, ip, client) for n in wanted))
+    out = {name: r.as_dict() for name, r in zip(wanted, results)}
+    for name in names:
+        if name not in out:
+            out[name] = SourceResult(
+                name, False, DISABLED, {}, "switched off on this instance").as_dict()
+            log_source_call(name, ip, DISABLED, 0, False)
+    return out
+
+
+def failed_sources(sources: dict) -> list:
+    """Every fetched source that did not answer, verdict or enrichment alike.
+
+    This is what the cache must not pin: an ok=false result is a statement about
+    one moment, and the next lookup deserves a fresh attempt. A source with no
+    key is included on purpose. Re-attempting one costs no HTTP call and it is
+    how a key added mid-window starts working within the minute instead of after
+    six hours.
+    """
+    return [name for name in ALL_NAMES
+            if name in sources and not (sources.get(name) or {}).get("ok")]
 
 
 def assemble(sources: dict, *, greynoise_malicious: bool = False, shodan_ports=None,

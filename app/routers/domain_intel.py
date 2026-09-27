@@ -4,6 +4,7 @@ import logging
 import socket
 import sqlite3
 import subprocess
+import time
 from datetime import datetime, timezone, timedelta
 
 import dns.resolver
@@ -15,6 +16,7 @@ from slowapi import Limiter
 from app.config import DB_PATH, OPERATOR_CONTACT_UA
 from app.database import get_db
 from app.hudsonrock import client as hudsonrock
+from app.utils import cache
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain, extract_tld
 from app.utils.logsafe import tag
@@ -33,7 +35,80 @@ WHOIS_TIMEOUT = 10.0
 DNS_RECORD_TYPES = ["A", "AAAA", "MX", "NS", "TXT", "CAA", "SOA"]
 
 
-# ---- Cache helpers ----
+# ---- Cache table ----
+# Self-initialised at import like every other router: without this the tab 500s
+# on a database that was created fresh rather than migrated in place. The
+# failures column is added to an existing table by the guarded ALTER below,
+# which is a no-op once it is there.
+
+def _init_cache() -> None:
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS domain_intel_cache (
+                domain TEXT PRIMARY KEY,
+                rdap_json TEXT,
+                whois_text TEXT,
+                dns_json TEXT,
+                ct_json TEXT,
+                network_json TEXT,
+                failures_json TEXT,
+                fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_domain_cache_fetched ON domain_intel_cache(fetched_at)")
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(domain_intel_cache)")}
+        if "failures_json" not in cols:
+            conn.execute("ALTER TABLE domain_intel_cache ADD COLUMN failures_json TEXT")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+try:
+    _init_cache()
+except Exception as _exc:  # noqa: BLE001 - import must not fail on an unwritable data dir
+    log.warning("domain_intel cache table not initialised at import: %s", _exc)
+
+
+# ---- Which parts of one lookup can fail, for the negative cache ----
+#
+# A failed component used to be stored as NULL, which reads back exactly like
+# "this domain has no such data", so the failure was served for the full six
+# hours. Each component now reports failure distinguishably:
+#   rdap    - None (transport) or {"error": "rdap_error"}; a 404 not_found is a
+#             real answer about the domain and is NOT a failure
+#   whois   - None, but only when it was actually attempted
+#   dns     - {"error": ...} from the resolver wrapper
+#   ct      - {"error": ...} after both crt.sh and Certspotter failed
+#   network - no attribution for IPs that DNS did resolve
+COMPONENTS = ("rdap", "whois", "dns", "ct", "network")
+
+
+def _rdap_failed(rdap: dict | None) -> bool:
+    if rdap is None:
+        return True
+    return bool(rdap.get("error")) and rdap.get("error") != "not_found"
+
+
+def _failed_components(rdap, whois_text, dns_data, ct, network) -> list:
+    failed = []
+    rdap_bad = _rdap_failed(rdap)
+    if rdap_bad:
+        failed.append("rdap")
+        # WHOIS is the fallback for exactly that case, so it is only a failure
+        # when it was asked and had nothing to say.
+        if not whois_text:
+            failed.append("whois")
+    if isinstance(dns_data, dict) and dns_data.get("error"):
+        failed.append("dns")
+    if isinstance(ct, dict) and ct.get("error"):
+        failed.append("ct")
+    resolved = (dns_data or {}).get("resolved_ips") or []
+    if resolved and not ((network or {}).get("ips") or []):
+        failed.append("network")
+    return failed
+
 
 def get_cached(db: sqlite3.Connection, domain: str) -> dict | None:
     row = db.execute(
@@ -46,6 +121,13 @@ def get_cached(db: sqlite3.Connection, domain: str) -> dict | None:
         fetched = fetched.replace(tzinfo=timezone.utc)
     if datetime.now(timezone.utc) - fetched > timedelta(hours=CACHE_TTL_HOURS):
         return None
+    keys = row.keys()
+    failures = {}
+    if "failures_json" in keys and row["failures_json"]:
+        try:
+            failures = json.loads(row["failures_json"]) or {}
+        except (ValueError, TypeError):
+            failures = {}
     return {
         "rdap": json.loads(row["rdap_json"]) if row["rdap_json"] else None,
         "whois_text": row["whois_text"],
@@ -54,6 +136,7 @@ def get_cached(db: sqlite3.Connection, domain: str) -> dict | None:
         "network": json.loads(row["network_json"]) if row["network_json"] else None,
         "fetched_at": row["fetched_at"],
         "cache_hit": True,
+        "_failures": failures if isinstance(failures, dict) else {},
     }
 
 
@@ -65,12 +148,14 @@ def store_cache(
     dns_data: dict | None,
     ct: list | None,
     network: dict | None,
+    failures: dict | None = None,
 ) -> None:
     db.execute(
         """
         INSERT OR REPLACE INTO domain_intel_cache
-            (domain, rdap_json, whois_text, dns_json, ct_json, network_json, fetched_at)
-        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            (domain, rdap_json, whois_text, dns_json, ct_json, network_json,
+             failures_json, fetched_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         """,
         (
             domain,
@@ -79,6 +164,42 @@ def store_cache(
             json.dumps(dns_data) if dns_data else None,
             json.dumps(ct) if ct else None,
             json.dumps(network) if network else None,
+            json.dumps(failures) if failures else None,
+        ),
+    )
+    db.commit()
+
+
+def update_cached(
+    db: sqlite3.Connection,
+    domain: str,
+    rdap: dict | None,
+    whois_text: str | None,
+    dns_data: dict | None,
+    ct: list | None,
+    network: dict | None,
+    failures: dict | None = None,
+) -> None:
+    """Rewrite a row after a partial retry, WITHOUT touching fetched_at.
+
+    If a retry reset the age, a component that keeps failing would keep
+    extending the six hour window and the row would never expire.
+    """
+    db.execute(
+        """
+        UPDATE domain_intel_cache
+           SET rdap_json = ?, whois_text = ?, dns_json = ?, ct_json = ?,
+               network_json = ?, failures_json = ?
+         WHERE domain = ?
+        """,
+        (
+            json.dumps(rdap) if rdap else None,
+            whois_text,
+            json.dumps(dns_data) if dns_data else None,
+            json.dumps(ct) if ct else None,
+            json.dumps(network) if network else None,
+            json.dumps(failures) if failures else None,
+            domain,
         ),
     )
     db.commit()
@@ -237,7 +358,11 @@ async def fetch_dns(domain: str) -> dict:
         return await loop.run_in_executor(None, fetch_dns_sync, domain)
     except Exception as e:
         log.warning(f"DNS resolution failed for {tag(domain)}: {e}")
-        return {rt: [] for rt in DNS_RECORD_TYPES}
+        # Marked as a failure, not as "this domain has no records". The two are
+        # indistinguishable in the shape below, and the cache has to tell them
+        # apart or a resolver blip is served for six hours.
+        return {rt: [] for rt in DNS_RECORD_TYPES} | {
+            "resolved_ips": [], "ptr_records": {}, "error": "DNS resolution failed"}
 
 
 # ---- Certificate Transparency ----
@@ -467,6 +592,79 @@ async def fetch_network(client: httpx.AsyncClient, ip: str) -> dict | None:
         return None
 
 
+# ---- Partial retry of a cached lookup ----
+
+async def _network_for(client: httpx.AsyncClient, dns_data: dict) -> dict:
+    """ASN attribution for the first two resolved IPs, as the main path does."""
+    network_data = {"ips": []}
+    for ip in ((dns_data or {}).get("resolved_ips") or [])[:2]:
+        net = await fetch_network(client, ip)
+        if net:
+            network_data["ips"].append(net)
+    return network_data
+
+
+async def _retry_components(db: sqlite3.Connection, domain: str, cached: dict,
+                            failures: dict, stale: list) -> dict:
+    """Re-attempt the components that failed, and only those.
+
+    RDAP, CT and DNS are unmetered but slow, so re-running all of them because
+    one failed would turn a cache hit into a full lookup. The components that
+    answered are left exactly as they were cached.
+    """
+    rdap = cached.get("rdap")
+    whois_text = cached.get("whois_text")
+    dns_data = cached.get("dns")
+    ct = cached.get("ct")
+    network = cached.get("network")
+
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        if "rdap" in stale or "whois" in stale:
+            try:
+                rdap = await fetch_rdap(client, domain)
+            except Exception as exc:  # noqa: BLE001 - a retry must never 500 the tab
+                log.warning("RDAP retry failed for %s: %s", tag(domain), exc)
+                rdap = None
+            if _rdap_failed(rdap):
+                try:
+                    whois_text = await fetch_whois(domain)
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("WHOIS retry failed for %s: %s", tag(domain), exc)
+            else:
+                whois_text = None
+
+        if "ct" in stale:
+            try:
+                ct = await fetch_ct(client, domain)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("CT retry failed for %s: %s", tag(domain), exc)
+
+        if "dns" in stale:
+            try:
+                dns_data = await fetch_dns(domain)
+            except Exception as exc:  # noqa: BLE001
+                log.warning("DNS retry failed for %s: %s", tag(domain), exc)
+            # Attribution follows the addresses, so a fresh DNS answer means a
+            # fresh network block.
+            network = await _network_for(client, dns_data)
+        elif "network" in stale:
+            network = await _network_for(client, dns_data)
+
+    # Stamp what is still failing. A failure that was not retried keeps its
+    # original stamp, so each component's window runs on its own clock.
+    still = _failed_components(rdap, whois_text, dns_data, ct, network)
+    new_failures = {name: when for name, when in failures.items()
+                    if name in still and name not in stale}
+    now = time.time()
+    for name in still:
+        new_failures.setdefault(name, now)
+
+    update_cached(db, domain, rdap, whois_text, dns_data, ct, network, new_failures)
+    cached.update({"rdap": rdap, "whois_text": whois_text, "dns": dns_data,
+                   "ct": ct, "network": network})
+    return cached
+
+
 # ---- Main endpoint ----
 
 @router.get("/lookup/{domain}")
@@ -490,6 +688,15 @@ async def lookup_domain(request: Request, domain: str, refresh: bool = False,
     # same limiter, so a refresh costs a lookup.
     cached = None if refresh else get_cached(db, normalized)
     if cached:
+        # A component that failed is not an answer: it carries a stamp and is
+        # re-attempted once that stamp is older than the negative window, rather
+        # than being served as "no data" for the rest of the six hours.
+        failures = cached.pop("_failures", {}) or {}
+        stale = cache.stale_failures(failures)
+        if stale:
+            log.info("event=domain_cache_retry target=%s parts=%s",
+                     tag(normalized), ",".join(sorted(stale)))
+            cached = await _retry_components(db, normalized, cached, failures, stale)
         return {
             "domain": normalized,
             "rdap": parse_rdap(cached.get("rdap")) if cached.get("rdap") else None,
@@ -534,8 +741,14 @@ async def lookup_domain(request: Request, domain: str, refresh: bool = False,
             if net:
                 network_data["ips"].append(net)
 
-    # Store cache
-    store_cache(db, normalized, rdap_raw, whois_text, dns_data, ct_data, network_data)
+    # Store cache, with a stamp on anything that failed so the next lookup
+    # re-attempts it rather than being served this failure for six hours.
+    failures = {}
+    now = time.time()
+    for name in _failed_components(rdap_raw, whois_text, dns_data, ct_data, network_data):
+        failures[name] = now
+    store_cache(db, normalized, rdap_raw, whois_text, dns_data, ct_data, network_data,
+                failures)
 
     return {
         "domain": normalized,

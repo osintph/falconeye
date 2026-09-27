@@ -23,13 +23,21 @@ NO_KEY = "no_key"
 QUOTA = "quota"
 ERROR = "error"
 NOT_FOUND = "not_found"
+# A metered source whose prepaid balance is spent. Distinct from QUOTA (a rate
+# limit that clears by itself in seconds or minutes) and from ERROR (something
+# is wrong and an operator should look): an exhausted monthly allowance is an
+# expected operating state, and the card says so in grey rather than red.
+NO_CREDITS = "no_credits"
+# The operator has switched this source off. Not a failure and not a missing
+# key: nothing was asked, so nothing is reported.
+DISABLED = "disabled"
 
 
 @dataclass
 class SourceResult:
     source: str                 # "abuseipdb" | "virustotal" | "otx" | "censys" | "threatfox"
     ok: bool
-    state: str                  # OK | NO_KEY | QUOTA | ERROR | NOT_FOUND
+    state: str                  # OK | NO_KEY | QUOTA | NO_CREDITS | DISABLED | ERROR | NOT_FOUND
     data: dict = field(default_factory=dict)
     error: str | None = None
     country: str | None = None  # 2-letter code where available, for geo consensus

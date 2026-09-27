@@ -19,14 +19,108 @@ are validated first; all call sites pass hardcoded constants.
 """
 import json
 import logging
+import math
 import re
 import sqlite3
+import time
 
 from app.config import DB_PATH
 
 log = logging.getLogger("falconeye.cache")
 
 _IDENT = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+# ---- Negative caching (v3.34.0) ----
+#
+# A source that failed is not an answer, so it must not get the long TTL. Every
+# tab that caches used to store a timed-out, quota-hit, 5xx or keyless source
+# inside the row exactly like a source that answered, and then served it for the
+# rest of the window: six hours on the IP and Domain tabs, twenty four on the
+# email analysis. An operator who added an API key was served the keyless answer
+# for hours (that is what produced Refresh in v3.33.0), and a two minute upstream
+# blip pinned "unavailable" on the card until the afternoon.
+#
+# The row is still cached, failures included, but each failure carries a stamp
+# and is only honoured for NEGATIVE_TTL_SECONDS. After that the caller
+# re-attempts just that source. The window exists solely so a hammered tab does
+# not hammer a down upstream; it is deliberately short.
+NEGATIVE_TTL_SECONDS = 60
+
+# Where the stamps live inside a cached blob. Underscore-prefixed and popped by
+# take_failures() before the response reaches a caller: it is our bookkeeping,
+# not part of any API.
+FAILURES_KEY = "_cache_failures"
+
+
+def note_failures(response: dict, failed, *, now: float | None = None) -> dict:
+    """Stamp `failed` source names on `response` as having failed just now.
+
+    Additive: names already stamped keep their entry unless they are named
+    again, so one cache row can carry failures recorded at different times.
+    """
+    failed = list(failed)
+    if not failed:
+        return response
+    stamp = time.time() if now is None else now
+    stamps = response.get(FAILURES_KEY)
+    if not isinstance(stamps, dict):
+        stamps = {}
+    for name in failed:
+        stamps[str(name)] = stamp
+    response[FAILURES_KEY] = stamps
+    return response
+
+
+def take_failures(response: dict) -> dict:
+    """Pop the failure stamps off a cached blob and return them."""
+    if not isinstance(response, dict):
+        return {}
+    stamps = response.pop(FAILURES_KEY, None)
+    return stamps if isinstance(stamps, dict) else {}
+
+
+def stale_failures(failures: dict, *, now: float | None = None) -> list:
+    """Which stamped failures are past the negative window and must be retried.
+
+    An unreadable or missing stamp counts as stale. A row written by an earlier
+    version has no stamps at all, and retrying is the safe direction: the
+    alternative is serving that failure until the row expires.
+    """
+    if not isinstance(failures, dict):
+        return []
+    current = time.time() if now is None else now
+    out = []
+    for name, stamp in failures.items():
+        if isinstance(stamp, bool) or not isinstance(stamp, (int, float)):
+            out.append(name)
+            continue
+        if math.isnan(stamp) or current - stamp >= NEGATIVE_TTL_SECONDS:
+            out.append(name)
+    return out
+
+
+def update_blob(table: str, key: str, response: dict, key_col: str = "cache_key",
+                conn: sqlite3.Connection | None = None) -> None:
+    """Replace a row's payload WITHOUT touching fetched_at.
+
+    A partial retry rewrites the blob it just improved. If that reset
+    fetched_at, a source that keeps failing would keep extending the row's TTL
+    and the long cache would never expire.
+    """
+    _ident(table)
+    _ident(key_col)
+    own = conn is None
+    if own:
+        conn = sqlite3.connect(DB_PATH)
+    try:
+        conn.execute(
+            f"UPDATE {table} SET response_json = ? WHERE {key_col} = ?",
+            (json.dumps(response), key),
+        )
+        conn.commit()
+    finally:
+        if own:
+            conn.close()
 
 
 def _ident(name: str) -> str:

@@ -60,6 +60,34 @@ def store_cache(db: sqlite3.Connection, response: dict) -> None:
     cache.set("threat_pulse_cache", "ph", response, key_col="id", conn=db)
 
 
+# ---- Negative cache for the feed ----
+#
+# A failed fetch is already never written into the answer row (see the endpoint:
+# it serves the last known row marked stale instead). What it did do was re-query
+# a dead feed on every request, up to the endpoint's 30/minute per IP. The
+# failure is now recorded in its own row so a down feed is asked again at most
+# once per cache.NEGATIVE_TTL_SECONDS.
+_FAIL_KEY = "ph_failed"
+
+
+def feed_recently_failed(db: sqlite3.Connection) -> bool:
+    row = cache.get("threat_pulse_cache", _FAIL_KEY,
+                    cache.NEGATIVE_TTL_SECONDS / 3600.0, key_col="id", conn=db)
+    return row is not None
+
+
+def note_feed_failure(db: sqlite3.Connection) -> None:
+    cache.set("threat_pulse_cache", _FAIL_KEY, {"failed": True}, key_col="id", conn=db)
+
+
+def clear_feed_failure(db: sqlite3.Connection) -> None:
+    try:
+        db.execute("DELETE FROM threat_pulse_cache WHERE id = ?", (_FAIL_KEY,))
+        db.commit()
+    except Exception as exc:  # noqa: BLE001 - bookkeeping must not break the widget
+        log.warning("threat pulse failure marker not cleared: %s", exc)
+
+
 async def fetch_urlhaus_ph_feed() -> list[dict]:
     """
     Fetch the URLhaus PH country feed. Returns a list of dicts with url, status,
@@ -181,8 +209,11 @@ async def threat_pulse(request: Request, db: sqlite3.Connection = Depends(get_db
     if cached:
         return cached
 
-    entries = await fetch_urlhaus_ph_feed()
+    # A feed that just failed is left alone until the negative window passes,
+    # rather than being re-queried by every request that finds no fresh row.
+    entries = [] if feed_recently_failed(db) else await fetch_urlhaus_ph_feed()
     if not entries:
+        note_feed_failure(db)
         # Return last-known cache if fetch failed, even if stale
         row = db.execute(
             "SELECT response_json, fetched_at FROM threat_pulse_cache WHERE id = 'ph' LIMIT 1"
@@ -206,5 +237,6 @@ async def threat_pulse(request: Request, db: sqlite3.Connection = Depends(get_db
         }
 
     result = aggregate(entries)
+    clear_feed_failure(db)
     store_cache(db, result)
     return result

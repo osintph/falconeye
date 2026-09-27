@@ -57,6 +57,17 @@ HUDSONROCK_CACHE_TTL_HOURS = 4
 # the same way the paid LLM endpoints are.
 HUDSONROCK_PER_DAY = max(1, int(getenv_clean("HUDSONROCK_PER_DAY", "25")))
 
+# Censys Platform host lookup (v3.34.0). Enrichment only: ports and services,
+# never a reputation vote.
+#
+# Default OFF because the call is metered. Verified 2026-09-27 against
+# https://docs.censys.com/docs/platform-credits-free-starter: an entity lookup
+# costs 1 Censys credit, Censys Free gets 100 credits a month and they expire at
+# the end of the month, so an instance with the free allowance can serve about
+# three lookups a day before the balance is gone. When it is gone the API
+# answers HTTP 422 and the card says so, quietly.
+CENSYS_ENABLED = getenv_clean("CENSYS_ENABLED", "false").lower() == "true"
+
 # Breach Check tab (Have I Been Pwned, Core 1 subscription).
 HIBP_API_KEY = getenv_clean("HIBP_API_KEY")
 

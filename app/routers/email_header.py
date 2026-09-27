@@ -1109,6 +1109,17 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     # LLM daily cap, so a refresh is charged exactly like a fresh analysis.
     cached = None if getattr(req, "refresh", False) else cache.get(
         _CACHE_TABLE, header_id, CACHE_TTL_HOURS, key_col="id")
+    if cached is not None:
+        # The LLM call is the one part of this analysis that can fail against an
+        # upstream, and a failed call does not spend the daily cap. Caching that
+        # failure for the full TTL meant the retry that would have worked was
+        # never made, so a stamped failure past the negative window sends this
+        # request down the full path again instead.
+        _failures = cache.take_failures(cached)
+        if cache.stale_failures(_failures):
+            log.info("event=email_cache_retry parts=%s",
+                     ",".join(sorted(cache.stale_failures(_failures))))
+            cached = None
     if cached:
         # Attached after the cache read, never written into it: Hudson Rock has
         # its own cache and its own per-IP cap, and a header analysis cached for
@@ -1231,6 +1242,10 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
 
     # LLM body analysis: ONLY runs if body is provided
     llm_analysis = None
+    # Distinguishes "the call failed" from "the call never ran". Only the first
+    # is worth retrying: being over the cap or having no key is a decision, and
+    # retrying in a minute would spend nothing and change nothing.
+    llm_failed = False
     if body_provided and LLM_ANALYSIS_ENABLED and ANTHROPIC_API_KEY:
         source_ip = get_client_ip(request) if request else "unknown"
         allowed, calls_used = _check_llm_rate_limit(source_ip)
@@ -1239,6 +1254,8 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
             llm_analysis = await _llm_analyze_body(body_to_analyze, sender_email)
             if llm_analysis:
                 _record_llm_call(source_ip)
+            else:
+                llm_failed = True
         else:
             llm_analysis = {
                 "rate_limited": True,
@@ -1302,7 +1319,9 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     parsed["cache_hit"] = False
     parsed["fetched_at"] = datetime.now(timezone.utc).isoformat()
 
+    cache.note_failures(parsed, ["llm"] if llm_failed else [])
     cache.set(_CACHE_TABLE, header_id, parsed, key_col="id")
+    cache.take_failures(parsed)
 
     # After cache.set, so the exposure result is never stored in this cache.
     parsed["hudsonrock"] = await hudsonrock.lookup_email(

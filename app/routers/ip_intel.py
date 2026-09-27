@@ -54,12 +54,131 @@ _init_cache()
 
 # ---- Cache helpers (delegate to the shared cache store, reusing the request conn) ----
 
+CACHE_TABLE = "ip_intel_cache"
+
+
 def get_cached(db: sqlite3.Connection, ip: str) -> dict | None:
-    return cache.get("ip_intel_cache", ip, CACHE_TTL_HOURS, key_col="ip", conn=db)
+    return cache.get(CACHE_TABLE, ip, CACHE_TTL_HOURS, key_col="ip", conn=db)
 
 
 def store_cache(db: sqlite3.Connection, ip: str, response: dict) -> None:
-    cache.set("ip_intel_cache", ip, response, key_col="ip", conn=db)
+    cache.set(CACHE_TABLE, ip, response, key_col="ip", conn=db)
+
+
+# ---- Which parts of one lookup can fail, for the negative cache ----
+#
+# The keyless fetchers signal failure by returning None, and each is
+# distinguishable from a real empty answer: Shodan returns {"empty": True} for a
+# 404, URLhaus returns a body with query_status for a miss, RIPEstat returns a
+# dict. GreyNoise returns None when it has no key too, which is fine: retrying it
+# costs no HTTP call and means a key added mid-window starts working within the
+# minute.
+#
+# Deliberately NOT tracked:
+#   reverse_dns - an address with no PTR record is the normal case, and an empty
+#     list cannot be told apart from a resolver failure, so retrying it would
+#     re-query DNS on every single lookup of every PTR-less address.
+#   asn_intel  - {"available": False} means both "this IP has no ASN" and "RIPE
+#     was unhappy", and it keeps its own per-ASN cache of the upstream answers,
+#     so a failure there is already not pinned to this row.
+_CORE_FETCHERS = ("shodan", "greynoise", "ripestat", "urlhaus")
+
+
+def _core_failed(response: dict) -> list:
+    """Which keyless fetchers did not answer in this response."""
+    return [name for name in _CORE_FETCHERS if response.get(name) is None]
+
+
+def _failed_parts(response: dict) -> list:
+    """Every part of this lookup that failed: sources and keyless fetchers."""
+    sources = ((response.get("reputation") or {}).get("sources")) or {}
+    return reputation.failed_sources(sources) + _core_failed(response)
+
+
+def _rebuild_reputation(response: dict) -> None:
+    """Recompute the verdict, geo consensus and merged ports in place.
+
+    Called after a partial retry has replaced some of the parts the block is
+    derived from. Everything here is pure computation over what is already in
+    the response.
+    """
+    sources = ((response.get("reputation") or {}).get("sources")) or {}
+    shodan = response.get("shodan") if isinstance(response.get("shodan"), dict) else None
+    ripestat = response.get("ripestat") if isinstance(response.get("ripestat"), dict) else None
+    greynoise = response.get("greynoise") if isinstance(response.get("greynoise"), dict) else None
+    if shodan is not None:
+        shodan_ports = [] if shodan.get("empty") else (shodan.get("ports") or [])
+    else:
+        shodan_ports = None
+    block = reputation.assemble(
+        sources,
+        greynoise_malicious=((greynoise or {}).get("classification") == "malicious"),
+        shodan_ports=shodan_ports,
+        existing_country=(ripestat or {}).get("country"),
+        network_name=(ripestat or {}).get("asn_holder"),
+    )
+    response["reputation"] = {**block, "_target": response.get("ip")}
+
+
+async def _retry_failed(db: sqlite3.Connection, ip: str, cached: dict,
+                        failures: dict, stale: list) -> dict:
+    """Re-attempt the parts of a cached lookup that failed, and nothing else.
+
+    The row itself stays cached: what expires early is the failure, not the
+    answer. Sources that answered are never re-queried here, because AbuseIPDB
+    is 1,000 checks a day and VirusTotal 500 and those quotas are what the cache
+    exists to protect.
+    """
+    rep_names = [n for n in stale if n in reputation.ALL_NAMES]
+    core_names = [n for n in stale if n in _CORE_FETCHERS]
+
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        jobs = {}
+        if rep_names:
+            jobs["_reputation"] = reputation.fetch_sources(ip, client, only=rep_names)
+        if "shodan" in core_names:
+            jobs["shodan"] = fetch_shodan_internetdb(client, ip)
+        if "greynoise" in core_names:
+            jobs["greynoise"] = fetch_greynoise(client, ip)
+        if "ripestat" in core_names:
+            jobs["ripestat"] = fetch_ripestat(client, ip)
+        if "urlhaus" in core_names:
+            jobs["urlhaus"] = fetch_urlhaus_host(client, ip)
+
+        names = list(jobs)
+        results = await asyncio.gather(*(jobs[n] for n in names), return_exceptions=True)
+        got = {}
+        for name, value in zip(names, results):
+            got[name] = None if isinstance(value, Exception) else value
+
+        new_sources = got.pop("_reputation", None) or {}
+        if not isinstance(new_sources, dict):
+            new_sources = {}
+        for name, value in got.items():
+            cached[name] = value
+
+        merged = dict(((cached.get("reputation") or {}).get("sources")) or {})
+        merged.update(new_sources)
+        cached.setdefault("reputation", {})["sources"] = merged
+
+        if cached.get("shodan") and (cached["shodan"] or {}).get("vulns"):
+            cached["cve_details"] = await fetch_cve_details(client, cached["shodan"]["vulns"])
+
+    _rebuild_reputation(cached)
+
+    # Stamp what is still failing. A failure that was not retried (it is inside
+    # its own window) keeps its original stamp, so the window is per source and
+    # a retry that fails again restarts only its own.
+    still = _failed_parts(cached)
+    kept = {n: t for n, t in failures.items() if n in still and n not in stale}
+    if kept:
+        cached[cache.FAILURES_KEY] = kept
+    cache.note_failures(cached, [n for n in still if n not in kept])
+
+    cache.update_blob(CACHE_TABLE, ip, cached, key_col="ip", conn=db)
+    cache.take_failures(cached)
+    cached["cache_hit"] = True
+    return cached
 
 
 # ---- Data source fetchers ----
@@ -214,6 +333,19 @@ async def lookup_ip(request: Request, ip: str, refresh: bool = False,
     # is what stops it being a free way to spend the upstream quotas.
     cached = None if refresh else get_cached(db, validated)
     if cached:
+        # A cached failure is not a cached answer. Any source that failed carries
+        # a stamp; once that stamp is older than cache.NEGATIVE_TTL_SECONDS the
+        # source is re-attempted here instead of being served for the rest of the
+        # six hours. Refresh skips this path entirely and re-queries everything.
+        failures = cache.take_failures(cached)
+        stale = cache.stale_failures(failures)
+        if stale:
+            log.info("event=ip_cache_retry target=%s sources=%s",
+                     tag(validated), ",".join(sorted(stale)))
+            return await _retry_failed(db, validated, cached, failures, stale)
+        # Otherwise the failure is inside its window: it stands, the upstream is
+        # left alone, and the stored stamps are untouched by this read.
+        #
         # Replay the per-source lines so a cached answer is not a silent one.
         # Without this the log shows nothing for the majority of lookups, which
         # is what forced the v3.33.2 diagnosis through the database by hand.
@@ -281,7 +413,11 @@ async def lookup_ip(request: Request, ip: str, refresh: bool = False,
         "cache_hit": False,
     }
 
+    # Stamp whatever failed before the row is written, so the next lookup
+    # re-attempts it instead of being served this failure for six hours.
+    cache.note_failures(response, _failed_parts(response))
     store_cache(db, validated, response)
+    cache.take_failures(response)
     return response
 
 

@@ -106,4 +106,5 @@ def test_endpoint_200_when_reputation_fetch_raises(monkeypatch):
     verdict = r.json()["reputation"]["verdict"]
     assert verdict["verdict"] == "INCOMPLETE"
     assert verdict["sources_responded"] == 0
-    assert len(verdict["sources_unavailable"]) == 5
+    # Four verdict sources; Censys is enrichment and is never counted here.
+    assert len(verdict["sources_unavailable"]) == 4

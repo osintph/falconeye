@@ -5,6 +5,90 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.34.0] - 2026-09-27
+
+Three parts: Censys leaves the reputation consensus and failures stop being
+cached as answers; an MCP server for local, self-hosted use; and one new
+opt-in source on the Email Header tab.
+
+### Censys is enrichment, not a vote
+
+Censys never produced a reputation signal. Nothing in `compute_verdict()` read a
+Censys field, and there is no Censys equivalent of an abuse score: what it
+contributes is ports, services, observed OS and ASN attribution. It was
+nevertheless counted in the consensus, and because its lookup is the only metered
+one on the tab it was the first source to fall silent, at which point the card
+reported `INCOMPLETE` and "4 of 5 reputation sources responded". A missing port
+scan was being reported as missing threat intelligence.
+
+The verdict is now computed over the four unmetered sources: AbuseIPDB,
+VirusTotal, AlienVault OTX, ThreatFox. `CLEAN` means all four answered and none
+of them flagged the address. Censys being absent, exhausted, unconfigured or
+switched off cannot make a verdict `INCOMPLETE`. It still merges into the port
+list and still contributes a geolocation opinion, and it is rendered as one grey
+line on the ports card rather than a sub-card among the four that vote.
+
+### An exhausted Censys balance is not an error
+
+What it actually costs, verified 2026-09-27 against
+<https://docs.censys.com/docs/platform-credits-free-starter> and
+<https://docs.censys.com/docs/data-access-tiers-entitlements>:
+
+| Fact | Value |
+|---|---|
+| The host lookup this tab makes | 1 Censys credit |
+| Censys Free allowance | 100 credits a month, expiring at month end |
+| Censys Free API scope | lookup endpoints only, which is all this uses |
+| Censys Starter | a Free account that has bought credits, from $100, valid 12 months |
+
+100 credits a month is about three host lookups a day. When the balance is spent
+the API answers HTTP 422, which used to fall through to a generic red "HTTP 422"
+error on the card. It now maps to a distinct `no_credits` state and renders as a
+grey "Censys: monthly credits exhausted" note. A 422 that is not about the
+balance, the malformed-organization-id case, is still an error, because that one
+needs an operator. The module docstring previously said "free tier includes host
+lookup" with no mention of credits; it now states the cost.
+
+`CENSYS_ENABLED` is new in `.env.example` and defaults to **false**: no instance
+should spend an operator's credits without being asked. When it is off, Censys is
+not called, is not named in the tab's privacy note, and is not counted in the
+"sources this IP is sent to" total.
+
+### A failure is no longer cached as an answer
+
+Every tab that caches stored a failed source inside the cached row exactly like a
+source that answered, so the failure was served for the rest of the TTL. Six
+hours on the IP and Domain tabs. The consequences were concrete: the operator who
+added API keys and kept being served the keyless answer (the report that produced
+Refresh in v3.33.0) was hitting this, and so was every two minute upstream blip
+that pinned "unavailable" on a card until the afternoon.
+
+A result with `ok=false` is now stamped and honoured for at most 60 seconds
+(`app.utils.cache.NEGATIVE_TTL_SECONDS`), which exists only so a hammered tab
+does not hammer a down upstream. Past that, the next lookup re-attempts **only**
+what failed, merges it into the cached row, recomputes the verdict and rewrites
+the row **without** resetting its age, so a permanently broken source cannot keep
+a six hour row alive forever. Refresh ignores the window entirely.
+
+| Tab | What is re-attempted |
+|---|---|
+| IP Reputation | each `ok=false` source, plus Shodan, GreyNoise, RIPEstat and URLhaus when they return nothing |
+| Domain Intel | per component: RDAP, WHOIS, DNS, CT, network attribution |
+| Email Header | a failed LLM call, which never spent the daily cap, so the retry is free |
+| Threat Pulse | a down feed, asked again at most once a minute instead of on every request |
+
+Reverse DNS is deliberately not tracked: an address with no PTR record is the
+normal case and an empty list cannot be told apart from a resolver failure, so
+retrying it would re-query DNS on every lookup of every PTR-less address. ASN
+intel is not tracked either: `{"available": false}` means both "no ASN" and "RIPE
+was unhappy", and it already caches upstream answers separately.
+
+Domain Intel also gained the self-initialising cache table every other router
+has. It was the last one relying on `scripts/db_init.py`, so a database created
+fresh rather than migrated in place would 500 the tab.
+
+---
+
 ## [3.33.4] - 2026-09-21
 
 Four follow-ups to v3.33.3, one of them a privacy regression that v3.33.3

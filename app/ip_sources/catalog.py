@@ -9,28 +9,53 @@ IP was actually sent, which is precisely what a privacy note is for.
 
 Both the tab copy and the privacy policy are now rendered from this list, so
 they cannot disagree. Adding a source means adding it here and nowhere else.
-"""
 
-# The five keyed sources that produce the consensus verdict. Order matches
+A source that is switched off on this instance is left out of the privacy copy,
+because the visitor's IP is never sent to it. That is what `enabled` is for; a
+source without one is always on.
+"""
+from app import config
+
+# The keyed sources that produce the consensus verdict. Order matches
 # app.ip_sources.reputation._NAMES.
+#
+# Censys used to be in here. It votes on nothing (see reputation.py) and its
+# lookup is credit-metered, so from v3.34.0 it sits below with the other
+# enrichment upstreams.
 REPUTATION_SOURCES = (
     {"key": "abuseipdb", "label": "AbuseIPDB", "env": "ABUSEIPDB_KEY"},
     {"key": "virustotal", "label": "VirusTotal", "env": "VT_KEY"},
     {"key": "otx", "label": "AlienVault OTX", "env": "OTX_API_KEY"},
-    {"key": "censys", "label": "Censys", "env": "CENSYS_PAT"},
     {"key": "threatfox", "label": "ThreatFox", "env": "ABUSECH_AUTH_KEY"},
 )
 
-# Keyless upstreams the same lookup also queries. They do not vote on the
+# Upstreams the same lookup also queries for enrichment. They do not vote on the
 # verdict, but the IP is still sent to them, so the privacy note must say so.
 SUPPORTING_SOURCES = (
     {"key": "shodan", "label": "Shodan InternetDB / CVEDB", "env": None},
     {"key": "greynoise", "label": "GreyNoise", "env": "GREYNOISE_API_KEY"},
     {"key": "ripestat", "label": "RIPEstat", "env": None},
     {"key": "urlhaus", "label": "URLhaus", "env": "ABUSECH_AUTH_KEY"},
+    {"key": "censys", "label": "Censys", "env": "CENSYS_PAT",
+     "enabled": lambda: config.CENSYS_ENABLED},
 )
 
 ALL_SOURCES = REPUTATION_SOURCES + SUPPORTING_SOURCES
+
+
+def _is_enabled(source: dict) -> bool:
+    gate = source.get("enabled")
+    if gate is None:
+        return True
+    try:
+        return bool(gate())
+    except Exception:  # noqa: BLE001 - a broken gate must not blank the page
+        return True
+
+
+def active_sources() -> tuple:
+    """Every upstream this instance actually sends the IP to."""
+    return tuple(s for s in ALL_SOURCES if _is_enabled(s))
 
 
 def _join(labels) -> str:
@@ -42,10 +67,10 @@ def _join(labels) -> str:
 
 
 def reputation_labels() -> str:
-    """The five verdict sources, for the tab intro."""
+    """The verdict sources, for the tab intro."""
     return _join(s["label"] for s in REPUTATION_SOURCES)
 
 
 def all_labels() -> str:
     """Every upstream the IP is sent to, for the privacy copy."""
-    return _join(s["label"] for s in ALL_SOURCES)
+    return _join(s["label"] for s in active_sources())

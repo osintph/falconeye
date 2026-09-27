@@ -83,8 +83,8 @@ def test_the_frontend_offers_refresh_on_all_three_cards():
 
 # ---------- the source list ----------
 
-def test_catalog_has_the_five_verdict_sources_and_matches_reputation():
-    assert len(catalog.REPUTATION_SOURCES) == 5
+def test_catalog_has_the_verdict_sources_and_matches_reputation():
+    assert len(catalog.REPUTATION_SOURCES) == 4
     assert [s["key"] for s in catalog.REPUTATION_SOURCES] == reputation._NAMES, (
         "the catalog and the consensus source list have drifted"
     )
@@ -93,14 +93,14 @@ def test_catalog_has_the_five_verdict_sources_and_matches_reputation():
 def test_tab_copy_and_privacy_policy_are_rendered_from_the_catalog():
     """The two lists disagreed (five versus nine). They cannot now."""
     out = _render()
-    five = catalog.reputation_labels()
-    nine = catalog.all_labels()
+    voting = catalog.reputation_labels()
+    everything = catalog.all_labels()
 
-    assert five in out, f"the tab intro does not list the verdict sources: {five}"
-    assert nine in out, f"the privacy copy does not list every upstream: {nine}"
+    assert voting in out, f"the tab intro does not list the verdict sources: {voting}"
+    assert everything in out, f"the privacy copy does not list every upstream: {everything}"
 
     # Both strings are present more than nowhere, and neither is a stale literal.
-    assert out.count(five) >= 1 and out.count(nine) >= 2, (
+    assert out.count(voting) >= 1 and out.count(everything) >= 2, (
         "expected the full list in both the in-tab privacy note and the "
         "privacy policy table"
     )

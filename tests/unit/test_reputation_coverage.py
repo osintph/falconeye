@@ -9,8 +9,13 @@ produced `None` and was indistinguishable from a source that answered and found
 nothing. The verdict then asserted that nothing had flagged the IP, when in
 truth nothing had been asked.
 
-All five keys happen to be set on the production instance, so this only bit on
-a quota exhaustion or an outage, silently, in the direction of "looks clean".
+All the keys happen to be set on the production instance, so this only bit on a
+quota exhaustion or an outage, silently, in the direction of "looks clean".
+
+Updated in v3.34.0: the verdict is computed over the four unmetered sources.
+Censys moved out (it votes on nothing and its lookup is credit-metered), so it
+is supplied below as enrichment and is never counted. See
+tests/unit/test_censys_supplementary.py.
 
 The tests below cover the three states named in the brief: nothing configured,
 one source down, everything up. Plus the case that must NOT change: a positive
@@ -34,8 +39,9 @@ def _all_quiet():
         "abuseipdb": _src("abuseipdb", data={"confidence": 0, "total_reports": 0}),
         "virustotal": _src("virustotal", data={"malicious": 0}),
         "otx": _src("otx", data={"pulse_count": 0}),
-        "censys": _src("censys", data={"ports": []}),
         "threatfox": _src("threatfox", data={"matched": False}),
+        # Enrichment, present but never counted.
+        "censys": _src("censys", data={"ports": []}),
     }
 
 
@@ -44,12 +50,12 @@ def _all_quiet():
 def test_all_sources_up_and_quiet_is_clean():
     v = reputation.compute_verdict(_all_quiet())
     assert v["verdict"] == reputation.CLEAN
-    assert v["sources_responded"] == 5
-    assert v["sources_total"] == 5
+    assert v["sources_responded"] == 4
+    assert v["sources_total"] == 4
     assert v["sources_unavailable"] == []
-    assert "5 of 5" in v["coverage_note"]
+    assert "4 of 4" in v["coverage_note"]
     # The wording must say the coverage was complete, not merely that nothing fired.
-    assert "All 5 sources responded" in v["reasoning"]
+    assert "All 4 sources responded" in v["reasoning"]
 
 
 # ---------- one source down ----------
@@ -70,8 +76,8 @@ def test_one_source_down_is_never_clean(state, error):
         "unavailable source is not a clean one."
     )
     assert v["verdict"] == reputation.INCOMPLETE
-    assert v["sources_responded"] == 4
-    assert "4 of 5" in v["coverage_note"]
+    assert v["sources_responded"] == 3
+    assert "3 of 4" in v["coverage_note"]
     # The missing source has to be named, not just counted.
     names = [u["source"] for u in v["sources_unavailable"]]
     assert names == ["virustotal"]
@@ -94,8 +100,8 @@ def test_no_sources_configured_is_incomplete_not_clean():
     v = reputation.compute_verdict(sources)
     assert v["verdict"] == reputation.INCOMPLETE
     assert v["sources_responded"] == 0
-    assert "0 of 5" in v["coverage_note"]
-    assert len(v["sources_unavailable"]) == 5
+    assert "0 of 4" in v["coverage_note"]
+    assert len(v["sources_unavailable"]) == 4
 
 
 def test_configured_sources_reports_what_is_missing(monkeypatch):
@@ -103,10 +109,10 @@ def test_configured_sources_reports_what_is_missing(monkeypatch):
         monkeypatch.delenv(env, raising=False)
     cfg = reputation.configured_sources()
     assert cfg["none_configured"] is True
-    assert cfg["configured"] == 0 and cfg["total"] == 5
+    assert cfg["configured"] == 0 and cfg["total"] == 4
     # Each entry names the env var an operator has to set, for the .env pointer.
     assert {m["env"] for m in cfg["missing"]} == {
-        "ABUSEIPDB_KEY", "VT_KEY", "OTX_API_KEY", "CENSYS_PAT", "ABUSECH_AUTH_KEY"}
+        "ABUSEIPDB_KEY", "VT_KEY", "OTX_API_KEY", "ABUSECH_AUTH_KEY"}
 
 
 def test_configured_sources_sees_a_configured_key(monkeypatch):
@@ -123,13 +129,13 @@ def test_configured_sources_sees_a_configured_key(monkeypatch):
 
 def test_a_real_hit_still_wins_when_another_source_is_down():
     sources = _all_quiet()
-    sources["censys"] = _src("censys", ok=False, state=ERROR, error="timeout")
+    sources["otx"] = _src("otx", ok=False, state=ERROR, error="timeout")
     sources["abuseipdb"] = _src("abuseipdb", data={"confidence": 90, "total_reports": 40})
     v = reputation.compute_verdict(sources)
     assert v["verdict"] == reputation.MALICIOUS
-    # Coverage is still reported, so the operator knows it is 4 of 5.
-    assert v["sources_responded"] == 4
-    assert v["sources_unavailable"][0]["source"] == "censys"
+    # Coverage is still reported, so the operator knows it is 3 of 4.
+    assert v["sources_responded"] == 3
+    assert v["sources_unavailable"][0]["source"] == "otx"
 
 
 # ---------- the structured log line ----------
@@ -149,7 +155,7 @@ def test_the_looked_up_ip_is_never_written_to_the_log(caplog):
 
     v3.33.3 turned INFO logging on and started retaining every looked-up IP on
     the box, with no stated retention and nothing in the privacy policy. The
-    line exists to correlate the five source calls of one lookup and to show
+    line exists to correlate the source calls of one lookup and to show
     which source was slow; none of that needs the address.
     """
     ip = "51.195.242.234"
@@ -161,7 +167,7 @@ def test_the_looked_up_ip_is_never_written_to_the_log(caplog):
         assert ip not in msg, f"the looked-up IP is in the log line: {msg}"
         assert "51.195" not in msg
 
-    # The five lines of one lookup still correlate, which is the whole purpose.
+    # The lines of one lookup still correlate, which is the whole purpose.
     tags = {m.split("target=")[1].split(" ")[0] for m in messages}
     assert len(tags) == 1, "the same target produced different tags"
     assert tags.pop().startswith("h:")

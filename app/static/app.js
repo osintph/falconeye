@@ -2595,7 +2595,7 @@ function renderReputationSourceNotice() {
     return `
       <div class="bg-amber-950 border border-amber-800 rounded p-3 mb-4 text-xs text-amber-200">
         <strong class="text-amber-300">No reputation sources are configured on this instance.</strong>
-        All ${escapeHtml(String(cfg.total))} of AbuseIPDB, VirusTotal, AlienVault OTX, Censys and ThreatFox
+        All ${escapeHtml(String(cfg.total))} of ${escapeHtml(cfg.labels || '')}
         need an API key, so a lookup cannot return a reputation verdict. Set the keys listed under
         "IP Reputation" in <code class="text-amber-300">.env.example</code> and restart.
       </div>`;
@@ -2647,7 +2647,7 @@ function renderReputationPorts(rep, shodan, cveDetails) {
   }
   return `<div class="bg-gray-900 border border-gray-800 rounded p-5">
     <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Open Ports & Services</h3>
-    ${portsHtml}${cveHtml}</div>`;
+    ${portsHtml}${cveHtml}${censysNote((rep && rep.sources) ? rep.sources.censys : null)}</div>`;
 }
 
 function _repCard(title, src, renderer) {
@@ -2661,6 +2661,9 @@ function _repCard(title, src, renderer) {
     <h4 class="text-xs font-bold text-amber-300 uppercase tracking-wide mb-2">${title}</h4>${body}</div>`;
 }
 
+// The four sources the verdict is computed over. Censys is not here: it votes on
+// nothing, so a sub-card of its own next to the voters said otherwise. It
+// appears as one grey line under the ports it contributes, see censysNote().
 function renderReputationSources(rep) {
   if (!rep || !rep.sources) return '';
   const s = rep.sources;
@@ -2668,9 +2671,31 @@ function renderReputationSources(rep) {
     ${_repCard('AbuseIPDB', s.abuseipdb, _repAbuseIpdb)}
     ${_repCard('VirusTotal', s.virustotal, _repVirusTotal)}
     ${_repCard('AlienVault OTX', s.otx, _repOtx)}
-    ${_repCard('Censys', s.censys, _repCensys)}
     ${_repCard('ThreatFox', s.threatfox, _repThreatFox)}
   </div>`;
+}
+
+// Censys, in one grey line on the ports card.
+//
+// Running out of the monthly credit allowance is an expected state of the free
+// tier (100 credits a month, one per host lookup), not a fault, so it reads as a
+// note and not as the red error the generic sub-card used to show. Being absent,
+// unconfigured or switched off says nothing at all: silence is correct, because
+// nothing was asked.
+function censysNote(src) {
+  if (!src) return '';
+  const grey = (txt) => `<p class="text-xs text-gray-500 mt-2">${escapeHtml(txt)}</p>`;
+  if (src.state === 'no_credits') return grey('Censys: monthly credits exhausted');
+  if (src.state === 'quota') return grey('Censys: rate limit reached, try again shortly');
+  if (src.state === 'error') return grey('Censys: unavailable for this lookup');
+  if (src.state === 'no_key' || src.state === 'disabled') return '';
+  const d = src.data || {};
+  const bits = [];
+  const n = (d.ports || []).length;
+  bits.push(n === 1 ? '1 service observed' : `${n} services observed`);
+  if (d.os) bits.push(`OS ${d.os}`);
+  if (d.asn) bits.push(`AS${d.asn}${d.asn_name ? ' ' + d.asn_name : ''}`);
+  return grey('Censys: ' + bits.join(', '));
 }
 
 function _repAbuseIpdb(d) {
@@ -2696,14 +2721,6 @@ function _repOtx(d) {
   return `<p class="text-sm text-gray-300">${pc} community pulse${pc === 1 ? '' : 's'}.</p>
     ${(d.pulse_names || []).length ? `<ul class="text-xs text-gray-500 mt-1 list-disc list-inside">${(d.pulse_names || []).slice(0, 4).map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : ''}
     ${(d.malware_families || []).length ? `<p class="text-xs text-gray-400 mt-1">Malware: ${(d.malware_families || []).map(escapeHtml).join(', ')}</p>` : ''}`;
-}
-
-function _repCensys(d) {
-  const ports = d.ports || [];
-  if (!ports.length) return `<p class="text-xs text-gray-400">No services observed${d.asn ? ` (AS${d.asn})` : ''}.</p>`;
-  return `<p class="text-sm text-gray-300">${ports.map(p => `${p.port}/${escapeHtml(p.service || p.transport || '')}`).join(', ')}</p>
-    ${d.os ? `<p class="text-xs text-gray-500 mt-1">OS: ${escapeHtml(d.os)}</p>` : ''}
-    ${d.asn_name ? `<p class="text-xs text-gray-500">AS${d.asn} ${escapeHtml(d.asn_name)}</p>` : ''}`;
 }
 
 function _repThreatFox(d) {
@@ -6435,11 +6452,13 @@ function feSanitizeName(s) {
 function feSourceState(s) {
   if (!s) return { txt: 'not queried', rgb: FE_PDF.muted };
   const map = {
-    ok:        { txt: 'ok', rgb: FE_PDF.green },
-    not_found: { txt: 'no records', rgb: FE_PDF.muted },
-    no_key:    { txt: 'no API key configured', rgb: FE_PDF.muted },
-    quota:     { txt: 'quota reached', rgb: FE_PDF.amber },
-    error:     { txt: (s.error || 'error'), rgb: FE_PDF.red },
+    ok:         { txt: 'ok', rgb: FE_PDF.green },
+    not_found:  { txt: 'no records', rgb: FE_PDF.muted },
+    no_key:     { txt: 'no API key configured', rgb: FE_PDF.muted },
+    quota:      { txt: 'quota reached', rgb: FE_PDF.amber },
+    no_credits: { txt: 'monthly credits exhausted', rgb: FE_PDF.muted },
+    disabled:   { txt: 'not enabled on this instance', rgb: FE_PDF.muted },
+    error:      { txt: (s.error || 'error'), rgb: FE_PDF.red },
   };
   return map[s.state] || { txt: (s.state || 'unknown'), rgb: FE_PDF.muted };
 }
@@ -6501,7 +6520,7 @@ function feIpOtx(st, s) {
   st.y += 2;
 }
 function feIpCensys(st, s) {
-  feSourceHead(st, 'Censys', s);
+  feSourceHead(st, 'Censys (enrichment, not part of the verdict)', s);
   if (s && s.state === 'ok') {
     const d = s.data || {};
     const nports = (d.ports || []).length;
@@ -6583,10 +6602,12 @@ function feIpPortsTable(st, ports, shodan) {
 }
 
 function fePdfSourcesQueried(data) {
-  const names = { abuseipdb: 'AbuseIPDB', virustotal: 'VirusTotal', otx: 'AlienVault OTX', censys: 'Censys', threatfox: 'ThreatFox' };
+  const names = { abuseipdb: 'AbuseIPDB', virustotal: 'VirusTotal', otx: 'AlienVault OTX', threatfox: 'ThreatFox', censys: 'Censys' };
   const rep = (data.reputation || {}).sources || {};
   const list = [];
-  for (const k of Object.keys(names)) if (rep[k]) list.push(names[k]);
+  // A source switched off was never asked, so it does not belong on a list of
+  // what this report queried.
+  for (const k of Object.keys(names)) if (rep[k] && rep[k].state !== 'disabled') list.push(names[k]);
   list.push('GreyNoise', 'URLhaus', 'Shodan InternetDB', 'RIPEstat');
   return list.join(', ');
 }
@@ -6633,10 +6654,10 @@ function downloadIpReportPdf(data) {
     feIpAbuseIpdb(st, S.abuseipdb);
     feIpVirusTotal(st, S.virustotal);
     feIpOtx(st, S.otx);
-    feIpCensys(st, S.censys);
     feIpThreatFox(st, S.threatfox);
     feIpGreyNoise(st, data.greynoise);
     feIpUrlhaus(st, data.urlhaus);
+    if (S.censys && S.censys.state !== 'disabled') feIpCensys(st, S.censys);
 
     feHeading(st, 'Open ports');
     feIpPortsTable(st, rep.ports, data.shodan);

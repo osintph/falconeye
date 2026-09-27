@@ -1,7 +1,9 @@
 """Consensus verdict thresholds, geo consensus, and port merge."""
 from app.ip_sources import reputation as rep
 
-ALL = ("abuseipdb", "virustotal", "otx", "censys", "threatfox")
+# The four verdict sources. Censys is enrichment from v3.34.0 and is supplied
+# in `full()` below so the port-merge tests have it, but it is never counted.
+ALL = ("abuseipdb", "virustotal", "otx", "threatfox")
 
 
 def src(name, ok=True, **data):
@@ -10,7 +12,7 @@ def src(name, ok=True, **data):
 
 
 def full(**overrides):
-    """All five sources present and quiet, with the named ones overridden.
+    """Every source present and quiet, with the named ones overridden.
 
     Threshold tests need complete coverage, because since v3.33.2 a source that
     is absent or errored makes the verdict INCOMPLETE rather than CLEAN. These
@@ -52,15 +54,15 @@ def test_verdict_otx_and_threatfox_and_greynoise():
     assert rep.compute_verdict(full(otx=src("otx", pulse_count=3)))["verdict"] == "MALICIOUS"
     assert rep.compute_verdict(full(otx=src("otx", pulse_count=2)))["verdict"] == "SUSPICIOUS"
     assert rep.compute_verdict(full(threatfox=src("threatfox", matched=True)))["verdict"] == "MALICIOUS"
-    # GreyNoise is not one of the five keyed sources, so it can raise a verdict
-    # off an otherwise complete set.
+    # GreyNoise is not one of the keyed verdict sources, so it can raise a
+    # verdict off an otherwise complete set.
     assert rep.compute_verdict(full(), greynoise_malicious=True)["verdict"] == "SUSPICIOUS"
 
 
 def test_verdict_clean_when_nothing_flags():
     v = rep.compute_verdict(full())
     assert v["verdict"] == "CLEAN"
-    assert v["sources_responded"] == 5
+    assert v["sources_responded"] == 4
 
 
 def test_verdict_reasoning_lists_sources():
@@ -86,7 +88,7 @@ def test_failed_source_contributes_no_signal_but_is_not_treated_as_clean():
     assert v["verdict"] != "MALICIOUS"
     # But its absence is reported, not silently counted as a clean bill.
     assert v["verdict"] == "INCOMPLETE"
-    assert v["sources_responded"] == 4
+    assert v["sources_responded"] == 3          # one of the four is down
     assert [u["source"] for u in v["sources_unavailable"]] == ["abuseipdb"]
 
 

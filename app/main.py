@@ -46,7 +46,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.33.4",
+    version="3.34.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -101,7 +101,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.33.4"}
+    return {"status": "ok", "version": "3.34.0"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -147,7 +147,10 @@ def _operator_tokens() -> dict:
         # the tab said five sources, the privacy note said nine.
         "{{IP_REPUTATION_SOURCES}}": catalog.reputation_labels(),
         "{{IP_ALL_SOURCES}}": catalog.all_labels(),
-        "{{IP_SOURCE_COUNT}}": str(len(catalog.ALL_SOURCES)),
+        # active_sources(), not ALL_SOURCES: a source switched off on this
+        # instance is one the visitor's IP is never sent to, so it is neither
+        # named nor counted.
+        "{{IP_SOURCE_COUNT}}": str(len(catalog.active_sources())),
         # Rendered as ", <tagline>" so an operator who clears it gets a clean
         # full stop after their name instead of a dangling comma.
         "{{OPERATOR_TAGLINE_CLAUSE}}": (

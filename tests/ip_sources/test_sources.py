@@ -122,8 +122,12 @@ def test_otx_no_key(monkeypatch):
 
 
 # ---------- Censys ----------
+# Censys is off by default from v3.34.0 (the lookup spends a credit), so these
+# turn it on explicitly. The disabled path has its own coverage in
+# tests/unit/test_censys_supplementary.py.
 
 def test_censys_success_pat_only(monkeypatch):
+    monkeypatch.setattr(censys.config, "CENSYS_ENABLED", True)
     monkeypatch.setenv("CENSYS_PAT", "pat")
     resp = FakeResp(200, {"result": {"resource": {
         "services": [{"port": 22, "protocol": "SSH", "transport_protocol": "tcp"}],
@@ -136,11 +140,14 @@ def test_censys_success_pat_only(monkeypatch):
 
 
 def test_censys_no_pat(monkeypatch):
+    monkeypatch.setattr(censys.config, "CENSYS_ENABLED", True)
+    monkeypatch.delenv("CENSYS_PAT", raising=False)
     assert run(censys.fetch("1.2.3.4", FakeClient(forbid=True))).state == "no_key"
 
 
 def test_censys_invalid_org_id_not_sent(monkeypatch):
     # A non-UUID org id must be dropped (it caused a 422 in production).
+    monkeypatch.setattr(censys.config, "CENSYS_ENABLED", True)
     monkeypatch.setenv("CENSYS_PAT", "pat")
     monkeypatch.setenv("CENSYS_ORG_ID", "not-a-uuid")
     captured = {}
