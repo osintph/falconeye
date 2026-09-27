@@ -594,6 +594,26 @@ Every CIDR listed in the variable is a network permitted to name any IP as the
 rate-limited client, so keep it as narrow as possible and never put `0.0.0.0/0`
 in it.
 
+## MCP server (optional, local mode only)
+
+`app/mcp_server.py` serves seven tabs as MCP tools over stdio, for an operator
+driving their own instance from Claude Code or Claude Desktop. It is **not** part
+of the web service, is never started by systemd, and must never be exposed on a
+socket or a tunnel: stdio means the only caller is the user who launched it.
+
+The SDK is deliberately **not** in `requirements.txt` (`mcp` requires
+`uvicorn>=0.31.1`, and this deployment pins 0.29.0 for
+`uvicorn.workers.UvicornWorker`), so it gets its own venv:
+
+```bash
+sudo python3 -m venv /opt/falconeye/mcp-venv
+sudo /opt/falconeye/mcp-venv/bin/pip install -r /opt/falconeye/app_src/requirements.txt
+sudo /opt/falconeye/mcp-venv/bin/pip install 'mcp==2.2.0'
+```
+
+Full setup, the exact `claude mcp add` command, the Claude Desktop config and the
+troubleshooting table are in `docs/mcp-server.md`.
+
 ## Hudson Rock (optional, best effort)
 
 Adds infostealer exposure to Domain Intel and to the Email Header tab's risk

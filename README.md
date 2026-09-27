@@ -92,6 +92,16 @@ Enabling it forwards your visitors' lookups to a third party, and the endpoints
 publish no rate limit and no terms of use, so it is treated as best effort. See
 "Hudson Rock" in [docs/deploy-runbook.md](docs/deploy-runbook.md).
 
+**MCP server (optional, local mode).** `app/mcp_server.py` exposes seven tabs as
+MCP tools over stdio for an operator driving their own instance from Claude Code
+or Claude Desktop. It is not part of the web service and must not be exposed on a
+socket or tunnel: stdio means the only caller is the user who launched it, which
+is also why it has no authentication. Each tool calls the same route the browser
+tab calls, in-process, so the rate limits, SSRF guard and prompt-safety wrapping
+apply unchanged. The person-centric tabs (username, phone, Telegram, reverse image
+search, sockpuppet, dork generator) are deliberately not exposed. Setup and
+registration commands: [docs/mcp-server.md](docs/mcp-server.md).
+
 **Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings. `script-src` also allows `cdn.tailwindcss.com` for Tailwind and `cdnjs.cloudflare.com` for D3. These live in `nginx/snippets/security-headers.conf`, which is included at server level **and** inside every location that sets an `add_header` of its own. nginx does not merge `add_header` across levels: a location defining any header of its own inherits none of the server-level ones, which silently stripped CSP, HSTS and `nosniff` from `/static/` and the favicon routes until v3.32.2. `tests/unit/test_nginx_config.py` fails if a location reintroduces that.
 
 **Error isolation.** Exception strings from httpx and upstream APIs are logged server-side with `log.exception` and never echoed to the client. Client responses get generic messages only (`"Upstream service unavailable."`).
@@ -312,6 +322,7 @@ Expected baseline: **122 passed, 3 skipped** (the 3 skips are JPEG EXIF fixture 
 falconeye/
 ├── app/
 │   ├── main.py                  # FastAPI entry point, router registration
+│   ├── mcp_server.py            # MCP tools over stdio, local mode, see docs/mcp-server.md
 │   ├── config.py                # Environment variable loading
 │   ├── routers/                 # One file per tab / feature
 │   │   ├── crypto.py

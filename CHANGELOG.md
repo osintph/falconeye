@@ -87,6 +87,42 @@ Domain Intel also gained the self-initialising cache table every other router
 has. It was the last one relying on `scripts/db_init.py`, so a database created
 fresh rather than migrated in place would 500 the tab.
 
+### MCP server, stdio, local mode only
+
+`app/mcp_server.py` exposes seven tabs as MCP tools so an operator can drive
+their own instance from Claude Code or Claude Desktop: `ip_reputation`,
+`domain_intel`, `email_header_analyze`, `script_decode`, `url_expand`,
+`qr_analyze` and `ransomware_watch_search`.
+
+Each tool is a call onto the same HTTP route the browser tab calls, made
+in-process through httpx's ASGI transport, so the per-IP rate limits, the SSRF
+guard, the MIME and size caps, the prompt-safety wrapping and the output
+sanitisation apply unchanged and a tool returns exactly the JSON the API returns.
+A test asserts every tool resolves to the router's own function object, so a tool
+cannot quietly grow its own copy of an endpoint.
+
+The person-centric tabs are deliberately absent: username enumeration, phone,
+Telegram, reverse image search, sockpuppet generation and the dork generator.
+Behind an agent those turn an indicator check into people-search. A test fails if
+one of them appears.
+
+**stdio only.** No listener, no authentication, no key table: the transport is the
+parent process's stdin and stdout, so the only caller is the user who launched it.
+It is for self-hosters and private instances and must not be exposed to the
+internet; a test fails on any reference to an HTTP transport or an auth header.
+`script_decode` and `email_header_analyze` spend the operator's own Anthropic key
+under the existing daily cap, and their tool descriptions say so, because nobody
+sees a tab's warning when a model is calling the tool.
+
+Verified 2026-09-27 for this release: the SDK is `mcp` 2.2.0 (Python >= 3.10), and
+in the 2.x line FastMCP was renamed `MCPServer`, so `mcp.server.fastmcp` is gone.
+The SDK is **not** added to `requirements.txt`: it requires `uvicorn>=0.31.1` and
+this deployment pins 0.29.0 because the service runs
+`uvicorn.workers.UvicornWorker` under gunicorn and the client-IP trust model is
+verified against that version. The MCP server therefore gets its own venv. Setup,
+the exact `claude mcp add` command verified against Claude Code 2.1.274, and the
+Claude Desktop config are in `docs/mcp-server.md`.
+
 ---
 
 ## [3.33.4] - 2026-09-21
