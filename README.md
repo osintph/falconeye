@@ -10,6 +10,43 @@ License: AGPL-3.0
 
 ---
 
+## Use FalconEye from Claude Code or Claude Desktop
+
+FalconEye ships an **MCP server**, so seven of the tabs are available as tools
+inside Claude Code and Claude Desktop. Point it at your own instance and ask for
+a lookup instead of opening a browser tab.
+
+```bash
+claude mcp add falconeye -- /opt/falconeye/mcp-venv/bin/python -m app.mcp_server
+```
+
+| Tool | Input |
+|---|---|
+| `ip_reputation` | a public IPv4 or IPv6 address |
+| `domain_intel` | a hostname |
+| `email_header_analyze` | raw email headers, optionally with the body |
+| `script_decode` | obfuscated script source |
+| `url_expand` | a shortened or redirecting URL |
+| `qr_analyze` | a QR code image (file path or data URI) |
+| `ransomware_watch_search` | a victim, sector or group name |
+
+**It runs against your own instance, your own `.env` and your own API keys.**
+There is no hosted endpoint and no account: each tool calls the same route the
+browser tab calls, in-process, so your rate limits, the SSRF guard and the
+prompt-safety wrapping all apply unchanged, and the two LLM-backed tools spend
+your Anthropic budget under the existing daily cap.
+
+stdio transport only: no listener, no authentication, no key table, because the
+only caller is the user who launched the process. That also means it can drive a
+remote instance over SSH without opening a port. The person-centric tabs
+(username, phone, Telegram, reverse image search, sock puppet, dork generator)
+are deliberately not exposed.
+
+Setup, the Claude Desktop config block and the SSH pattern:
+**[docs/mcp.md](docs/mcp.md)**.
+
+---
+
 ## What it does
 
 FalconEye is the workbench an OSINT investigator opens when a new lead arrives. Each tab does one thing well and connects to the others via one-click pivots, from "I have a wallet address" to "here are the related domains, email infrastructure, Telegram channel, and the script the phishing kit runs" without switching tools.
@@ -92,15 +129,13 @@ Enabling it forwards your visitors' lookups to a third party, and the endpoints
 publish no rate limit and no terms of use, so it is treated as best effort. See
 "Hudson Rock" in [docs/deploy-runbook.md](docs/deploy-runbook.md).
 
-**MCP server (optional, local mode).** `app/mcp_server.py` exposes seven tabs as
-MCP tools over stdio for an operator driving their own instance from Claude Code
-or Claude Desktop. It is not part of the web service and must not be exposed on a
-socket or tunnel: stdio means the only caller is the user who launched it, which
-is also why it has no authentication. Each tool calls the same route the browser
-tab calls, in-process, so the rate limits, SSRF guard and prompt-safety wrapping
-apply unchanged. The person-centric tabs (username, phone, Telegram, reverse image
-search, sockpuppet, dork generator) are deliberately not exposed. Setup and
-registration commands: [docs/mcp-server.md](docs/mcp-server.md).
+**MCP server (optional, local mode).** The server described under "Use FalconEye
+from Claude Code or Claude Desktop" above is not part of the web service and must
+not be exposed on a socket or a tunnel: stdio means the only caller is the user
+who launched the process, which is also why it carries no authentication. Its
+tools call the same routes the browser tabs call, so the rate limits, the SSRF
+guard and the prompt-safety wrapping apply unchanged, and nothing in it can be
+reached from the public instance. See [docs/mcp.md](docs/mcp.md).
 
 **Security headers.** The nginx server block sets: `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, and `Strict-Transport-Security` with a one-year max-age. The CSP retains `script-src 'unsafe-inline'` for now because the frontend uses inline event handlers; removing it requires a frontend refactor to `addEventListener` bindings. `script-src` also allows `cdn.tailwindcss.com` for Tailwind and `cdnjs.cloudflare.com` for D3. These live in `nginx/snippets/security-headers.conf`, which is included at server level **and** inside every location that sets an `add_header` of its own. nginx does not merge `add_header` across levels: a location defining any header of its own inherits none of the server-level ones, which silently stripped CSP, HSTS and `nosniff` from `/static/` and the favicon routes until v3.32.2. `tests/unit/test_nginx_config.py` fails if a location reintroduces that.
 
@@ -322,7 +357,7 @@ Expected baseline: **122 passed, 3 skipped** (the 3 skips are JPEG EXIF fixture 
 falconeye/
 ├── app/
 │   ├── main.py                  # FastAPI entry point, router registration
-│   ├── mcp_server.py            # MCP tools over stdio, local mode, see docs/mcp-server.md
+│   ├── mcp_server.py            # MCP tools over stdio, local mode, see docs/mcp.md
 │   ├── config.py                # Environment variable loading
 │   ├── routers/                 # One file per tab / feature
 │   │   ├── crypto.py

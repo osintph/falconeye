@@ -150,6 +150,39 @@ connect. Stdio servers log everything to stderr, so that file is not only errors
 Source for the config path, the JSON shape and the UI path:
 <https://modelcontextprotocol.io/docs/develop/connect-local-servers>.
 
+## Driving a remote instance over SSH
+
+stdio means the client launches the server as a subprocess and talks to its
+stdin and stdout. Nothing says that subprocess has to be local. `ssh` is a
+perfectly good stdio pipe, so a client on a laptop can drive an instance on a VPS
+**without opening a port, adding an auth layer or exposing anything**:
+
+```bash
+claude mcp add falconeye -- ssh -T -q -p 22 user@your-vps \
+  'cd /opt/falconeye/app_src && set -a && . /opt/falconeye/.env && set +a && \
+   exec /opt/falconeye/mcp-venv/bin/python -m app.mcp_server'
+```
+
+Three details matter:
+
+- **`-T`** disables TTY allocation. A pty would mangle the byte stream: the
+  protocol needs raw newline-delimited JSON on stdout, and a terminal layer
+  rewrites line endings.
+- **`-q`** suppresses SSH's own chatter. SSH writes banners and warnings to
+  stderr, which the binding allows, but quiet keeps the client's log readable.
+- **`set -a; . /opt/falconeye/.env; set +a`** loads the same environment the
+  systemd unit loads via `EnvironmentFile=`. Without it the tools run with no API
+  keys and every source reports `no_key`. Do not pass keys as `-e` flags on a
+  shared machine: they land in the process list.
+
+The same command works as a Claude Desktop entry, with `ssh` as `command` and
+each argument as its own element of `args`.
+
+Authentication is SSH's, which is the point: access to the tools is exactly
+access to the account that can run them, and revoking a key revokes both. Do not
+"simplify" this into an HTTP listener, which is a different security model
+needing an auth layer this server deliberately does not have.
+
 ## Why stdout must stay clean
 
 The stdio binding

@@ -59,11 +59,20 @@ abuse report is right.
 
 ### Documentation: the MCP server was invisible
 
-The v3.34.0 MCP server was findable only by reading the CHANGELOG. README gained
-a "Use FalconEye from Claude Code or Claude Desktop" section immediately after
-Quick Start, `docs/mcp-server.md` became `docs/mcp.md` and gained the SSH pattern
-for driving a remote instance, and the repository description and topics now say
-that this ships an MCP server.
+The v3.34.0 MCP server was findable only by reading the CHANGELOG. Changed:
+
+- README gained a "Use FalconEye from Claude Code or Claude Desktop" section
+  near the top, with the one-line `claude mcp add` command, the seven tools, and
+  the fact that it runs against the reader's own instance and keys.
+- `docs/mcp-server.md` became `docs/mcp.md` and gained the SSH pattern for
+  driving a remote instance: stdio does not require a local subprocess, so `ssh`
+  is a valid transport and no port has to be opened.
+- The repository description names the MCP server, and the topics gained `mcp`,
+  `mcp-server`, `model-context-protocol` and `claude`. GitHub caps a repository
+  at 20 topics, so `security-tools`, `osint-toolkit`, `powershell-deobfuscator`
+  and `blue-team` made way (the first two duplicated `cybersecurity-tools` and
+  `osint-tool`).
+- The v3.34.0 release notes were reordered so the MCP server is the headline.
 
 ---
 
@@ -183,7 +192,7 @@ this deployment pins 0.29.0 because the service runs
 `uvicorn.workers.UvicornWorker` under gunicorn and the client-IP trust model is
 verified against that version. The MCP server therefore gets its own venv. Setup,
 the exact `claude mcp add` command verified against Claude Code 2.1.274, and the
-Claude Desktop config are in `docs/mcp-server.md`.
+Claude Desktop config are in `docs/mcp.md`.
 
 ### Registered-service enumeration on the Email Header tab (off by default)
 

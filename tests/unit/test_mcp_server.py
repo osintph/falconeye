@@ -14,7 +14,7 @@ Two boundaries are asserted here rather than left to review:
    generator) is reachable through MCP.
 2. Every tool resolves to the very same function object the HTTP app routes to.
 
-The SDK is not a dependency of the web app (see docs/mcp-server.md: mcp 2.2.0
+The SDK is not a dependency of the web app (see docs/mcp.md: mcp 2.2.0
 requires uvicorn>=0.31.1 and this deployment pins 0.29.0 for the gunicorn worker
 class), so the tests that build a real server skip when it is absent. Everything
 about the tool table itself runs without it.

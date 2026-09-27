@@ -10,7 +10,7 @@ instance, their own .env and their own quotas, driven from their own editor.
 It is NOT a hosted service. There is no listener, no authentication, no key
 table and no per-investigator anything: stdio only, so the only way to reach it
 is to be the user who launched it. Do not put it behind a socket or a tunnel.
-See docs/mcp-server.md for how to register it, and for why the SDK lives in its
+See docs/mcp.md for how to register it, and for why the SDK lives in its
 own venv rather than in requirements.txt.
 
 HOW THE TOOLS WORK
@@ -351,7 +351,7 @@ def build_server():
 
     Verified 2026-09-27 against mcp 2.2.0: FastMCP was renamed MCPServer in the
     2.x line (`from mcp.server import MCPServer`), and `mcp.server.fastmcp` no
-    longer exists. See docs/mcp-server.md.
+    longer exists. See docs/mcp.md.
     """
     from mcp.server import MCPServer
     from mcp.server.mcpserver.exceptions import ToolError

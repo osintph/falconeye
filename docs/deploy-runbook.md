@@ -691,7 +691,7 @@ sudo /opt/falconeye/mcp-venv/bin/pip install 'mcp==2.2.0'
 ```
 
 Full setup, the exact `claude mcp add` command, the Claude Desktop config and the
-troubleshooting table are in `docs/mcp-server.md`.
+troubleshooting table are in `docs/mcp.md`.
 
 ## Hudson Rock (optional, best effort)
 
