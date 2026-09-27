@@ -594,6 +594,85 @@ Every CIDR listed in the variable is a network permitted to name any IP as the
 rate-limited client, so keep it as narrow as possible and never put `0.0.0.0/0`
 in it.
 
+## holehe: registered-service enumeration (optional, off, read this first)
+
+Adds a "Registered Services" card to the Email Header tab's risk assessment. For
+one sender address it reports which of a curated list of mainstream services say
+that address already has an account. **Off by default, and unlike every other
+optional source this one changes what your server does on the network.**
+
+```
+HOLEHE_ENABLED=true
+# HOLEHE_PER_DAY=5
+# HOLEHE_TIMEOUT_SECONDS=20
+# HOLEHE_CONCURRENCY=4
+```
+
+### What enabling it actually does
+
+This is not a vendor lookup. There is no API. For each service on the allowlist,
+**your server** starts a signup or a login flow at that service and reads whether
+it says the address is taken. One lookup is therefore about twenty outbound
+requests from your IP to twenty third-party sites, on behalf of whoever typed an
+address into the box.
+
+Consequences you are opting into:
+
+- **Your address makes the probes.** They are attributable to you, under your
+  `OPERATOR_CONTACT_UA`.
+- **Those sites may rate limit, CAPTCHA or block you.** Several of the modules are
+  marked "frequent rate limit" upstream, and holehe's own answer to being rate
+  limited is "change your IP". A blocked service produces no row here, but the
+  block may also affect other things you do from that address.
+- **It is a people-adjacent question.** "Where is this address registered" is
+  useful for triaging a BEC sender and is also exactly what a people-search tool
+  does. The allowlist deliberately contains no dating, adult or health services,
+  because those turn the question into a different one. Keep it that way.
+
+That is the whole reason it is off: a public instance should not make its
+visitors' curiosity into outbound traffic from the operator's address without the
+operator having decided so.
+
+### Installing the library
+
+Not in `requirements.txt`, on purpose:
+
+| Fact | Value | Verified |
+|---|---|---|
+| Package | `holehe` | PyPI, 2026-09-27 |
+| Version | 1.61, uploaded 2022-07-21 | PyPI JSON API |
+| Repository | <https://github.com/megadose/holehe>, GPL-3.0, last pushed 2024-09-10, not archived, 118 open issues | GitHub API |
+| Invocation | as a library: `async def module(email, client, out)` appends one dict to `out` | project README, "Python Example" |
+
+GPL-3.0 is compatible with this project's AGPL-3.0, but it is still a licence an
+operator should take on deliberately, and the package brings trio, tqdm, termcolor
+and colorama for a feature that ships off.
+
+```bash
+sudo /opt/falconeye/venv/bin/pip install 'holehe==1.61'
+sudo systemctl restart falconeye
+```
+
+**If the library is not installed, the source behaves exactly as if disabled**:
+no card, no error, no log noise beyond one warning per module at import attempt.
+
+### What is capped, and where
+
+| Cap | Value | Where |
+|---|---|---|
+| Services probed | the 20-entry allowlist | `app/holehe/client.py`, `ALLOWLIST` |
+| Hosts each module may reach | its own declared domains, enforced per request | `ALLOWED_HOSTS` and `_GuardedTransport` |
+| Concurrency | 4, hard-capped at 8 | `config.HOLEHE_CONCURRENCY` |
+| Wall clock per lookup | 20 s, partial results kept | `config.HOLEHE_TIMEOUT_SECONDS` |
+| Per request | 8 s | `client.REQUEST_TIMEOUT` |
+| Per IP per day | 5 | `config.HOLEHE_PER_DAY` |
+| Cache | 12 h, own table `holehe_cache` | `config.HOLEHE_CACHE_TTL_HOURS` |
+
+Only the service label and a boolean leave `app/holehe/client.py`. The modules also
+return partially masked recovery emails and phone numbers; the sanitiser is an
+allowlist of two fields, so those are dropped at the boundary rather than in the
+template.
+
 ## MCP server (optional, local mode only)
 
 `app/mcp_server.py` serves seven tabs as MCP tools over stdio, for an operator

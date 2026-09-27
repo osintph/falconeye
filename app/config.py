@@ -68,6 +68,31 @@ HUDSONROCK_PER_DAY = max(1, int(getenv_clean("HUDSONROCK_PER_DAY", "25")))
 # answers HTTP 422 and the card says so, quietly.
 CENSYS_ENABLED = getenv_clean("CENSYS_ENABLED", "false").lower() == "true"
 
+# Registered-service enumeration on the Email Header tab (v3.34.0), via the
+# holehe library. DEFAULT OFF, and it should stay off unless the operator has
+# read "holehe" in docs/deploy-runbook.md.
+#
+# This one is not a vendor lookup: it makes THIS server start a signup or login
+# flow at each allowlisted third-party service to see which ones say the address
+# is taken. Enabling it means our IP makes twenty outbound probes per lookup, to
+# sites that may rate limit or flag us for it. The library is not in
+# requirements.txt; if it is not installed the source behaves as disabled.
+HOLEHE_ENABLED = getenv_clean("HOLEHE_ENABLED", "false").lower() == "true"
+# Per-IP daily cap. An order of magnitude below every other source, because one
+# lookup is twenty outbound requests rather than one.
+HOLEHE_PER_DAY = max(1, int(getenv_clean("HOLEHE_PER_DAY", "5")))
+# Wall clock for the whole enumeration. Deliberately shorter than the sum of the
+# per-request timeouts: services that do not answer in time are dropped, not
+# waited for, and the card reports how many answered.
+HOLEHE_TIMEOUT_SECONDS = float(getenv_clean("HOLEHE_TIMEOUT_SECONDS", "20"))
+# How many services may be probed at once. Hard-capped at 8 whatever the
+# environment says: this is a property of being a good neighbour on someone
+# else's infrastructure, not a tuning knob.
+HOLEHE_CONCURRENCY = max(1, min(8, int(getenv_clean("HOLEHE_CONCURRENCY", "4"))))
+# Cached longer than the reputation sources: the answer changes when someone signs
+# up somewhere, which is rare, and every cache hit is twenty probes not made.
+HOLEHE_CACHE_TTL_HOURS = 12
+
 # Breach Check tab (Have I Been Pwned, Core 1 subscription).
 HIBP_API_KEY = getenv_clean("HIBP_API_KEY")
 

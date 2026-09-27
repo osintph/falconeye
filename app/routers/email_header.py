@@ -33,6 +33,7 @@ from app.config import (
     REGEX_MAX_BODY_BYTES,
 )
 from app.utils import cache
+from app.holehe import client as holehe
 from app.hudsonrock import client as hudsonrock
 from app.utils.client_ip import get_client_ip
 from app.utils.llm_response import clamp_int, safe_str, validate_findings_list
@@ -1124,8 +1125,10 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
         # Attached after the cache read, never written into it: Hudson Rock has
         # its own cache and its own per-IP cap, and a header analysis cached for
         # hours should not pin an exposure result alongside it.
-        cached["hudsonrock"] = await hudsonrock.lookup_email(
-            _sender_email(cached), get_client_ip(request))
+        sender = _sender_email(cached)
+        source_ip = get_client_ip(request)
+        cached["hudsonrock"] = await hudsonrock.lookup_email(sender, source_ip)
+        cached["holehe"] = await holehe.lookup_email(sender, source_ip)
         return cached
 
     # M-2: a deeply nested multipart (~85 bytes/level, so depth ~2000 fits the
@@ -1323,9 +1326,13 @@ async def analyze(req: HeaderAnalyzeRequest, request: Request):
     cache.set(_CACHE_TABLE, header_id, parsed, key_col="id")
     cache.take_failures(parsed)
 
-    # After cache.set, so the exposure result is never stored in this cache.
-    parsed["hudsonrock"] = await hudsonrock.lookup_email(
-        _sender_email(parsed), get_client_ip(request))
+    # After cache.set, so neither enrichment is stored in this cache: each keeps
+    # its own cache and its own per-IP cap, and a header analysis cached for a day
+    # must not pin an exposure result or a service enumeration alongside it.
+    sender = _sender_email(parsed)
+    source_ip = get_client_ip(request) if request else "unknown"
+    parsed["hudsonrock"] = await hudsonrock.lookup_email(sender, source_ip)
+    parsed["holehe"] = await holehe.lookup_email(sender, source_ip)
 
     return parsed
 

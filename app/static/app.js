@@ -1776,6 +1776,34 @@ function renderHudsonRockDomainCard(hr) {
       </div>` : ''}`);
 }
 
+// Registered-service enumeration (v3.34.0). Two fields per row and nothing else:
+// the service label the server asked for, and yes or no. The holehe modules also
+// return partially masked recovery emails and phone numbers, which the server
+// strips at the boundary and which must never appear here either.
+//
+// A service that could not answer is not in the list at all, so the count says
+// how many of the allowlist replied. "Not registered" is only ever shown for a
+// service that actually said so.
+function renderHoleheCard(h) {
+  if (!h || !(h.services || []).length) return '';
+  const rows = (h.services || []).map(s => `
+      <div class="flex items-center justify-between gap-3 py-1 border-b border-gray-800/50 last:border-0">
+        <span class="text-sm text-gray-300">${escapeHtml(String(s.service || ''))}</span>
+        <span class="text-xs font-bold ${s.registered ? 'text-amber-300' : 'text-gray-500'}">${s.registered ? 'REGISTERED' : 'no account'}</span>
+      </div>`).join('');
+  const checked = Number(h.checked || 0), total = Number(h.total || 0);
+  return `
+    <div class="bg-gray-900 border border-gray-800 rounded p-5">
+      <h3 class="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Registered Services</h3>
+      <p class="text-xs text-gray-500 mb-3">
+        ${escapeHtml(String(checked))} of ${escapeHtml(String(total))} checked services answered.
+        A service that did not answer is not listed; an absent service is not evidence of no account.
+      </p>
+      ${rows}
+      <p class="text-xs text-gray-600 mt-3">Checked with <a href="https://github.com/megadose/holehe" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">holehe</a> from this instance's own address.</p>
+    </div>`;
+}
+
 function renderHudsonRockEmailCard(hr) {
   if (!hr) return '';
 
@@ -3282,6 +3310,7 @@ function renderEmailHeaderResult(d) {
   // logs is a material part of that assessment. Renders nothing when the source
   // is disabled, over its cap, or upstream failed.
   html += renderHudsonRockEmailCard(d.hudsonrock);
+  html += renderHoleheCard(d.holehe);
 
   if (d.llm_analysis && d.llm_analysis._usage) {
     const u = d.llm_analysis._usage;

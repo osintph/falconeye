@@ -123,6 +123,72 @@ verified against that version. The MCP server therefore gets its own venv. Setup
 the exact `claude mcp add` command verified against Claude Code 2.1.274, and the
 Claude Desktop config are in `docs/mcp-server.md`.
 
+### Registered-service enumeration on the Email Header tab (off by default)
+
+The risk assessment can now report which of a curated list of mainstream services
+say a sender address already has an account, via the `holehe` library, run as a
+library in-process rather than as a binary.
+
+This source is different in kind from every other one here and the constraints
+are the feature. There is no API: for each service, **our server** starts a signup
+or login flow and reads whether the service says the address is taken. One lookup
+is about twenty outbound requests from our IP to twenty third parties, on behalf
+of whoever typed an address into the box. So:
+
+| Cap | Value |
+|---|---|
+| Services | a curated allowlist of 20, with no dating, adult or health platforms |
+| Hosts per module | only the domains that module declares, enforced per request by a guarded httpx transport |
+| Concurrency | 4, hard-capped at 8 whatever the environment says |
+| Wall clock | 20 s for the whole enumeration, partial results kept |
+| Per request | 8 s |
+| Per IP per day | 5, an order of magnitude below every other source |
+| Cache | 12 h, own table, own rate-limit table |
+
+Only two fields leave `app/holehe/client.py`: the service label this instance
+asked for, and `registered` as a bool. The modules also return partially masked
+recovery emails and phone numbers, and the sanitiser is an allowlist of two
+fields so those are dropped at the boundary. The module's own `name` field is
+ignored in favour of our label, so a module cannot put its own text on the page. A
+service that could not decide (rate limited, unparseable) produces no row at all,
+and the card reports how many of the allowlist answered, because "unknown"
+rendered next to "no" reads as "no".
+
+`HOLEHE_ENABLED` defaults to false and the library is deliberately **not** in
+`requirements.txt`: it is GPL-3.0, unmaintained (PyPI 1.61 from 2022-07-21, repo
+last pushed 2024-09-10, 118 open issues), and pulls in trio, tqdm, termcolor and
+colorama for a feature that ships off. With the library absent the source behaves
+exactly as if disabled. `docs/deploy-runbook.md` states plainly that enabling it
+makes the operator's IP probe third-party sites and may get that address rate
+limited or flagged.
+
+### psbdmp was not built: the service has shut down
+
+A paste-search source (domain into Domain Intel, email into the Email Header risk
+assessment) was specified for this release and is **not** in it, because the
+vendor no longer exists. Verified 2026-09-27:
+
+- `psbdmp.ws` has Cloudflare NS records but no A record: the apex does not
+  resolve and a request to it fails at connect.
+- `psbdmp.cc`, same nameservers, resolves and serves exactly one line: "That's
+  all folks. For any questions mail support@psbdmp.ws". Every `/api/...` path
+  under it returns an nginx 404, including `/api/v3/search/{term}` and
+  `/api/v3/dump/{id}`.
+- The last archived snapshot of the API reference (2025-12-20, Wayback) carries
+  the notice "Psbdmp will end its current state on 2 September."
+
+So there is no client to write and no schema to guard: shipping a kill-switched
+source that can only ever fail, plus tests asserting a dead response shape, would
+be dead code and misleading documentation. Worth recording for whoever revisits
+this: the API was keyless, the search endpoint was
+`GET /api/v3/search/{term}` and it returned `id`, `tags`, `time`, `length` **and
+`text`, the paste content itself**, which is precisely what the brief for this
+feature said never to render.
+
+If paste search is still wanted, it needs a vendor with a live API and its own
+terms review (Intelligence X is the closest equivalent and is key-gated), which is
+a separate decision rather than a substitution.
+
 ---
 
 ## [3.33.4] - 2026-09-21
