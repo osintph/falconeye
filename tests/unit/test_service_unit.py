@@ -119,18 +119,25 @@ def test_the_forwarded_allow_ips_pin_survives():
 # ---------- the manual and provisioned paths ----------
 
 def test_provision_creates_the_log_directory_for_the_service_user():
-    text = PROVISION.read_text(encoding="utf-8")
-    assert "/var/log/falconeye" in text, "provision.sh does not create the log directory"
+    """provision.sh delegates to the shared library (v3.34.3), so the assertion
+    follows the delegation rather than grepping for a path it no longer spells."""
+    provision = PROVISION.read_text(encoding="utf-8")
+    assert "fe_ensure_log_dir" in provision, (
+        "provision.sh does not create the log directory"
+    )
+
+    lib = (REPO / "scripts" / "lib" / "common.sh").read_text(encoding="utf-8")
+    body = lib[lib.index("fe_ensure_log_dir()"):]
+    body = body[:body.index("\n}\n")]
+    assert "install -d" in body or "mkdir" in body, (
+        "fe_ensure_log_dir does not actually create the directory"
+    )
     # Created AND handed to the service user: a root-owned directory is the same
     # PermissionError with extra steps.
-    creating = [line for line in text.splitlines()
-                if "/var/log/falconeye" in line and ("mkdir" in line or "install -d" in line)]
-    assert creating, "provision.sh mentions the log directory but never creates it"
-    assert any("SERVICE_USER" in line for line in creating) or any(
-        "SERVICE_USER" in line and "/var/log/falconeye" in line
-        for line in text.splitlines()), (
-        "provision.sh creates the log directory but never gives it to the service user"
+    assert "FE_SERVICE_USER" in body, (
+        "fe_ensure_log_dir creates the directory but never gives it to the service user"
     )
+    assert "FE_LOG_DIR" in body or "/var/log/falconeye" in body
 
 
 def test_the_manual_install_creates_the_log_directory():

@@ -14,9 +14,18 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/osintph/falconeye.git"
-INSTALL_DIR="/opt/falconeye"
-SERVICE_USER="ubuntu"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+# Install and upgrade share one implementation of every step they both do (log
+# directory, systemd unit, nginx snippets, database, health check). Two copies of
+# those steps is how they drifted: the upgrade path missed a unit change in
+# v3.34.2, and this script installed one of the two nginx snippets the vhost
+# includes, so "nginx -t" failed on a genuinely fresh box.
+# shellcheck source=lib/common.sh
+source "$SCRIPT_DIR/lib/common.sh"
+
+REPO_URL="$FE_REPO_URL"
+INSTALL_DIR="$FE_INSTALL_DIR"
+SERVICE_USER="$FE_SERVICE_USER"
 RUN_TESTS=false
 
 # Parse flags
@@ -29,35 +38,14 @@ done
 
 echo "=== FalconEye Provisioning ==="
 
-# --- Pre-flight: warn if critical env vars are missing in the target .env file ---
-# The service will start either way, but LLM tabs and Image Search will be broken
-# without these. The .env file is expected at $INSTALL_DIR/.env.
-preflight_warn() {
-    local env_file="$INSTALL_DIR/.env"
-    if [[ ! -f "$env_file" ]]; then
-        echo "[WARNING] No .env found at $env_file, copy and fill in .env.example after provisioning."
-        return
-    fi
-    for var in IMAGE_UPLOAD_SECRET FALCONEYE_DB; do
-        if ! grep -q "^${var}=.\+" "$env_file" 2>/dev/null; then
-            echo "[WARNING] $env_file: $var is missing or empty, some features will not work."
-        fi
-    done
-    # Detect old DB_PATH alias from pre-v3.5.0 .env files
-    if grep -q "^DB_PATH=" "$env_file" 2>/dev/null && ! grep -q "^FALCONEYE_DB=" "$env_file" 2>/dev/null; then
-        echo "[WARNING] $env_file uses DB_PATH= (pre-v3.5.0 name). Rename to FALCONEYE_DB=, the app will not find the database otherwise."
-    fi
-}
-
 echo "[1/9] Creating directories..."
 mkdir -p "$INSTALL_DIR/data"
 chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
-# The log directory gunicorn writes to, owned by the service user. falconeye.service
-# also declares LogsDirectory=falconeye, so systemd creates and re-owns it on every
-# start; this stays because the manual path (and anyone running gunicorn by hand
-# before installing the unit) has no systemd doing it. install -d sets owner and
-# mode in one idempotent call.
-install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0755 /var/log/falconeye
+# The log directory gunicorn writes to, owned by the service user. The unit also
+# declares LogsDirectory=falconeye, so systemd creates and re-owns it on every
+# start; this stays because anyone running gunicorn by hand before the unit is
+# installed has no systemd doing it. Same function the upgrade uses.
+fe_ensure_log_dir
 
 echo "[2/9] Updating package index..."
 apt-get update -qq
@@ -108,14 +96,17 @@ python3 -m venv "$INSTALL_DIR/venv"
     echo "  [NOTE] anthropic / extract-msg install failed, LLM tabs and .msg upload will be unavailable."
 
 echo "[6/9] Initializing database..."
-FALCONEYE_DB="$INSTALL_DIR/data/falconeye.db" \
-    "$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/app_src/scripts/db_init.py"
+fe_db_init
+# A new database has nothing to migrate, so record every release action as
+# already applied. Without this the first upgrade would replay flushes written
+# for older schemas against a database that never had them.
+fe_baseline_release_actions
 chown "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/data/falconeye.db"
 chmod 600 "$INSTALL_DIR/data/falconeye.db"
 chmod 700 "$INSTALL_DIR/data"
 
 # Run pre-flight check against existing .env (if present)
-preflight_warn
+fe_preflight_env
 
 if [[ "$RUN_TESTS" == "true" ]]; then
     echo "[--test] Running test suite..."
@@ -156,26 +147,27 @@ if ! command -v whois >/dev/null 2>&1; then
 fi
 
 echo "[8/9] Installing systemd service..."
-cp "$INSTALL_DIR/app_src/falconeye.service" /etc/systemd/system/falconeye.service
-systemctl daemon-reload
-systemctl enable falconeye
-systemctl restart falconeye
+fe_install_unit
+fe_enable_service
+fe_restart_service
 sleep 2
-systemctl status falconeye --no-pager -l
+systemctl status "$FE_SERVICE" --no-pager -l
 
 echo "[9/9] Installing nginx config..."
 # The vhost has two file dependencies. Install them BEFORE the vhost itself or
 # "nginx -t" fails on an unresolved reference and provisioning aborts here.
 #
-# 1. snippets/cloudflare-origin-allow.conf is REQUIRED: the vhost includes it.
-#    It locks the origin to Cloudflare edge ranges. If this deployment is not
-#    behind Cloudflare, see "Deploying without Cloudflare" in
-#    docs/deploy-runbook.md before going live: as shipped it denies everyone.
-# 2. conf.d/goaccess-logformat.conf is OPTIONAL and is NOT installed here. It
-#    defines log_format goaccess_cf, which only makes sense behind Cloudflare.
-#    See "GoAccess log format" in docs/deploy-runbook.md.
-mkdir -p /etc/nginx/snippets
-cp "$INSTALL_DIR/app_src/nginx/snippets/cloudflare-origin-allow.conf" /etc/nginx/snippets/cloudflare-origin-allow.conf
+# 1. EVERY file in nginx/snippets/ is installed, because the vhost includes more
+#    than one of them: cloudflare-origin-allow.conf (which locks the origin to
+#    Cloudflare edge ranges) and security-headers.conf (included at server level
+#    and inside four locations). Until v3.34.3 this step named the first by hand
+#    and a fresh box failed "nginx -t" on the second. Not behind Cloudflare? See
+#    "Deploying without Cloudflare" in docs/deploy-runbook.md before going live:
+#    as shipped the origin snippet denies everyone.
+# 2. conf.d/goaccess-logformat.conf is OPTIONAL and is NOT installed. It defines
+#    log_format goaccess_cf, which only makes sense behind Cloudflare. See
+#    "GoAccess log format" in docs/deploy-runbook.md.
+fe_install_nginx_snippets
 
 # The vhost terminates TLS with a Cloudflare Origin CA certificate at these
 # paths. Nothing in this script creates them, and "nginx -t" treats a missing
@@ -191,6 +183,9 @@ for cert in /etc/ssl/falconeye/origin.crt /etc/ssl/falconeye/origin.key; do
     fi
 done
 
+# The vhost is installed HERE and nowhere else. scripts/upgrade.sh never writes
+# it: once a box is live, server_name and the certificate paths in that file are
+# the operator's, not ours.
 cp "$INSTALL_DIR/app_src/nginx/falconeye.conf" /etc/nginx/sites-available/falconeye
 ln -sf /etc/nginx/sites-available/falconeye /etc/nginx/sites-enabled/falconeye
 rm -f /etc/nginx/sites-enabled/default

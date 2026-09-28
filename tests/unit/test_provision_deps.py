@@ -118,7 +118,9 @@ def test_smoke_test_runs_before_the_service_is_enabled():
         "restarting gunicorn worker."
     )
 
-    enable = re.search(r"^\s*systemctl enable\b", text, re.M)
+    # v3.34.3: enabling goes through the shared library (fe_enable_service), so
+    # match either form. What matters is the ordering, not the spelling.
+    enable = re.search(r"^\s*(systemctl enable\b|fe_enable_service\b)", text, re.M)
     assert enable, "provision.sh no longer enables the service"
     assert smoke.start() < enable.start(), (
         "the import smoke test must run BEFORE 'systemctl enable', otherwise "

@@ -5,6 +5,82 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.34.3] - 2026-09-28
+
+### One upgrade path, and it cannot drift from the install path
+
+Upgrading was a numbered list in `docs/deploy-runbook.md`: fetch, reset, check
+whether `requirements.txt` moved, check whether the unit moved, check whether
+nginx moved, flush whatever the release notes said to flush, restart, curl
+`/health`. Every "check whether" was a judgement call made by a human under
+deploy pressure, and v3.34.2 is what a missed one looks like: the unit file
+changed, nobody copied it to `/etc/systemd/system`, and systemd went on running
+the old directives.
+
+`scripts/upgrade.sh` is that list, executed the same way every time:
+
+```bash
+sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.3   # a tag
+sudo /opt/falconeye/app_src/scripts/upgrade.sh           # the newest tag
+sudo /opt/falconeye/app_src/scripts/upgrade.sh --dry-run # show, change nothing
+```
+
+In order: back up `.env`, the database and the installed unit to
+`/opt/falconeye/backups/<timestamp>/`; `git fetch --tags` and reset to the tag;
+reinstall dependencies **only if `requirements.txt` changed between the two
+revisions** (and into the MCP venv as well, when one exists); diff the repo unit
+against the installed one and copy plus `daemon-reload` **only if it differs**;
+update nginx snippets and any `conf.d` file already installed, then `nginx -t`
+and reload **only if something changed**; apply the migrations and cache flushes
+the release declares; restart; and poll `/health` until it reports the version
+that was just checked out.
+
+A version mismatch is a hard failure with the rollback command already filled in,
+naming the tag the box was on before the run started.
+
+**What it will not do.** It never writes `nginx/falconeye.conf` over the
+installed vhost: `server_name`, the certificate paths and any rate-limit zones in
+that file belong to the operator, not to the repository. When the shipped vhost
+has changed it says so and prints the `diff` command. It never installs an
+optional `conf.d` file the operator did not already have, and it never touches
+`.env`.
+
+### Install and upgrade now share one implementation
+
+`scripts/lib/common.sh` holds one version of every step both paths perform, and
+`provision.sh` calls the same functions rather than its own copy of the same
+commands. That is the actual fix: two copies of a step is how they drifted, and
+it had already produced a second bug nobody had hit yet.
+
+`provision.sh` installed **one** nginx snippet by name. The vhost includes two
+(`cloudflare-origin-allow.conf` and `security-headers.conf`, the latter at server
+level and inside four locations), so `nginx -t` on a genuinely fresh box failed
+on the missing one and provisioning aborted at the last step. Installing every
+snippet in `nginx/snippets/` is now one function, used by both paths.
+
+### Migrations and cache flushes are declared, not remembered
+
+`scripts/release-actions/<version>.sh` holds what a release needs done to an
+existing box, applied in version order for every version newer than the one being
+upgraded from, and recorded in a state file so each runs once. A fresh install
+records them all as applied, because a new database has nothing to migrate.
+
+The two shipped with this release are the flushes that were run by hand at the
+time: `3.34.0.sh` drops IP cache rows whose verdict was computed over five
+reputation sources, and `3.34.1.sh` drops rows written before the verdict gained
+its `infrastructure` block. Without them a public resolver kept rendering as
+MALICIOUS from cache for six hours after the upgrade that fixed it.
+
+### Documentation
+
+The README gained an "Upgrading" section that is the one command. The runbook's
+release sequence is now four authoring steps plus that command, and the old
+numbered deploy list survives as **"Appendix: what upgrade.sh does"**, for the day
+someone has to perform one of those steps by hand. Rollback leads with the same
+command and the previous tag.
+
+---
+
 ## [3.34.2] - 2026-09-28
 
 ### The service could not create its own log directory

@@ -175,54 +175,36 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    (`git tag -a vX.Y.Z -m "…"`, tagger `osintph <sb@osintph.info>`). Then
    `git push origin main && git push origin vX.Y.Z`. Confirm it landed:
    `git ls-remote --tags origin vX.Y.Z`.
-5. **Record the rollback target before touching the box:**
-   `ssh … 'cd /opt/falconeye/app_src && git rev-parse HEAD'`. Write it down.
-6. **Stage on `:8001` first** (see "Staging" below). Do not skip this for anything
-   that adds a router, a table, or a dependency.
-7. **Deploy the tag to the box.** Deploy a **tag, never a branch**:
+5. **Deploy, one command, on the box:**
+
+   ```bash
+   sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.3
    ```
-   ssh … 'cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard vX.Y.Z'
-   ```
-   No `sudo` (see the ownership section). The VPS *can* fetch from GitHub over
-   HTTPS because the repo is public; only push needs credentials. The older
-   `rsync -a --relative … --rsync-path="sudo rsync"` recipe plus a mandatory
-   `sudo chown -R ubuntu:ubuntu` remains the fallback if ownership ever drifts.
-8. **Dependencies.** Prove whether anything changed rather than guessing:
-   `git diff <prev-tag> <new-tag> -- requirements.txt` (empty means no change).
-   If it changed: `sudo /opt/falconeye/venv/bin/pip install -r requirements.txt`.
-   Beware naive `pip list` diffs: extras (`qrcode[pil]`, `uvicorn[standard]`,
-   `redis[asyncio]`) look "missing" because pip lists the base name.
-9. **Unit file.** `git diff <prev-tag> <new-tag> -- falconeye.service` (empty
-   means no change). If it changed, the copy at `/etc/systemd/system/` is a
-   **second copy**: `sudo cp falconeye.service /etc/systemd/system/` then
-   `sudo systemctl daemon-reload`, or systemd keeps running the old ExecStart and
-   the old directives. **v3.34.2 added `LogsDirectory=falconeye`**, so an upgrade
-   from v3.34.1 or earlier must do this: it is what creates
-   `/var/log/falconeye` (owned by `User=`/`Group=`) before gunicorn starts.
-   Without it, a host that never ran `scripts/provision.sh`, or lost the
-   directory, crash-loops with `PermissionError` on
-   `/var/log/falconeye/error.log` and serves nothing. See "Log directory" below.
-10. **Restart** if any `.py` changed: `sudo systemctl restart falconeye`
-   (passwordless sudo). Static-only needs no restart.
-11. **Verify:**
-    - `sudo systemctl status falconeye --no-pager | head -10` → `active (running)`.
-    - `systemctl show falconeye -p LogsDirectory` → `LogsDirectory=falconeye`,
-      and `ls -ld /var/log/falconeye` → owned by `ubuntu:ubuntu`.
-    - `sudo journalctl -u falconeye --since "5 min ago" --no-pager | grep -ci traceback`
-      → `0`. Older tracebacks in the buffer are pre-existing; scope by time.
-    - Origin: `curl -s http://127.0.0.1:8000/health` → expect the new version.
-    - Public edge: `curl -s https://falconeye.osintph.info/ | grep 'app.js?v='`.
-    - New self-creating tables landed:
-      `sudo sqlite3 /opt/falconeye/data/falconeye.db "SELECT name FROM sqlite_master WHERE name LIKE '<prefix>_%';"`.
-    - If an IP-response field changed, flush stale rows:
-      `sudo sqlite3 /opt/falconeye/data/falconeye.db "DELETE FROM ip_intel_cache
-      WHERE response_json NOT LIKE '%<newfield>%';"`.
-12. **GitHub release from the Mac:**
-    `gh release create vX.Y.Z --repo osintph/falconeye --verify-tag --title "vX.Y.Z: <summary>" --notes-file <file>`.
-13. **Keep both checkouts in sync** so they never drift:
-    `ssh … 'cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard <tag-or-origin/main>'`,
-    and the same for `staging_src`. Leave **no feature branch** checked out on the
-    box: `git rev-parse --abbrev-ref HEAD` should be `main`.
+
+   With no argument it takes the newest `v*` tag. `--dry-run` prints every change
+   it would make and touches nothing. This is the **only supported upgrade
+   path**: it backs up `.env`, the database and the installed unit, checks out
+   the tag, reinstalls dependencies only if `requirements.txt` moved, copies the
+   systemd unit and reloads systemd **if the unit changed**, updates nginx
+   snippets (and any `conf.d` file already installed), warns if the shipped vhost
+   has drifted without ever overwriting yours, applies the release actions the
+   release declares, restarts the service and checks `/health` reports the new
+   version. A version mismatch fails loudly with the rollback command.
+
+   Stage first on `:8001` for anything that adds a router, a table or a
+   dependency (see "Staging" below); `FE_APP_SRC`, `FE_SERVICE` and the other
+   `FE_*` variables point the same script at the staging checkout.
+
+   Rolling back is the same command with the old tag:
+   `sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.2`.
+
+6. **GitHub release from the Mac:**
+   `gh release create vX.Y.Z --repo osintph/falconeye --verify-tag --title "vX.Y.Z: <summary>" --notes-file <file>`.
+
+7. **Keep both checkouts in sync** so they never drift:
+   `ssh … 'cd /opt/falconeye/staging_src && git fetch --tags origin && git reset --hard <tag-or-origin/main>'`.
+   Leave **no feature branch** checked out on the box:
+   `git rev-parse --abbrev-ref HEAD` should be `main`.
 
 ## Log directory
 
@@ -267,11 +249,34 @@ clean. The old logs stay in the directory you moved.
 
 ## Rollback
 
-The reverse of step 7, using the sha recorded in step 5:
+```bash
+sudo /opt/falconeye/app_src/scripts/upgrade.sh <previous-tag>
+```
+
+The same command that upgrades rolls back: it is a checkout of a tag plus the
+same unit, nginx, dependency and health steps. A failed health check prints this
+line with the right tag already filled in, taken from where the checkout was
+before the upgrade started.
+
+What it does **not** roll back: the database and `.env`, because a downgrade that
+silently reverts data is worse than one that does not. Both are backed up before
+anything changes, under `/opt/falconeye/backups/<timestamp>/`, along with the
+unit that was installed at the time. Restore by hand if a release actually
+changed them:
+
+```bash
+sudo systemctl stop falconeye
+sudo cp /opt/falconeye/backups/<timestamp>/falconeye.db /opt/falconeye/data/falconeye.db
+sudo chown ubuntu:ubuntu /opt/falconeye/data/falconeye.db
+sudo systemctl start falconeye
+```
+
+By hand, if the script is unavailable (the equivalent of what it does):
 
 ```
-ssh … 'cd /opt/falconeye/app_src && git reset --hard <previous-sha>'
+ssh … 'cd /opt/falconeye/app_src && git reset --hard <previous-tag-or-sha>'
 ssh … 'sudo /opt/falconeye/venv/bin/pip install -r requirements.txt'   # only if deps changed
+ssh … 'sudo cp /opt/falconeye/app_src/falconeye.service /etc/systemd/system/ && sudo systemctl daemon-reload'
 ssh … 'sudo systemctl restart falconeye'
 curl -s http://127.0.0.1:8000/health   # expect the OLD version back
 ```
@@ -943,6 +948,67 @@ sources, the privacy note said nine, and the feature card said "Shodan and
 GreyNoise". A visitor could not tell where their IP was actually sent. Adding a
 source now means adding it to the catalog and nowhere else, and a test fails if
 a literal list reappears in the HTML.
+
+## Appendix: what upgrade.sh does
+
+`scripts/upgrade.sh` is this sequence, executed the same way every time. It is
+here because an operator sometimes has to do one of these steps by hand (a
+half-finished upgrade, a box without the script yet, a rollback under pressure),
+and because a step nobody can describe is a step nobody can review.
+
+Everything below is what the script does in order. Do **not** run it as a
+checklist during a normal release: that is what produced v3.34.2, where the unit
+file changed and the copy to `/etc/systemd/system` was skipped.
+
+1. **Record the rollback target before touching the box:**
+   `ssh … 'cd /opt/falconeye/app_src && git rev-parse HEAD'`. Write it down.
+2. **Stage on `:8001` first** (see "Staging" below). Do not skip this for anything
+   that adds a router, a table, or a dependency.
+3. **Deploy the tag to the box.** Deploy a **tag, never a branch**:
+   ```
+   ssh … 'cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard vX.Y.Z'
+   ```
+   No `sudo` (see the ownership section). The VPS *can* fetch from GitHub over
+   HTTPS because the repo is public; only push needs credentials. The older
+   `rsync -a --relative … --rsync-path="sudo rsync"` recipe plus a mandatory
+   `sudo chown -R ubuntu:ubuntu` remains the fallback if ownership ever drifts.
+4. **Dependencies.** Prove whether anything changed rather than guessing:
+   `git diff <prev-tag> <new-tag> -- requirements.txt` (empty means no change).
+   If it changed: `sudo /opt/falconeye/venv/bin/pip install -r requirements.txt`.
+   Beware naive `pip list` diffs: extras (`qrcode[pil]`, `uvicorn[standard]`,
+   `redis[asyncio]`) look "missing" because pip lists the base name.
+5. **Unit file.** `git diff <prev-tag> <new-tag> -- falconeye.service` (empty
+   means no change). If it changed, the copy at `/etc/systemd/system/` is a
+   **second copy**: `sudo cp falconeye.service /etc/systemd/system/` then
+   `sudo systemctl daemon-reload`, or systemd keeps running the old ExecStart and
+   the old directives. **v3.34.2 added `LogsDirectory=falconeye`**, so an upgrade
+   from v3.34.1 or earlier must do this: it is what creates
+   `/var/log/falconeye` (owned by `User=`/`Group=`) before gunicorn starts.
+   Without it, a host that never ran `scripts/provision.sh`, or lost the
+   directory, crash-loops with `PermissionError` on
+   `/var/log/falconeye/error.log` and serves nothing. See "Log directory" below.
+6. **Restart** if any `.py` changed: `sudo systemctl restart falconeye`
+   (passwordless sudo). Static-only needs no restart.
+7. **Verify:**
+    - `sudo systemctl status falconeye --no-pager | head -10` → `active (running)`.
+    - `systemctl show falconeye -p LogsDirectory` → `LogsDirectory=falconeye`,
+      and `ls -ld /var/log/falconeye` → owned by `ubuntu:ubuntu`.
+    - `sudo journalctl -u falconeye --since "5 min ago" --no-pager | grep -ci traceback`
+      → `0`. Older tracebacks in the buffer are pre-existing; scope by time.
+    - Origin: `curl -s http://127.0.0.1:8000/health` → expect the new version.
+    - Public edge: `curl -s https://falconeye.osintph.info/ | grep 'app.js?v='`.
+    - New self-creating tables landed:
+      `sudo sqlite3 /opt/falconeye/data/falconeye.db "SELECT name FROM sqlite_master WHERE name LIKE '<prefix>_%';"`.
+    - If an IP-response field changed, flush stale rows:
+      `sudo sqlite3 /opt/falconeye/data/falconeye.db "DELETE FROM ip_intel_cache
+      WHERE response_json NOT LIKE '%<newfield>%';"`.
+8. **GitHub release from the Mac:**
+    `gh release create vX.Y.Z --repo osintph/falconeye --verify-tag --title "vX.Y.Z: <summary>" --notes-file <file>`.
+9. **Keep both checkouts in sync** so they never drift:
+    `ssh … 'cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard <tag-or-origin/main>'`,
+    and the same for `staging_src`. Leave **no feature branch** checked out on the
+    box: `git rev-parse --abbrev-ref HEAD` should be `main`.
+
 
 ## Notes
 
