@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 SERVER_NAME = "falconeye"
-SERVER_VERSION = "3.34.1"
+SERVER_VERSION = "3.34.2"
 
 # app.main mounts StaticFiles(directory="app/static") and that path is relative to
 # the process working directory, so importing the app from anywhere else raises.

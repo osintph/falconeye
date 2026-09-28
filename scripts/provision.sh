@@ -51,9 +51,13 @@ preflight_warn() {
 
 echo "[1/9] Creating directories..."
 mkdir -p "$INSTALL_DIR/data"
-mkdir -p /var/log/falconeye
 chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR"
-chown "$SERVICE_USER:$SERVICE_USER" /var/log/falconeye
+# The log directory gunicorn writes to, owned by the service user. falconeye.service
+# also declares LogsDirectory=falconeye, so systemd creates and re-owns it on every
+# start; this stays because the manual path (and anyone running gunicorn by hand
+# before installing the unit) has no systemd doing it. install -d sets owner and
+# mode in one idempotent call.
+install -d -o "$SERVICE_USER" -g "$SERVICE_USER" -m 0755 /var/log/falconeye
 
 echo "[2/9] Updating package index..."
 apt-get update -qq

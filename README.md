@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.34.1**
+Current version: **3.34.2**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -102,7 +102,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.34.1:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.34.2:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -261,7 +261,12 @@ FALCONEYE_DB=/opt/falconeye/data/falconeye.db \
 #    not in a gunicorn restart loop where the traceback scrolls past.
 /opt/falconeye/venv/bin/python -c "import app.main" && echo "imports OK"
 
-# 6. Install systemd unit
+# 6. Install systemd unit.
+# The unit declares LogsDirectory=falconeye, so systemd creates
+# /var/log/falconeye owned by the service user before gunicorn starts. Create it
+# by hand too if you intend to run gunicorn directly before installing the unit;
+# without it gunicorn exits with PermissionError on the error log.
+sudo install -d -o ubuntu -g ubuntu -m 0755 /var/log/falconeye
 sudo cp falconeye.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now falconeye

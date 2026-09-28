@@ -5,6 +5,57 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.34.2] - 2026-09-28
+
+### The service could not create its own log directory
+
+Reported against v3.34.0: on a fresh or an upgraded self-host, gunicorn exited
+with `PermissionError` on `/var/log/falconeye/error.log` and `Restart=always`
+turned that into a crash loop. The unit had always pointed `--access-logfile` and
+`--error-logfile` at `/var/log/falconeye/`, and nothing in the unit created it.
+
+`scripts/provision.sh` did create it, which is exactly why this survived so long:
+the reference deployment and everyone who ran the provisioner had the directory
+already, so the bug was invisible from here. The README's manual install never
+created it, and neither did an upgrade, so a host that never ran the provisioner,
+or that lost the directory, could not start the service at all. gunicorn opens
+both log files before it serves anything, so this is not a degraded log, it is no
+service.
+
+`falconeye.service` now declares:
+
+```
+LogsDirectory=falconeye
+```
+
+Per `systemd.exec(5)`, systemd creates `/var/log/falconeye` before `ExecStart` and
+owns it to `User=`/`Group=`; if it already exists with the wrong owner, ownership
+below it is "recursively changed to match what is configured", so this repairs a
+root-owned directory as well as creating a missing one. The mode comes from
+`LogsDirectoryMode=` (default 0755), and the directory is not removed when the
+unit stops.
+
+Also changed:
+
+- `scripts/provision.sh` creates it with `install -d -o … -g … -m 0755`, one
+  idempotent call that sets owner and mode, instead of `mkdir` plus a separate
+  `chown`. It stays even though systemd now does it, because the manual path can
+  run gunicorn before the unit is installed.
+- The README's manual install creates it, which is the path that produced the
+  report.
+- `docs/deploy-runbook.md` gained a "Log directory" section and a numbered step
+  in the release sequence: **the copy at `/etc/systemd/system/` is a second copy**,
+  so an upgrade from v3.34.1 or earlier must `cp` the unit and
+  `systemctl daemon-reload` or systemd keeps running the old directives and the
+  bug with them.
+
+`tests/unit/test_service_unit.py` asserts the rule rather than the one path: every
+file the unit tells gunicorn to write under `/var/log/<name>/` must have a matching
+`LogsDirectory=<name>`. A second log file added under a new directory fails there
+until the unit creates it.
+
+---
+
 ## [3.34.1] - 2026-09-27
 
 ### An OTX pulse count is not a verdict

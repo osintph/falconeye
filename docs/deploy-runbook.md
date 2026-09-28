@@ -192,10 +192,22 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    If it changed: `sudo /opt/falconeye/venv/bin/pip install -r requirements.txt`.
    Beware naive `pip list` diffs: extras (`qrcode[pil]`, `uvicorn[standard]`,
    `redis[asyncio]`) look "missing" because pip lists the base name.
-9. **Restart** if any `.py` changed: `sudo systemctl restart falconeye`
+9. **Unit file.** `git diff <prev-tag> <new-tag> -- falconeye.service` (empty
+   means no change). If it changed, the copy at `/etc/systemd/system/` is a
+   **second copy**: `sudo cp falconeye.service /etc/systemd/system/` then
+   `sudo systemctl daemon-reload`, or systemd keeps running the old ExecStart and
+   the old directives. **v3.34.2 added `LogsDirectory=falconeye`**, so an upgrade
+   from v3.34.1 or earlier must do this: it is what creates
+   `/var/log/falconeye` (owned by `User=`/`Group=`) before gunicorn starts.
+   Without it, a host that never ran `scripts/provision.sh`, or lost the
+   directory, crash-loops with `PermissionError` on
+   `/var/log/falconeye/error.log` and serves nothing. See "Log directory" below.
+10. **Restart** if any `.py` changed: `sudo systemctl restart falconeye`
    (passwordless sudo). Static-only needs no restart.
-10. **Verify:**
+11. **Verify:**
     - `sudo systemctl status falconeye --no-pager | head -10` → `active (running)`.
+    - `systemctl show falconeye -p LogsDirectory` → `LogsDirectory=falconeye`,
+      and `ls -ld /var/log/falconeye` → owned by `ubuntu:ubuntu`.
     - `sudo journalctl -u falconeye --since "5 min ago" --no-pager | grep -ci traceback`
       → `0`. Older tracebacks in the buffer are pre-existing; scope by time.
     - Origin: `curl -s http://127.0.0.1:8000/health` → expect the new version.
@@ -205,12 +217,53 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
     - If an IP-response field changed, flush stale rows:
       `sudo sqlite3 /opt/falconeye/data/falconeye.db "DELETE FROM ip_intel_cache
       WHERE response_json NOT LIKE '%<newfield>%';"`.
-11. **GitHub release from the Mac:**
+12. **GitHub release from the Mac:**
     `gh release create vX.Y.Z --repo osintph/falconeye --verify-tag --title "vX.Y.Z: <summary>" --notes-file <file>`.
-12. **Keep both checkouts in sync** so they never drift:
+13. **Keep both checkouts in sync** so they never drift:
     `ssh … 'cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard <tag-or-origin/main>'`,
     and the same for `staging_src`. Leave **no feature branch** checked out on the
     box: `git rev-parse --abbrev-ref HEAD` should be `main`.
+
+## Log directory
+
+gunicorn writes `/var/log/falconeye/access.log` and `/var/log/falconeye/error.log`.
+Nothing in the unit created that directory until v3.34.2, and gunicorn opens both
+files before dropping into the worker loop, so a missing or root-owned directory
+is not a degraded log: it is `PermissionError` at startup, `Restart=always`, and
+a crash loop that serves nothing. `scripts/provision.sh` created the directory,
+which is why the reference deployment never hit it and a manual install did.
+
+`falconeye.service` now declares:
+
+```
+LogsDirectory=falconeye
+```
+
+Per `systemd.exec(5)`, systemd creates `/var/log/falconeye` before `ExecStart`,
+owns it to `User=`/`Group=`, and "if the specified directories already exist and
+their owning user or group do not match the configured ones, all files and
+directories below ... will have their file ownership recursively changed to match
+what is configured". The mode comes from `LogsDirectoryMode=` (default 0755). The
+directory survives `systemctl stop`.
+
+Two consequences worth knowing:
+
+- **It repairs as well as creates.** A `/var/log/falconeye` left owned by `root`
+  is handed to the service user on the next start, along with everything under it.
+- **It is a unit-file change, so `daemon-reload` is mandatory.** The running
+  system reads `/etc/systemd/system/falconeye.service`, not the checkout. An
+  upgrade that skips the copy and the reload keeps the old behaviour and the bug.
+
+Check it landed:
+
+```bash
+systemctl show falconeye -p LogsDirectory      # LogsDirectory=falconeye
+ls -ld /var/log/falconeye                      # drwxr-xr-x ubuntu ubuntu
+```
+
+To prove the repair on a box that is already healthy, move the directory aside
+and restart: systemd recreates it with the right owner and gunicorn starts
+clean. The old logs stay in the directory you moved.
 
 ## Rollback
 

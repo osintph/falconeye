@@ -8,6 +8,22 @@ User=ubuntu
 Group=ubuntu
 WorkingDirectory=/opt/falconeye/app_src
 EnvironmentFile=/opt/falconeye/.env
+# systemd creates /var/log/falconeye before ExecStart and gives it to User=/Group=.
+#
+# Without this the unit pointed gunicorn's --access-logfile and --error-logfile at
+# a directory nothing in the unit created. scripts/provision.sh made it, so the
+# reference deployment and anyone who ran the provisioner never noticed; a manual
+# install, or an upgrade on a box that had lost the directory, crash-looped with
+# PermissionError on /var/log/falconeye/error.log before serving a single request.
+#
+# systemd.exec(5): the named directory is created below /var/log/, owned by User=
+# and Group=, and "if the specified directories already exist and their owning
+# user or group do not match the configured ones ... file ownership [is]
+# recursively changed to match what is configured". So this also repairs a
+# directory that exists with the wrong owner. The mode comes from
+# LogsDirectoryMode=, which defaults to 0755. The directory is NOT removed when
+# the unit stops, so existing logs survive a restart.
+LogsDirectory=falconeye
 # --forwarded-allow-ips is pinned, not left to the default, because every per-IP
 # rate limit depends on it. uvicorn's ProxyHeadersMiddleware rewrites the client
 # peer from X-Forwarded-For only for peers in this list; nginx appends its
