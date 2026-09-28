@@ -1,7 +1,7 @@
 #!/bin/bash
 # FalconEye upgrade. The only supported way to move an existing install forward.
 #
-#   sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.3
+#   sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.4
 #   sudo /opt/falconeye/app_src/scripts/upgrade.sh              # latest tag
 #   sudo /opt/falconeye/app_src/scripts/upgrade.sh --dry-run    # show, change nothing
 #
@@ -81,7 +81,7 @@ fe_backup
 fe_step "2/8 Fetching tags and checking out the target"
 if [[ -z "$TARGET" ]]; then
     # Fetch first or "the latest tag" is whatever this clone last heard about.
-    git -C "$FE_APP_SRC" fetch --tags --prune origin
+    fe_git_fetch
     TARGET="$(fe_latest_tag)"
     [[ -n "$TARGET" ]] || fe_die "no v* tags found; pass one explicitly"
     fe_say "no tag given, using the latest: $TARGET"
@@ -128,8 +128,9 @@ fe_preflight_env
 if [[ "$DRY_RUN" == "true" ]]; then
     printf '\n%s=== dry run complete: %s would replace %s ===%s\n' \
         "$_FE_YEL$_FE_BOLD" "$TARGET" "$PREVIOUS_REF" "$_FE_OFF"
-    printf '%sNothing above was changed. Re-run without --dry-run to apply it.%s\n' \
+    printf '%sNothing was changed except fetching tags into the local clone.%s\n' \
         "$_FE_YEL" "$_FE_OFF"
+    printf '%sRe-run without --dry-run to apply it.%s\n' "$_FE_YEL" "$_FE_OFF"
 else
     printf '\n%s=== %s is live (was %s) ===%s\n' \
         "$_FE_GRN$_FE_BOLD" "$TARGET" "$PREVIOUS_REF" "$_FE_OFF"

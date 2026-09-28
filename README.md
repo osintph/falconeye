@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.34.3**
+Current version: **3.34.4**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -102,7 +102,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.34.3:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.34.4:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -290,7 +290,7 @@ sudo nginx -t && sudo systemctl reload nginx
 One command, on the box:
 
 ```bash
-sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.3     # a specific tag
+sudo /opt/falconeye/app_src/scripts/upgrade.sh v3.34.4     # a specific tag
 sudo /opt/falconeye/app_src/scripts/upgrade.sh             # the newest tag
 sudo /opt/falconeye/app_src/scripts/upgrade.sh --dry-run   # show, change nothing
 ```
@@ -312,6 +312,82 @@ Rolling back is the same command with the previous tag. The steps it performs ar
 written out in "Appendix: what upgrade.sh does" in
 [docs/deploy-runbook.md](docs/deploy-runbook.md), for the day you have to do one
 of them by hand.
+
+### State to persist
+
+Everything in this table is state `git reset --hard` cannot put back. The list
+lives in `fe_state_paths()` in `scripts/lib/common.sh`; this table is generated
+from it and a test fails if the two disagree.
+
+**Essential** means losing it loses something this repository plus a working
+afternoon cannot recreate. **Convenience** means it can be rebuilt, at the cost
+of history or of an hour.
+
+| Path | Class | Why |
+|---|---|---|
+| `/opt/falconeye/.env` | **essential** | API keys, operator identity and the abuse-admin hash. Keys can be reissued; the file cannot be recovered. |
+| `/opt/falconeye/data/falconeye.db` | **essential** | The application database: the abuse report audit trail, rate-limit counters and every cache. |
+| `/opt/falconeye/private/telegram.session` | **essential** | Telegram MTProto session. Recreating it needs an interactive login as the account holder. |
+| `/etc/ssl/falconeye` | **essential** | Cloudflare Origin CA certificate and private key. The key is shown once at issue and cannot be downloaded again. |
+| `/etc/nginx/sites-available/falconeye` | **essential** | Your nginx vhost: server_name, certificate paths, and the log_format the site is configured for. |
+| `/opt/falconeye/data/ransomware.db` | convenience | Collected ransomware victims. The collector rebuilds it forward only, so postings that have rotated off the source are gone. |
+| `/opt/falconeye/private/ransomware_watchlist.txt` | convenience | The PH-relevant ransomware search terms, kept outside git on purpose. |
+| `/etc/nginx/conf.d/goaccess-logformat.conf` | convenience | Defines log_format goaccess_cf. If your vhost names that format, nginx will not start without this file. |
+| `/opt/falconeye/data/.release_actions_applied` | convenience | Which release actions have run. Losing it replays idempotent flushes, which is noisy rather than harmful. |
+
+Two things that are **not** on the list, deliberately:
+
+- `/opt/falconeye/venv` and `/opt/falconeye/mcp-venv` rebuild from
+  `requirements.txt`. Back up the pin file, not the tree.
+- `/opt/falconeye/data/image_temp/` and `/opt/falconeye/data/prospect/` are
+  scratch space the app cleans up after itself.
+
+Keep anything else of your own (private ops scripts, a second watchlist) in
+`FE_BACKUP_EXTRA`, a space-separated path list the backup includes and neither
+script ever writes to.
+
+#### Back up and restore
+
+```bash
+sudo /opt/falconeye/app_src/scripts/backup.sh              # -> /opt/falconeye/backups/
+sudo /opt/falconeye/app_src/scripts/backup.sh --out /mnt/x # somewhere else
+sudo /opt/falconeye/app_src/scripts/backup.sh --dry-run    # list, write nothing
+
+sudo /opt/falconeye/app_src/scripts/restore.sh /path/to/falconeye-state-<stamp>.tar.gz
+```
+
+The backup writes `falconeye-state-<timestamp>.tar.gz` at mode 0600 with a
+`.sha256` sidecar, and prints the checksum. **The archive holds the API keys and
+the Cloudflare Origin CA private key**, so copy it the way you would copy `.env`.
+
+The restore verifies that checksum, refuses any archive carrying a path outside
+the list above (it runs as root, and `tar` writes what it is told), stops the
+service before touching the database, keeps whatever it overwrites in
+`/opt/falconeye/backups/pre-restore-<timestamp>/`, then starts the service and
+checks `/health`. It does not touch the checkout: restoring state onto a newer
+release is the normal case, and `scripts/upgrade.sh` is what moves the code.
+
+#### Ephemeral root disks
+
+On a platform where the root filesystem is rebuilt on every deploy (container
+hosts, image-based VMs, some managed platforms), none of the paths above survive
+unless you put them somewhere that does:
+
+- **Mount a persistent volume at `/opt/falconeye`.** That covers `.env`, both
+  databases, the Telegram session and the watchlist in one mount, which is why
+  they all live under one prefix. Point `FALCONEYE_DB` and
+  `TELEGRAM_SESSION_PATH` at the mounted paths if your layout differs.
+- **`/etc/ssl/falconeye` and the nginx vhost belong in the platform's config
+  store**, not on the disk: a secret store or config map for the certificate and
+  key, the vhost rendered at boot from your own template. They are the two
+  essential paths that are *not* under `/opt/falconeye`, and the two most easily
+  forgotten, because nothing fails until the next rebuild.
+- If your vhost names `goaccess_cf`, ship `conf.d/goaccess-logformat.conf` with
+  it. nginx refuses to start on an undefined `log_format`, so the pair has to
+  land together.
+
+A restore onto a fresh box is therefore: provision, mount or restore the volume,
+put the certificate and vhost back, then `scripts/restore.sh` for the rest.
 
 ### Required and optional API keys
 

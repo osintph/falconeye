@@ -5,6 +5,78 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.34.4] - 2026-09-28
+
+### What has to survive the box, written down and scripted
+
+`git reset --hard` restores the application. It restores none of the state that
+makes an install *that operator's* install, and that list had never been written
+down in one piece: the API keys in `.env`, the abuse audit trail in the database,
+the Telegram session that took an interactive login to create, the Cloudflare
+Origin CA private key that is shown once at issue and cannot be downloaded again.
+
+`fe_state_paths()` in `scripts/lib/common.sh` is now that list, derived from
+`app/config.py`, `falconeye.service` and `nginx/falconeye.conf` rather than from
+anyone's recollection. A "State to persist" section in the README and the runbook
+is generated from it, and a test fails if the two disagree.
+
+| Path | Class | Where it comes from |
+|---|---|---|
+| `/opt/falconeye/.env` | essential | `EnvironmentFile=` in the unit |
+| `/opt/falconeye/data/falconeye.db` | essential | `FALCONEYE_DB` |
+| `/opt/falconeye/private/telegram.session` | essential | `TELEGRAM_SESSION_PATH`, used by `app/telegram/tier3_mtproto.py` |
+| `/etc/ssl/falconeye` | essential | `ssl_certificate` / `ssl_certificate_key` in the vhost |
+| `/etc/nginx/sites-available/falconeye` | essential | the operator's own `server_name`, certificate paths and `log_format` |
+| `/opt/falconeye/data/ransomware.db` | convenience | `RANSOMWARE_DB`; the collector rebuilds it forward only |
+| `/opt/falconeye/private/ransomware_watchlist.txt` | convenience | `RANSOMWARE_WATCHLIST_PATH`, deliberately outside git |
+| `/etc/nginx/conf.d/goaccess-logformat.conf` | convenience | defines `log_format goaccess_cf`; nginx will not start without it if the vhost names it |
+| `/opt/falconeye/data/.release_actions_applied` | convenience | which release actions have run |
+
+Not on the list, deliberately: both venvs (rebuild from `requirements.txt`) and
+`data/image_temp/` and `data/prospect/` (scratch the app cleans up itself).
+Anything else an operator keeps outside git goes in `FE_BACKUP_EXTRA`, which the
+backup includes and neither script ever writes to.
+
+### scripts/backup.sh and scripts/restore.sh
+
+```bash
+sudo /opt/falconeye/app_src/scripts/backup.sh               # -> backups/falconeye-state-<stamp>.tar.gz
+sudo /opt/falconeye/app_src/scripts/restore.sh <archive>
+```
+
+Both take `--dry-run`. The backup writes the archive at mode 0600 under umask
+077, with a `.sha256` sidecar, and prints the checksum; it holds the API keys and
+a TLS private key, so it is treated like a copy of `.env`.
+
+The restore is the interesting half. It verifies the checksum and refuses to
+continue without one. It then checks every entry in the archive against the same
+path list the backup was built from and **refuses any archive carrying a path
+outside it**, or any absolute or `../` entry: it runs as root, and `tar` writes
+what it is told to write. It stops the service before touching the database,
+because SQLite plus a live writer plus a file swap is how a database gets
+corrupted rather than restored. Whatever it overwrites is kept in
+`backups/pre-restore-<timestamp>/`, so restoring the wrong archive is itself
+recoverable. Then it starts the service and checks `/health`.
+
+It does not touch the checkout: restoring state onto a newer release is the
+normal case, and `scripts/upgrade.sh` is what moves code.
+
+### Ephemeral root disks
+
+Both documents now say what to do where the root filesystem is rebuilt on every
+deploy: mount a persistent volume at `/opt/falconeye`, which covers `.env`, both
+databases, the session and the watchlist in one mount (which is why they share a
+prefix), and keep `/etc/ssl/falconeye` and the vhost in the platform's config
+store. Those two are the essential paths that are *not* under `/opt/falconeye`,
+and the ones most easily forgotten, because nothing fails until the next rebuild.
+
+Verified on staging: back up, delete `.env` and the database, restore. The `.env`
+checksum and mode came back identical, the database went from 0 tables to its
+original 31, and `/health` answered. An archive containing `evil/etc/passwd-fake`
+was refused before extraction.
+
+---
+
 ## [3.34.3] - 2026-09-28
 
 ### One upgrade path, and it cannot drift from the install path

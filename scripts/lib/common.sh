@@ -48,6 +48,18 @@ FE_LOG_DIR="${FE_LOG_DIR:-/var/log/falconeye}"
 FE_STATE_FILE="${FE_STATE_FILE:-$FE_INSTALL_DIR/data/.release_actions_applied}"
 FE_REPO_URL="${FE_REPO_URL:-https://github.com/osintph/falconeye.git}"
 
+# State locations, overridable the same way everything else is. The defaults are
+# what app/config.py, falconeye.service and nginx/falconeye.conf actually use.
+FE_TELEGRAM_SESSION="${FE_TELEGRAM_SESSION:-$FE_INSTALL_DIR/private/telegram.session}"
+FE_RANSOMWARE_DB="${FE_RANSOMWARE_DB:-$FE_INSTALL_DIR/data/ransomware.db}"
+FE_WATCHLIST="${FE_WATCHLIST:-$FE_INSTALL_DIR/private/ransomware_watchlist.txt}"
+FE_SSL_DIR="${FE_SSL_DIR:-/etc/ssl/falconeye}"
+FE_VHOST="${FE_VHOST:-$FE_NGINX_DIR/sites-available/falconeye}"
+FE_NGINX_CONFD="${FE_NGINX_CONFD:-$FE_NGINX_DIR/conf.d}"
+# Anything else this operator keeps outside git: a space-separated path list.
+# Deliberately empty by default and never written to by these scripts.
+FE_BACKUP_EXTRA="${FE_BACKUP_EXTRA:-}"
+
 DRY_RUN="${DRY_RUN:-false}"
 
 # Set by fe_install_unit / fe_install_nginx_snippets / fe_sync_nginx_confd so the
@@ -140,14 +152,17 @@ fe_latest_tag() {
 
 # Move the checkout to a tag. Deliberately reset --hard to a *tag*, never a
 # branch: a deploy has to be a named thing you can roll back to.
+# Fetching is the one thing a dry run does for real: it writes only to the local
+# clone's refs, changes nothing that is deployed, and without it the preview
+# cannot see the tag it is being asked about.
+fe_git_fetch() {
+    git -C "$FE_APP_SRC" fetch --tags --prune origin
+}
+
 fe_git_checkout() {
     local ref="$1"
-    fe_run git -C "$FE_APP_SRC" fetch --tags --prune origin
+    fe_git_fetch
     if ! git -C "$FE_APP_SRC" rev-parse -q --verify "${ref}^{commit}" >/dev/null 2>&1; then
-        if [[ "$DRY_RUN" == "true" ]]; then
-            fe_warn "$ref is not in the local clone yet (dry run did not fetch)"
-            return 0
-        fi
         fe_die "$ref does not exist. Available: $(git -C "$FE_APP_SRC" tag -l 'v*' --sort=-v:refname | head -5 | tr '\n' ' ')"
     fi
     fe_run git -C "$FE_APP_SRC" reset --hard "$ref"
@@ -450,6 +465,51 @@ fe_baseline_release_actions() {
         [[ -e "$file" ]] || continue
         fe_mark_release_action "$(basename "$file" .sh)"
     done
+}
+
+# ------------------------------------------------------- state to persist ----
+
+# Every path holding something `git reset --hard` cannot put back. One record per
+# line: class|path|why. The docs, scripts/backup.sh and scripts/restore.sh all
+# read this, so the list cannot be right in one place and stale in another.
+#
+# Derived from the code, not from memory:
+#   .env                  EnvironmentFile= in falconeye.service
+#   data/falconeye.db     FALCONEYE_DB in app/config.py
+#   telegram session      TELEGRAM_SESSION_PATH in app/config.py, used by
+#                         app/telegram/tier3_mtproto.py
+#   origin cert and key   ssl_certificate / ssl_certificate_key in
+#                         nginx/falconeye.conf
+#   the vhost             the operator's own server_name, certificate paths and
+#                         (on instances that use it) the goaccess_cf log format
+#   ransomware.db         RANSOMWARE_DB in app/config.py
+#   the watchlist         RANSOMWARE_WATCHLIST_PATH, deliberately outside git
+#
+# "essential" means losing it loses something that cannot be recreated from this
+# repository plus a working afternoon. "convenience" means it can be rebuilt, at
+# the cost of history or of an hour.
+fe_state_paths() {
+    cat <<RECORDS
+essential|$FE_ENV_FILE|API keys, operator identity and the abuse-admin hash. Keys can be reissued; the file cannot be recovered.
+essential|$FE_DB|The application database: the abuse report audit trail, rate-limit counters and every cache.
+essential|$FE_TELEGRAM_SESSION|Telegram MTProto session. Recreating it needs an interactive login as the account holder.
+essential|$FE_SSL_DIR|Cloudflare Origin CA certificate and private key. The key is shown once at issue and cannot be downloaded again.
+essential|$FE_VHOST|Your nginx vhost: server_name, certificate paths, and the log_format the site is configured for.
+convenience|$FE_RANSOMWARE_DB|Collected ransomware victims. The collector rebuilds it forward only, so postings that have rotated off the source are gone.
+convenience|$FE_WATCHLIST|The PH-relevant ransomware search terms, kept outside git on purpose.
+convenience|$FE_NGINX_CONFD/goaccess-logformat.conf|Defines log_format goaccess_cf. If your vhost names that format, nginx will not start without this file.
+convenience|$FE_STATE_FILE|Which release actions have run. Losing it replays idempotent flushes, which is noisy rather than harmful.
+RECORDS
+}
+
+# The paths that exist right now, as tar-relative entries (no leading slash).
+fe_existing_state_paths() {
+    local record path
+    while IFS='|' read -r _ path _; do
+        [[ -n "$path" ]] || continue
+        [[ -e "$path" ]] || continue
+        printf '%s\n' "${path#/}"
+    done < <(fe_state_paths)
 }
 
 # --------------------------------------------------------------- service ------
