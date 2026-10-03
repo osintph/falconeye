@@ -8527,6 +8527,46 @@ async function rmRunAtlas() {
   }
 }
 
+// The one yellow banner. Every message goes through here, so the preview of an
+// unreadable upload is never left sitting under an unrelated message.
+function rmBanner(title, body, received, formats) {
+  RM('rm-atlas-error-title').textContent = title;
+  RM('rm-atlas-error-body').textContent = body || '';
+  const lines = (received || []).slice(0, 3);
+  RM('rm-atlas-error-received').textContent = lines.join('\n');
+  RM('rm-atlas-error-received-wrap').classList.toggle('hidden', !lines.length);
+  RM('rm-atlas-error-formats').textContent = formats || '';
+  RM('rm-atlas-error-formats').classList.toggle('hidden', !formats);
+  rmShow('rm-atlas-error');
+}
+
+const RM_SUPPORTED_FORMATS = 'Supported: Windows tracert (with or without -d), '
+  + 'Unix traceroute (with or without -n), and mtr --report / --report-wide.';
+
+// The first non-blank lines of a trace, capped the way the server caps them.
+function rmFirstLines(text, n) {
+  return (text || '').split(/\r?\n/)
+    .map(l => l.replace(/\s+$/, '')).filter(l => l.trim())
+    .slice(0, n || 3).map(l => l.slice(0, 200));
+}
+
+/* Text arrived but is not a trace. Usually it is a tool's own error, such as
+   mtr refusing to run without root on macOS, so the banner shows what was
+   received rather than blaming an Atlas measurement that never ran. */
+function rmUnreadableTrace(source, message, received) {
+  rmHide('rm-atlas'); rmHide('rm-result');
+  // The engine's message ends with its own list of formats. It is split off so
+  // the formats line is always shown, and shown once.
+  let text = (message || '').trim();
+  const cut = text.indexOf('Supported:');
+  if (cut >= 0) text = text.slice(0, cut).trim();
+  text = text ? text[0].toUpperCase() + text.slice(1) : 'That is not traceroute output.';
+  rmBanner(source === 'paste' ? 'Could not read the pasted trace'
+                              : 'Could not read the uploaded trace',
+           text, received, RM_SUPPORTED_FORMATS);
+  RM('rm-advanced').open = true;
+}
+
 function rmAtlasFail(kind, message) {
   rmHide('rm-atlas');
   const titles = {
@@ -8537,14 +8577,11 @@ function rmAtlasFail(kind, message) {
     failed: 'The Atlas measurement did not complete.',
   };
   const title = titles[kind] || titles.failed;
-  RM('rm-atlas-error-title').textContent = title;
   // The server's message is often the same sentence as the title (an instance
   // with Atlas off says exactly that), so it is only added when it says
   // something the title did not.
   const detail = (message && message.trim() !== title.trim()) ? message + ' ' : '';
-  RM('rm-atlas-error-body').textContent =
-    detail + 'You can still run the trace yourself below.';
-  rmShow('rm-atlas-error');
+  rmBanner(title, detail + 'You can still run the trace yourself below.');
   // Open Advanced with the target carried over, so the fallback costs no retyping.
   RM('rm-advanced').open = true;
   const target = RM('rm-main-target').value.trim();
@@ -9037,11 +9074,12 @@ async function rmAnalysePaste() {
     rmRenderResult(body);
   } catch (err) {
     rmHide('rm-result');
-    RM('rm-atlas-error-title').textContent = 'That trace could not be read.';
-    RM('rm-atlas-error-body').textContent =
-      (typeof err.detail === 'string' ? err.detail : null)
-      || 'Paste the output of tracert, traceroute or mtr --report.';
-    rmShow('rm-atlas-error');
+    const detail = typeof err.detail === 'string' ? err.detail : null;
+    if (err.status === 400) {
+      rmUnreadableTrace('paste', detail, rmFirstLines(text));
+    } else {
+      rmBanner('The trace could not be drawn.', detail || 'Try again in a moment.');
+    }
   } finally {
     btn.disabled = false; btn.textContent = 'Draw the route';
   }
@@ -9049,6 +9087,9 @@ async function rmAnalysePaste() {
 
 var _rmCommands = null;
 var _rmPollKey = null;
+// The target the visible command was generated for. The command embeds it, so
+// once the field says something else the panel has to say so.
+var _rmCmdTarget = null;
 
 async function rmMakeCommand() {
   const { target, error } = rmNormaliseTarget(RM('rm-target').value);
@@ -9069,6 +9110,9 @@ async function rmMakeCommand() {
     });
     _rmCommands = body.commands;
     _rmPollKey = body.poll_key;
+    _rmCmdTarget = target;
+    RM('rm-cmd-target').textContent = target;
+    rmCheckCmdStale();
     _rmCurOs = body.platform || 'unix';
     rmPaintOsButtons();
     rmShow('rm-cmd-block');
@@ -9091,6 +9135,19 @@ function rmPaintOsButtons() {
   });
   const entry = (_rmCommands || []).find(c => c.key === _rmCurOs);
   RM('rm-cmd').textContent = entry ? entry.command : '';
+  RM('rm-cmd-note').textContent = (entry && entry.note) || '';
+  RM('rm-cmd-note').classList.toggle('hidden', !(entry && entry.note));
+}
+
+function rmCheckCmdStale() {
+  const box = RM('rm-cmd-stale');
+  const { target } = rmNormaliseTarget(RM('rm-target').value);
+  const stale = !!(_rmCmdTarget && target && target !== _rmCmdTarget);
+  box.textContent = stale
+    ? `The target is now ${target}, but this command still traces to ${_rmCmdTarget}. `
+      + 'Press Generate command for one that traces to the new target.'
+    : '';
+  box.classList.toggle('hidden', !stale);
 }
 
 function rmStopPolling() {
@@ -9146,6 +9203,10 @@ function rmStartPolling(token, onFirstProgress) {
       return;
     }
     if (body.status === 'error') {
+      if (body.kind === 'parse' && body.source !== 'atlas') {
+        rmUnreadableTrace('upload', body.message, body.received);
+        return;
+      }
       rmAtlasFail(body.kind || 'failed',
         body.message || 'The trace could not be processed.');
       return;
@@ -9159,13 +9220,11 @@ function rmStartPolling(token, onFirstProgress) {
 }
 
 function rmPollFailed(status, message) {
-  RM('rm-atlas-error-title').textContent = 'The trace did not come back.';
-  RM('rm-atlas-error-body').textContent =
+  rmHide('rm-atlas');
+  rmBanner('The trace did not come back.',
     (message ? message + ' ' : '') +
     (status ? `The server answered ${status}. ` : '') +
-    'Your trace may still have been received; generate a new link and try again, or paste the output below.';
-  rmHide('rm-atlas');
-  rmShow('rm-atlas-error');
+    'Your trace may still have been received; generate a new link and try again, or paste the output below.');
   RM('rm-advanced').open = true;
 }
 
@@ -9342,6 +9401,10 @@ async function initRouteMap() {
   const liveCheck = () => {
     const raw = RM('rm-main-target').value.trim();
     const btn = RM('rm-trace-btn');
+    // The main field is the target. The run-it-yourself field follows it, so
+    // Generate command never quietly reuses whatever was traced last.
+    RM('rm-target').value = raw;
+    rmCheckCmdStale();
     if (!raw) {
       rmHide('rm-main-target-error'); rmHide('rm-main-target-ok');
       btn.disabled = false; btn.classList.remove('opacity-40', 'cursor-not-allowed');
@@ -9411,6 +9474,7 @@ async function initRouteMap() {
   RM('rm-analyze').onclick = rmAnalysePaste;
   RM('rm-clear').onclick = () => { RM('rm-trace').value = ''; rmHide('rm-result'); };
   RM('rm-make-cmd').onclick = rmMakeCommand;
+  RM('rm-target').addEventListener('input', rmCheckCmdStale);
   RM('rm-cancel').onclick = () => { rmStopPolling(); rmHide('rm-waiting'); rmHide('rm-cmd-block'); };
   RM('rm-copy').onclick = () => {
     if (navigator.clipboard) navigator.clipboard.writeText(RM('rm-cmd').textContent);

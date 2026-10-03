@@ -208,7 +208,7 @@ def test_a_command_is_issued_for_a_valid_target(client):
     body = client.post("/api/routemap/command", json={"target": "heise.de"}).json()
     assert len(body["token"]) == 64
     assert body["poll_key"] != body["token"]
-    assert {c["key"] for c in body["commands"]} == {"windows", "unix", "mtr"}
+    assert {c["key"] for c in body["commands"]} == {"windows", "unix", "mtr", "mtr_macos"}
     for command in body["commands"]:
         assert body["token"] in command["command"]
         assert "/api/routemap/ingest/" in command["command"]
@@ -496,3 +496,42 @@ def test_an_atlas_trace_returns_a_job_immediately_rather_than_blocking(client, m
                       params={"key": body["poll_key"]})
     assert poll.status_code == 200
     assert poll.json()["status"] in ("waiting", "processing")
+
+
+# ---------- an upload that is not a trace ----------
+
+def test_an_unreadable_upload_reports_what_was_received(client):
+    """A real upload from a Mac: mtr without root printed an error, the error
+    was uploaded, and the page said "The Atlas measurement did not complete"
+    for a trace that never went near Atlas. The job now says it was an upload
+    and hands back the first lines so the page can show the actual error."""
+    issued = client.post("/api/routemap/command", json={"target": "heise.de"}).json()
+    text = ("mtr-packet: Failure to open IPv4 sockets: Permission denied\n"
+            "mtr: Failure to start mtr-packet: Invalid argument\n"
+            "line three\nline four\n")
+    upload = client.post(f"/api/routemap/ingest/{issued['token']}",
+                         content=text.encode(),
+                         headers={"Content-Type": "text/plain"})
+    assert upload.status_code == 200
+
+    body = _poll_until_done(client, issued["token"], issued["poll_key"])
+    assert body["status"] == "error"
+    assert body["kind"] == "parse"
+    assert body["source"] == "upload"
+    assert body["received"] == [
+        "mtr-packet: Failure to open IPv4 sockets: Permission denied",
+        "mtr: Failure to start mtr-packet: Invalid argument",
+        "line three",
+    ]
+    assert "Supported:" in body["message"], "the supported-formats line was lost"
+
+
+def test_a_command_response_carries_the_macos_note(client):
+    body = client.post("/api/routemap/command", json={"target": "heise.de"},
+                       headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_0)"}).json()
+    by_key = {c["key"]: c for c in body["commands"]}
+    assert by_key["mtr_macos"]["command"].startswith("sudo mtr ")
+    assert "password" in by_key["mtr_macos"]["note"]
+    assert not by_key["mtr"]["command"].startswith("sudo")
+    # The default tab still comes from the User-Agent, as before.
+    assert body["platform"] == "unix"

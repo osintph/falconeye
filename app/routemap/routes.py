@@ -137,7 +137,10 @@ async def _process_upload(token: str, origin: tuple[float, float] | None) -> Non
         result["target"] = result.get("target") or state.get("target")
         await tokens.store_result(token, result)
     except HTTPException as exc:
-        await tokens.store_error(token, "parse", str(exc.detail))
+        # What arrived is usually a tool's own error message (mtr without root,
+        # traceroute not installed), so the page shows its first lines.
+        await tokens.store_error(token, "parse", str(exc.detail),
+                                 received=tokens.received_preview(state["trace_text"]))
     except Exception as exc:  # noqa: BLE001 - a job must never die silently
         log.exception("route map upload job failed for %s", tag(token))
         await tokens.store_error(token, "failed",

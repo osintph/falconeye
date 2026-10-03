@@ -147,12 +147,25 @@ COMMAND_TEMPLATES = {
                 "-Method Post -ContentType 'text/plain' -Uri {url}"),
     "unix": "traceroute -m 30 -q 3 -w 1 {target} 2>&1 | " + _CURL,
     "mtr": "mtr --report-wide --show-ips -c 3 -m 30 {target} 2>&1 | " + _CURL,
+    # Homebrew installs mtr without the setuid bit, so on macOS it cannot open a
+    # raw socket as a normal user. Run bare, it prints a permissions error,
+    # "2>&1" sends that error down the pipe, and the error is what gets
+    # uploaded as the trace. sudo prompts on the terminal, not on stdout, so
+    # the password prompt never reaches the upload.
+    "mtr_macos": "sudo mtr --report-wide --show-ips -c 3 -m 30 {target} 2>&1 | " + _CURL,
 }
 
 COMMAND_LABELS = {
     "windows": "Windows (PowerShell)",
     "unix": "Linux or macOS (traceroute)",
-    "mtr": "Linux or macOS (mtr, gives per-hop loss)",
+    "mtr": "Linux (mtr, gives per-hop loss)",
+    "mtr_macos": "macOS (mtr, gives per-hop loss)",
+}
+
+# One line shown under a command, for the ones that need saying before they run.
+COMMAND_NOTES = {
+    "mtr_macos": "mtr needs root on macOS, so this runs it with sudo and your "
+                 "terminal will prompt for your password.",
 }
 
 
@@ -167,7 +180,8 @@ def render_commands(target: str, ingest_url: str) -> list[dict]:
         raise ValueError("render_commands needs the canonical validated target")
     return [
         {"key": key, "label": COMMAND_LABELS[key],
-         "command": template.format(target=target, url=ingest_url)}
+         "command": template.format(target=target, url=ingest_url),
+         "note": COMMAND_NOTES.get(key)}
         for key, template in COMMAND_TEMPLATES.items()
     ]
 
@@ -279,9 +293,27 @@ async def store_result(token: str, result: dict) -> None:
     log.info("event=routemap_job action=ready token=%s", tag(token))
 
 
-async def store_error(token: str, kind: str, message: str) -> None:
-    await update(token, status=STATUS_ERROR, error={"kind": kind, "message": message},
-                 trace_text=None)
+# How much of an unreadable upload is handed back to the page. Enough to show
+# the error a tool printed instead of a trace ("mtr: Failure to open IPv4
+# sockets"), not enough to keep a copy of anyone's network around.
+RECEIVED_PREVIEW_LINES = 3
+RECEIVED_PREVIEW_CHARS = 200
+
+
+def received_preview(trace_text: str | None) -> list[str]:
+    """The first few non-blank lines of what was uploaded, each length-capped."""
+    lines = [line.rstrip() for line in (trace_text or "").splitlines() if line.strip()]
+    return [line[:RECEIVED_PREVIEW_CHARS] for line in lines[:RECEIVED_PREVIEW_LINES]]
+
+
+async def store_error(token: str, kind: str, message: str,
+                      received: list[str] | None = None) -> None:
+    """Record a failed job. *received* is the preview of an unreadable upload,
+    kept only until the page collects the error, like everything else here."""
+    error = {"kind": kind, "message": message}
+    if received is not None:
+        error["received"] = received
+    await update(token, status=STATUS_ERROR, error=error, trace_text=None)
     log.info("event=routemap_job action=error token=%s kind=%s", tag(token), kind)
 
 
@@ -405,9 +437,13 @@ async def collect(token: str, poll_key: str) -> dict:
     if status == STATUS_ERROR:
         error = payload.get("error") or {}
         await _drop(token)
-        return {"status": STATUS_ERROR, "kind": error.get("kind", "failed"),
+        body = {"status": STATUS_ERROR, "kind": error.get("kind", "failed"),
                 "message": error.get("message", "The trace could not be processed."),
+                "source": payload.get("kind") or "upload",
                 "target": payload.get("target")}
+        if "received" in error:
+            body["received"] = error["received"]
+        return body
 
     return base
 

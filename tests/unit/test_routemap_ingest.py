@@ -83,7 +83,7 @@ def test_the_rendered_command_cannot_be_built_from_unvalidated_input():
         tokens.render_commands("example.com; id", "https://x/api/routemap/ingest/t")
 
 
-@pytest.mark.parametrize("key", ["windows", "unix", "mtr"])
+@pytest.mark.parametrize("key", ["windows", "unix", "mtr", "mtr_macos"])
 def test_every_command_only_uploads_text(key):
     """No script is downloaded and nothing is executed from this server."""
     url = "https://falconeye.example/api/routemap/ingest/" + "a" * 64
@@ -101,7 +101,7 @@ def test_the_platform_hint_is_a_default_not_a_restriction():
     assert tokens.detect_platform("Mozilla/5.0 (Macintosh)") == "unix"
     assert tokens.detect_platform("") == "unix"
     # Every platform is offered regardless of the hint.
-    assert len(tokens.render_commands("heise.de", "https://x/i/t")) == 3
+    assert len(tokens.render_commands("heise.de", "https://x/i/t")) == 4
 
 
 # ---------- tokens ----------
@@ -237,6 +237,7 @@ def test_tokens_and_poll_keys_are_unguessable_and_distinct():
     ("windows", ["-h 30", "-w 1000"]),
     ("unix", ["-m 30", "-q 3", "-w 1"]),
     ("mtr", ["-c 3", "-m 30"]),
+    ("mtr_macos", ["-c 3", "-m 30"]),
 ])
 def test_every_command_caps_hops_and_per_hop_wait(key, caps):
     """An uncapped tracert to a target that drops ICMP runs for minutes.
@@ -252,7 +253,7 @@ def test_every_command_caps_hops_and_per_hop_wait(key, caps):
         assert cap in command, f"{key} command is missing the cap {cap!r}: {command}"
 
 
-@pytest.mark.parametrize("key", ["unix", "mtr"])
+@pytest.mark.parametrize("key", ["unix", "mtr", "mtr_macos"])
 def test_the_curl_commands_fail_loudly(key):
     """A run from a datacenter host that got a Cloudflare challenge page printed
     nothing at all and looked like it had worked. "curl -s" swallows everything.
@@ -276,3 +277,74 @@ def test_no_command_contains_a_literal_newline():
     url = "https://falconeye.example/api/routemap/ingest/" + "a" * 64
     for entry in tokens.render_commands("heise.de", url):
         assert "\n" not in entry["command"], f"{entry['key']} is split across lines"
+
+
+# ---------- mtr on macOS ----------
+
+URL = "https://falconeye.example/api/routemap/ingest/" + "a" * 64
+
+
+def _command(key):
+    return next(c for c in tokens.render_commands("heise.de", URL) if c["key"] == key)
+
+
+def test_the_macos_mtr_command_runs_under_sudo():
+    """Homebrew mtr is not setuid. Run without sudo it prints a permissions
+    error, 2>&1 pipes that error into curl, and the error is uploaded as the
+    trace. That happened on a real upload from a Mac."""
+    entry = _command("mtr_macos")
+    assert entry["command"].startswith(
+        "sudo mtr --report-wide --show-ips -c 3 -m 30 heise.de 2>&1 | curl ")
+    assert "macOS" in entry["label"]
+
+
+def test_the_macos_mtr_command_says_it_will_ask_for_a_password():
+    note = _command("mtr_macos")["note"]
+    assert note and "root" in note and "macOS" in note and "password" in note
+
+
+def test_the_linux_mtr_command_is_unchanged():
+    entry = _command("mtr")
+    assert entry["command"].startswith(
+        "mtr --report-wide --show-ips -c 3 -m 30 heise.de 2>&1 | curl ")
+    assert "sudo" not in entry["command"]
+    assert entry["note"] is None
+    assert "Linux" in entry["label"] and "macOS" not in entry["label"]
+
+
+# ---------- an unreadable upload ----------
+
+MTR_WITHOUT_ROOT = (
+    "mtr-packet: Failure to open IPv4 sockets: Permission denied\n"
+    "\n"
+    "mtr: Failure to start mtr-packet: Invalid argument\n"
+    "third line\n"
+    "fourth line, never shown\n"
+)
+
+
+def test_the_received_preview_is_the_first_three_non_blank_lines():
+    assert tokens.received_preview(MTR_WITHOUT_ROOT) == [
+        "mtr-packet: Failure to open IPv4 sockets: Permission denied",
+        "mtr: Failure to start mtr-packet: Invalid argument",
+        "third line",
+    ]
+
+
+def test_the_received_preview_caps_each_line():
+    preview = tokens.received_preview("x" * 5000)
+    assert preview == ["x" * tokens.RECEIVED_PREVIEW_CHARS]
+
+
+def test_an_upload_parse_error_carries_the_preview_and_its_source():
+    async def _scenario():
+        issued = await tokens.issue("heise.de")
+        await tokens.deposit(issued["token"], MTR_WITHOUT_ROOT)
+        await tokens.store_error(issued["token"], "parse", "could not read this",
+                                 received=tokens.received_preview(MTR_WITHOUT_ROOT))
+        return await tokens.collect(issued["token"], issued["poll_key"])
+    body = asyncio.run(_scenario())
+    assert body["status"] == "error"
+    assert body["kind"] == "parse"
+    assert body["source"] == "upload"
+    assert body["received"][0].startswith("mtr-packet: Failure to open")

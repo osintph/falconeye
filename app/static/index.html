@@ -80,7 +80,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.36.2",
+    "softwareVersion": "3.36.3",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.36.2" />
+  <link rel="stylesheet" href="/static/style.css?v=3.36.3" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1376,6 +1376,11 @@
       <div class="text-sm text-yellow-100">
         <strong id="rm-atlas-error-title" class="text-yellow-300 block mb-1"></strong>
         <span id="rm-atlas-error-body" class="text-yellow-200/90 text-xs"></span>
+        <div id="rm-atlas-error-received-wrap" class="hidden mt-2">
+          <span class="text-yellow-200/70 text-[11px] block mb-1">The first lines of what was received:</span>
+          <pre id="rm-atlas-error-received" class="bg-gray-950 border border-yellow-900 rounded p-2 text-[11px] text-gray-200 whitespace-pre-wrap break-all"></pre>
+        </div>
+        <span id="rm-atlas-error-formats" class="hidden text-yellow-200/70 text-[11px] block mt-2"></span>
       </div>
     </div>
   </div>
@@ -1509,12 +1514,16 @@
           <div class="flex flex-wrap gap-2 mb-2">
             <button data-os="windows" class="rm-os px-3 py-1 rounded text-xs bg-amber-500 text-gray-950 font-bold">Windows (PowerShell)</button>
             <button data-os="unix" class="rm-os px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">Linux or macOS (traceroute)</button>
-            <button data-os="mtr" class="rm-os px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">Linux or macOS (mtr, per-hop loss)</button>
+            <button data-os="mtr" class="rm-os px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">Linux (mtr, per-hop loss)</button>
+            <button data-os="mtr_macos" class="rm-os px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">macOS (mtr, per-hop loss)</button>
           </div>
+          <p class="text-xs text-gray-500 mb-2">This command traces to <strong id="rm-cmd-target" class="text-gray-200"></strong>.</p>
+          <p id="rm-cmd-stale" class="hidden text-xs text-amber-400 mb-2"></p>
           <div class="relative">
             <pre id="rm-cmd" class="bg-gray-900 border border-gray-700 rounded p-3 pr-20 text-[11px] text-gray-200 overflow-x-auto whitespace-pre-wrap break-all"></pre>
             <button id="rm-copy" class="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">Copy</button>
           </div>
+          <p id="rm-cmd-note" class="hidden text-xs text-amber-300 mt-2"></p>
           <p class="text-xs text-gray-600 mt-2">Paste it into a terminal. This page picks the result up on its own; leave the tab open. <span id="rm-expiry" class="text-gray-500"></span></p>
           <p class="text-xs text-gray-500 mt-1">This can take up to a minute. A target that does not answer ICMP walks all 30 hops before it stops.</p>
           <p class="text-xs text-gray-500 mt-1">If you get an HTML page back ("Just a moment..."), the operator's Cloudflare configuration is blocking uploads from non-browser clients and needs a skip rule for this endpoint.</p>
@@ -1913,6 +1922,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.36.2"></script>
+  <script src="/static/app.js?v=3.36.3"></script>
 </body>
 </html>

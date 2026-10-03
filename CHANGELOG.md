@@ -5,6 +5,33 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.3] - 2026-10-03
+
+### Route Map: mtr on macOS, and an unreadable upload says what arrived
+
+From a real upload on a Mac:
+
+- **mtr on macOS runs under sudo.** Homebrew's mtr is not setuid, so run as a
+  normal user it printed a permissions error, `2>&1` piped that error into
+  curl, and the error was uploaded as the trace. The command panel now has a
+  separate *macOS (mtr)* command, `sudo mtr --report-wide --show-ips -c 3 -m 30
+  <target> 2>&1 | curl ...`, with a line under it saying mtr needs root on
+  macOS and will prompt for the password. The Linux mtr command is unchanged.
+  The default tab still comes from the User-Agent.
+- **An unreadable trace is not an Atlas failure.** An upload that could not be
+  parsed was titled "The Atlas measurement did not complete". It is now titled
+  *Could not read the uploaded trace* (*Could not read the pasted trace* for a
+  paste), shows the first three lines of what was received so the tool's own
+  error is visible, and keeps the supported-formats line. Those three lines,
+  each capped at 200 characters, are held with the job only until the page
+  collects the error, like the rest of the job.
+- **The command panel follows the main target.** The panel kept the target of
+  an earlier trace (vector.co.nz) while the main field said heise.de. Its
+  target field now follows the main field, the panel names the target its
+  command traces, and if the two differ it says so and asks for a new command.
+
+---
+
 ## [3.36.2] - 2026-10-03
 
 ### The Route Map engine comes from its own public repository
