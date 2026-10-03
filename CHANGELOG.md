@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.4] - 2026-10-04
+
+### Route Map engine from PyPI
+
+- The Route Map engine is now installed from PyPI as `routemap-engine==0.2.1`
+  (AGPL-3.0, published from https://github.com/osintph/routemap-engine through
+  trusted publishing) instead of a pinned git commit. 0.2.1 adds an optional
+  `sourceapp` identifier for RIPEstat calls; FalconEye's behaviour is
+  unchanged.
+
 ## [3.36.3] - 2026-10-03
 
 ### Route Map: mtr on macOS, and an unreadable upload says what arrived

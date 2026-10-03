@@ -11,9 +11,8 @@ python-multipart>=0.0.31
 feedparser==6.0.11
 dnspython==2.6.1
 # The Route Map engine: https://github.com/osintph/routemap-engine (AGPL-3.0),
-# tag v0.2.0, pinned to its commit until the PyPI release is live; then this
-# becomes routemap-engine==0.2.0.
-routemap-engine @ git+https://github.com/osintph/routemap-engine.git@7470e9515def92d3382b883de169ca7d5419eb31
+# from PyPI.
+routemap-engine==0.2.1
 python-whois==0.9.4
 redis[asyncio]==5.0.8
 rapidfuzz==3.14.5
