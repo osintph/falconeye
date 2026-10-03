@@ -5,6 +5,46 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.0] - 2026-10-03
+
+### The Route Map engine is its own package
+
+The parsers, the CAIDA Hoiho client, the carrier site-code table and its
+generator, the bundled GeoNames city list, the IP geolocation fallback, the RTT
+physics bound and the hop annotations moved to
+[osintph/routemap](https://github.com/osintph/routemap), which is also becoming
+a desktop app that runs the trace on the user's own machine. One engine, two
+front ends, so a fix to how a hop is placed lands in both.
+
+FalconEye depends on it, pinned to a commit in `requirements.txt`, and keeps
+only what is web-specific: the Atlas client, the upload tokens and Redis, the
+routes, and the wiring that hands this instance's config (User-Agent, Hoiho
+switch and timeout, per-source budgets, the `route_map_hostname_cache` table)
+to the engine.
+
+**The tab behaves identically.** Every existing Route Map test passes
+unchanged against the package, and the API responses for all six recorded
+traces, with and without an origin, plus the two error cases, are byte-for-byte
+the v3.35.3 responses.
+
+Two things an operator can see:
+
+- `pip` installs one more dependency, from GitHub. `scripts/upgrade.sh`
+  handles it; the box needs `git`, which every supported install has.
+- Engine log lines (Hoiho lookups, source timeouts) now carry the logger names
+  `routemap.engine.*` instead of `falconeye.routemap.*`. Same events, same
+  level, same handler, values still tagged.
+
+`tools/build_site_codes.py` and `app/routemap/data/` are gone from this
+repository; they live in routemap.
+
+### Version strings caught up
+
+`README.md` and the JSON-LD `softwareVersion` had stayed at 3.34.4 through
+every v3.35.x release. Both now read 3.36.0.
+
+---
+
 ## [3.35.3] - 2026-10-03
 
 ### An ECMP hop was shown with the wrong hostname

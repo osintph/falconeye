@@ -10,6 +10,9 @@ slowapi==0.1.10
 python-multipart>=0.0.31
 feedparser==6.0.11
 dnspython==2.6.1
+# The Route Map engine (v3.36.0): https://github.com/osintph/routemap, tag
+# v0.1.0.dev1, pinned to its commit so a moved tag cannot change what installs.
+routemap @ git+https://github.com/osintph/routemap.git@16d6f00223cf5247429ef210c9eefc7cc9d913a2
 python-whois==0.9.4
 redis[asyncio]==5.0.8
 rapidfuzz==3.14.5

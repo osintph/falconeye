@@ -2,8 +2,9 @@
 Route Map API.
 
 Three ways in, one pipeline out. Whichever way the trace text arrives, it goes
-through the same parser (app/routemap/parse.py) and the same geolocation pass
-(app/routemap/geo.py), so there is exactly one place a hop can be placed and
+through the same engine, ``routemap.engine.analyse`` (the routemap package
+since v3.36.0, shared with the desktop app), with this instance's sources from
+app/routemap/geo.py, so there is exactly one place a hop can be placed and
 exactly one place a format bug can live:
 
   POST /api/routemap/trace          RIPE Atlas runs it from a probe near the user
@@ -31,13 +32,15 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
+from routemap.engine import analyse as engine_analyse
+from routemap.engine import normalise_origin
 from slowapi import Limiter
 
 from app.config import (ATLAS_PER_DAY, HTTPX_TIMEOUT, OPERATOR_CONTACT_UA,
                         ROUTEMAP_ANALYSES_PER_DAY, ROUTEMAP_MAX_UPLOAD_BYTES,
                         ROUTEMAP_TOKENS_PER_DAY, ROUTEMAP_TOKEN_TTL_SECONDS)
 from app.routemap import atlas, cities, geo, hoiho, sitecodes, tokens
-from app.routemap.parse import MAX_TRACE_BYTES, PARSER_LABELS, TraceParseError, parse_trace
+from app.routemap.parse import MAX_TRACE_BYTES, TraceParseError
 from app.utils import rate_limit
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.logsafe import tag
@@ -97,58 +100,21 @@ def _origin(lat: float | None, lon: float | None) -> tuple[float, float] | None:
     The coordinates arrive already rounded to about 10 km by the browser. They
     are used for this response and never stored.
     """
-    if lat is None or lon is None:
-        return None
-    try:
-        lat, lon = float(lat), float(lon)
-    except (TypeError, ValueError):
-        return None
-    if not (-90.0 <= lat <= 90.0 and -180.0 <= lon <= 180.0):
-        return None
-    return (round(lat, 2), round(lon, 2))
-
-
-def _origin_block(origin: tuple[float, float] | None, located: list) -> dict:
-    """What the response says about where the path starts."""
-    if origin is None:
-        anchor = geo.first_located(located)
-        if anchor is None:
-            return {"lat": None, "lon": None, "label": None, "source": "none"}
-        city = cities.nearest(*anchor)
-        return {"lat": anchor[0], "lon": anchor[1],
-                "label": (city or {}).get("display"), "source": "first-hop"}
-    city = cities.nearest(*origin)
-    return {"lat": origin[0], "lon": origin[1],
-            "label": (city or {}).get("display") or f"{origin[0]}, {origin[1]}",
-            "source": "supplied"}
+    return normalise_origin(lat, lon)
 
 
 async def _analyse(trace_text: str, origin: tuple[float, float] | None,
                    extra: dict | None = None) -> dict:
     """Parse and locate one trace. The single path every entry point joins."""
     try:
-        parsed = parse_trace(trace_text)
+        route = await engine_analyse(trace_text, origin, sources=geo.sources())
     except TraceParseError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    if not parsed.hops:
-        raise HTTPException(status_code=400, detail="No hops were found in that trace.")
-
-    resolved = await geo.resolve(parsed.hops, origin)
-    located = resolved["hops"]
-    body = {
-        "parser": parsed.parser,
-        "parser_label": PARSER_LABELS.get(parsed.parser, parsed.parser),
-        "target": parsed.target,
-        "warnings": parsed.warnings,
-        "hoiho_ruleset_date": resolved["hoiho_ruleset_date"],
-        "origin": _origin_block(origin, located),
-        "hops": located,
-    }
+    body = route.to_dict()
     if extra:
         body.update(extra)
-    placed = sum(1 for h in located if h.get("lat") is not None)
     log.info("event=routemap_analyze parser=%s hops=%d placed=%d",
-             parsed.parser, len(located), placed)
+             route.parser, len(route.hops), len(route.placed))
     return body
 
 
