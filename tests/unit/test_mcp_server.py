@@ -29,6 +29,7 @@ import pytest
 
 from app import mcp_server
 from app.ransomware import routes as ransomware_routes
+from app.routemap import routes as routemap_routes
 from app.routers import (
     domain_intel,
     email_header,
@@ -46,6 +47,7 @@ EXPECTED = {
     "url_expand": url_expander.expand,
     "qr_analyze": qr_analyzer.decode,
     "ransomware_watch_search": ransomware_routes.search_victims,
+    "route_map": routemap_routes.analyze,
 }
 
 # Tabs that answer questions about a person rather than about an indicator. Out
@@ -59,9 +61,9 @@ FORBIDDEN_SUBSTRINGS = (
 
 # ---------- 1. the tool table ----------
 
-def test_exactly_the_seven_tools_are_registered():
+def test_exactly_the_expected_tools_are_registered():
     assert set(mcp_server.tool_names()) == set(EXPECTED)
-    assert len(mcp_server.TOOLS) == 7
+    assert len(mcp_server.TOOLS) == len(EXPECTED)
 
 
 def test_tool_names_are_unique():
@@ -252,7 +254,7 @@ _KEYS = ("ABUSEIPDB_KEY", "VT_KEY", "OTX_API_KEY", "ABUSECH_AUTH_KEY", "CENSYS_P
 def test_the_tool_table_builds_with_no_keys_at_all(monkeypatch):
     for key in _KEYS:
         monkeypatch.delenv(key, raising=False)
-    assert len(mcp_server.TOOLS) == 7
+    assert len(mcp_server.TOOLS) == len(EXPECTED)
     assert set(mcp_server.tool_names()) == set(EXPECTED)
 
 

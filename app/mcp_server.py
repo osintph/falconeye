@@ -4,7 +4,7 @@ FalconEye over MCP. stdio transport, local mode, one operator.
 WHAT THIS IS FOR
 ----------------
 A self-hoster running FalconEye on their own box can point Claude Code or Claude
-Desktop at this and use seven of the tabs as tools. It is the operator's own
+Desktop at this and use eight of the tabs as tools. It is the operator's own
 instance, their own .env and their own quotas, driven from their own editor.
 
 It is NOT a hosted service. There is no listener, no authentication, no key
@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 SERVER_NAME = "falconeye"
-SERVER_VERSION = "3.34.4"
+SERVER_VERSION = "3.35.0"
 
 # app.main mounts StaticFiles(directory="app/static") and that path is relative to
 # the process working directory, so importing the app from anywhere else raises.
@@ -180,6 +180,16 @@ async def ransomware_watch_search(query: str) -> dict:
     return await _request("GET", "/api/ransomware/search", params={"q": query})
 
 
+async def route_map(trace_text: str, origin_lat: float | None = None,
+                    origin_lon: float | None = None) -> dict:
+    """Geolocate the hops of one traceroute."""
+    return await _request("POST", "/api/routemap/analyze", json_body={
+        "trace_text": trace_text,
+        "origin_lat": origin_lat,
+        "origin_lon": origin_lon,
+    })
+
+
 # The endpoint's own cap, so a file that cannot possibly be accepted is rejected
 # before it is read into memory.
 _QR_MAX_BYTES = 5 * 1024 * 1024
@@ -203,6 +213,8 @@ _CACHE = {
     "url": "Not cached: every call follows the redirect chain again.",
     "qr": "Not cached: the image is decoded in memory and discarded.",
     "ransomware": "Search results are cached for 1 hour.",
+    "route_map": ("Not cached: the trace is parsed and discarded. Router "
+                  "hostnames looked up at CAIDA Hoiho are cached for 30 days."),
 }
 
 _LLM = ("This calls Anthropic with this instance's own ANTHROPIC_API_KEY, so it "
@@ -310,6 +322,31 @@ TOOLS: tuple[Tool, ...] = (
             "at least three characters. The archive is what this instance has "
             "collected, so an absence of results is not evidence that a victim "
             "was never posted. " + _CACHE["ransomware"]
+        ),
+    ),
+    Tool(
+        name="route_map",
+        input_hint="traceroute output",
+        method="POST",
+        path="/api/routemap/analyze",
+        handler=route_map,
+        description=(
+            "Geolocate every hop of one traceroute and return the path as "
+            "structured JSON: per hop the address, hostname, RTT, loss, "
+            "location, which source placed it and any annotations. Input is "
+            "trace_text: raw traceroute output from Windows tracert, Unix "
+            "traceroute or mtr --report, whichever produced it, and the format "
+            "is detected rather than declared. "
+            "Optionally pass origin_lat and origin_lon, the coordinates the "
+            "path starts from, which switches on the check that rejects a "
+            "location the measured round trip could not reach; without them "
+            "the first hop that geolocates is used as the anchor instead. "
+            "Hops are placed from the router hostname first (CAIDA Hoiho, then "
+            "a bundled carrier site-code table) and from an IP geolocation "
+            "database only as a fallback, and each hop reports which one it "
+            "was. This tool never runs a traceroute and never creates a RIPE "
+            "Atlas measurement: it reads text you already have. "
+            + _CACHE["route_map"]
         ),
     ),
 )

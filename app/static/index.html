@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.34.4" />
+  <link rel="stylesheet" href="/static/style.css?v=3.35.0" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1313,6 +1313,209 @@
       </p>
     </div>
 
+    <!-- ROUTE MAP TAB (v3.35.0) -->
+    <div id="tab-routemap" class="tab-content hidden">
+  <h2 class="text-lg font-bold mb-1">Route Map</h2>
+  <p class="text-gray-400 text-sm mb-5 max-w-3xl">
+    Enter a domain, website or IP. FalconEye traces the route from a RIPE Atlas probe on your
+    network near you and draws the real path on a map. Hops are placed from the router's own
+    hostname first, IP geolocation only as a fallback, and every placement is checked against the
+    speed of light.
+  </p>
+
+  <!-- ====================== TARGET ====================== -->
+  <div class="mb-6">
+    <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Target</label>
+    <div class="flex flex-wrap gap-3">
+      <input id="rm-main-target" type="text" value="heise.de"
+             placeholder="example.com, https://example.com/page, or 1.1.1.1"
+             class="flex-1 min-w-[240px] bg-gray-900 border border-gray-700 rounded px-4 py-2.5 text-sm focus:outline-none focus:border-amber-400" />
+      <button id="rm-trace-btn" class="bg-amber-400 text-gray-950 font-bold px-8 py-2.5 rounded text-sm hover:bg-amber-300 transition">Trace</button>
+    </div>
+    <p id="rm-main-target-error" class="hidden text-xs text-red-400 mt-2"></p>
+    <p class="text-xs text-gray-500 mt-2 max-w-3xl">
+      Traces run on RIPE Atlas and are published in its public measurement database, including the
+      target. Do not trace targets you need to keep confidential.
+      <a href="#" id="rm-privacy-link" class="text-amber-400 hover:text-amber-300 underline">Privacy Policy</a>
+    </p>
+  </div>
+
+  <!-- ====================== ORIGIN LINE ====================== -->
+  <div id="rm-origin-line" class="hidden mb-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-amber-400 shrink-0">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>
+    </svg>
+    <span class="text-gray-500">From:</span>
+    <span id="rm-origin-city" class="text-white font-bold">Manila, PH</span>
+    <span id="rm-origin-coords" class="text-[11px] text-gray-600">14.6, 121.0</span>
+    <button id="rm-origin-change" class="text-xs text-amber-400 hover:text-amber-300 underline">change</button>
+  </div>
+
+  <!-- ====================== ATLAS PROGRESS ====================== -->
+  <div id="rm-atlas" class="hidden mb-6 bg-gray-900 border border-gray-800 rounded p-4">
+    <div id="rm-atlas-step1" class="flex items-center gap-3 text-sm">
+      <svg id="rm-atlas-spin1" class="animate-spin text-amber-400 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <svg id="rm-atlas-tick1" class="hidden text-green-400 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="text-gray-300">Selecting a probe near you</span>
+    </div>
+    <div id="rm-atlas-step2" class="hidden flex items-center gap-3 text-sm mt-3">
+      <svg id="rm-atlas-spin2" class="animate-spin text-amber-400 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      <svg id="rm-atlas-tick2" class="hidden text-green-400 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span class="text-gray-300">Tracing from probe <span id="rm-atlas-probe" class="text-white font-bold"></span></span>
+    </div>
+    <p id="rm-atlas-note" class="text-xs text-gray-600 mt-3">An Atlas traceroute usually finishes in under a minute.</p>
+  </div>
+
+  <!-- ====================== ATLAS FAILURE ====================== -->
+  <div id="rm-atlas-error" class="hidden mb-6 bg-yellow-950 border border-yellow-800 rounded p-4">
+    <div class="flex items-start gap-3">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-yellow-400 shrink-0 mt-0.5">
+        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div class="text-sm text-yellow-100">
+        <strong id="rm-atlas-error-title" class="text-yellow-300 block mb-1"></strong>
+        <span id="rm-atlas-error-body" class="text-yellow-200/90 text-xs"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====================== RESULT ====================== -->
+  <div id="rm-result" class="hidden mb-8">
+    <div class="bg-gray-900 border border-gray-800 rounded p-3 mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
+      <div>
+        <span class="text-gray-500 text-xs uppercase tracking-wider mr-2">Probe</span>
+        <span id="rm-res-probe" class="text-white font-bold"></span>
+      </div>
+      <div>
+        <span class="text-gray-500 text-xs uppercase tracking-wider mr-2">Distance from you</span>
+        <span id="rm-res-probedist" class="text-gray-200"></span>
+      </div>
+      <div>
+        <span class="text-gray-500 text-xs uppercase tracking-wider mr-2">Target</span>
+        <span id="rm-res-target" class="text-amber-400 font-bold"></span>
+      </div>
+      <span id="rm-res-parser" class="text-[10px] uppercase tracking-wider px-2 py-0.5 rounded bg-gray-800 text-gray-400"></span>
+      <span id="rm-res-counts" class="text-xs text-gray-500"></span>
+      <div class="flex gap-2 ml-auto">
+        <button id="rm-export-json" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded text-xs hover:bg-gray-700">Export JSON</button>
+        <button id="rm-export-png" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded text-xs hover:bg-gray-700">Export map PNG</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+      <div class="lg:col-span-2">
+        <div id="rm-map-container" class="bg-gray-900 border border-gray-800 rounded relative overflow-hidden"></div>
+        <div id="rm-map-legend" class="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-gray-500"></div>
+      </div>
+      <div class="space-y-3">
+        <div class="bg-gray-900 border border-gray-800 rounded p-3">
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Hops not drawn</div>
+          <div id="rm-unlocated" class="space-y-2 text-xs max-h-48 overflow-y-auto"></div>
+        </div>
+        <div class="bg-gray-900 border border-gray-800 rounded p-3">
+          <div class="text-xs text-gray-500 uppercase tracking-wider mb-2">Read this correctly</div>
+          <div id="rm-annotations" class="space-y-2 text-xs max-h-64 overflow-y-auto"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-gray-900 border border-gray-800 rounded overflow-x-auto">
+      <table class="w-full text-xs">
+        <thead>
+          <tr class="border-b border-gray-700 text-gray-500 uppercase text-[10px]">
+            <th class="text-left px-3 py-2">Hop</th>
+            <th class="text-left px-3 py-2">IP</th>
+            <th class="text-left px-3 py-2">Hostname</th>
+            <th class="text-right px-3 py-2">RTT</th>
+            <th class="text-right px-3 py-2">Loss</th>
+            <th class="text-left px-3 py-2">Location</th>
+            <th class="text-left px-3 py-2">Source</th>
+            <th class="text-left px-3 py-2">Notes</th>
+          </tr>
+        </thead>
+        <tbody id="rm-table"></tbody>
+      </table>
+    </div>
+
+    <p class="text-[11px] text-gray-600 mt-3 max-w-3xl">
+      Source column: <span class="src-hoiho">hoiho</span> is the router hostname decoded by CAIDA's
+      Hoiho ruleset, <span class="src-site-code">site-code</span> is the carrier's own site code in
+      the hostname, <span class="src-ip-db">ip-db</span> is an IP geolocation database,
+      <span class="src-local">local</span> is a private, CGNAT or reserved address placed at the
+      probe without querying anything, and <span class="src-unresolved">unresolved</span> means no
+      source survived. Hoiho ruleset <span id="rm-ruleset" class="text-gray-500"></span>.
+    </p>
+  </div>
+
+  <!-- ====================== ADVANCED ====================== -->
+  <details id="rm-advanced" class="border border-gray-800 rounded bg-gray-950">
+    <summary class="cursor-pointer px-4 py-3 text-sm text-gray-400 hover:text-amber-400 transition select-none flex items-center gap-2">
+      <svg id="rm-adv-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="shrink-0"><polyline points="9 18 15 12 9 6"/></svg>
+      <span class="font-bold uppercase tracking-wider text-xs">Advanced: use your own trace</span>
+      <span class="text-gray-600 text-xs">run it yourself instead of from an Atlas probe</span>
+    </summary>
+    <div class="px-4 pb-4">
+      <div class="flex border-b border-gray-800 mb-4">
+        <button id="rm-tab-paste" class="px-4 py-2 text-sm border-b-2 border-amber-400 text-amber-400 font-bold">Paste a trace</button>
+        <button id="rm-tab-run" class="px-4 py-2 text-sm border-b-2 border-transparent text-gray-400 hover:text-white">Run it on my machine</button>
+      </div>
+
+      <div id="rm-pane-paste">
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Traceroute output</label>
+        <textarea id="rm-trace" rows="9" placeholder="Paste the output of tracert, traceroute, or mtr --report here. The format is detected automatically; Windows tracert with and without -d, Unix traceroute with and without -n, and mtr --report / --report-wide are all understood."
+          class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-xs focus:outline-none focus:border-amber-400 font-mono resize-y"></textarea>
+        <div class="flex flex-wrap gap-3 mt-3">
+          <button id="rm-analyze" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Draw the route</button>
+          <button id="rm-clear" class="bg-gray-800 text-gray-300 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Clear</button>
+          <button id="rm-sample-heise" class="text-xs text-gray-500 hover:text-amber-400 underline self-center">Load the heise.de sample</button>
+        </div>
+      </div>
+
+      <div id="rm-pane-run" class="hidden">
+        <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-blue-400 shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10"/><line x1="12" x2="12.01" y1="8" y2="8"/><line x1="12" x2="12" y1="12" y2="16"/>
+          </svg>
+          <div class="text-xs text-blue-200">
+            The command below runs on <strong class="text-blue-300">your</strong> machine and uploads only the
+            text the traceroute printed. Nothing is downloaded and nothing is executed from this server:
+            read the command before you run it. The upload link is single use and expires in 10 minutes.
+          </div>
+        </div>
+        <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Target</label>
+        <div class="flex flex-wrap gap-3">
+          <input id="rm-target" type="text" value="heise.de" placeholder="example.com or 1.1.1.1"
+            class="flex-1 min-w-[220px] bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+          <button id="rm-make-cmd" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">Generate command</button>
+        </div>
+        <p id="rm-target-error" class="hidden text-xs text-red-400 mt-2"></p>
+
+        <div id="rm-cmd-block" class="hidden mt-4">
+          <div class="flex flex-wrap gap-2 mb-2">
+            <button data-os="windows" class="rm-os px-3 py-1 rounded text-xs bg-amber-500 text-gray-950 font-bold">Windows (PowerShell)</button>
+            <button data-os="unix" class="rm-os px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">Linux or macOS (traceroute)</button>
+            <button data-os="mtr" class="rm-os px-3 py-1 rounded text-xs bg-gray-800 text-gray-300 hover:bg-gray-700">Linux or macOS (mtr, per-hop loss)</button>
+          </div>
+          <div class="relative">
+            <pre id="rm-cmd" class="bg-gray-900 border border-gray-700 rounded p-3 pr-20 text-[11px] text-gray-200 overflow-x-auto whitespace-pre-wrap break-all"></pre>
+            <button id="rm-copy" class="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">Copy</button>
+          </div>
+          <p class="text-xs text-gray-600 mt-2">Paste it into a terminal. This page picks the result up on its own; leave the tab open. <span id="rm-expiry" class="text-gray-500"></span></p>
+        </div>
+
+        <div id="rm-waiting" class="hidden mt-4 bg-gray-900 border border-gray-800 rounded p-4 flex items-center gap-3">
+          <svg class="animate-spin text-amber-400 shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+          <div class="text-sm text-gray-300">
+            Waiting for the trace to arrive...
+            <div class="text-xs text-gray-600 mt-1">A 30-hop trace with timeouts can take a minute or two to finish on your machine.</div>
+          </div>
+          <button id="rm-cancel" class="ml-auto text-xs text-gray-500 hover:text-gray-300 underline">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </details>
+    </div>
+
   </main>
     </div>
   </div>
@@ -1365,6 +1568,9 @@
       <a href="https://crt.sh/" target="_blank" rel="noopener noreferrer" class="data-source" title="crt.sh, Certificate Transparency search">crt.sh</a>
       <a href="https://sslmate.com/certspotter/" target="_blank" rel="noopener noreferrer" class="data-source" title="Cert Spotter by SSLMate">Cert Spotter</a>
       <a href="https://stat.ripe.net/" target="_blank" rel="noopener noreferrer" class="data-source" title="RIPEstat, ASN and routing data">RIPEstat</a>
+      <a href="https://atlas.ripe.net/" target="_blank" rel="noopener noreferrer" class="data-source" title="RIPE Atlas, traceroute measurements from probes worldwide">RIPE Atlas</a>
+      <a href="https://api.hoiho.caida.org/" target="_blank" rel="noopener noreferrer" class="data-source" title="CAIDA Hoiho, router hostname geolocation">CAIDA Hoiho</a>
+      <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer" class="data-source" title="GeoNames city list, CC BY 4.0">GeoNames</a>
       <a href="https://www.shodan.io/" target="_blank" rel="noopener noreferrer" class="data-source" title="Shodan InternetDB">Shodan</a>
       <a href="https://www.greynoise.io/" target="_blank" rel="noopener noreferrer" class="data-source" title="GreyNoise Community">GreyNoise</a>
       <a href="https://urlhaus.abuse.ch/" target="_blank" rel="noopener noreferrer" class="data-source" title="URLhaus by abuse.ch">URLhaus</a>
@@ -1395,7 +1601,7 @@
 
           <p class="text-xs text-gray-500">
             <strong>Effective date:</strong> 25 June 2026<br>
-            <strong>Last updated:</strong> 20 July 2026<br>
+            <strong>Last updated:</strong> 3 October 2026<br>
             <strong>Operator:</strong> {{OPERATOR_NAME}} (<a href="{{OPERATOR_URL}}" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">{{OPERATOR_URL_LABEL}}</a>)
           </p>
 
@@ -1516,6 +1722,21 @@
                   <td class="py-2 font-mono">code snippet</td>
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
                 </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Route Map</td>
+                  <td class="py-2 font-mono">router hostnames from the trace</td>
+                  <td class="py-2">CAIDA Hoiho (api.hoiho.caida.org), which decodes a router's own hostname into a location. Only public router hostnames are sent; private, CGNAT and local hops never are. Cached here for 30 days.</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Route Map</td>
+                  <td class="py-2 font-mono">hop IP addresses</td>
+                  <td class="py-2">RIPEstat (MaxMind GeoLite view), as the fallback when a hostname cannot place a hop</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Route Map &rarr; Trace</td>
+                  <td class="py-2 font-mono">the target you entered</td>
+                  <td class="py-2"><strong class="text-amber-300">RIPE Atlas, publicly.</strong> A trace is run by an Atlas probe and the measurement, including the target, is published in RIPE Atlas's public measurement database. Your coordinates are <em>not</em> sent: the probe is chosen by AS number and country only. Do not trace targets you need to keep confidential.</td>
+                </tr>
                 <tr>
                   <td class="py-2">Company</td>
                   <td class="py-2 font-mono">domain</td>
@@ -1523,6 +1744,8 @@
                 </tr>
               </tbody>
             </table>
+
+            <p class="mt-3">The Route Map tab asks your browser for your location, through the browser's own permission popup, so the map can start where you are and so a nearby Atlas probe can be chosen. Your coordinates are rounded to about 10 km <em>in your browser</em> before they are sent, are used only to render that one result, are never written to our database or logs, and are never passed to RIPE Atlas. Declining is fine: you pick a city instead, from a list bundled with FalconEye that needs no request at all. The choice is remembered in your own browser's local storage and the tab has a button to clear it.</p>
 
             <p class="mt-3">The LLM-powered tabs (Email Header, Dork Generator, and Script Decoder) send your input to Anthropic's API. Anthropic's data handling policy is at <a href="https://www.anthropic.com/legal/privacy" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">anthropic.com/legal/privacy</a>. At the time of writing, Anthropic does not use API input to train their models by default.</p>
           </section>
@@ -1583,7 +1806,96 @@
   </div>
 
   <!-- jsPDF vendored locally (self-hosted, no CDN) for client-side PDF export -->
+<!-- ====================== LOCATION MODAL ====================== -->
+<div id="rm-loc-modal" class="hidden fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" style="backdrop-filter: blur(4px);">
+  <div class="bg-gray-900 border border-gray-700 rounded-lg max-w-lg w-full p-6">
+    <div class="flex items-start gap-3 mb-4">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-amber-400 shrink-0 mt-0.5">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      <div>
+        <h3 class="text-base font-bold text-white mb-2">Where does the route start?</h3>
+        <p class="text-sm text-gray-300">
+          Route Map needs your location to draw the route from where you are. Without it, the map
+          cannot start at your location and you will need to select it manually.
+        </p>
+        <p class="text-xs text-gray-500 mt-2">
+          Your location is used to pick an Atlas probe near you and to draw the map. Coordinates are
+          rounded to about 10 km in your browser before they are sent, and are never stored on the server.
+        </p>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-3">
+      <button id="rm-allow-loc" class="bg-amber-400 text-gray-950 font-bold px-5 py-2 rounded text-sm hover:bg-amber-300 transition">Allow location</button>
+      <button id="rm-manual-loc" class="bg-gray-800 text-gray-300 font-bold px-5 py-2 rounded text-sm hover:bg-gray-700 transition">Select manually</button>
+    </div>
+  </div>
+</div>
+<!-- ====================== SOURCE PICKER ====================== -->
+<div id="rm-picker" class="hidden fixed inset-0 bg-black/80 z-50 overflow-y-auto p-4" style="backdrop-filter: blur(4px);">
+  <div class="bg-gray-900 border border-gray-700 rounded-lg max-w-2xl w-full mx-auto my-8 p-6">
+    <div class="flex items-start justify-between mb-4">
+      <h3 class="text-base font-bold text-white">Select where the route starts</h3>
+      <button id="rm-picker-close" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+    </div>
+
+    <div id="rm-denied-note" class="hidden bg-yellow-950 border border-yellow-800 rounded p-3 mb-4 text-xs text-yellow-200">
+      <strong class="text-yellow-300">Location was blocked for this site.</strong>
+      A page cannot ask again once the browser has refused, so pick your location below, or re-enable it:
+      <span class="block mt-1 text-yellow-300/80">Chrome: click the icon to the left of the address bar &rarr; Site settings &rarr; Location &rarr; Allow, then reload.</span>
+      <span class="block text-yellow-300/80">Safari: Safari &rarr; Settings for This Website &rarr; Location &rarr; Allow.</span>
+      <span class="block text-yellow-300/80">Firefox: click the padlock &rarr; Clear the blocked permission, then reload.</span>
+    </div>
+    <div id="rm-timeout-note" class="hidden bg-yellow-950 border border-yellow-800 rounded p-3 mb-4 text-xs text-yellow-200">
+      <strong class="text-yellow-300">Your browser did not answer within 10 seconds.</strong>
+      That usually means location services are off at the operating-system level. Pick your location below.
+    </div>
+    <div id="rm-unsupported-note" class="hidden bg-yellow-950 border border-yellow-800 rounded p-3 mb-4 text-xs text-yellow-200">
+      <strong class="text-yellow-300">This browser does not offer location.</strong>
+      Pick your location below instead.
+    </div>
+
+    <div id="rm-guess" class="hidden bg-gray-950 border border-gray-800 rounded p-3 mb-4">
+      <div class="text-xs text-gray-500 uppercase tracking-wider mb-1">Best guess from your network</div>
+      <div class="flex flex-wrap items-center gap-3">
+        <span id="rm-guess-label" class="text-sm text-white font-bold"></span>
+        <span id="rm-guess-coords" class="text-xs text-gray-500"></span>
+        <button id="rm-guess-use" class="ml-auto bg-amber-400 text-gray-950 font-bold px-4 py-1.5 rounded text-xs hover:bg-amber-300">Use this</button>
+      </div>
+      <p class="text-[11px] text-gray-600 mt-2">Derived from your IP address at city level for this page only. Not stored and not logged in the clear.</p>
+    </div>
+
+    <div class="mb-4">
+      <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Search for your city</label>
+      <input id="rm-city-q" type="text" placeholder="Manila, Frankfurt, Sao Paulo..." autocomplete="off"
+        class="w-full bg-gray-950 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
+      <div id="rm-city-results" class="mt-2 space-y-1"></div>
+      <p class="text-[11px] text-gray-600 mt-2">Offline list of 34,152 cities bundled with FalconEye. Nothing you type here leaves the page until you pick one.</p>
+    </div>
+
+    <div class="mb-4">
+      <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Or enter coordinates</label>
+      <div class="flex flex-wrap gap-2">
+        <input id="rm-lat" type="text" placeholder="latitude, e.g. 14.6" class="flex-1 min-w-[130px] bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
+        <input id="rm-lon" type="text" placeholder="longitude, e.g. 121.0" class="flex-1 min-w-[130px] bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-amber-400" />
+        <button id="rm-use-coords" class="bg-gray-800 text-gray-200 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700">Use</button>
+      </div>
+    </div>
+
+    <div>
+      <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Or click your location on the map</label>
+      <div id="rm-pick-map" class="bg-gray-950 border border-gray-800 rounded relative overflow-hidden" style="height:240px"></div>
+      <p id="rm-pick-readout" class="text-xs text-gray-500 mt-2">No point selected.</p>
+    </div>
+
+    <p class="text-[11px] text-gray-600 mt-4">
+      City list from <a href="https://www.geonames.org/" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">GeoNames</a>,
+      used under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300">CC BY 4.0</a>.
+    </p>
+  </div>
+</div>
+
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.34.4"></script>
+  <script src="/static/app.js?v=3.35.0"></script>
 </body>
 </html>

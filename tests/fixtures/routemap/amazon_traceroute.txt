@@ -1,0 +1,19 @@
+traceroute to amazon.com (98.87.170.71), 30 hops max, 60 byte packets
+ 1  gt-ax6000-9ec0 (192.168.50.1)  4.021 ms  3.814 ms  3.552 ms
+ 2  192.168.1.1 (192.168.1.1)  5.118 ms  5.442 ms  3.901 ms
+ 3  100.86.0.1 (100.86.0.1)  8.772 ms  8.339 ms  8.114 ms
+ 4  122.2.187.146.static.pldt.net (122.2.187.146)  8.204 ms  7.998 ms  6.431 ms
+ 5  210.213.130.141.static.pldt.net (210.213.130.141)  9.332 ms  10.118 ms  9.774 ms
+ 6  210.213.130.75.static.pldt.net (210.213.130.75)  26.442 ms  26.881 ms  27.003 ms
+ 7  ix-bundle-21.qcore1.h81-hongkong.as6453.net (180.87.146.214)  29.118 ms  29.664 ms  29.902 ms
+ 8  if-bundle-28-2.qcore2.hk2-hongkong.as6453.net (180.87.162.27)  214.337 ms * *
+ 9  * * *
+10  * * *
+11  64.86.26.38 (64.86.26.38)  215.118 ms * *
+12  * * *
+13  if-bundle-2-2.qcore2.sqn-sanjose.as6453.net (66.198.101.129)  214.442 ms  214.881 ms  215.003 ms
+14  if-bundle-61-4.qcore2.ct8-chicago.as6453.net (66.198.29.226)  216.118 ms  216.664 ms  216.902 ms
+15  if-bundle-2-2.qcore1.ct8-chicago.as6453.net (66.110.15.36)  215.337 ms  215.881 ms  216.223 ms
+16  * * *
+17  * * *
+18  * * *

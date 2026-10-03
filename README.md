@@ -72,6 +72,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Contact** | Feedback form for bug reports, feature requests, and new tab suggestions |
 | **Username** | Check where a username appears across ~950 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
+| **Route Map** | Map the real network path to a target and draw it on a world map, starting from where you are. Enter a domain, URL or IP and a RIPE Atlas probe on your own network runs the traceroute; or paste a trace, or run one yourself and pipe it to a single-use upload link. Windows `tracert`, Unix `traceroute` and `mtr --report` are all parsed, format auto-detected. Hops are placed **hostname first**: CAIDA Hoiho's published ruleset, then a bundled carrier site-code table, and an IP geolocation database only as a fallback, because a backbone router's address geolocates to wherever its operator registered the prefix. Every placement is then checked against the speed of light (about 100 km per ms of round trip) and rejected if the measured RTT could not reach it, so a Tata router cannot be drawn in Harare at the same RTT as San Jose. Hops that cannot be placed are listed with the reason, never silently dropped. Annotates asymmetric return paths, ICMP rate limiting mistaken for packet loss, and a destination that does not answer ICMP. Your location is asked for through the browser's own permission popup, rounded to about 10 km in the browser, used for the render only and never stored; declining falls back to an offline city picker. Atlas measurements are public and the tab says so. Needs an `ATLAS_API_KEY` for the probe path; paste and upload work without one. |
 | **Ransomware Watch** | Global + PH/SEA ransomware victim tracking: world map, regional (PH/SG/MY/ID/TH/VN/HK/TW) comparison with month-over-month trend, latest victims with cross-source corroboration flags, group activity, leak-site mirror health, and a PH-relevant watchlist. Reads a locally scheduled collector's cache only for its core panels, never queries an upstream from the browser there. Two guarded exceptions: a company search (always live against ransomware.live, min 3 characters, rate-limited, degrades to a local partial-cache fallback if upstream is down) and an on-demand country lookup for any country outside the continuously-collected PH/SEA set (cached 24h, rate-limited). Every entry is labelled a claim, never a confirmed fact. Requires a `RANSOMWARE_LIVE_API_KEY` (ransomware.live PRO); RansomLook needs no key. Data attributed to ransomware.live (non-commercial terms) and RansomLook (CC BY 4.0). |
 
 ### LLM-powered tabs
@@ -179,6 +180,9 @@ Memory footprint at idle: ~120 MB RAM. Disk: ~50 MB for code + ~20 MB SQLite cac
   sudo apt-get install -y --no-install-recommends \
       python3 python3-pip python3-venv git redis-server libzbar0 whois
   ```
+  This list now lives in one place, `FE_SYSTEM_PACKAGES` in
+  `scripts/lib/common.sh`, and both `provision.sh` and `upgrade.sh` install from
+  it, so a package added for a new feature reaches existing boxes too.
   `libzbar0` is required: `pyzbar` loads it via ctypes for the QR Code tab, and
   because that router is imported at module level, without it the whole app
   fails to start with `ImportError: Unable to find zbar shared library`. On
@@ -593,3 +597,14 @@ AGPL-3.0. Strong copyleft: if you run a modified version as a network service, y
 - Tailwind CSS (styling)
 
 Built and maintained by [OSINT-PH](https://blog.osintph.info).
+
+- City list from [GeoNames](https://www.geonames.org/) (`cities15000`), used under
+  [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Bundled offline at
+  `app/routemap/data/cities.tsv` for the Route Map origin picker.
+- Router hostname geolocation from [CAIDA Hoiho](https://api.hoiho.caida.org/),
+  the published ruleset behind the Route Map tab's hostname-first placement.
+- Carrier site codes derived from [Arelion's public looking glass](https://lg.twelve99.net/).
+  Regenerate with `python3 tools/build_site_codes.py`; see
+  `app/routemap/data/README.md`.
+- Traceroute measurements from [RIPE Atlas](https://atlas.ripe.net/). Measurements
+  created by this tool are public.

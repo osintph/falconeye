@@ -147,3 +147,83 @@ CONTACT_ENABLED = getenv_clean("CONTACT_ENABLED", "true").lower() != "false"
 # form until v3.33.0, which meant a self-hoster's visitors mailed someone else.
 # Empty disables the form while leaving the rest of the tab intact.
 CONTACT_FORM_ACTION = getenv_clean("CONTACT_FORM_ACTION", "https://formspree.io/f/mojoezkp")
+
+
+# ----- Route Map tab (v3.35.0) -----
+# Hostname-first traceroute geolocation. The trace always comes from the user's
+# own machine, either pasted or uploaded by the one-line command the tab shows.
+# This server never runs a traceroute and is never the origin of the path.
+
+# CAIDA Hoiho, the router-hostname geolocation source. Default ON: it is free,
+# keyless, published research infrastructure, and the data sent to it is router
+# hostnames from a pasted trace, never anything about the visitor. The gate on
+# what may leave is is_routable_hostname() in app/routemap/parse.py, so a
+# private hop or a LAN label is never sent. Set to "false" and the tab falls
+# back to IP geolocation alone, which is exactly the inaccuracy the tab exists
+# to correct, so turn it off only deliberately.
+HOIHO_ENABLED = getenv_clean("HOIHO_ENABLED", "true").lower() != "false"
+HOIHO_BASE_URL = getenv_clean("HOIHO_BASE_URL", "https://api.hoiho.caida.org")
+# 30 days. A hostname's embedded location changes when a carrier renames a
+# router, which is a thing that happens on the scale of years, and the ruleset
+# itself is regenerated a few times a year (ruleset_date was 2024-08 when this
+# was written). Every cache hit is a request CAIDA does not have to serve.
+HOIHO_CACHE_TTL_HOURS = 24 * 30
+HOIHO_TIMEOUT_SECONDS = float(getenv_clean("HOIHO_TIMEOUT_SECONDS", "12"))
+
+# Run-locally upload (Mode B). FalconEye never runs a traceroute itself: the
+# user runs it on their own machine and the one-line command we show pipes the
+# output to the ingest endpoint. So there is no probe traffic from this server,
+# no raw-socket capability, no new system package, and the path drawn is the
+# path from where the user actually is.
+#
+# The handoff between the shell that uploads and the browser that renders is
+# short-lived state keyed by a single-use token. See app/routemap/tokens.py.
+#
+# Ten minutes: long enough to copy a command into a terminal and watch a
+# 30-hop trace finish, short enough that a token left on screen is not a
+# standing invitation.
+ROUTEMAP_TOKEN_TTL_SECONDS = max(60, int(getenv_clean("ROUTEMAP_TOKEN_TTL_SECONDS", "600")))
+# Ceiling on an uploaded trace. The parser's own cap is 256 KB; this is the
+# transport cap, applied before the body is read into memory, because the
+# endpoint is unauthenticated by construction (the token is the only credential
+# and it arrives in the URL).
+ROUTEMAP_MAX_UPLOAD_BYTES = 256_000
+# Per-IP daily caps through the shared SQLite rate limiter. Issuing a token is
+# cheap; uploading means we parse and then geolocate, which costs CAIDA and
+# RIPEstat requests, so the two are capped separately.
+ROUTEMAP_TOKENS_PER_DAY = max(1, int(getenv_clean("ROUTEMAP_TOKENS_PER_DAY", "30")))
+ROUTEMAP_ANALYSES_PER_DAY = max(1, int(getenv_clean("ROUTEMAP_ANALYSES_PER_DAY", "60")))
+
+
+# ----- RIPE Atlas (Route Map tab, v3.35.0) -----
+# The primary way the tab gets a trace: ask an Atlas probe on the user's own
+# network to run it. FalconEye still never runs a traceroute itself.
+#
+# DEFAULT OFF, and it needs a key. Enabling it has three consequences an
+# operator must agree to deliberately:
+#
+#   1. Measurements created here are PUBLIC. RIPE Atlas publishes one-off
+#      measurements, including the target, in its measurement database. The tab
+#      says so next to the button and the privacy policy says so.
+#   2. They cost credits. A traceroute is 30 credits per result. An account
+#      earns about 21,600 credits a day per probe it hosts, and a new account
+#      can claim a one-time 50,000.
+#   3. The target a visitor types is sent to RIPE. The visitor's coordinates
+#      are NOT: probe selection goes by ASN and country only. See the module
+#      docstring in app/routemap/atlas.py.
+ATLAS_ENABLED = getenv_clean("ATLAS_ENABLED", "false").lower() == "true"
+ATLAS_API_KEY = getenv_clean("ATLAS_API_KEY")
+ATLAS_BASE_URL = getenv_clean("ATLAS_BASE_URL", "https://atlas.ripe.net/api/v2")
+# This instance's own daily ceiling, enforced here and not only by RIPE. At 30
+# credits a traceroute, the default is about 166 traces a day, which a single
+# hosted probe (about 21,600 credits a day) more than covers.
+ATLAS_DAILY_CREDIT_CAP = max(0, int(getenv_clean("ATLAS_DAILY_CREDIT_CAP", "5000")))
+# Wall clock for one measurement, after which the tab offers the Advanced
+# fallback. One-off Atlas traceroutes usually return well inside this.
+ATLAS_MEASUREMENT_TIMEOUT_SECONDS = float(
+    getenv_clean("ATLAS_MEASUREMENT_TIMEOUT_SECONDS", "120"))
+# Per-IP daily cap on measurements, through the shared SQLite rate limiter.
+ATLAS_PER_DAY = max(1, int(getenv_clean("ATLAS_PER_DAY", "10")))
+# Probe lists per ASN or country move slowly and are not the interesting part
+# of the budget.
+ATLAS_PROBE_CACHE_TTL_HOURS = 6

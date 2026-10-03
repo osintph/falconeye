@@ -10,6 +10,7 @@ from slowapi.errors import RateLimitExceeded
 from app import config
 from app.utils.env import getenv_clean
 from app.ip_sources import catalog, reputation
+from app.routemap import atlas
 from app.utils.client_ip import get_client_ip_key
 from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet
 from app.prospect import routes as prospect_routes
@@ -19,6 +20,7 @@ from app.username import routes as username_routes
 from app.telegram import routes as telegram_routes
 from app.breach import routes as breach_routes
 from app.ransomware import routes as ransomware_routes
+from app.routemap import routes as routemap_routes
 from app.prospect.client import SearchAPINotConfigured
 from app.image_search.upload import ImageUploadNotConfigured
 
@@ -46,7 +48,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.34.4",
+    version="3.35.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -95,13 +97,14 @@ app.include_router(abuse_routes.router)
 app.include_router(username_routes.router)
 app.include_router(breach_routes.router)
 app.include_router(ransomware_routes.router)
+app.include_router(routemap_routes.router)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.34.4"}
+    return {"status": "ok", "version": "3.35.0"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -195,6 +198,10 @@ def _operator_config_script() -> str:
         # no key material, only which source is usable. Lets the tab warn before
         # a lookup rather than return an unexplained verdict after one.
         "ipReputation": reputation.configured_sources(),
+        # Whether the Route Map tab can offer an Atlas trace at all. Capability,
+        # not a secret: it decides whether the tab shows the Trace button's
+        # primary path or goes straight to "use your own trace".
+        "atlasEnabled": atlas.configured(),
     }
     # </script> inside a JSON string would end the block early.
     blob = json.dumps(payload).replace("<", "\\u003c")

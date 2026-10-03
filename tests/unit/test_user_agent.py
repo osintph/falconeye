@@ -34,6 +34,12 @@ EXPECTED_DEFAULTS = {
     "FalconEye/3.16 (osintph.info; ransomware watch, non-commercial, attributed)",
     "FalconEye/3.17 (osintph.info; on-demand lookup)",
     "FalconEye/3.33 (osintph.info; infostealer exposure check)",
+    # v3.35.0, Route Map. Two distinct strings on purpose: CAIDA Hoiho and
+    # RIPEstat receive router hostnames and addresses from a trace, while RIPE
+    # Atlas receives a measurement request, and an upstream reading its logs
+    # should be able to tell those two kinds of traffic apart.
+    "FalconEye/3.35 (osintph.info; traceroute geolocation)",
+    "FalconEye/3.35 (osintph.info; Route Map)",
 }
 
 

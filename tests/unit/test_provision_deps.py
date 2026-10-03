@@ -23,6 +23,8 @@ import re
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
 PROVISION = REPO_ROOT / "scripts" / "provision.sh"
+UPGRADE = REPO_ROOT / "scripts" / "upgrade.sh"
+COMMON = REPO_ROOT / "scripts" / "lib" / "common.sh"
 REQUIREMENTS = REPO_ROOT / "requirements.txt"
 APP_DIR = REPO_ROOT / "app"
 
@@ -40,18 +42,43 @@ CTYPES_RUNTIME_DEPS = {"pyzbar": "libzbar0"}
 
 
 def _apt_packages():
-    """Package names from the apt-get install line, honouring continuations."""
-    text = PROVISION.read_text()
-    # Join backslash continuations so a multi-line install command reads as one.
-    joined = re.sub(r"\\\s*\n\s*", " ", text)
-    packages = set()
-    for m in re.finditer(r"^\s*apt-get install\s+(.+)$", joined, re.M):
-        for token in m.group(1).split():
-            if token.startswith("-") or token == "install":
-                continue
-            packages.add(token)
-    assert packages, "no apt-get install packages found in provision.sh"
+    """The one system-package list, from FE_SYSTEM_PACKAGES in common.sh.
+
+    v3.35.0 moved the list out of provision.sh into the shared library, because
+    a list that lives only in the install script reaches a fresh box and never
+    reaches an existing one: the upgrade path simply had no step for it. The
+    test follows the list rather than the file it used to live in.
+    """
+    text = COMMON.read_text()
+    match = re.search(r'FE_SYSTEM_PACKAGES="\$\{FE_SYSTEM_PACKAGES:-([^}]+)\}"', text)
+    assert match, (
+        "FE_SYSTEM_PACKAGES not found in scripts/lib/common.sh. If the system "
+        "package list moved again, update this test rather than deleting it.")
+    packages = set(match.group(1).split())
+    assert packages, "FE_SYSTEM_PACKAGES is empty"
     return packages
+
+
+def test_both_scripts_install_system_packages_through_the_shared_function():
+    """The drift class this structure exists to prevent.
+
+    A package added for a new feature has to reach an upgraded box as well as a
+    fresh one, which means one implementation and two callers, not an apt line
+    in the installer.
+    """
+    for path in (PROVISION, UPGRADE):
+        assert "fe_install_system_packages" in path.read_text(), (
+            f"{path.name} does not call fe_install_system_packages(), so the "
+            f"system package list can drift between install and upgrade again")
+    assert "fe_install_system_packages()" in COMMON.read_text(), \
+        "fe_install_system_packages is called but not defined in common.sh"
+
+
+def test_provision_no_longer_carries_its_own_apt_list():
+    """The duplicate that let the list drift in the first place."""
+    assert not re.search(r"^\s*apt-get install\b", PROVISION.read_text(), re.M), (
+        "provision.sh installs packages with its own apt-get line instead of "
+        "fe_install_system_packages")
 
 
 def _subprocess_binaries():
@@ -126,3 +153,11 @@ def test_smoke_test_runs_before_the_service_is_enabled():
         "the import smoke test must run BEFORE 'systemctl enable', otherwise "
         "the service is already enabled when the import fails."
     )
+
+    # v3.35.0: the binary check is part of the same pre-enable gate. A missing
+    # subprocess binary is invisible to the import test, so it gets its own
+    # check, and it is worthless after the service is already running.
+    binaries = [m.start() for m in re.finditer(r"^\s*fe_check_binaries\b", text, re.M)]
+    assert binaries, "provision.sh does not run the binary smoke test"
+    assert min(binaries) < enable.start(), (
+        "fe_check_binaries must run BEFORE the service is enabled")

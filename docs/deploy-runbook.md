@@ -19,6 +19,16 @@ deploy did not match it. Keep this doc in sync with reality.
 
 ## Prerequisites: system packages
 
+> **v3.35.0: there is now one list.** The package list lives in
+> `FE_SYSTEM_PACKAGES` in `scripts/lib/common.sh`, and **both** `provision.sh`
+> and `upgrade.sh` install from it via `fe_install_system_packages()`. Before
+> that the list existed only in the installer, so a package added for a new
+> feature reached fresh boxes and never reached existing ones. Add a package
+> there, not to a script. The Route Map tab adds none: it never runs a
+> traceroute, so there is no traceroute or mtr binary and no raw-socket
+> capability involved.
+
+
 `requirements.txt` does not cover everything the app needs. Two kinds of native
 dependency exist outside pip, both invisible to `ldd` and to `pip install`, and
 both failing only later:
@@ -248,6 +258,11 @@ and restart: systemd recreates it with the right owner and gunicorn starts
 clean. The old logs stay in the directory you moved.
 
 ## State to persist
+
+> **v3.35.0 adds nothing to this list.** The Route Map tab's only persistent
+> state is four tables inside `data/falconeye.db`, which is already the first
+> essential entry below. See "Route Map" for what they hold.
+
 
 Everything in this table is state `git reset --hard` cannot put back. The list
 lives in `fe_state_paths()` in `scripts/lib/common.sh`; this table is generated
@@ -806,6 +821,94 @@ Only the service label and a boolean leave `app/holehe/client.py`. The modules a
 return partially masked recovery emails and phone numbers; the sanitiser is an
 allowlist of two fields, so those are dropped at the boundary rather than in the
 template.
+
+## Route Map (v3.35.0)
+
+Maps the real network path to a target. Three ways to get a trace, one
+pipeline. Nothing from a trace is stored.
+
+### What it needs
+
+| Thing | Needed for | Default |
+|---|---|---|
+| nothing | pasting a trace | always on |
+| `redis-server` | the "run it yourself" upload handshake | installed by `provision.sh` |
+| `ATLAS_API_KEY` + `ATLAS_ENABLED=true` | tracing from a RIPE Atlas probe | off |
+| `HOIHO_ENABLED` | hostname geolocation via CAIDA | on |
+
+`GET /api/routemap/capabilities` reports what this instance can actually do,
+and the tab hides what it cannot. `upload_enabled` is a live Redis check, not a
+config read: if Redis is down the tab offers pasting only, rather than printing
+a command whose result can never arrive.
+
+### Before you enable RIPE Atlas
+
+Three things you are agreeing to, and the first is not reversible:
+
+1. **Measurements are public.** RIPE Atlas publishes one-off measurements,
+   including the target a visitor typed, in its public measurement database.
+   The tab says so under the Trace button and the privacy policy says so.
+2. **They cost credits.** One traceroute is **30 credits** (RIPE's formula
+   `10 * packets * (int(size/1500) + 1)`, so `10 * 3 * 1`). Hosting a probe
+   earns about 21,600 credits a day; a new account can claim a one-time 50,000.
+   At the default `ATLAS_DAILY_CREDIT_CAP=15000` that is 500 traces a day.
+3. **The target goes to RIPE. The visitor's coordinates do not.** Probe
+   selection is by AS number, then by distance computed on this server from the
+   probe's own published coordinates. There is deliberately no `radius=` filter
+   anywhere in `app/routemap/atlas.py`, and a test asserts that.
+
+Create the key at <https://atlas.ripe.net/keys/> with **only** these
+permissions: *get credit income info* and *schedule a new measurement*. Results
+of public measurements are fetched without the key, and the code uses a
+separate keyless client for them.
+
+An expired, wrong or under-permissioned key is treated like "Atlas disabled":
+a loud log line naming the cause and no key material, "Tracing temporarily
+unavailable" in the tab, and the Advanced section opened with the target
+pre-filled. Watch for:
+
+```
+journalctl -u falconeye | grep "RIPE Atlas refused the request as unauthorised"
+```
+
+### Probe selection and country "Unknown"
+
+Selection is ASN-led on purpose. A software probe whose host did not publish a
+location reports its country as `Unknown`, and a country-led search would miss
+the one probe that is actually on the visitor's own network. Probes with no
+published coordinates are kept as candidates and sorted last rather than
+excluded.
+
+### The carrier site-code table
+
+`app/routemap/data/site_codes.tsv`, generated from each carrier's own published
+router list. Regenerate after a carrier adds sites:
+
+```bash
+python3 tools/build_site_codes.py --dry-run   # show what would change
+python3 tools/build_site_codes.py             # rewrite the table
+```
+
+See `app/routemap/data/README.md` for how to add a carrier, and why the table
+is deliberately narrow.
+
+### State
+
+Route Map stores **nothing** from a trace: not the text, not the coordinates,
+not the city, not the visitor's IP. The only persistent state is inside
+`data/falconeye.db`, which the existing backup already covers:
+
+| Table | Holds | Lifetime |
+|---|---|---|
+| `route_map_hostname_cache` | router hostnames and their Hoiho locations | 30 days |
+| `routemap_atlas_spend` | credits spent per UTC day | 48 hours |
+| `routemap_atlas_probes` | probe lists per ASN or country | 6 hours |
+| `routemap_*_rl` | per-IP daily counters | 48 hours |
+
+The upload handshake lives in Redis for at most
+`ROUTEMAP_TOKEN_TTL_SECONDS` (default 600) and is deleted the moment the
+browser collects it. **No change to `backup.sh`, `restore.sh` or the "State to
+persist" list is needed for this release.**
 
 ## MCP server (optional, local mode only)
 
