@@ -175,3 +175,31 @@ def test_live_topojson_carries_country_geometry():
         f"world topojson carries only {len(geometries)} country geometries, the map "
         f"would render an SVG with (almost) no country paths."
     )
+
+
+def test_the_cache_busting_query_matches_the_application_version():
+    """The ?v= query is only a cache-buster if it moves when the asset moves.
+
+    v3.35.2 exists because it did not: v3.35.1 was re-tagged twice during
+    review and three different app.js files went out under ?v=3.35.1, so
+    browsers that had loaded the first one kept it and the new features simply
+    were not there. Same bug class as v3.15.2, where the query was missing
+    entirely.
+
+    This pins the query to the version the application reports, so shipping a
+    changed asset without changing the version fails here. It cannot catch a
+    tag being re-pointed; that is a discipline, written down in the CHANGELOG.
+    """
+    import re
+
+    main = (REPO_ROOT / "app" / "main.py").read_text()
+    version = re.search(r'version="([0-9.]+)"', main).group(1)
+
+    html = (REPO_ROOT / "app" / "static" / "index.html").read_text()
+    queried = set(re.findall(r'/static/(?:app\.js|style\.css)\?v=([0-9.]+)', html))
+    assert queried, "the static assets are no longer version-stamped"
+    assert queried == {version}, (
+        f"app/main.py reports version {version} but the static assets are "
+        f"stamped {sorted(queried)}. A browser caches on that query, so an "
+        f"asset change without a version change is invisible to anyone who "
+        f"already loaded the page.")
