@@ -3,7 +3,7 @@ CAIDA Hoiho for the Route Map tab: this instance's configuration, the
 routemap package's client.
 
 The client itself (the API shape, the batching, the gate on what may leave the
-server) moved to ``routemap.engine.hoiho`` in v3.36.0; read that module's
+server) moved to ``routemap_engine.hoiho`` in v3.36.0; read that module's
 docstring for why hostnames come first and what the API returns. What stays here
 is what only FalconEye knows:
 
@@ -21,7 +21,7 @@ from __future__ import annotations
 import logging
 
 import httpx
-from routemap.engine import hoiho as _engine
+from routemap_engine import hoiho as _engine
 
 from app.config import HOIHO_BASE_URL, HOIHO_CACHE_TTL_HOURS, HOIHO_ENABLED, HOIHO_TIMEOUT_SECONDS, OPERATOR_CONTACT_UA
 from app.utils import cache

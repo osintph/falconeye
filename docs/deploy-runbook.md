@@ -868,13 +868,13 @@ Maps the real network path to a target. Three ways to get a trace, one
 pipeline. Nothing from a trace is stored.
 
 Since v3.36.0 the engine (parsers, Hoiho client, site-code table, city list,
-the physics bound) is the [routemap](https://github.com/osintph/routemap)
+the physics bound) is the [routemap-engine](https://github.com/osintph/routemap-engine)
 package, pinned by commit in `requirements.txt` and installed by
 `scripts/upgrade.sh` like any other dependency (pip fetches it from GitHub, so
 the box needs `git`, which every supported install already has). What stays in
 `app/routemap/` is web-specific: the Atlas client, the upload tokens and Redis,
 the routes, and the wiring of this instance's config into the engine. Engine
-log lines appear under the `routemap.engine.*` logger names, at the same level
+log lines appear under the `routemap_engine.*` logger names, at the same level
 and through the same handler as FalconEye's own.
 
 ### What it needs
@@ -931,10 +931,10 @@ excluded.
 
 ### The carrier site-code table
 
-Ships inside the routemap package (`routemap/engine/data/site_codes.tsv`),
+Ships inside the routemap-engine package (`routemap_engine/data/site_codes.tsv`),
 generated from each carrier's own published router list. A new carrier or site
 is a routemap release and a pin bump here, not an edit on the box. See
-`routemap/engine/data/README.md` in that repository for how to add a carrier,
+`routemap_engine/data/README.md` in that repository for how to add a carrier,
 and why the table is deliberately narrow.
 
 ### State

@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.2] - 2026-10-03
+
+### The Route Map engine comes from its own public repository
+
+The engine now lives in [osintph/routemap-engine](https://github.com/osintph/routemap-engine)
+(AGPL-3.0, import name `routemap_engine`), split out of the desktop app's
+repository with its history. `requirements.txt` pins its v0.2.0 commit; it
+becomes a plain `routemap-engine==0.2.0` pin once that release is on PyPI.
+
+This also keeps upgrades working: v3.36.0 and v3.36.1 pinned a repository that
+is no longer public, so a fresh `pip install` of those requirements would fail.
+
+The tab behaves as before: every existing test passes unchanged, and the
+analyze responses for the six recorded traces and both error cases are still
+byte-for-byte the v3.35.3 ones. One addition from engine 0.2.0: a hop the IP
+database could place only to a country now carries `"precision": "country"`,
+so a client can tell a country centroid from a city. Engine log lines use the
+logger name `routemap_engine.*`.
+
+---
+
 ## [3.36.1] - 2026-10-03
 
 ### Upgrades no longer break the MCP server's venv, and prove it
