@@ -867,6 +867,16 @@ template.
 Maps the real network path to a target. Three ways to get a trace, one
 pipeline. Nothing from a trace is stored.
 
+Since v3.36.0 the engine (parsers, Hoiho client, site-code table, city list,
+the physics bound) is the [routemap](https://github.com/osintph/routemap)
+package, pinned by commit in `requirements.txt` and installed by
+`scripts/upgrade.sh` like any other dependency (pip fetches it from GitHub, so
+the box needs `git`, which every supported install already has). What stays in
+`app/routemap/` is web-specific: the Atlas client, the upload tokens and Redis,
+the routes, and the wiring of this instance's config into the engine. Engine
+log lines appear under the `routemap.engine.*` logger names, at the same level
+and through the same handler as FalconEye's own.
+
 ### What it needs
 
 | Thing | Needed for | Default |
@@ -921,16 +931,11 @@ excluded.
 
 ### The carrier site-code table
 
-`app/routemap/data/site_codes.tsv`, generated from each carrier's own published
-router list. Regenerate after a carrier adds sites:
-
-```bash
-python3 tools/build_site_codes.py --dry-run   # show what would change
-python3 tools/build_site_codes.py             # rewrite the table
-```
-
-See `app/routemap/data/README.md` for how to add a carrier, and why the table
-is deliberately narrow.
+Ships inside the routemap package (`routemap/engine/data/site_codes.tsv`),
+generated from each carrier's own published router list. A new carrier or site
+is a routemap release and a pin bump here, not an edit on the box. See
+`routemap/engine/data/README.md` in that repository for how to add a carrier,
+and why the table is deliberately narrow.
 
 ### State
 
