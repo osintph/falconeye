@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.35.3] - 2026-10-03
+
+### An ECMP hop was shown with the wrong hostname
+
+Found in a real Manila to heise.de trace run through the new upload path. Hop 8
+answered from two routers, as load-balanced hops do: `mei-b6-link` (Marseille)
+and `sng-b6-link` (Singapore). Marseille is 11,000 km away and the hop's fastest
+probe was nowhere near enough to reach it, so the physics bound rejected
+Marseille and accepted Singapore. Correct.
+
+The table then read `mei-b6-link.ip.twelve99.net ... Singapore, SG`, because the
+hostname column showed the hop's first hostname while the location came from its
+second. Two true facts side by side reading as one false one.
+
+A placement now reports the hostname, or for the IP-database source the address,
+that actually produced it. Every address the hop answered from is still listed,
+and the rejected candidate is still on the record with its reason, because the
+hop really did answer from both.
+
+---
+
 ## [3.35.2] - 2026-10-03
 
 ### Browsers were running a stale app.js

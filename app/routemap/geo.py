@@ -452,6 +452,11 @@ def locate_hops(hops: list[Hop], hoiho_records: dict, ip_records: dict,
             entry["candidates"].append(candidate)
             entry.update({
                 "source": SOURCE_HOIHO, "lat": lat, "lon": lon,
+                # The hostname that actually produced this placement, which on
+                # an ECMP hop is not always the first one the hop answered
+                # from. Showing hostnames[0] next to a place derived from
+                # hostnames[1] reads as a contradiction.
+                "hostname": hostname,
                 "place": _hoiho_place(record), "cc": record.get("cc"),
                 "distance_km": distance, "rtt_budget_km": budget,
                 "match_strs": record.get("match_strs") or [],
@@ -486,6 +491,7 @@ def locate_hops(hops: list[Hop], hoiho_records: dict, ip_records: dict,
                 entry["candidates"].append(candidate)
                 entry.update({
                     "source": SOURCE_SITE_CODE, "lat": lat, "lon": lon,
+                    "hostname": hostname,
                     "place": record["place"], "cc": record["cc"],
                     "distance_km": distance, "rtt_budget_km": budget,
                     "carrier": record["carrier"], "site_code": record["code"],
@@ -516,6 +522,7 @@ def locate_hops(hops: list[Hop], hoiho_records: dict, ip_records: dict,
                 entry["candidates"].append(candidate)
                 entry.update({
                     "source": SOURCE_IP_DB, "lat": lat, "lon": lon,
+                    "address": addr,
                     "place": _ip_place(record), "cc": record.get("cc"),
                     "distance_km": distance, "rtt_budget_km": budget,
                 })
