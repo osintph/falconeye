@@ -5,6 +5,104 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.35.0] - 2026-10-03
+
+### Route Map tab
+
+A new tab that answers "where do my packets actually go", and draws it.
+
+**Why hostname first.** Plotting a traceroute by feeding each hop to an IP
+geolocation database produces a path that crosses oceans it did not cross. The
+databases are not bad; a backbone router's address is registered wherever its
+operator filed the prefix. Measured while building this, against real hops on a
+Manila to Germany path: RIPEstat/MaxMind places `62.115.209.158` in **Paris**,
+when Arelion's own looking glass says that router is `hnk-b4`, in **Hong
+Kong**, and it returns `0.0, 0.0` (the Gulf of Guinea) for the Singapore and
+Frankfurt hops. So a hop is placed from the router's own hostname first and
+from an address only as a fallback:
+
+1. **CAIDA Hoiho** (`api.hoiho.caida.org`), the published ruleset that decodes
+   operator naming schemes. Batched, cached 30 days.
+2. **A bundled carrier site-code table**, for carriers Hoiho does not cover.
+   Its 2024-08 ruleset matched 0 of 5 Arelion/Twelve99 backbone hostnames,
+   which is most of the Asia to Europe path from here.
+3. **IP geolocation** (RIPEstat's MaxMind GeoLite view), the fallback.
+
+**The physics check.** Every candidate location, from every source, is checked
+against the speed of light: about 200 km per ms in fibre, halved because an RTT
+is a round trip, so roughly 100 km per ms. A location further away than the
+measured round trip allows is rejected and the next source tried; the hop is
+then listed with the reason rather than drawn somewhere impossible. It is an
+**upper** bound only, measured against the hop's fastest probe, because
+inflated RTTs are the normal condition of the internet. Sentinel coordinates
+(`0,0`, the MaxMind centre-of-the-US fallbacks) are treated as "no data".
+
+**Three ways in, one pipeline.** A RIPE Atlas probe on the user's own network
+runs the trace; or the user pastes one; or the user runs one themselves and
+pipes it to a single-use upload link. Windows `tracert`, Unix `traceroute` and
+`mtr --report` are all parsed with the format detected rather than declared. An
+Atlas result is rendered into traceroute text and run through the same parser,
+so a format bug has exactly one place to live.
+
+**Where the route starts.** The browser is asked for the location through its
+own permission popup, after Trace is pressed and not before. Coordinates are
+rounded to about 10 km **in the browser** before they are sent, used for the
+render only, never stored, never logged in the clear and never passed to RIPE.
+Declining is a first-class path: an offline picker with a bundled 34,152-city
+list, a coordinate box, or a click on the map, pre-filled with a city-level
+guess from the visitor's own IP. The choice is remembered in the browser's own
+local storage, with a button to clear it.
+
+**Annotations.** The three things that make people misread a traceroute, stated
+rather than left as a surprising number: an RTT that falls at a later hop is an
+asymmetric return path (and the hop is not moved), loss that a later hop does
+not share is the router rate-limiting its own ICMP, and a silent tail is the
+destination declining ICMP.
+
+### Added
+
+- `app/routemap/`: parsers for three traceroute formats, the Hoiho client, the
+  carrier site-code table, the geolocation pipeline and physics bound, the
+  RIPE Atlas client, the upload token store, and the API.
+- `tools/build_site_codes.py`, which regenerates
+  `app/routemap/data/site_codes.tsv` from each carrier's own published router
+  list. 113 Arelion sites from `lg.twelve99.net`. A code the carrier uses for
+  two cities (`ewr`) is dropped rather than guessed; a city the bundled list
+  cannot resolve is reported, not approximated.
+- `app/routemap/data/cities.tsv`: GeoNames `cities15000`, CC BY 4.0, bundled so
+  the origin picker needs no third party. Regenerate by downloading
+  `cities15000.zip` and trimming to name/asciiname/cc/admin1/lat/lon/population,
+  sorted by population descending.
+- `route_map(trace_text, origin_lat, origin_lon)` on the MCP server. It reads
+  text you already have and never creates a measurement.
+- `Permissions-Policy: geolocation=(self)` in `nginx/snippets/security-headers.conf`.
+  Without it the browser refuses the location call before the user is asked.
+- 171 tests.
+
+### Changed
+
+- System packages now install through `fe_install_system_packages()` in
+  `scripts/lib/common.sh`, called by **both** `provision.sh` and `upgrade.sh`.
+  The list previously lived only in the installer, so a package added for a new
+  feature reached fresh boxes and never reached existing ones. Same drift class
+  as the unit file in v3.34.2 and the nginx snippet in v3.34.3. Route Map
+  itself adds no package: it never runs a traceroute.
+- The binary smoke test runs through the same shared function, still before the
+  service is enabled.
+- Privacy policy: CAIDA Hoiho, RIPE Atlas and the browser-location flow added.
+  "Last updated" moved to 3 October 2026.
+
+### Notes
+
+- Route Map stores nothing from a trace. The only persistent state is the Hoiho
+  hostname cache (router hostnames, 30 days) and the Atlas credit bookkeeping,
+  both inside `data/falconeye.db`, so backup and restore need no change.
+- One traceroute costs 30 RIPE Atlas credits (RIPE's published formula
+  `10 * packets * (int(size/1500) + 1)`, so `10 * 3 * 1`). At the default
+  `ATLAS_DAILY_CREDIT_CAP=15000` that is 500 traces a day.
+
+---
+
 ## [3.34.4] - 2026-09-28
 
 ### What has to survive the box, written down and scripted

@@ -217,6 +217,66 @@ fe_pip_sync() {
     fi
 }
 
+# ------------------------------------------------- system packages -----------
+
+# Native dependencies, and why each is here. pip installs none of them.
+#
+# WHY THIS LIVES IN THE SHARED LIBRARY
+# Until v3.35.0 the apt list existed only in provision.sh, so a package added
+# for a new feature reached a fresh install and never reached an existing box:
+# the upgrade path simply had no step for it. That is the same drift class as
+# the unit file in v3.34.2 and the nginx snippet in v3.34.3, and it gets the
+# same fix. One list, two callers.
+#
+# The wheels for lxml, Pillow and rapidfuzz statically link what they need, so
+# compiled extension modules are self-contained. The real gaps are the two
+# mechanisms ldd cannot see: libraries dlopened at runtime through ctypes, and
+# binaries invoked as subprocesses. Both fail late, and neither shows up as a
+# pip error.
+#
+#   libzbar0  pyzbar dlopens it via ctypes.util.find_library("zbar") for the QR
+#             Code tab. Without it, importing the app dies with "ImportError:
+#             Unable to find zbar shared library". On Ubuntu 24.04 the real
+#             package is libzbar0t64 after the time_t transition, but it
+#             Provides: libzbar0, so this one name works on 22.04 and 24.04.
+#   whois     app/routers/domain_intel.py runs "whois <domain>" as the fallback
+#             when RDAP returns nothing useful. Its absence is caught and
+#             logged, so the tab silently loses that fallback rather than
+#             erroring, which makes it easy to miss. Priority "standard", so it
+#             is present on a full Ubuntu install but NOT on the minimal cloud
+#             images most VPS and AWS instances use.
+#   redis-server  the Route Map upload handshake and the Prospect/Image caches.
+#
+# The Route Map tab (v3.35.0) adds NO package: it never runs a traceroute, so
+# there is no traceroute or mtr binary to install and no raw-socket capability
+# to grant. Its traces come from a RIPE Atlas probe or from the user's own
+# machine.
+FE_SYSTEM_PACKAGES="${FE_SYSTEM_PACKAGES:-python3 python3-pip python3-venv git redis-server libzbar0 whois}"
+
+fe_install_system_packages() {
+    fe_say "packages: $FE_SYSTEM_PACKAGES"
+    fe_run apt-get update -qq
+    # shellcheck disable=SC2086 - the list is intentionally word-split
+    fe_run apt-get install -y --no-install-recommends $FE_SYSTEM_PACKAGES
+}
+
+# Every binary the app shells out to must exist before the service is enabled.
+# Not fatal on an upgrade, because the app handles each absence; loud, because
+# a silently missing binary is a tab that quietly returns less than it should.
+fe_check_binaries() {
+    local missing=""
+    local binary
+    for binary in whois; do
+        command -v "$binary" >/dev/null 2>&1 || missing="$missing $binary"
+    done
+    if [[ -n "$missing" ]]; then
+        fe_warn "missing binaries:$missing"
+        fe_warn "install them with: apt-get install -y$missing"
+        return 1
+    fi
+    fe_say "required binaries present"
+}
+
 # ------------------------------------------------------------ the log dir -----
 
 # systemd creates this too (LogsDirectory= in the unit), but only from the moment

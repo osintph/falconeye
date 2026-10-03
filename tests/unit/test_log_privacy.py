@@ -24,6 +24,11 @@ USER_VALUES = (
     "domain", "ip", "host", "identifier", "resource", "source_ip",
     "normalized", "raw_text", "pname", "jc", "extracted", "canonical",
     "kg_title", "file_path", "target",
+    # v3.35.0, Route Map. A trace is a description of the visitor's own
+    # network: the hostnames and addresses on their path, where they are, and
+    # what they chose to trace to. The upload token is a credential.
+    "hostname", "client_ip", "addr", "trace_text", "token", "poll_key",
+    "origin", "origin_lat", "origin_lon", "city",
 )
 
 # Call sites where the name does not mean what it looks like.
@@ -102,3 +107,64 @@ def test_ip_source_line_shape_is_stable():
     assert "event=ip_source source=%s target=%s status=%s latency_ms=%d cached=%s" in src
     assert "tag(target)" in src, "the target field must be hashed"
     assert callable(reputation.log_source_call)
+
+
+# ---------- v3.35.0: the Route Map routes specifically ----------
+
+ROUTEMAP = APP / "routemap"
+
+
+def test_the_route_map_modules_are_covered_by_the_structural_rule():
+    """A guard on the guard: if the package moves, the sweep above stops
+    covering it and this file keeps passing for the wrong reason."""
+    assert ROUTEMAP.is_dir(), "app/routemap/ has moved; update this test"
+    modules = {p.name for p in ROUTEMAP.glob("*.py")}
+    assert {"routes.py", "atlas.py", "geo.py", "hoiho.py", "tokens.py"} <= modules
+
+
+def test_no_route_map_log_line_writes_a_trace_or_an_origin_in_the_clear():
+    """The values a Route Map request carries that must never be retained.
+
+    A trace says which routers are between the visitor and their target; the
+    origin says where the visitor is. Neither belongs in journald, and the
+    operator needs neither to debug this tab.
+    """
+    offenders = []
+    for path in sorted(ROUTEMAP.glob("*.py")):
+        rel = str(path.relative_to(APP.parent))
+        for lineno, block in _log_blocks(path):
+            for needle in ("trace_text", "origin_lat", "origin_lon", "poll_key"):
+                if not re.search(rf"(?<![\w.]){re.escape(needle)}\s*[,)]", block):
+                    continue
+                # A tagged value is fine, and so is a measurement OF the value
+                # that cannot reconstruct it: "bytes=%d", len(trace_text) tells
+                # the operator how big an upload was and nothing about its
+                # contents, which is exactly the trade this rule is drawing.
+                if f"tag({needle}" in block or f"len({needle})" in block:
+                    continue
+                offenders.append(f"{rel}:{lineno} logs {needle!r} unhashed")
+    assert not offenders, (
+        "Route Map log calls retain the visitor's trace or location:\n  "
+        + "\n  ".join(offenders))
+
+
+def test_the_token_and_the_target_are_tagged_where_they_are_logged():
+    """Positive assertion, so removing the tagging fails rather than passing."""
+    tokens_src = (ROUTEMAP / "tokens.py").read_text()
+    assert "tag(token)" in tokens_src, "the upload token is logged in the clear"
+    assert "tag(target)" in tokens_src, "the traced target is logged in the clear"
+
+    atlas_src = (ROUTEMAP / "atlas.py").read_text()
+    assert "tag(target)" in atlas_src, "the Atlas target is logged in the clear"
+
+    routes_src = (ROUTEMAP / "routes.py").read_text()
+    assert "tag(client_ip)" in routes_src, "the visitor address is logged in the clear"
+
+
+def test_the_origin_guess_does_not_log_the_resolved_city():
+    """Knowing which city a tagged visitor is in is the thing being avoided."""
+    routes_src = (ROUTEMAP / "routes.py").read_text()
+    for lineno, block in _log_blocks(ROUTEMAP / "routes.py"):
+        if "origin_guess" in block:
+            assert "display" not in block and "city" not in block, (
+                f"routes.py:{lineno} logs the resolved city of a visitor")

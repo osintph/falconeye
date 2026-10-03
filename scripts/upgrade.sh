@@ -96,7 +96,12 @@ TARGET_VERSION="$(fe_source_version "$TARGET")"
 fe_say "version in $TARGET: $TARGET_VERSION"
 
 # ---- 3. dependencies -----------------------------------------------------------
-fe_step "3/8 Python dependencies"
+fe_step "3/8 System packages and Python dependencies"
+# System packages first: a release that needs a new native library needs it
+# before the import smoke test, and before the restart at step 7. This is the
+# step whose absence meant a new apt package only ever reached fresh installs.
+fe_install_system_packages
+fe_check_binaries || true
 fe_pip_sync "$PREVIOUS_REF" "$TARGET"
 
 # ---- 4. systemd unit -----------------------------------------------------------

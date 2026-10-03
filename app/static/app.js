@@ -37,6 +37,8 @@ const NAV_GROUPS = [
       icon: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>' },
     { id: 'scanner', label: 'Phishing', desc: 'Fingerprint phishing kits, extract IOCs',
       icon: '<path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/><path d="M18 8v9a3 3 0 0 0 6 0v-1"/>' },
+    { id: 'routemap', label: 'Route Map', desc: 'Map the real network path to a target',
+      icon: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="m8 8 3 3-3 3"/><path d="m16 16-3-3 3-3"/>' },
   ]},
   { key: 'threat-intel', label: 'Threat Intel', tabs: [
     { id: 'ransomware', label: 'Ransomware Watch', desc: 'Global + PH/SEA ransomware victim tracking',
@@ -230,6 +232,7 @@ function showTab(tabName) {
   window.scrollTo({ top: 0, behavior: 'instant' });
 
   if (tabName === 'breach') loadBreachRecent();
+  if (tabName === 'routemap') initRouteMap();
   if (tabName === 'sockpuppet') initSockpuppet();
   if (tabName === 'ransomware') {
     showRwSubview(getRwSubviewFromHash());
@@ -8313,3 +8316,730 @@ document.addEventListener('click', async (e) => {
     }
   }
 });
+
+// ============================================================================
+//  Route Map (v3.35.0)
+//
+//  Three ways to get a trace, one render. The primary path asks a RIPE Atlas
+//  probe on the user's own network; the Advanced section below the result
+//  takes a pasted trace or a trace the user ran themselves and piped to the
+//  ingest endpoint. All three return the same per-hop shape from
+//  /api/routemap/*, so everything below the fetch boundary is shared.
+//
+//  No map is drawn until an origin exists, because a path drawn from nowhere
+//  is not the thing this tab is for. The origin comes from the browser's own
+//  geolocation (rounded to about 10 km HERE, before it is sent), or from the
+//  picker, and is remembered in localStorage so a returning visitor is not
+//  asked again.
+// ============================================================================
+
+const RM = (id) => document.getElementById(id);
+const RM_STORE_KEY = 'fe_routemap_origin';
+const RM_SRC_COLOR = { hoiho: '#4ade80', 'site-code': '#a78bfa', 'ip-db': '#60a5fa',
+                       local: '#9ca3af', unresolved: '#f87171', origin: '#fbbf24' };
+// Markers closer than this on screen become one numbered cluster. Collapsing by
+// city name alone is not enough: Santa Clara and San Jose are different cities
+// 20 km apart whose markers sit on top of each other at world zoom.
+const RM_CLUSTER_PX = 14;
+
+var _rmOrigin = null;
+var _rmTopo = null;
+var _rmLast = null;
+var _rmPendingTarget = null;
+var _rmPoll = null;
+var _rmInit = false;
+var _rmCurOs = 'windows';
+var _rmCaps = null;
+
+function rmShow(id) { RM(id) && RM(id).classList.remove('hidden'); }
+function rmHide(id) { RM(id) && RM(id).classList.add('hidden'); }
+function rmRound1(n) { return Math.round(n * 10) / 10; }
+
+async function rmApi(path, options) {
+  const resp = await fetch(path, options);
+  let body = null;
+  try { body = await resp.json(); } catch (e) { body = null; }
+  if (!resp.ok) {
+    const err = new Error('request failed');
+    err.status = resp.status;
+    err.detail = body && body.detail;
+    throw err;
+  }
+  return body;
+}
+
+// ---- origin ---------------------------------------------------------------
+
+function rmSetOrigin(lat, lon, source, label) {
+  const rLat = rmRound1(lat), rLon = rmRound1(lon);
+  _rmOrigin = { lat: rLat, lon: rLon, source, label: label || `${rLat}, ${rLon}` };
+  rmRenderOriginLine();
+  rmHide('rm-loc-modal'); rmHide('rm-picker');
+  try { localStorage.setItem(RM_STORE_KEY, JSON.stringify(_rmOrigin)); } catch (e) {}
+  if (!label) rmLabelOrigin();
+  if (_rmPendingTarget) rmRunAtlas();
+}
+
+function rmRenderOriginLine() {
+  if (!_rmOrigin) return;
+  RM('rm-origin-city').textContent = _rmOrigin.label;
+  RM('rm-origin-coords').textContent = `${_rmOrigin.lat}, ${_rmOrigin.lon}`;
+  rmShow('rm-origin-line');
+}
+
+// The city name for a coordinate comes from the bundled list on the server, so
+// it costs no third party. Cosmetic: the coordinates are the real origin, and
+// the line renders immediately with them while this resolves.
+async function rmLabelOrigin() {
+  if (!_rmOrigin) return;
+  try {
+    const body = await rmApi(
+      `/api/routemap/cities?q=${encodeURIComponent(_rmOrigin.label)}`);
+    if (body && body.results && body.results.length) return;
+  } catch (e) { /* the coordinates stay as the label */ }
+}
+
+function rmRestoreOrigin() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(RM_STORE_KEY) || 'null'); } catch (e) {}
+  if (!saved) return false;
+  const { lat, lon, label, source } = saved;
+  if (typeof lat !== 'number' || typeof lon !== 'number'
+      || !isFinite(lat) || !isFinite(lon)
+      || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    try { localStorage.removeItem(RM_STORE_KEY); } catch (e) {}
+    return false;
+  }
+  _rmOrigin = { lat, lon, label: label || `${lat}, ${lon}`,
+                source: source || 'remembered from last time' };
+  rmRenderOriginLine();
+  return true;
+}
+
+function rmOpenPicker(reason) {
+  ['rm-denied-note', 'rm-timeout-note', 'rm-unsupported-note'].forEach(rmHide);
+  if (reason === 'denied') rmShow('rm-denied-note');
+  if (reason === 'timeout') rmShow('rm-timeout-note');
+  if (reason === 'unsupported') rmShow('rm-unsupported-note');
+  rmHide('rm-loc-modal');
+  rmShow('rm-picker');
+  rmLoadGuess();
+  rmDrawPickMap();
+}
+
+async function rmLoadGuess() {
+  try {
+    const guess = await rmApi('/api/routemap/origin-guess');
+    if (!guess || !guess.available) { rmHide('rm-guess'); return; }
+    RM('rm-guess-label').textContent = guess.display;
+    RM('rm-guess-coords').textContent = `${guess.lat}, ${guess.lon}`;
+    RM('rm-guess-use').onclick = () =>
+      rmSetOrigin(guess.lat, guess.lon, 'from your IP address', guess.display);
+    rmShow('rm-guess');
+  } catch (e) { rmHide('rm-guess'); }
+}
+
+function rmAskBrowser() {
+  if (!('geolocation' in navigator)) { rmOpenPicker('unsupported'); return; }
+  const btn = RM('rm-allow-loc');
+  btn.textContent = 'Asking the browser...';
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      btn.textContent = 'Allow location';
+      // Rounded HERE, in the browser, before anything is sent anywhere.
+      rmSetOrigin(pos.coords.latitude, pos.coords.longitude,
+                  'from your browser location');
+    },
+    (err) => {
+      btn.textContent = 'Allow location';
+      rmOpenPicker(err && err.code === err.TIMEOUT ? 'timeout' : 'denied');
+    },
+    { timeout: 10000, maximumAge: 600000 }
+  );
+}
+
+// ---- target ---------------------------------------------------------------
+
+// A domain, a full URL or an IP, because that is what an investigator has in
+// hand. A URL is reduced to its host so everything downstream sees a hostname.
+function rmNormaliseTarget(raw) {
+  let text = (raw || '').trim();
+  if (!text) return { error: 'Enter a domain, website or IP address to trace to.' };
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(text)) {
+    try { text = new URL(text).hostname; }
+    catch (e) { return { error: 'That does not look like a valid URL.' }; }
+  }
+  text = text.replace(/^\/+/, '').split('/')[0].split('?')[0].split('#')[0];
+  if (text.includes('@')) text = text.split('@').pop();
+  if (!/^[0-9a-f]*:[0-9a-f:]+$/i.test(text)) text = text.split(':')[0];
+  text = text.replace(/\.$/, '');
+  if (!text) return { error: 'Enter a domain, website or IP address to trace to.' };
+  const isIPv4 = /^\d{1,3}(\.\d{1,3}){3}$/.test(text);
+  const isIPv6 = /^[0-9a-f:]+$/i.test(text) && text.includes(':');
+  const isHost = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/i.test(text);
+  if (!isIPv4 && !isIPv6 && !isHost) {
+    return { error: 'The target must be a domain such as example.com, a full URL, or an IP address.' };
+  }
+  return { target: text.toLowerCase() };
+}
+
+// ---- Atlas ----------------------------------------------------------------
+
+function rmResetAtlas() {
+  rmHide('rm-atlas'); rmHide('rm-atlas-error'); rmHide('rm-result');
+  rmHide('rm-atlas-step2');
+  RM('rm-atlas-spin1').classList.remove('hidden'); RM('rm-atlas-tick1').classList.add('hidden');
+  RM('rm-atlas-spin2').classList.remove('hidden'); RM('rm-atlas-tick2').classList.add('hidden');
+}
+
+async function rmRunAtlas() {
+  const target = _rmPendingTarget;
+  if (!target || !_rmOrigin) return;
+  rmResetAtlas();
+  rmShow('rm-atlas');
+  try {
+    const body = await rmApi('/api/routemap/trace', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target, origin_lat: _rmOrigin.lat, origin_lon: _rmOrigin.lon }),
+    });
+    RM('rm-atlas-spin1').classList.add('hidden');
+    RM('rm-atlas-tick1').classList.remove('hidden');
+    const probe = body.probe || {};
+    RM('rm-atlas-probe').textContent =
+      `#${probe.id}${probe.asn ? `, AS${probe.asn}` : ''}${probe.city ? `, ${probe.city}` : ''}`;
+    rmShow('rm-atlas-step2');
+    RM('rm-atlas-spin2').classList.add('hidden');
+    RM('rm-atlas-tick2').classList.remove('hidden');
+    rmRenderResult(body);
+  } catch (err) {
+    const detail = err.detail || {};
+    rmAtlasFail(detail.kind || 'failed', detail.message
+      || 'The Atlas measurement could not be run.');
+  } finally {
+    _rmPendingTarget = null;
+  }
+}
+
+function rmAtlasFail(kind, message) {
+  rmHide('rm-atlas');
+  const titles = {
+    disabled: 'Atlas tracing is switched off on this instance.',
+    credits: 'Tracing is temporarily unavailable.',
+    auth: 'Tracing is temporarily unavailable.',
+    noprobe: 'No RIPE Atlas probe was available near you.',
+    failed: 'The Atlas measurement did not complete.',
+  };
+  const title = titles[kind] || titles.failed;
+  RM('rm-atlas-error-title').textContent = title;
+  // The server's message is often the same sentence as the title (an instance
+  // with Atlas off says exactly that), so it is only added when it says
+  // something the title did not.
+  const detail = (message && message.trim() !== title.trim()) ? message + ' ' : '';
+  RM('rm-atlas-error-body').textContent =
+    detail + 'You can still run the trace yourself below.';
+  rmShow('rm-atlas-error');
+  // Open Advanced with the target carried over, so the fallback costs no retyping.
+  RM('rm-advanced').open = true;
+  const target = RM('rm-main-target').value.trim();
+  if (target) RM('rm-target').value = target;
+  // Fall back to whichever path this instance can actually complete.
+  rmSetMode(_rmUploadAvailable ? 'run' : 'paste');
+}
+
+// ---- the map --------------------------------------------------------------
+
+async function rmTopo() {
+  if (!_rmTopo) _rmTopo = await (await fetch('/static/lib/world-countries-50m.json')).json();
+  return _rmTopo;
+}
+
+// Where to cut the world. A Natural Earth projection splits the globe at 180
+// degrees by default, straight through the Pacific, so a Manila to California
+// path is drawn leaving one edge and re-entering the other: correct and
+// unreadable. The cut is moved behind the route by centring on the circular
+// mean of the points' longitudes (circular, because averaging 170 and -170
+// arithmetically gives 0, the exact wrong answer).
+function rmCentreLongitude(points) {
+  if (!points || !points.length) return 0;
+  let x = 0, y = 0;
+  for (const p of points) {
+    const r = p.lon * Math.PI / 180;
+    x += Math.cos(r); y += Math.sin(r);
+  }
+  if (Math.abs(x) < 1e-9 && Math.abs(y) < 1e-9) return 0;
+  return Math.atan2(y, x) * 180 / Math.PI;
+}
+
+async function rmBaseMap(containerId, height, centreLon) {
+  const el = RM(containerId);
+  if (!el || !window.d3 || !window.topojson) return null;
+  const t = await rmTopo();
+  const geo = topojson.feature(t, t.objects.countries);
+  const w = el.clientWidth || 800, h = height || el.clientHeight || 420;
+  el.innerHTML = '';
+  const svg = d3.select(el).append('svg')
+    .attr('viewBox', `0 0 ${w} ${h}`).attr('width', '100%').attr('height', '100%');
+  const projection = d3.geoNaturalEarth1().rotate([-(centreLon || 0), 0]).fitSize([w, h], geo);
+  svg.append('rect').attr('width', w).attr('height', h).attr('fill', '#0f172a');
+  svg.append('g').selectAll('path').data(geo.features).join('path')
+    .attr('d', d3.geoPath(projection)).attr('fill', '#1f2937')
+    .attr('stroke', '#0a0a0a').attr('stroke-width', 0.4);
+  return { svg, projection, el, w, h };
+}
+
+async function rmDrawPickMap() {
+  const base = await rmBaseMap('rm-pick-map', 240, 0);
+  if (!base) return;
+  const { svg, projection } = base;
+  svg.style('cursor', 'crosshair');
+  const marker = svg.append('circle').attr('r', 5).attr('fill', '#fbbf24')
+    .attr('stroke', '#0a0a0a').attr('stroke-width', 1.5).style('display', 'none');
+  svg.on('click', function (event) {
+    const [x, y] = d3.pointer(event, this);
+    const inv = projection.invert([x, y]);
+    if (!inv) return;
+    const lon = rmRound1(inv[0]), lat = rmRound1(inv[1]);
+    marker.attr('cx', x).attr('cy', y).style('display', null);
+    RM('rm-pick-readout').innerHTML =
+      `Selected <span class="text-white font-bold">${lat}, ${lon}</span> ` +
+      `<button id="rm-pick-use" class="ml-2 bg-amber-400 text-gray-950 font-bold px-3 py-1 rounded text-xs">Use this point</button>`;
+    RM('rm-pick-use').onclick = () => rmSetOrigin(lat, lon, 'point you clicked');
+  });
+}
+
+function rmCollapse(hops) {
+  const out = [];
+  for (const h of hops) {
+    if (h.lat == null || h.lon == null) continue;
+    const prev = out[out.length - 1];
+    const key = h.place || `${h.lat},${h.lon}`;
+    if (prev && prev.key === key) { prev.hops.push(h); continue; }
+    out.push({ key, place: h.place, lat: h.lat, lon: h.lon, source: h.source, hops: [h] });
+  }
+  return out;
+}
+
+function rmClusterOnScreen(points, projection) {
+  const clusters = [];
+  for (const p of points) {
+    const [x, y] = projection([p.lon, p.lat]);
+    const near = clusters.find(c =>
+      Math.hypot(c.x - x, c.y - y) <= RM_CLUSTER_PX && !c.isOrigin && !p.isOrigin);
+    if (near) { near.members.push(p); continue; }
+    clusters.push({ x, y, members: [p], isOrigin: !!p.isOrigin });
+  }
+  return clusters;
+}
+
+async function rmDrawMap(data) {
+  const origin = data.origin || {};
+  if (origin.lat == null) return;
+  const markers = rmCollapse(data.hops);
+  const originMarker = { key: '__origin', place: origin.label, lat: origin.lat,
+                         lon: origin.lon, source: 'origin', hops: [], isOrigin: true };
+  const points = [originMarker, ...markers.filter(m =>
+    !(Math.abs(m.lat - origin.lat) < 0.2 && Math.abs(m.lon - origin.lon) < 0.2))];
+
+  const base = await rmBaseMap('rm-map-container', null, rmCentreLongitude(points));
+  if (!base) {
+    RM('rm-map-container').innerHTML =
+      '<p class="text-gray-500 text-sm p-4">Map library did not load.</p>';
+    return;
+  }
+  const { svg, projection, el } = base;
+
+  // Geodesic: a GeoJSON LineString through d3.geoPath is resampled along great
+  // circles by the projection, so these are real geodesics with no new library.
+  svg.append('path')
+    .datum({ type: 'LineString', coordinates: points.map(p => [p.lon, p.lat]) })
+    .attr('d', d3.geoPath(projection))
+    .attr('fill', 'none').attr('stroke', '#fbbf24')
+    .attr('stroke-width', 1.6).attr('stroke-opacity', 0.85);
+
+  const clusters = rmClusterOnScreen(points, projection);
+  const tip = d3.select(el).append('div')
+    .style('position', 'absolute').style('pointer-events', 'none').style('opacity', 0)
+    .style('background', '#111827').style('color', '#f3f4f6')
+    .style('border', '1px solid #374151').style('border-radius', '4px')
+    .style('padding', '5px 8px').style('font-size', '11px').style('z-index', 10)
+    .style('max-width', '280px');
+
+  const g = svg.append('g');
+  clusters.forEach((c, i) => {
+    const multi = c.members.length > 1;
+    g.append('circle')
+      .attr('cx', c.x).attr('cy', c.y)
+      .attr('r', c.isOrigin ? 6 : (multi ? 7 : 4.5))
+      .attr('fill', c.isOrigin ? RM_SRC_COLOR.origin : (RM_SRC_COLOR[c.members[0].source] || '#9ca3af'))
+      .attr('stroke', '#0a0a0a').attr('stroke-width', 1.5)
+      .on('mousemove', function (event) {
+        const r = el.getBoundingClientRect();
+        const html = c.isOrigin
+          ? `<strong>${escapeHtml(c.members[0].place || 'your location')}</strong><br>where you are`
+          : c.members.map(m =>
+              `<strong>${escapeHtml(m.place || 'unknown')}</strong> ` +
+              `<span style="color:${RM_SRC_COLOR[m.source]}">${escapeHtml(m.source)}</span><br>` +
+              `hop ${m.hops.map(x => x.hop).join(', ')}`).join('<hr style="border-color:#374151;margin:3px 0">');
+        tip.style('opacity', 1).html(html)
+          .style('left', (event.clientX - r.left + 12) + 'px')
+          .style('top', (event.clientY - r.top + 12) + 'px');
+      })
+      .on('mouseleave', () => tip.style('opacity', 0));
+    g.append('text')
+      .attr('x', c.x + (multi ? 0 : 7)).attr('y', c.y + (multi ? 3 : -6))
+      .attr('text-anchor', multi ? 'middle' : 'start')
+      .attr('fill', multi ? '#0a0a0a' : '#e5e7eb')
+      .attr('font-size', multi ? '8px' : '9px')
+      .attr('font-weight', multi ? 'bold' : 'normal')
+      .text(c.isOrigin ? 'you' : (multi ? String(c.members.length) : String(i)));
+  });
+
+  const clustered = clusters.filter(c => c.members.length > 1).length;
+  RM('rm-map-legend').innerHTML = `
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR.origin}"></span>you</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR.hoiho}"></span>hostname (Hoiho)</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR['site-code']}"></span>carrier site code</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR['ip-db']}"></span>IP database</span>
+    <span class="text-gray-600">${clusters.length - 1} markers, ${data.hops.length} hops${clustered ? `, ${clustered} clustered` : ''}</span>`;
+}
+
+// ---- the result -----------------------------------------------------------
+
+function rmRenderResult(data) {
+  _rmLast = data;
+  if (data.origin && data.origin.lat != null && data.origin.label) {
+    _rmOrigin = Object.assign({}, _rmOrigin, { label: data.origin.label });
+    rmRenderOriginLine();
+  }
+  rmShow('rm-result');
+
+  const probe = data.probe || {};
+  RM('rm-res-probe').textContent = probe.id
+    ? `#${probe.id}${probe.asn ? `, AS${probe.asn}` : ''}${probe.city ? `, ${probe.city}` : ''}`
+    : (data.source === 'upload' ? 'your own machine' : 'pasted trace');
+  RM('rm-res-probedist').textContent =
+    probe.distance_km != null ? `${probe.distance_km} km` : 'n/a';
+  RM('rm-res-target').textContent = data.target || '(unnamed target)';
+  RM('rm-res-parser').textContent = `parsed as ${data.parser_label}`;
+  RM('rm-ruleset').textContent = data.hoiho_ruleset_date || 'unknown';
+
+  const drawn = data.hops.filter(h => h.lat != null).length;
+  const unlocated = data.hops.filter(h => h.lat == null);
+  RM('rm-res-counts').textContent =
+    `${data.hops.length} hops, ${drawn} placed, ${unlocated.length} not placed`;
+
+  RM('rm-unlocated').innerHTML = unlocated.length ? unlocated.map(h => `
+    <div class="border-l-2 border-red-800 pl-2">
+      <span class="text-gray-300 font-bold">hop ${h.hop}</span>
+      <span class="text-gray-500">${escapeHtml(h.address || 'no reply')}</span>
+      <div class="text-gray-600 mt-0.5">${escapeHtml(h.reason || 'not placed')}</div>
+    </div>`).join('')
+    : '<p class="text-gray-600">Every hop that answered was placed.</p>';
+
+  const notes = [];
+  data.hops.forEach(h => (h.annotation_details || []).forEach(d => notes.push({ hop: h.hop, d })));
+  RM('rm-annotations').innerHTML = notes.length ? notes.map(n => `
+    <div class="border-l-2 border-yellow-700 pl-2">
+      <span class="text-gray-300 font-bold">hop ${n.hop}</span>
+      <div class="text-gray-400 mt-0.5">${escapeHtml(n.d)}</div>
+    </div>`).join('')
+    : '<p class="text-gray-600">Nothing in this trace needs a caveat.</p>';
+
+  RM('rm-table').innerHTML = data.hops.map(h => `
+    <tr class="border-b border-gray-800/60 hover:bg-gray-800/30">
+      <td class="px-3 py-1.5 text-gray-400">${h.hop}</td>
+      <td class="px-3 py-1.5 text-gray-200">${escapeHtml(h.address || '-')}</td>
+      <td class="px-3 py-1.5 text-gray-400 max-w-[260px] truncate" title="${escapeAttr(h.hostname || '')}">${escapeHtml(h.hostname || '-')}</td>
+      <td class="px-3 py-1.5 text-right text-gray-300">${h.min_rtt_ms == null ? '-' : h.min_rtt_ms.toFixed(1)}</td>
+      <td class="px-3 py-1.5 text-right ${h.loss_pct ? 'text-yellow-400' : 'text-gray-500'}">${h.loss_pct == null ? '-' : h.loss_pct + '%'}</td>
+      <td class="px-3 py-1.5 text-gray-300">${escapeHtml(h.place || '-')}</td>
+      <td class="px-3 py-1.5 src-${escapeAttr(h.source)}">${escapeHtml(h.source)}</td>
+      <td class="px-3 py-1.5 text-gray-500">${(h.annotations || []).map(a => `<span class="inline-block mr-1 mb-0.5 px-1.5 py-0.5 rounded bg-gray-800 text-[10px]">${escapeHtml(a)}</span>`).join('') || '-'}</td>
+    </tr>`).join('');
+
+  rmDrawMap(data);
+}
+
+// ---- Advanced: paste, and run-it-yourself ---------------------------------
+
+var _rmUploadAvailable = true;
+
+function rmSetMode(mode) {
+  const paste = mode === 'paste';
+  const base = 'px-4 py-2 text-sm border-b-2 ';
+  const on = 'border-amber-400 text-amber-400 font-bold';
+  const off = 'border-transparent text-gray-400 hover:text-white';
+  RM('rm-tab-paste').className = base + (paste ? on : off);
+  // Assigning className wholesale drops every other class on the element,
+  // which silently un-hid the upload tab on an instance that cannot broker an
+  // upload. The hidden state is re-applied here rather than set once, because
+  // this function runs again on every mode switch.
+  RM('rm-tab-run').className = base + (!paste ? on : off)
+    + (_rmUploadAvailable ? '' : ' hidden');
+  RM('rm-pane-paste').classList.toggle('hidden', !paste);
+  RM('rm-pane-run').classList.toggle('hidden', paste);
+}
+
+async function rmAnalysePaste() {
+  const text = RM('rm-trace').value.trim();
+  if (!text) return;
+  const btn = RM('rm-analyze');
+  btn.disabled = true; btn.textContent = 'Drawing...';
+  try {
+    const body = await rmApi('/api/routemap/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        trace_text: text,
+        origin_lat: _rmOrigin ? _rmOrigin.lat : null,
+        origin_lon: _rmOrigin ? _rmOrigin.lon : null,
+      }),
+    });
+    rmHide('rm-atlas'); rmHide('rm-atlas-error');
+    rmRenderResult(body);
+  } catch (err) {
+    rmHide('rm-result');
+    RM('rm-atlas-error-title').textContent = 'That trace could not be read.';
+    RM('rm-atlas-error-body').textContent =
+      (typeof err.detail === 'string' ? err.detail : null)
+      || 'Paste the output of tracert, traceroute or mtr --report.';
+    rmShow('rm-atlas-error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Draw the route';
+  }
+}
+
+var _rmCommands = null;
+var _rmPollKey = null;
+
+async function rmMakeCommand() {
+  const { target, error } = rmNormaliseTarget(RM('rm-target').value);
+  const box = RM('rm-target-error');
+  if (error) { box.textContent = error; rmShow('rm-target-error'); rmHide('rm-cmd-block'); rmHide('rm-waiting'); return; }
+  rmHide('rm-target-error');
+  try {
+    const body = await rmApi('/api/routemap/command', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    });
+    _rmCommands = body.commands;
+    _rmPollKey = body.poll_key;
+    _rmCurOs = body.platform || 'unix';
+    rmPaintOsButtons();
+    rmShow('rm-cmd-block');
+    RM('rm-expiry').textContent =
+      `This link expires in ${Math.round((body.ttl_seconds || 600) / 60)} minutes.`;
+    rmShow('rm-waiting');
+    rmStartPolling(body.token);
+  } catch (err) {
+    box.textContent = (typeof err.detail === 'string' ? err.detail : null)
+      || 'The upload link could not be created.';
+    rmShow('rm-target-error');
+  }
+}
+
+function rmPaintOsButtons() {
+  document.querySelectorAll('.rm-os').forEach(b => {
+    const on = b.dataset.os === _rmCurOs;
+    b.className = 'rm-os px-3 py-1 rounded text-xs ' +
+      (on ? 'bg-amber-500 text-gray-950 font-bold' : 'bg-gray-800 text-gray-300 hover:bg-gray-700');
+  });
+  const entry = (_rmCommands || []).find(c => c.key === _rmCurOs);
+  RM('rm-cmd').textContent = entry ? entry.command : '';
+}
+
+function rmStopPolling() {
+  if (_rmPoll) { clearInterval(_rmPoll); _rmPoll = null; }
+}
+
+function rmStartPolling(token) {
+  rmStopPolling();
+  _rmPoll = setInterval(async () => {
+    try {
+      const params = new URLSearchParams({ key: _rmPollKey });
+      if (_rmOrigin) {
+        params.set('origin_lat', _rmOrigin.lat);
+        params.set('origin_lon', _rmOrigin.lon);
+      }
+      const body = await rmApi(`/api/routemap/pending/${token}?${params}`);
+      if (body.status === 'waiting') return;
+      rmStopPolling();
+      rmHide('rm-waiting');
+      if (body.status === 'expired') {
+        RM('rm-expiry').textContent = 'That upload link expired. Generate another.';
+        return;
+      }
+      rmHide('rm-atlas'); rmHide('rm-atlas-error');
+      rmRenderResult(body);
+    } catch (err) {
+      rmStopPolling(); rmHide('rm-waiting');
+    }
+  }, 3000);
+}
+
+// ---- exports --------------------------------------------------------------
+
+function rmExportJson() {
+  if (!_rmLast) return;
+  const blob = new Blob([JSON.stringify(_rmLast, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'route-map.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function rmExportPng() {
+  const svg = RM('rm-map-container') && RM('rm-map-container').querySelector('svg');
+  if (!svg) return;
+  const xml = new XMLSerializer().serializeToString(svg);
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement('canvas');
+    c.width = svg.viewBox.baseVal.width * 2;
+    c.height = svg.viewBox.baseVal.height * 2;
+    const ctx = c.getContext('2d');
+    ctx.scale(2, 2);
+    ctx.drawImage(img, 0, 0);
+    const a = document.createElement('a');
+    a.href = c.toDataURL('image/png');
+    a.download = 'route-map.png';
+    a.click();
+  };
+  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+}
+
+// ---- wiring ---------------------------------------------------------------
+
+async function initRouteMap() {
+  if (_rmInit) return;
+  _rmInit = true;
+
+  try { _rmCaps = await rmApi('/api/routemap/capabilities'); } catch (e) { _rmCaps = null; }
+
+  // The upload handshake needs a store both the uploading shell's worker and
+  // this page's worker can see. Where there is none, the tab does not offer a
+  // command that would silently never come back; pasting still works.
+  if (_rmCaps && _rmCaps.upload_enabled === false) {
+    _rmUploadAvailable = false;
+    RM('rm-tab-run').classList.add('hidden');
+    const note = document.createElement('p');
+    note.className = 'text-xs text-gray-600 mt-3';
+    note.textContent = 'Uploading a trace is unavailable on this instance, so paste it here instead.';
+    RM('rm-pane-paste').appendChild(note);
+  }
+
+  RM('rm-trace-btn').onclick = () => {
+    const { target, error } = rmNormaliseTarget(RM('rm-main-target').value);
+    const box = RM('rm-main-target-error');
+    if (error) { box.textContent = error; rmShow('rm-main-target-error'); return; }
+    rmHide('rm-main-target-error');
+    _rmPendingTarget = target;
+    // An instance without Atlas goes straight to the fallback rather than
+    // making the user watch a spinner that was never going to finish.
+    if (_rmCaps && _rmCaps.atlas_enabled === false) {
+      if (!_rmOrigin) rmRestoreOrigin();
+      rmAtlasFail('disabled', 'Atlas tracing is switched off on this instance.');
+      _rmPendingTarget = null;
+      return;
+    }
+    if (_rmOrigin || rmRestoreOrigin()) { rmRunAtlas(); return; }
+    rmShow('rm-loc-modal');
+  };
+  RM('rm-main-target').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') RM('rm-trace-btn').click();
+  });
+
+  RM('rm-allow-loc').onclick = rmAskBrowser;
+  RM('rm-manual-loc').onclick = () => rmOpenPicker('manual');
+  RM('rm-picker-close').onclick = () => rmHide('rm-picker');
+  RM('rm-origin-change').onclick = () => { _rmPendingTarget = null; rmOpenPicker('manual'); };
+
+  RM('rm-use-coords').onclick = () => {
+    const lat = parseFloat(RM('rm-lat').value), lon = parseFloat(RM('rm-lon').value);
+    if (!isFinite(lat) || !isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+      RM('rm-pick-readout').textContent = 'Those are not valid coordinates.';
+      return;
+    }
+    rmSetOrigin(lat, lon, 'coordinates you entered');
+  };
+
+  let citySearch = null;
+  RM('rm-city-q').oninput = (e) => {
+    const q = e.target.value.trim();
+    clearTimeout(citySearch);
+    const box = RM('rm-city-results');
+    if (q.length < 2) { box.innerHTML = ''; return; }
+    citySearch = setTimeout(async () => {
+      let results = [];
+      try {
+        results = (await rmApi(`/api/routemap/cities?q=${encodeURIComponent(q)}`)).results || [];
+      } catch (err) { results = []; }
+      box.innerHTML = results.length ? results.map((c, i) => `
+        <button data-city="${i}" class="rm-city w-full text-left px-3 py-2 rounded bg-gray-950 hover:bg-gray-800 border border-gray-800 flex items-center gap-3">
+          <span class="text-sm text-white">${escapeHtml(c.display)}</span>
+          <span class="text-[11px] text-gray-600">${c.lat}, ${c.lon}</span>
+          <span class="text-[11px] text-gray-600 ml-auto">pop. ${(c.population || 0).toLocaleString()}</span>
+        </button>`).join('')
+        : '<p class="text-xs text-gray-600 px-1">No city in the bundled list matches that. Use coordinates or the map below.</p>';
+      box.querySelectorAll('.rm-city').forEach(btn => btn.onclick = () => {
+        const c = results[+btn.dataset.city];
+        rmSetOrigin(c.lat, c.lon, 'city you selected', c.display);
+      });
+    }, 250);
+  };
+
+  RM('rm-tab-paste').onclick = () => rmSetMode('paste');
+  RM('rm-tab-run').onclick = () => rmSetMode('run');
+  RM('rm-analyze').onclick = rmAnalysePaste;
+  RM('rm-clear').onclick = () => { RM('rm-trace').value = ''; rmHide('rm-result'); };
+  RM('rm-make-cmd').onclick = rmMakeCommand;
+  RM('rm-cancel').onclick = () => { rmStopPolling(); rmHide('rm-waiting'); rmHide('rm-cmd-block'); };
+  RM('rm-copy').onclick = () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(RM('rm-cmd').textContent);
+    RM('rm-copy').textContent = 'Copied';
+    setTimeout(() => { RM('rm-copy').textContent = 'Copy'; }, 1200);
+  };
+  document.querySelectorAll('.rm-os').forEach(b => b.onclick = () => {
+    _rmCurOs = b.dataset.os;
+    rmPaintOsButtons();
+  });
+  RM('rm-export-json').onclick = rmExportJson;
+  RM('rm-export-png').onclick = rmExportPng;
+
+  const sample = RM('rm-sample-heise');
+  if (sample) sample.onclick = () => { RM('rm-trace').value = RM_SAMPLE; };
+
+  const privacy = RM('rm-privacy-link');
+  if (privacy) privacy.onclick = (e) => {
+    e.preventDefault();
+    const opener = document.getElementById('open-privacy-policy');
+    if (opener) opener.click();
+  };
+
+  // A remembered origin is shown straight away, silently: the brief's rule is
+  // that nothing is asked until Trace is pressed, and a returning visitor is
+  // not asked again at all.
+  rmRestoreOrigin();
+  rmSetMode('paste');
+}
+
+const RM_SAMPLE = `traceroute to heise.de (193.99.144.80), 30 hops max, 60 byte packets
+ 1  router (192.0.2.1)  4.112 ms  3.741 ms  3.698 ms
+ 2  192.168.1.1 (192.168.1.1)  5.432 ms  5.802 ms  3.333 ms
+ 3  198.51.100.1 (198.51.100.1)  8.820 ms  8.442 ms  8.051 ms
+ 4  122.2.187.146.static.pldt.net (122.2.187.146)  8.323 ms  8.015 ms  6.227 ms
+ 5  210.213.130.143.static.pldt.net (210.213.130.143)  9.218 ms  10.291 ms  9.905 ms
+ 6  hnk-b4-link.ip.twelve99.net (62.115.209.158)  55.214 ms * *
+ 7  sng-b6-link.ip.twelve99.net (62.115.112.222)  58.331 ms  58.812 ms  59.004 ms
+ 8  mei-b6-link.ip.twelve99.net (62.115.140.54)  195.442 ms  195.881 ms  196.122 ms
+ 9  prs-bb2-link.ip.twelve99.net (62.115.136.234)  239.118 ms  239.664 ms  240.002 ms
+10  ffm-bb2-link.ip.twelve99.net (62.115.122.139)  228.447 ms  228.902 ms  229.331 ms
+11  ffm-b16-link.ip.twelve99.net (62.115.132.229)  211.332 ms  211.884 ms *
+12  plusline-ic-323934.ip.twelve99-cust.net (62.115.153.153)  257.119 ms  257.664 ms  258.001 ms
+13  te2-2.c301.f.de.plusline.net (82.98.102.1)  258.221 ms  258.774 ms  259.118 ms
+14  82.98.103.3 (82.98.103.3)  258.443 ms  258.919 ms  259.337 ms
+15  212.19.61.13 (212.19.61.13)  256.118 ms  256.662 ms  257.004 ms
+16  heise.de (193.99.144.80)  255.337 ms  255.881 ms  256.223 ms`;
