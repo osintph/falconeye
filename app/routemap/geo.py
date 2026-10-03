@@ -64,6 +64,8 @@ import ipaddress
 import logging
 import math
 
+import dns.resolver
+import dns.reversename
 import httpx
 
 from app.config import HTTPX_TIMEOUT, OPERATOR_CONTACT_UA
@@ -262,6 +264,67 @@ async def ip_geolocate(addresses: list[str]) -> dict:
         if isinstance(result, dict):
             out[addr] = result
     return out
+
+
+# ------------------------------------------------------------ reverse DNS ---
+#
+# WHY THIS EXISTS, AND WHY IT IS NOT OPTIONAL
+#
+# The whole tab is built on the router's hostname being better evidence than
+# its address. A local traceroute hands us those hostnames because the
+# traceroute binary resolves them itself. RIPE Atlas does not: a hop in an
+# Atlas result carries an address and nothing else.
+#
+# Found by running the first live trace to heise.de. Every hostname column was
+# empty, so Hoiho and the site-code table had nothing to work on, every hop
+# fell back to the IP database, and the Marseille router came out as "FR" while
+# the Singapore and Paris hops came out unplaced. The headline feature was
+# silently inert on the primary path.
+#
+# So any hop that has a public address and no name gets one here. This also
+# fixes the same gap for a pasted "traceroute -n" or "tracert -d", where the
+# user asked their own tool not to resolve.
+#
+# Bounded and best effort: a resolver that is slow or unhappy costs the trace a
+# few hundred milliseconds and some hostnames, never the result.
+REVERSE_DNS_CONCURRENCY = 8
+REVERSE_DNS_TIMEOUT = 2.0
+# One trace is at most 30 hops. The cap is here so a pasted trace cannot turn
+# into an unbounded fan-out of DNS queries.
+REVERSE_DNS_MAX = 40
+
+
+def _ptr_sync(addr: str) -> str | None:
+    try:
+        resolver = dns.resolver.Resolver()
+        resolver.lifetime = REVERSE_DNS_TIMEOUT
+        resolver.timeout = REVERSE_DNS_TIMEOUT
+        answer = resolver.resolve(dns.reversename.from_address(addr), "PTR")
+        for record in answer:
+            name = str(record).rstrip(".")
+            if name:
+                return name
+    except Exception:
+        return None
+    return None
+
+
+async def reverse_dns(addresses: list[str]) -> dict:
+    """PTR names for public addresses. Never raises, never blocks for long."""
+    wanted = [a for a in dict.fromkeys(addresses) if a][:REVERSE_DNS_MAX]
+    if not wanted:
+        return {}
+    semaphore = asyncio.Semaphore(REVERSE_DNS_CONCURRENCY)
+    loop = asyncio.get_event_loop()
+
+    async def one(addr: str):
+        async with semaphore:
+            return await loop.run_in_executor(None, _ptr_sync, addr)
+
+    results = await asyncio.gather(*[one(a) for a in wanted],
+                                   return_exceptions=True)
+    return {addr: name for addr, name in zip(wanted, results)
+            if isinstance(name, str) and name}
 
 
 # --------------------------------------------------------------- place naming ---
@@ -570,6 +633,24 @@ async def resolve(hops: list[Hop], origin: tuple[float, float] | None) -> dict:
     physics bound rejects a hostname location, instead of a second round trip
     in the middle of the decision.
     """
+    # Fill in the names the source did not give us, so the hostname-first
+    # sources have something to work on. Atlas results carry no names at all,
+    # and "traceroute -n" was asked not to produce them.
+    unnamed = [addr for hop in hops if not hop.hostnames
+               for addr in hop.addresses if classify_address(addr) == "public"]
+    if unnamed:
+        resolved = await reverse_dns(unnamed)
+        if resolved:
+            for hop in hops:
+                if hop.hostnames:
+                    continue
+                for addr in hop.addresses:
+                    name = resolved.get(addr)
+                    if name:
+                        hop.add_hostname(name)
+            log.info("event=routemap_reverse_dns asked=%d resolved=%d",
+                     len(set(unnamed)), len(resolved))
+
     hostnames, addresses = [], []
     for hop in hops:
         for name in hop.hostnames:
