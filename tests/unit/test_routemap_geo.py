@@ -363,3 +363,45 @@ def test_a_hop_that_already_has_a_name_is_not_re_resolved(monkeypatch):
               rtts_ms=[58.5], sent=3, lost=0)
     asyncio.run(geo.resolve([hop], MANILA))
     assert not asked.get("addresses"), "a hop that already had a name was re-resolved"
+
+
+def test_an_ecmp_hop_shows_the_hostname_that_produced_the_placement():
+    """Found in a real trace from Manila to heise.de.
+
+    Hop 8 answered from two routers: mei-b6-link (Marseille) and sng-b6-link
+    (Singapore). Marseille is 11,000 km away and the hop's fastest probe was
+    nowhere near enough to reach it, so the bound rejected Marseille and
+    accepted Singapore, correctly. The table then showed "mei-b6-link ...
+    Singapore, SG", because the hostname column was hostnames[0] while the
+    location came from hostnames[1]. Two true facts next to each other reading
+    as one false one.
+    """
+    hop = Hop(hop=8,
+              addresses=["62.115.140.54", "62.115.139.44"],
+              hostnames=["mei-b6-link.ip.twelve99.net", "sng-b6-link.ip.twelve99.net"],
+              rtts_ms=[58.3], sent=3, lost=0)
+    entry = geo.locate_hops([hop], hoiho_records={}, ip_records={}, origin=MANILA)[0]
+
+    assert entry["source"] == geo.SOURCE_SITE_CODE
+    assert "Singapore" in entry["place"]
+    assert entry["hostname"] == "sng-b6-link.ip.twelve99.net", (
+        "the hop is shown with a hostname that did not produce its location")
+    # The rejected candidate is still on the record, with the reason.
+    rejected = [c for c in entry["candidates"] if not c["accepted"]]
+    assert any("mei-b6-link" in (c.get("hostname") or "") for c in rejected)
+    # Both addresses stay available, because the hop really did answer from both.
+    assert entry["addresses"] == ["62.115.140.54", "62.115.139.44"]
+
+
+def test_the_ip_database_placement_names_the_address_it_used():
+    """Same rule for the fallback source."""
+    hop = Hop(hop=5, addresses=["62.115.209.158", "64.86.26.38"],
+              rtts_ms=[215.0], sent=3, lost=0)
+    entry = geo.locate_hops(
+        [hop], hoiho_records={},
+        ip_records={"64.86.26.38": dict(lat=37.35, lon=-121.95,
+                                        city="Santa Clara", cc="US")},
+        origin=MANILA)[0]
+    assert entry["source"] == geo.SOURCE_IP_DB
+    assert entry["address"] == "64.86.26.38", (
+        "the hop is shown with an address that did not produce its location")
