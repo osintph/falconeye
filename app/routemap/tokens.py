@@ -161,11 +161,22 @@ def validate_target(raw: str) -> str:
 # needs Out-String to arrive as one body rather than as an object stream, and
 # because Invoke-RestMethod is present on every supported PowerShell without
 # anything being installed.
+# Every command is capped. An uncapped tracert to a target that drops ICMP
+# walks all 30 hops at 4 seconds a probe and runs for minutes while the page
+# sits there looking broken; the defaults below bound the worst case to roughly
+# a minute.
+#
+#   -h 30 / -m 30   stop at 30 hops, which is the protocol maximum anyway
+#   -w 1000 / -w 1  wait one second for a reply, not the 4s (Windows) or
+#                   5s (Unix) default
+#   -q 3 / -c 3     three probes per hop, which is what the physics bound needs
+#                   a meaningful minimum from
 COMMAND_TEMPLATES = {
-    "windows": ("tracert {target} | Out-String | Invoke-RestMethod -Method Post "
-                "-ContentType 'text/plain' -Uri {url}"),
-    "unix": "traceroute {target} 2>&1 | curl -s --data-binary @- {url}",
-    "mtr": "mtr --report-wide --show-ips -c 3 {target} 2>&1 | curl -s --data-binary @- {url}",
+    "windows": ("tracert -h 30 -w 1000 {target} | Out-String | Invoke-RestMethod "
+                "-Method Post -ContentType 'text/plain' -Uri {url}"),
+    "unix": "traceroute -m 30 -q 3 -w 1 {target} 2>&1 | curl -s --data-binary @- {url}",
+    "mtr": ("mtr --report-wide --show-ips -c 3 -m 30 {target} 2>&1 "
+            "| curl -s --data-binary @- {url}"),
 }
 
 COMMAND_LABELS = {
@@ -206,24 +217,102 @@ def detect_platform(user_agent: str) -> str:
 
 # -------------------------------------------------------------- the store ----
 
-async def issue(target: str) -> dict:
-    """Mint a token for *target*. Returns the public record plus the poll key."""
+# A job's life: waiting (nothing uploaded / measurement running) -> processing
+# (the pipeline is running) -> ready (result stored) or error.
+#
+# WHY A JOB AND NOT A PARKING SLOT
+# --------------------------------
+# Until v3.35.1 the poll request ran the whole geolocation pipeline itself, and
+# POST /trace blocked for the entire RIPE Atlas measurement. Both are long
+# enough to outlive the things in front of them: nginx gives up at 90s and
+# gunicorn kills a worker at 90s, while an Atlas measurement is allowed 120.
+# A killed worker takes every other in-flight request on it down too, which is
+# how a poll for an upload that had already succeeded came back 502.
+#
+# So the slow work happens once, in the background, and the poll is a status
+# read that touches nothing external.
+STATUS_WAITING = "waiting"
+STATUS_PROCESSING = "processing"
+STATUS_READY = "ready"
+STATUS_ERROR = "error"
+
+
+async def issue(target: str, kind: str = "upload") -> dict:
+    """Mint a job token for *target*. Returns the public record plus the poll key."""
     token = secrets.token_hex(TOKEN_BYTES)
     poll_key = secrets.token_hex(POLL_KEY_BYTES)
     now = time.time()
     payload = {
         "target": target,
+        "kind": kind,                 # "upload" | "atlas"
+        "status": STATUS_WAITING,
         "poll_key": poll_key,
         "created_at": now,
         "expires_at": now + ROUTEMAP_TOKEN_TTL_SECONDS,
         "trace_text": None,
         "uploaded_at": None,
+        "result": None,
+        "error": None,
+        "probe": None,
     }
     await _put(token, payload)
-    log.info("event=routemap_token action=issued token=%s target=%s ttl=%ds",
-             tag(token), tag(target), ROUTEMAP_TOKEN_TTL_SECONDS)
+    log.info("event=routemap_token action=issued kind=%s token=%s target=%s ttl=%ds",
+             kind, tag(token), tag(target), ROUTEMAP_TOKEN_TTL_SECONDS)
     return {"token": token, "poll_key": poll_key,
             "expires_at": payload["expires_at"]}
+
+
+async def update(token: str, **fields) -> dict | None:
+    """Merge *fields* into a job record. Returns the record, or None if gone."""
+    payload = await _get(token)
+    if payload is None:
+        return None
+    payload.update(fields)
+    await _put(token, payload)
+    return payload
+
+
+async def peek(token: str) -> dict | None:
+    """The raw job record, for a background worker. No poll key: the worker is
+    us, not a caller."""
+    return await _get(token)
+
+
+async def set_origin_once(token: str, origin) -> None:
+    """Record the origin a polling page supplies, if the job has none yet.
+
+    The shell that uploads a trace cannot know where the browser said it is, so
+    the first poll carries it. Written once so a later poll cannot move the
+    origin of a result that has already been computed from it.
+    """
+    payload = await _get(token)
+    if payload is None or payload.get("origin") is not None:
+        return
+    if payload.get("status") in (STATUS_READY, STATUS_ERROR):
+        return
+    payload["origin"] = list(origin)
+    await _put(token, payload)
+
+
+async def mark_processing(token: str) -> None:
+    await update(token, status=STATUS_PROCESSING)
+
+
+async def store_result(token: str, result: dict) -> None:
+    """Attach a finished analysis and drop the raw trace text.
+
+    The text has done its job the moment the result exists, and keeping it
+    would mean holding a description of someone's network for the rest of the
+    token's life for no reason.
+    """
+    await update(token, status=STATUS_READY, result=result, trace_text=None)
+    log.info("event=routemap_job action=ready token=%s", tag(token))
+
+
+async def store_error(token: str, kind: str, message: str) -> None:
+    await update(token, status=STATUS_ERROR, error={"kind": kind, "message": message},
+                 trace_text=None)
+    log.info("event=routemap_job action=error token=%s kind=%s", tag(token), kind)
 
 
 def _note_redis_failure(operation: str, exc: Exception) -> None:
@@ -308,6 +397,7 @@ async def deposit(token: str, trace_text: str) -> str:
                          "Generate a new command in the Route Map tab.")
     payload["trace_text"] = trace_text
     payload["uploaded_at"] = time.time()
+    payload["status"] = STATUS_PROCESSING
     await _put(token, payload)
     log.info("event=routemap_token action=uploaded token=%s bytes=%d",
              tag(token), len(trace_text))
@@ -315,10 +405,12 @@ async def deposit(token: str, trace_text: str) -> str:
 
 
 async def collect(token: str, poll_key: str) -> dict:
-    """What the polling page gets. Deletes the record once it hands over a trace.
+    """What the polling page gets. A status read: nothing external is touched.
 
-    ``{"status": "waiting"}`` until something is uploaded, then
-    ``{"status": "ready", "trace_text": ..., "target": ...}`` exactly once.
+    This function used to run the whole geolocation pipeline, which is why a
+    poll could outlive nginx's and gunicorn's patience. It now returns one of
+    waiting / processing / ready / error / expired, and the finished result
+    when there is one.
     """
     payload = await _get(token)
     if payload is None:
@@ -326,16 +418,28 @@ async def collect(token: str, poll_key: str) -> dict:
     # Constant-time, because this is the credential that reads the result.
     if not secrets.compare_digest(str(payload.get("poll_key") or ""), str(poll_key or "")):
         raise TokenError("that upload link does not belong to this page")
-    if payload.get("trace_text") is None:
-        return {"status": "waiting",
-                "expires_at": payload.get("expires_at"),
+
+    status = payload.get("status") or STATUS_WAITING
+    base = {"status": status,
+            "expires_at": payload.get("expires_at"),
+            "target": payload.get("target"),
+            "probe": payload.get("probe")}
+
+    if status == STATUS_READY and payload.get("result") is not None:
+        result = payload["result"]
+        # Handed over once and then gone: the result exists to be rendered.
+        await _drop(token)
+        log.info("event=routemap_token action=collected token=%s", tag(token))
+        return {"status": STATUS_READY, **result}
+
+    if status == STATUS_ERROR:
+        error = payload.get("error") or {}
+        await _drop(token)
+        return {"status": STATUS_ERROR, "kind": error.get("kind", "failed"),
+                "message": error.get("message", "The trace could not be processed."),
                 "target": payload.get("target")}
-    trace_text = payload["trace_text"]
-    target = payload.get("target") or ""
-    # Handed over once and then gone: the text exists to be rendered, not kept.
-    await _drop(token)
-    log.info("event=routemap_token action=collected token=%s", tag(token))
-    return {"status": "ready", "trace_text": trace_text, "target": target}
+
+    return base
 
 
 async def healthy() -> bool:

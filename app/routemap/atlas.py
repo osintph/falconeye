@@ -385,12 +385,17 @@ def to_trace_text(result: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-async def trace(target: str, asn: int | None, country: str | None,
+async def start(target: str, asn: int | None, country: str | None,
                 origin: tuple[float, float] | None, af: int = 4) -> dict:
-    """Select a probe, run one traceroute on it, and return the raw output.
+    """Pick a probe and schedule the measurement. Fast, and safe in a request.
 
-    Returns ``{"probe": {...}, "measurement_id": int, "trace_text": str}``.
-    Raises :class:`AtlasUnavailable` with a ``kind`` the UI maps to a message.
+    Split out from waiting for the result in v3.35.1. Everything here is two
+    short API calls; waiting is up to two minutes, which is longer than nginx
+    (90s) and gunicorn (90s) will tolerate inside a request, and a worker killed
+    mid-measurement takes every other request on it down with it.
+
+    Returns ``{"probe": {...}, "measurement_id": int}`` and raises
+    :class:`AtlasUnavailable` with a ``kind`` the UI maps onto a message.
     """
     await check_budget()
     probe = await select_probe(asn, country, origin)
@@ -402,13 +407,15 @@ async def trace(target: str, asn: int | None, country: str | None,
         record_spend(TRACEROUTE_CREDITS_PER_RESULT)
         log.info("event=atlas_measurement id=%s probe=%s target=%s",
                  measurement_id, probe.get("id"), tag(target))
+    return {"probe": probe, "measurement_id": measurement_id}
 
-    # Results, on the keyless client: a one-off measurement is public.
+
+async def collect_result(measurement_id: int) -> str:
+    """Wait for a scheduled measurement and render it as traceroute text.
+
+    Runs in the background, never in a request. Results are public, so this
+    uses the keyless client.
+    """
     async with _public_client() as public:
         results = await _await_result(public, measurement_id)
-
-    return {
-        "probe": probe,
-        "measurement_id": measurement_id,
-        "trace_text": to_trace_text(results[0]),
-    }
+    return to_trace_text(results[0])

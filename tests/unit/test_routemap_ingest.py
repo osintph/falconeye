@@ -115,16 +115,46 @@ def test_a_token_is_single_use():
     asyncio.run(_scenario())
 
 
-def test_a_collected_token_cannot_be_collected_twice():
-    """The trace is handed over once and then gone."""
+def test_a_finished_job_is_handed_over_once_and_then_gone():
+    """The result is handed over once. The raw trace is never handed over."""
     async def _scenario():
         issued = await tokens.issue("heise.de")
         await tokens.deposit(issued["token"], "trace text\n")
+        # Before the background job finishes, the page is told to keep waiting.
+        mid = await tokens.collect(issued["token"], issued["poll_key"])
+        assert mid["status"] == tokens.STATUS_PROCESSING
+
+        await tokens.store_result(issued["token"], {"hops": [], "parser": "traceroute"})
         first = await tokens.collect(issued["token"], issued["poll_key"])
-        assert first["status"] == "ready"
-        assert first["trace_text"] == "trace text\n"
+        assert first["status"] == tokens.STATUS_READY
+        assert first["parser"] == "traceroute"
+        assert "trace_text" not in first, "the raw trace was handed to the page"
+
         second = await tokens.collect(issued["token"], issued["poll_key"])
         assert second["status"] == "expired"
+    asyncio.run(_scenario())
+
+
+def test_a_failed_job_reports_its_failure_rather_than_polling_forever():
+    async def _scenario():
+        issued = await tokens.issue("heise.de")
+        await tokens.deposit(issued["token"], "garbage\n")
+        await tokens.store_error(issued["token"], "parse", "could not read that")
+        state = await tokens.collect(issued["token"], issued["poll_key"])
+        assert state["status"] == tokens.STATUS_ERROR
+        assert state["kind"] == "parse"
+        assert "could not read" in state["message"]
+    asyncio.run(_scenario())
+
+
+def test_the_raw_trace_is_dropped_once_it_has_been_analysed():
+    """It describes someone's network; it is kept no longer than it is needed."""
+    async def _scenario():
+        issued = await tokens.issue("heise.de")
+        await tokens.deposit(issued["token"], "trace text\n")
+        await tokens.store_result(issued["token"], {"hops": []})
+        record = await tokens.peek(issued["token"])
+        assert record["trace_text"] is None
     asyncio.run(_scenario())
 
 
@@ -173,11 +203,12 @@ def test_collection_requires_the_poll_key_the_page_kept():
     async def _scenario():
         issued = await tokens.issue("heise.de")
         await tokens.deposit(issued["token"], "trace\n")
+        await tokens.store_result(issued["token"], {"hops": []})
         with pytest.raises(tokens.TokenError):
             await tokens.collect(issued["token"], "not-the-key")
         # The real key still works afterwards: a wrong guess must not burn it.
         got = await tokens.collect(issued["token"], issued["poll_key"])
-        assert got["status"] == "ready"
+        assert got["status"] == tokens.STATUS_READY
     asyncio.run(_scenario())
 
 
@@ -200,3 +231,22 @@ def test_tokens_and_poll_keys_are_unguessable_and_distinct():
         assert len(a["token"]) == tokens.TOKEN_BYTES * 2
         assert len(a["poll_key"]) == tokens.POLL_KEY_BYTES * 2
     asyncio.run(_scenario())
+
+
+@pytest.mark.parametrize("key,caps", [
+    ("windows", ["-h 30", "-w 1000"]),
+    ("unix", ["-m 30", "-q 3", "-w 1"]),
+    ("mtr", ["-c 3", "-m 30"]),
+])
+def test_every_command_caps_hops_and_per_hop_wait(key, caps):
+    """An uncapped tracert to a target that drops ICMP runs for minutes.
+
+    Windows waits 4 seconds a probe by default and Unix 5, over 30 hops and
+    three probes each. Without caps the page waits several minutes on a trace
+    that will never say anything useful, which reads as broken.
+    """
+    url = "https://falconeye.example/api/routemap/ingest/" + "a" * 64
+    command = next(c["command"] for c in tokens.render_commands("heise.de", url)
+                   if c["key"] == key)
+    for cap in caps:
+        assert cap in command, f"{key} command is missing the cap {cap!r}: {command}"

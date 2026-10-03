@@ -8365,6 +8365,7 @@ async function rmApi(path, options) {
     err.detail = body && body.detail;
     throw err;
   }
+  if (body && typeof body === 'object') body.__status = resp.status;
   return body;
 }
 
@@ -8498,6 +8499,9 @@ async function rmRunAtlas() {
   rmResetAtlas();
   rmShow('rm-atlas');
   try {
+    // Returns 202 with a job as soon as the measurement is scheduled. Waiting
+    // for the measurement itself happens on the server, in the background:
+    // it is longer than nginx and gunicorn will hold a request open.
     const body = await rmApi('/api/routemap/trace', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -8509,9 +8513,11 @@ async function rmRunAtlas() {
     RM('rm-atlas-probe').textContent =
       `#${probe.id}${probe.asn ? `, AS${probe.asn}` : ''}${probe.city ? `, ${probe.city}` : ''}`;
     rmShow('rm-atlas-step2');
-    RM('rm-atlas-spin2').classList.add('hidden');
-    RM('rm-atlas-tick2').classList.remove('hidden');
-    rmRenderResult(body);
+    _rmPollKey = body.poll_key;
+    rmStartPolling(body.token, () => {
+      RM('rm-atlas-spin2').classList.add('hidden');
+      RM('rm-atlas-tick2').classList.remove('hidden');
+    });
   } catch (err) {
     const detail = err.detail || {};
     rmAtlasFail(detail.kind || 'failed', detail.message
@@ -8822,7 +8828,13 @@ async function rmMakeCommand() {
     const body = await rmApi('/api/routemap/command', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ target }),
+      body: JSON.stringify({
+        target,
+        // The shell that uploads knows nothing about where the page is, so the
+        // origin is attached to the job now rather than raced in on a poll.
+        origin_lat: _rmOrigin ? _rmOrigin.lat : null,
+        origin_lon: _rmOrigin ? _rmOrigin.lon : null,
+      }),
     });
     _rmCommands = body.commands;
     _rmPollKey = body.poll_key;
@@ -8854,29 +8866,76 @@ function rmStopPolling() {
   if (_rmPoll) { clearInterval(_rmPoll); _rmPoll = null; }
 }
 
-function rmStartPolling(token) {
+/* The one poller, for an Atlas job and an uploaded trace alike.
+   Every poll is a cheap status read on the server. Anything other than a
+   normal status response ends the poll and SHOWS why: silently stopping is
+   what made the v3.35.0 502 look like the page had simply forgotten about a
+   trace that had in fact uploaded successfully. */
+function rmStartPolling(token, onFirstProgress) {
   rmStopPolling();
-  _rmPoll = setInterval(async () => {
+  let progressed = false;
+  let consecutiveErrors = 0;
+
+  const tick = async () => {
+    let body;
     try {
       const params = new URLSearchParams({ key: _rmPollKey });
       if (_rmOrigin) {
         params.set('origin_lat', _rmOrigin.lat);
         params.set('origin_lon', _rmOrigin.lon);
       }
-      const body = await rmApi(`/api/routemap/pending/${token}?${params}`);
-      if (body.status === 'waiting') return;
-      rmStopPolling();
-      rmHide('rm-waiting');
-      if (body.status === 'expired') {
-        RM('rm-expiry').textContent = 'That upload link expired. Generate another.';
+      body = await rmApi(`/api/routemap/pending/${token}?${params}`);
+    } catch (err) {
+      // A 502/503/504 is usually the server restarting or briefly unwell. One
+      // is worth riding out; a run of them is worth telling the user about,
+      // because the trace is not coming.
+      consecutiveErrors += 1;
+      if (consecutiveErrors < 3 && (err.status === 502 || err.status === 503 || err.status === 504)) {
         return;
       }
-      rmHide('rm-atlas'); rmHide('rm-atlas-error');
-      rmRenderResult(body);
-    } catch (err) {
       rmStopPolling(); rmHide('rm-waiting');
+      rmPollFailed(err.status, typeof err.detail === 'string' ? err.detail : null);
+      return;
     }
-  }, 3000);
+    consecutiveErrors = 0;
+
+    if (body.status === 'waiting' || body.status === 'processing') {
+      if (!progressed && body.status === 'processing' && onFirstProgress) {
+        progressed = true;
+        onFirstProgress();
+      }
+      return;
+    }
+    rmStopPolling();
+    rmHide('rm-waiting');
+    if (onFirstProgress) onFirstProgress();
+
+    if (body.status === 'expired') {
+      rmPollFailed(null, 'That link expired before the trace arrived. Start again.');
+      return;
+    }
+    if (body.status === 'error') {
+      rmAtlasFail(body.kind || 'failed',
+        body.message || 'The trace could not be processed.');
+      return;
+    }
+    rmHide('rm-atlas-error');
+    rmRenderResult(body);
+  };
+
+  _rmPoll = setInterval(tick, 3000);
+  tick();
+}
+
+function rmPollFailed(status, message) {
+  RM('rm-atlas-error-title').textContent = 'The trace did not come back.';
+  RM('rm-atlas-error-body').textContent =
+    (message ? message + ' ' : '') +
+    (status ? `The server answered ${status}. ` : '') +
+    'Your trace may still have been received; generate a new link and try again, or paste the output below.';
+  rmHide('rm-atlas');
+  rmShow('rm-atlas-error');
+  RM('rm-advanced').open = true;
 }
 
 // ---- exports --------------------------------------------------------------
@@ -8951,6 +9010,37 @@ async function initRouteMap() {
   RM('rm-main-target').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') RM('rm-trace-btn').click();
   });
+
+  // Validate as the user types, so "amazon" is refused before Trace is pressed
+  // rather than after, and so a URL shows the host it reduced to. The button is
+  // disabled while the field cannot be traced.
+  const liveCheck = () => {
+    const raw = RM('rm-main-target').value.trim();
+    const btn = RM('rm-trace-btn');
+    if (!raw) {
+      rmHide('rm-main-target-error'); rmHide('rm-main-target-ok');
+      btn.disabled = false; btn.classList.remove('opacity-40', 'cursor-not-allowed');
+      return;
+    }
+    const { target, error } = rmNormaliseTarget(raw);
+    if (error) {
+      RM('rm-main-target-error').textContent = error;
+      rmShow('rm-main-target-error'); rmHide('rm-main-target-ok');
+      btn.disabled = true; btn.classList.add('opacity-40', 'cursor-not-allowed');
+      return;
+    }
+    rmHide('rm-main-target-error');
+    btn.disabled = false; btn.classList.remove('opacity-40', 'cursor-not-allowed');
+    // Only worth saying when the input was not already the bare host.
+    if (target !== raw.toLowerCase()) {
+      RM('rm-main-target-ok').textContent = `Will trace to ${target}`;
+      rmShow('rm-main-target-ok');
+    } else {
+      rmHide('rm-main-target-ok');
+    }
+  };
+  RM('rm-main-target').addEventListener('input', liveCheck);
+  liveCheck();
 
   RM('rm-allow-loc').onclick = rmAskBrowser;
   RM('rm-manual-loc').onclick = () => rmOpenPicker('manual');

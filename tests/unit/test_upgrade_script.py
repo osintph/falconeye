@@ -314,3 +314,22 @@ def test_the_release_sequence_leads_with_the_script():
     assert UPGRADE_COMMAND in section, (
         "the release sequence does not name the upgrade command"
     )
+
+
+def test_the_dry_run_compares_snippets_against_the_target_ref():
+    """A preview that says "unchanged" for a file that will change is not a preview.
+
+    v3.35.0 shipped a changed nginx/snippets/security-headers.conf and the dry
+    run reported "snippets unchanged", because in a dry run the checkout has
+    not moved and it was comparing the working tree. fe_install_unit had always
+    handled this; the snippet step had not.
+    """
+    lib = _text(LIB)
+    start = lib.index("fe_install_nginx_snippets()")
+    end = lib.index("\n}", start)
+    body = lib[start:end]
+    assert "FE_TARGET_REF" in body, (
+        "fe_install_nginx_snippets does not consult FE_TARGET_REF, so a dry run "
+        "compares the pre-checkout tree and under-reports changes")
+    assert "git -C" in body and "nginx/snippets/" in body, (
+        "the dry-run comparison does not read the snippet from the target ref")

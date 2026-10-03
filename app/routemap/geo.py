@@ -102,6 +102,19 @@ IP_DB_CONCURRENCY = 6
 INFLATION_ABS_MS = 25.0
 INFLATION_FACTOR = 1.4
 
+# Hard ceilings on each external source, independent of that source's own
+# per-request timeout. A client timeout bounds one call; these bound the source.
+# Hoiho batches a whole trace into one request, the IP database makes one
+# request per address at concurrency 6, and PTR is 40 lookups at concurrency 8,
+# so each gets the time its shape needs and no more.
+#
+# A source that runs out of time contributes nothing and the hops it would have
+# placed are reported unresolved. It never fails the trace: the whole point of
+# having three sources is that losing one is survivable.
+HOIHO_BUDGET_SECONDS = 15.0
+IP_DB_BUDGET_SECONDS = 20.0
+REVERSE_DNS_BUDGET_SECONDS = 12.0
+
 ANNOT_LOCAL = "local / ISP internal"
 ANNOT_RTT_IMPOSSIBLE = "location impossible for RTT"
 ANNOT_ASYMMETRIC = "likely asymmetric return path"
@@ -623,6 +636,25 @@ def _add(entry: dict, label: str, detail: str) -> None:
 
 # -------------------------------------------------------------- the whole run ---
 
+async def _within(budget: float, coro, label: str, fallback):
+    """Run *coro* under a hard ceiling. On timeout, return *fallback*.
+
+    Wrapping rather than trusting each client's own timeout: a client timeout
+    applies per request, and a source that makes several requests can still run
+    long enough to outlive nginx and have its worker killed mid-response. That
+    is what produced the 502 in v3.35.0.
+    """
+    try:
+        return await asyncio.wait_for(coro, timeout=budget)
+    except asyncio.TimeoutError:
+        log.warning("event=routemap_source_timeout source=%s budget=%.0fs; "
+                    "its hops are reported unresolved", label, budget)
+        return fallback
+    except Exception as exc:
+        log.warning("event=routemap_source_failed source=%s error=%s", label, exc)
+        return fallback
+
+
 async def resolve(hops: list[Hop], origin: tuple[float, float] | None) -> dict:
     """Locate and annotate a parsed trace. The one entry point.
 
@@ -639,7 +671,8 @@ async def resolve(hops: list[Hop], origin: tuple[float, float] | None) -> dict:
     unnamed = [addr for hop in hops if not hop.hostnames
                for addr in hop.addresses if classify_address(addr) == "public"]
     if unnamed:
-        resolved = await reverse_dns(unnamed)
+        resolved = await _within(REVERSE_DNS_BUDGET_SECONDS,
+                                 reverse_dns(unnamed), "reverse-dns", {})
         if resolved:
             for hop in hops:
                 if hop.hostnames:
@@ -660,18 +693,14 @@ async def resolve(hops: list[Hop], origin: tuple[float, float] | None) -> dict:
             if classify_address(addr) == "public":
                 addresses.append(addr)
 
-    hoiho_task = hoiho.lookup(hostnames)
-    ip_task = ip_geolocate(addresses)
-    (hoiho_result, ip_records) = await asyncio.gather(
-        hoiho_task, ip_task, return_exceptions=True)
-
-    if isinstance(hoiho_result, BaseException):
-        log.warning("hoiho lookup failed for the whole trace: %s", hoiho_result)
-        hoiho_records, ruleset = {}, None
-    else:
-        hoiho_records, ruleset = hoiho_result
-    if isinstance(ip_records, BaseException):
-        log.warning("ip geolocation failed for the whole trace: %s", ip_records)
+    # Both sources at once, each under its own ceiling, neither able to hold
+    # the trace open past it.
+    hoiho_result, ip_records = await asyncio.gather(
+        _within(HOIHO_BUDGET_SECONDS, hoiho.lookup(hostnames), "hoiho", ({}, None)),
+        _within(IP_DB_BUDGET_SECONDS, ip_geolocate(addresses), "ip-db", {}),
+    )
+    hoiho_records, ruleset = hoiho_result if isinstance(hoiho_result, tuple) else ({}, None)
+    if not isinstance(ip_records, dict):
         ip_records = {}
 
     located = annotate(locate_hops(hops, hoiho_records, ip_records, origin))
