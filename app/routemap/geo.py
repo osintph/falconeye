@@ -3,7 +3,7 @@ Per-hop geolocation for the Route Map tab: this instance's sources, the
 routemap package's engine.
 
 The physics bound, the source order and the hop annotations moved to
-``routemap.engine.geo`` in v3.36.0; read that module's docstring for the
+``routemap_engine.geo`` in v3.36.0; read that module's docstring for the
 derivation of the bound and why each annotation exists. Every public name is
 re-exported here so the routes, the Atlas client and the tests keep reading
 ``geo.<name>``.
@@ -16,8 +16,8 @@ name in this module changes the next trace, which is what the tests rely on.
 """
 from __future__ import annotations
 
-from routemap.engine import geo as _engine
-from routemap.engine.geo import (  # noqa: F401 - re-exported for callers
+from routemap_engine import geo as _engine
+from routemap_engine.geo import (  # noqa: F401 - re-exported for callers
     ANNOT_ASYMMETRIC, ANNOT_ICMP_LIMIT, ANNOT_LOCAL, ANNOT_NO_ICMP, ANNOT_RTT_IMPOSSIBLE,
     INFLATION_ABS_MS, INFLATION_FACTOR, IP_DB_CONCURRENCY, KM_PER_MS_ROUND_TRIP,
     REVERSE_DNS_CONCURRENCY, REVERSE_DNS_MAX, REVERSE_DNS_TIMEOUT, RIPESTAT_GEO, SLACK_KM,
@@ -31,7 +31,7 @@ from app.routemap.parse import Hop
 
 USER_AGENT = f"FalconEye/3.35 ({OPERATOR_CONTACT_UA}; traceroute geolocation)"
 
-# Hard ceilings on each source. See routemap.engine.geo for why each has the
+# Hard ceilings on each source. See routemap_engine.geo for why each has the
 # value it has; they are here so an operator (or a test) can change them.
 HOIHO_BUDGET_SECONDS = _engine.HOIHO_BUDGET_SECONDS
 IP_DB_BUDGET_SECONDS = _engine.IP_DB_BUDGET_SECONDS

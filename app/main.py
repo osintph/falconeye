@@ -43,11 +43,11 @@ if not log.handlers:
     log.addHandler(_handler)
 
 # The Route Map engine lives in the routemap package since v3.36.0 and logs
-# under "routemap.engine.*", outside the tree above. Its lines (Hoiho lookups,
+# under "routemap_engine.*", outside the tree above. Its lines (Hoiho lookups,
 # source timeouts) are the same ones this tab always wrote, so they get the same
 # level and the same handler rather than falling through to the root logger,
 # which would drop every INFO line. Every user value in them is already tagged.
-_engine_log = logging.getLogger("routemap")
+_engine_log = logging.getLogger("routemap_engine")
 _engine_log.setLevel(log.level)
 if not _engine_log.handlers:
     for _h in log.handlers:
@@ -59,7 +59,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.36.1",
+    version="3.36.2",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -115,7 +115,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.36.1"}
+    return {"status": "ok", "version": "3.36.2"}
 
 
 # Operator identity is substituted into the page server-side rather than patched

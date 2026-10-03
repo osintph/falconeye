@@ -100,11 +100,11 @@ def store_kind() -> str:
 # The target is interpolated into a command string that a human is told to run
 # in their own shell, which makes this page a place where attacker-supplied text
 # can become someone else's shell command. The allowlist that prevents it lives
-# in routemap.engine.target since v3.36.0, because the desktop app passes the
+# in routemap_engine.target since v3.36.0, because the desktop app passes the
 # same value to a subprocess and needs the same guarantee. Re-exported here so
 # the routes and the tests keep one name for it.
 
-from routemap.engine.target import MAX_TARGET_LENGTH, InvalidTarget, validate_target  # noqa: E402,F401
+from routemap_engine.target import MAX_TARGET_LENGTH, InvalidTarget, validate_target  # noqa: E402,F401
 
 
 # ------------------------------------------------------- command rendering ----

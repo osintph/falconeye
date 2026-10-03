@@ -2,7 +2,7 @@
 Route Map API.
 
 Three ways in, one pipeline out. Whichever way the trace text arrives, it goes
-through the same engine, ``routemap.engine.analyse`` (the routemap package
+through the same engine, ``routemap_engine.analyse`` (the routemap-engine package
 since v3.36.0, shared with the desktop app), with this instance's sources from
 app/routemap/geo.py, so there is exactly one place a hop can be placed and
 exactly one place a format bug can live:
@@ -32,8 +32,8 @@ import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from routemap.engine import analyse as engine_analyse
-from routemap.engine import normalise_origin
+from routemap_engine import analyse as engine_analyse
+from routemap_engine import normalise_origin
 from slowapi import Limiter
 
 from app.config import (ATLAS_PER_DAY, HTTPX_TIMEOUT, OPERATOR_CONTACT_UA,
