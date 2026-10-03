@@ -8,6 +8,7 @@ depend on.
 import asyncio
 import os
 import pathlib
+import time
 
 import pytest
 
@@ -25,7 +26,16 @@ MANILA = {"origin_lat": 14.6, "origin_lon": 121.0}
 
 @pytest.fixture
 def client():
-    return TestClient(app)
+    """Context-managed on purpose.
+
+    A bare TestClient(app) starts and tears down an event-loop portal around
+    each individual request, so a background task created by one request is
+    cancelled before the next one can observe it. Under uvicorn the loop is the
+    server's and outlives any request; entering the context here gives the test
+    the same property instead of a harness artefact that looks like a bug.
+    """
+    with TestClient(app) as test_client:
+        yield test_client
 
 
 @pytest.fixture(autouse=True)
@@ -210,8 +220,25 @@ def test_a_shell_injection_target_is_refused_before_a_token_exists(client):
     assert response.status_code == 400
 
 
-def test_an_upload_is_analysed_and_handed_over_once(client):
-    issued = client.post("/api/routemap/command", json={"target": "heise.de"}).json()
+def _poll_until_done(client, token, key, tries=60):
+    """Poll a job the way the page does, and return the terminal response.
+
+    Every poll must be a fast status read: the analysis happens in a background
+    job, not here. A poll that blocks is the v3.35.0 bug.
+    """
+    for _ in range(tries):
+        response = client.get(f"/api/routemap/pending/{token}", params={"key": key})
+        assert response.status_code == 200, response.text
+        body = response.json()
+        if body.get("status") in ("ready", "error", "expired"):
+            return body
+        time.sleep(0.1)
+    raise AssertionError("the job never reached a terminal state")
+
+
+def test_an_upload_is_analysed_once_in_the_background_and_handed_over_once(client):
+    issued = client.post("/api/routemap/command",
+                         json={"target": "heise.de", **MANILA}).json()
     text = (FIXTURES / "heise_traceroute.txt").read_text()
 
     waiting = client.get(f"/api/routemap/pending/{issued['token']}",
@@ -223,14 +250,17 @@ def test_an_upload_is_analysed_and_handed_over_once(client):
                          headers={"Content-Type": "text/plain"})
     assert upload.status_code == 200
 
-    body = client.get(f"/api/routemap/pending/{issued['token']}",
-                      params={"key": issued["poll_key"], **MANILA}).json()
+    body = _poll_until_done(client, issued["token"], issued["poll_key"])
+    assert body["status"] == "ready"
     assert body["source"] == "upload"
     assert len(body["hops"]) == 16
+    # The origin recorded when the command was minted was used, even though the
+    # shell that uploaded the trace knew nothing about it.
+    assert body["origin"]["label"].startswith("Manila")
 
     gone = client.get(f"/api/routemap/pending/{issued['token']}",
                       params={"key": issued["poll_key"]}).json()
-    assert gone["status"] == "expired", "the trace was kept after being handed over"
+    assert gone["status"] == "expired", "the result was kept after being handed over"
 
 
 def test_polling_without_the_poll_key_is_refused(client):
@@ -279,7 +309,7 @@ def test_an_invalid_atlas_target_is_rejected_before_anything_is_spent(client, mo
         raise AssertionError("a measurement was created for an invalid target")
 
     monkeypatch.setattr(atlas, "configured", lambda: True)
-    monkeypatch.setattr(atlas, "trace", should_not_run)
+    monkeypatch.setattr(atlas, "start", should_not_run)
     response = client.post("/api/routemap/trace",
                            json={"target": "heise.de && id", **MANILA})
     assert response.status_code == 400
@@ -344,14 +374,125 @@ def test_an_unidentifiable_visitor_falls_back_to_the_country_of_their_origin(
     async def no_network(client_ip):
         return None, None
 
-    async def fake_trace(target, asn, country, origin, af=4):
+    async def fake_start(target, asn, country, origin, af=4):
         seen.update(asn=asn, country=country)
         raise atlas.AtlasUnavailable("noprobe", "none")
 
     monkeypatch.setattr(atlas, "configured", lambda: True)
     monkeypatch.setattr("app.routemap.routes._client_network", no_network)
-    monkeypatch.setattr(atlas, "trace", fake_trace)
+    monkeypatch.setattr(atlas, "start", fake_start)
 
     client.post("/api/routemap/trace", json={"target": "heise.de", **MANILA})
     assert seen["country"] == "PH", (
         "the Manila origin did not yield a country for probe selection")
+
+
+def test_a_trace_completes_even_when_every_external_source_hangs(client, monkeypatch):
+    """The v3.35.0 502, as a test.
+
+    A poll ran the whole geolocation pipeline inline. Hoiho, the IP database
+    and PTR between them can take longer than nginx (90s) and gunicorn (90s)
+    will hold a request open, and a worker killed mid-request takes every other
+    request on it down too, which is how a poll for an upload that had already
+    succeeded came back 502.
+
+    Two properties are asserted here, and both have to hold:
+      1. every poll answers 200 promptly, because it is a status read
+      2. the job still finishes, with the hops no source could place marked
+         unresolved rather than the whole trace failing
+    """
+    async def hangs_forever(*args, **kwargs):
+        await asyncio.sleep(3600)
+
+    monkeypatch.setattr(hoiho, "lookup", hangs_forever)
+    monkeypatch.setattr(geo, "ip_geolocate", hangs_forever)
+    monkeypatch.setattr(geo, "reverse_dns", hangs_forever)
+    # The real budgets are 12 to 20 seconds; the behaviour under test is that
+    # a budget exists and is enforced, not its production value.
+    monkeypatch.setattr(geo, "HOIHO_BUDGET_SECONDS", 0.3)
+    monkeypatch.setattr(geo, "IP_DB_BUDGET_SECONDS", 0.3)
+    monkeypatch.setattr(geo, "REVERSE_DNS_BUDGET_SECONDS", 0.3)
+
+    # A full 30-hop trace of public addresses, so every source would be asked.
+    lines = ["traceroute to example.net (203.0.113.1), 30 hops max, 60 byte packets"]
+    for hop in range(1, 31):
+        lines.append(f"{hop:>2}  62.115.{hop}.1 (62.115.{hop}.1)  {hop * 5}.000 ms")
+    trace = "\n".join(lines) + "\n"
+
+    issued = client.post("/api/routemap/command",
+                         json={"target": "example.net", **MANILA}).json()
+    upload = client.post(f"/api/routemap/ingest/{issued['token']}",
+                         content=trace.encode(),
+                         headers={"Content-Type": "text/plain"})
+    assert upload.status_code == 200
+
+    started = time.time()
+    body = _poll_until_done(client, issued["token"], issued["poll_key"], tries=50)
+    elapsed = time.time() - started
+
+    assert body["status"] == "ready", f"the job did not finish: {body}"
+    assert elapsed < 5.0, (
+        f"the job took {elapsed:.1f}s with every source hung; the per-source "
+        f"budgets are not bounding it")
+    assert len(body["hops"]) == 30
+    # No source answered, so nothing is placed, and every hop says why.
+    assert all(h["source"] == "unresolved" for h in body["hops"])
+    assert all(h["reason"] for h in body["hops"])
+
+
+def test_every_poll_is_a_status_read_and_never_runs_the_pipeline(client, monkeypatch):
+    """Structural guard on the fix: polling must not reach a source."""
+    touched = []
+
+    async def record_hoiho(*args, **kwargs):
+        touched.append("hoiho")
+        return {}, None
+
+    async def record_ip(*args, **kwargs):
+        touched.append("ip-db")
+        return {}
+
+    issued = client.post("/api/routemap/command",
+                         json={"target": "heise.de", **MANILA}).json()
+    # Poll before anything is uploaded: there is no work, so no source is asked.
+    monkeypatch.setattr(hoiho, "lookup", record_hoiho)
+    monkeypatch.setattr(geo, "ip_geolocate", record_ip)
+    for _ in range(3):
+        response = client.get(f"/api/routemap/pending/{issued['token']}",
+                              params={"key": issued["poll_key"]})
+        assert response.status_code == 200
+        assert response.json()["status"] == "waiting"
+    assert touched == [], f"a poll reached an external source: {touched}"
+
+
+def test_an_atlas_trace_returns_a_job_immediately_rather_than_blocking(client, monkeypatch):
+    """POST /trace used to block for the whole measurement, up to two minutes,
+    which is longer than nginx and gunicorn allow."""
+    async def fake_start(target, asn, country, origin, af=4):
+        return {"probe": {"id": 1018040, "asn": 9299, "country": None,
+                          "lat": 14.55, "lon": 121.03, "distance_km": 5.2},
+                "measurement_id": 999}
+
+    async def never_returns(measurement_id):
+        await asyncio.sleep(3600)
+
+    monkeypatch.setattr(atlas, "configured", lambda: True)
+    monkeypatch.setattr(atlas, "start", fake_start)
+    monkeypatch.setattr(atlas, "collect_result", never_returns)
+
+    started = time.time()
+    response = client.post("/api/routemap/trace",
+                           json={"target": "heise.de", **MANILA})
+    elapsed = time.time() - started
+
+    assert response.status_code == 202, response.text
+    assert elapsed < 5.0, f"POST /trace blocked for {elapsed:.1f}s"
+    body = response.json()
+    assert body["status"] == "running"
+    assert body["token"] and body["poll_key"]
+    assert body["probe"]["id"] == 1018040
+    # And the page can poll it straight away without waiting on the measurement.
+    poll = client.get(f"/api/routemap/pending/{body['token']}",
+                      params={"key": body["poll_key"]})
+    assert poll.status_code == 200
+    assert poll.json()["status"] in ("waiting", "processing")

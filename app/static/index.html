@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.35.0" />
+  <link rel="stylesheet" href="/static/style.css?v=3.35.1" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -1333,6 +1333,7 @@
       <button id="rm-trace-btn" class="bg-amber-400 text-gray-950 font-bold px-8 py-2.5 rounded text-sm hover:bg-amber-300 transition">Trace</button>
     </div>
     <p id="rm-main-target-error" class="hidden text-xs text-red-400 mt-2"></p>
+    <p id="rm-main-target-ok" class="hidden text-xs text-gray-500 mt-2"></p>
     <p class="text-xs text-gray-500 mt-2 max-w-3xl">
       Traces run on RIPE Atlas and are published in its public measurement database, including the
       target. Do not trace targets you need to keep confidential.
@@ -1501,6 +1502,7 @@
             <button id="rm-copy" class="absolute top-2 right-2 bg-gray-800 hover:bg-gray-700 text-xs px-2 py-1 rounded text-gray-300">Copy</button>
           </div>
           <p class="text-xs text-gray-600 mt-2">Paste it into a terminal. This page picks the result up on its own; leave the tab open. <span id="rm-expiry" class="text-gray-500"></span></p>
+          <p class="text-xs text-gray-500 mt-1">This can take up to a minute. A target that does not answer ICMP walks all 30 hops before it stops.</p>
         </div>
 
         <div id="rm-waiting" class="hidden mt-4 bg-gray-900 border border-gray-800 rounded p-4 flex items-center gap-3">
@@ -1896,6 +1898,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.35.0"></script>
+  <script src="/static/app.js?v=3.35.1"></script>
 </body>
 </html>

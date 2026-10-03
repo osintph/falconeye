@@ -342,11 +342,25 @@ fe_install_nginx_snippets() {
     [[ -d "$src" ]] || { fe_warn "no snippets in $src"; return 0; }
 
     fe_run install -d -m 0755 "$dest"
-    local file name
+    local file name compare staged
     for file in "$src"/*.conf; do
         [[ -e "$file" ]] || continue
         name="$(basename "$file")"
-        if [[ -f "$dest/$name" ]] && cmp -s "$file" "$dest/$name"; then
+        compare="$file"
+
+        # In a dry run the checkout has not moved yet, so comparing the working
+        # tree reports "unchanged" for exactly the snippet the upgrade is about
+        # to change. fe_install_unit has always compared against the target
+        # ref for this reason; v3.35.0 shipped a changed security-headers.conf
+        # and the preview said "snippets unchanged", which is not a preview.
+        if [[ "$DRY_RUN" == "true" && -n "${FE_TARGET_REF:-}" ]]; then
+            staged="$(mktemp)"
+            if git -C "$FE_APP_SRC" show "$FE_TARGET_REF:nginx/snippets/$name" > "$staged" 2>/dev/null; then
+                compare="$staged"
+            fi
+        fi
+
+        if [[ -f "$dest/$name" ]] && cmp -s "$compare" "$dest/$name"; then
             continue
         fi
         fe_run cp "$file" "$dest/$name"

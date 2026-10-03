@@ -23,11 +23,13 @@ bookkeeping. User-supplied values in log lines go through logsafe.tag().
 """
 from __future__ import annotations
 
+import asyncio
 import ipaddress
 import logging
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from slowapi import Limiter
 
@@ -45,6 +47,19 @@ limiter = Limiter(key_func=get_client_ip_key)
 log = logging.getLogger("falconeye.routemap")
 
 USER_AGENT = f"FalconEye/3.35 ({OPERATOR_CONTACT_UA}; Route Map)"
+
+# Strong references to in-flight background jobs. asyncio only holds a weak
+# reference to a task, so a task nobody keeps can be garbage collected
+# mid-flight; the set is the standard way to stop that, and the done-callback
+# is what stops it growing.
+_JOBS: set = set()
+
+
+def _spawn(coro) -> None:
+    task = asyncio.create_task(coro)
+    _JOBS.add(task)
+    task.add_done_callback(_JOBS.discard)
+
 
 _RL_ANALYZE = "routemap_analyze_rl"
 _RL_TOKEN = "routemap_token_rl"
@@ -69,6 +84,11 @@ class TraceRequest(BaseModel):
 
 class CommandRequest(BaseModel):
     target: str = Field(..., max_length=tokens.MAX_TARGET_LENGTH)
+    # The page knows where it is when it asks for the command. The shell that
+    # uploads the trace does not, so the origin is attached to the job here
+    # rather than raced in on the first poll.
+    origin_lat: float | None = None
+    origin_lon: float | None = None
 
 
 def _origin(lat: float | None, lon: float | None) -> tuple[float, float] | None:
@@ -130,6 +150,53 @@ async def _analyse(trace_text: str, origin: tuple[float, float] | None,
     log.info("event=routemap_analyze parser=%s hops=%d placed=%d",
              parsed.parser, len(located), placed)
     return body
+
+
+async def _process_upload(token: str, origin: tuple[float, float] | None) -> None:
+    """Analyse an uploaded trace once, in the background, and store the result.
+
+    This is the work that used to happen inside the poll request. Any failure
+    is recorded on the job so the page is told, rather than left polling a
+    token whose work died silently.
+    """
+    try:
+        state = await tokens.peek(token)
+        if state is None or not state.get("trace_text"):
+            return
+        # The origin the page recorded when it asked for the command.
+        saved = state.get("origin")
+        if origin is None and isinstance(saved, (list, tuple)) and len(saved) == 2:
+            origin = (saved[0], saved[1])
+        result = await _analyse(state["trace_text"], origin, extra={"source": "upload"})
+        result["target"] = result.get("target") or state.get("target")
+        await tokens.store_result(token, result)
+    except HTTPException as exc:
+        await tokens.store_error(token, "parse", str(exc.detail))
+    except Exception as exc:  # noqa: BLE001 - a job must never die silently
+        log.exception("route map upload job failed for %s", tag(token))
+        await tokens.store_error(token, "failed",
+                                 "The trace could not be processed.")
+
+
+async def _process_atlas(token: str, measurement_id: int, probe: dict,
+                         origin: tuple[float, float] | None) -> None:
+    """Wait for a scheduled Atlas measurement, analyse it, store the result."""
+    try:
+        trace_text = await atlas.collect_result(measurement_id)
+        result = await _analyse(trace_text, origin, extra={
+            "source": "atlas",
+            "measurement_id": measurement_id,
+            "probe": probe,
+        })
+        await tokens.store_result(token, result)
+    except atlas.AtlasUnavailable as exc:
+        await tokens.store_error(token, exc.kind, exc.message)
+    except HTTPException as exc:
+        await tokens.store_error(token, "parse", str(exc.detail))
+    except Exception as exc:  # noqa: BLE001
+        log.exception("route map atlas job failed for %s", tag(token))
+        await tokens.store_error(token, "failed",
+                                 "The Atlas measurement could not be processed.")
 
 
 def _daily(table: str, request: Request, limit: int, what: str) -> str:
@@ -278,24 +345,38 @@ async def trace(request: Request, body: TraceRequest):
         country = (nearby or {}).get("cc")
 
     try:
-        run = await atlas.trace(target, asn, country, origin)
+        run = await atlas.start(target, asn, country, origin)
     except atlas.AtlasUnavailable as exc:
         log.info("event=routemap_atlas_unavailable kind=%s target=%s",
                  exc.kind, tag(target))
         raise HTTPException(status_code=503,
                             detail={"kind": exc.kind, "message": exc.message}) from exc
 
-    probe = run["probe"]
-    return await _analyse(run["trace_text"], origin, extra={
-        "source": "atlas",
+    raw = run["probe"]
+    probe = {
+        "id": raw.get("id"),
+        "asn": raw.get("asn"),
+        "country": raw.get("country"),
+        "distance_km": raw.get("distance_km"),
+        "city": ((cities.nearest(raw["lat"], raw["lon"]) or {}).get("display")
+                 if raw.get("lat") is not None else None),
+    }
+
+    # The measurement is scheduled; waiting for it is up to two minutes, which
+    # is longer than nginx and gunicorn will hold a request open. So the page
+    # gets a job to poll and the waiting happens in the background.
+    issued = await tokens.issue(target, kind="atlas")
+    await tokens.update(issued["token"], status=tokens.STATUS_WAITING, probe=probe)
+    _spawn(_process_atlas(issued["token"], run["measurement_id"], probe, origin))
+
+    return JSONResponse(status_code=202, content={
+        "status": "running",
+        "token": issued["token"],
+        "poll_key": issued["poll_key"],
+        "expires_at": issued["expires_at"],
         "measurement_id": run["measurement_id"],
-        "probe": {
-            "id": probe.get("id"),
-            "asn": probe.get("asn"),
-            "country": probe.get("country"),
-            "distance_km": probe.get("distance_km"),
-            "city": (cities.nearest(probe["lat"], probe["lon"]) or {}).get("display"),
-        },
+        "probe": probe,
+        "target": target,
     })
 
 
@@ -311,8 +392,11 @@ async def make_command(request: Request, body: CommandRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     _daily(_RL_TOKEN, request, ROUTEMAP_TOKENS_PER_DAY, "upload links")
+    origin = _origin(body.origin_lat, body.origin_lon)
     try:
         issued = await tokens.issue(target)
+        if origin is not None:
+            await tokens.update(issued["token"], origin=list(origin))
     except tokens.StoreUnavailable as exc:
         # Nothing here is the caller's fault, and the paste path still works, so
         # the message says that rather than reporting a bare failure.
@@ -358,6 +442,8 @@ async def ingest(request: Request, token: str):
 
     try:
         await tokens.deposit(token, text)
+        # Analysed once, here, in the background. The poll is a status read.
+        _spawn(_process_upload(token, None))
     except tokens.StoreUnavailable as exc:
         raise HTTPException(
             status_code=503,
@@ -376,11 +462,27 @@ async def ingest(request: Request, token: str):
 @limiter.limit("120/minute")
 async def pending(request: Request, token: str, key: str = "",
                   origin_lat: float | None = None, origin_lon: float | None = None):
-    """Poll for an uploaded trace, and analyse it the moment it arrives.
+    """Poll a job. A status read: no external call, no pipeline, no waiting.
 
     ``key`` is the poll secret the page kept; it is what ties collection to the
-    browser that asked for the command.
+    browser that asked for the job.
+
+    This used to run the whole geolocation pipeline, so a poll could take longer
+    than nginx and gunicorn would allow and the worker was killed underneath it.
+    An upload that had already succeeded then came back as 502. The work now
+    happens once, in the background, and this returns 200 with a status or the
+    finished result.
+
+    The origin is accepted here only to attach it to an upload job whose origin
+    was not known when the shell uploaded it; it never triggers work.
     """
+    origin = _origin(origin_lat, origin_lon)
+    if origin is not None:
+        try:
+            await tokens.set_origin_once(token, origin)
+        except tokens.StoreUnavailable:
+            pass
+
     try:
         state = await tokens.collect(token, key)
     except tokens.StoreUnavailable as exc:
@@ -389,11 +491,4 @@ async def pending(request: Request, token: str, key: str = "",
             detail="The upload service is unavailable right now.") from exc
     except tokens.TokenError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
-
-    if state["status"] != "ready":
-        return state
-
-    result = await _analyse(state["trace_text"], _origin(origin_lat, origin_lon),
-                            extra={"source": "upload"})
-    result["target"] = result.get("target") or state.get("target")
-    return result
+    return state

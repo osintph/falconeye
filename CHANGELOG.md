@@ -5,6 +5,73 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.35.1] - 2026-10-03
+
+Route Map fixes, all from running v3.35.0 in anger.
+
+### The 502
+
+An upload succeeded, the shell got "Trace received", and the page never
+rendered anything: the poll came back `502`. Three separate things were wrong,
+and the architecture was the one that mattered.
+
+**Proximate cause.** nginx logged `connect() failed (111: Connection refused)`
+on the poll at 01:41:23, which is the second a deploy restarted the service. The
+poll landed in the restart window. That alone was bad luck.
+
+**The real problem.** The same log shows, seventy seconds earlier,
+`upstream timed out while reading response header` on `POST /api/routemap/trace`.
+`POST /trace` blocked for the whole RIPE Atlas measurement (up to 120s) and the
+poll ran the entire geolocation pipeline inline. nginx gives up at 90s and
+gunicorn kills a worker at 90s, and a killed worker takes every other in-flight
+request on it down with it. The upload path was one slow Hoiho or RIPEstat call
+away from doing this on its own, with no deploy involved.
+
+So the slow work now happens once, in a background job:
+
+- `POST /trace` schedules the measurement and returns `202` with a job token.
+- `POST /ingest/{token}` stores the trace and queues the analysis.
+- `GET /pending/{token}` is a status read. It makes no external call, runs no
+  pipeline, and returns `waiting`, `processing`, `ready` with the finished
+  result, `error` with a reason, or `expired`.
+
+**Every external source now has a hard ceiling** of its own, independent of the
+HTTP client's per-request timeout: Hoiho 15s, the IP database 20s, reverse DNS
+12s. A source that runs out of time contributes nothing and its hops are
+reported unresolved. It can no longer hold a trace open, because the point of
+having three sources is that losing one is survivable.
+
+**The page shows the failure.** It used to stop polling silently on any error,
+which is why a trace that had uploaded successfully looked forgotten. It now
+rides out a couple of 502/503/504s (a restart is brief) and then says what
+happened and offers the paste box.
+
+### Also fixed
+
+- **Generated commands are capped**: `tracert -h 30 -w 1000`,
+  `traceroute -m 30 -q 3 -w 1`, `mtr -c 3 -m 30`. An uncapped `tracert` to a
+  target that drops ICMP waits 4 seconds a probe over 30 hops and runs for
+  minutes while the page looks broken. With a note saying it can take a minute.
+- **The target field validates as you type.** It accepted `amazon` until Trace
+  was pressed; now Trace is disabled while the field cannot be traced, and a
+  URL shows the host it reduced to.
+- **`--dry-run` compares nginx snippets against the target ref.** v3.35.0
+  shipped a changed `security-headers.conf` and the preview said "snippets
+  unchanged", because in a dry run the checkout has not moved yet.
+  `fe_install_unit` had always handled this; the snippet step had not.
+- **Redis is documented as a requirement**, with what degrades without it.
+  `redis-server` has been in the package list since before Route Map, where it
+  only backed caches; Route Map's Atlas and upload paths depend on it, because
+  both hand a job between two requests that can land on different workers.
+
+### Notes
+
+- The raw trace is dropped the moment it has been analysed, rather than living
+  out the token's TTL.
+- Dipolog City stands. The RTT bound is an upper limit only, as specified.
+
+---
+
 ## [3.35.0] - 2026-10-03
 
 ### Route Map tab

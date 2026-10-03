@@ -19,6 +19,15 @@ deploy did not match it. Keep this doc in sync with reality.
 
 ## Prerequisites: system packages
 
+> **Redis is required, not optional, from v3.35.0.** `redis-server` has been in
+> the package list since before Route Map (it backed the Prospect and Image
+> caches, where losing it only cost caching). Route Map's Atlas and upload paths
+> now *depend* on it: both hand a job between two requests that land on two
+> different gunicorn workers, so they need a store both can see. Without Redis
+> those two paths report themselves unavailable and the tab offers pasting,
+> which needs no store. Check with `systemctl is-active redis-server` and
+> `curl -s localhost:8000/api/routemap/capabilities`.
+
 > **v3.35.0: there is now one list.** The package list lives in
 > `FE_SYSTEM_PACKAGES` in `scripts/lib/common.sh`, and **both** `provision.sh`
 > and `upgrade.sh` install from it via `fe_install_system_packages()`. Before
