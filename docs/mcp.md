@@ -66,12 +66,23 @@ feature the web app does not use. So the MCP server gets its own venv:
 
 ```bash
 sudo python3 -m venv /opt/falconeye/mcp-venv
-sudo /opt/falconeye/mcp-venv/bin/pip install -r /opt/falconeye/app_src/requirements.txt
-sudo /opt/falconeye/mcp-venv/bin/pip install 'mcp==2.2.0'
+cd /opt/falconeye/app_src
+sudo bash -c 'source scripts/lib/common.sh; /opt/falconeye/mcp-venv/bin/pip install \
+  -r <(fe_mcp_requirements requirements.txt requirements-mcp.txt)'
 ```
 
-The second command upgrades uvicorn **inside that venv only**, which is harmless:
-nothing in this venv runs gunicorn. The app venv is untouched.
+`requirements-mcp.txt` names the SDK and the uvicorn it needs, and every package
+it names **overrides** that package's line in `requirements.txt` for this venv
+only. Both are installed in one pip run, so uvicorn is never downgraded under the
+SDK. Nothing in this venv runs gunicorn; the app venv is untouched.
+
+`scripts/upgrade.sh` does exactly this on every upgrade that changes either file
+(`fe_pip_sync`), and then proves the server works (`fe_check_mcp`, step 9): pip
+must find no unmet requirement of `mcp`, and `scripts/mcp_check.py` must start
+the server over stdio and get every declared tool back from `tools/list`. Either
+failure stops the upgrade with a repair command. Before v3.36.1 the upgrade
+installed `requirements.txt` alone here, which silently downgraded uvicorn below
+the SDK's minimum on v3.36.0.
 
 Check it:
 

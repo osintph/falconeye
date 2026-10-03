@@ -192,13 +192,13 @@ fe_pip_sync() {
     local changed=true
 
     if [[ "${FE_FORCE_DEPS:-false}" != "true" && -n "$from" && "$from" != "unknown" ]]; then
-        if git -C "$FE_APP_SRC" diff --quiet "$from" "$to" -- requirements.txt 2>/dev/null; then
+        if git -C "$FE_APP_SRC" diff --quiet "$from" "$to" -- requirements.txt requirements-mcp.txt 2>/dev/null; then
             changed=false
         fi
     fi
 
     if [[ "$changed" != "true" ]]; then
-        fe_say "requirements.txt unchanged between $from and $to, skipping pip"
+        fe_say "requirements unchanged between $from and $to, skipping pip"
         return 0
     fi
 
@@ -209,12 +209,77 @@ fe_pip_sync() {
         fe_warn "$FE_VENV/bin/pip not found, skipping the app venv"
     fi
 
-    # The MCP venv is optional and holds the same app requirements plus the SDK.
-    # It exists only where an operator set it up, so its absence is normal.
+    # The MCP venv is optional and exists only where an operator set it up. It
+    # holds the app requirements plus the SDK, and the SDK needs a newer uvicorn
+    # than the app pins. Until v3.36.1 this installed requirements.txt alone,
+    # which downgraded uvicorn under the SDK on the first upgrade that changed
+    # requirements.txt (v3.36.0). Now it is one pip run over requirements.txt
+    # minus every package requirements-mcp.txt overrides, plus that file.
     if [[ -x "$FE_MCP_VENV/bin/pip" ]]; then
-        fe_say "installing into $FE_MCP_VENV (MCP server)"
-        fe_run "$FE_MCP_VENV/bin/pip" install -r "$FE_APP_SRC/requirements.txt" --quiet
+        fe_say "installing into $FE_MCP_VENV (MCP server, requirements.txt + requirements-mcp.txt)"
+        fe_run "$FE_MCP_VENV/bin/pip" install --quiet -r <(fe_mcp_requirements \
+            "$FE_APP_SRC/requirements.txt" "$FE_APP_SRC/requirements-mcp.txt")
     fi
+}
+
+# The MCP venv's requirement set, on stdout: every line of the app file whose
+# package is NOT named in the override file, then the override file. Package
+# names are compared the way pip does (case-insensitive, - _ . equivalent).
+fe_mcp_requirements() {
+    local app="$1" overrides="$2"
+    if [[ ! -f "$overrides" ]]; then
+        cat "$app"
+        return 0
+    fi
+    awk '
+        function pkg(line,   n) {
+            sub(/[#].*/, "", line); gsub(/^[ \t]+|[ \t]+$/, "", line)
+            if (line == "" || line ~ /^-/) return ""
+            n = line; sub(/[ \t]*[\[<>=!~@;].*$/, "", n)
+            n = tolower(n); gsub(/[-_.]+/, "-", n)
+            return n
+        }
+        FNR == NR { p = pkg($0); if (p != "") over[p] = 1; next }
+        { p = pkg($0); if (p == "" || !(p in over)) print }
+    ' "$overrides" "$app"
+    printf '\n# --- requirements-mcp.txt (overrides) ---\n'
+    cat "$overrides"
+}
+
+# Proves the MCP server works after an upgrade, so a broken MCP venv cannot ship
+# silently again (v3.36.0 did). Two checks, both must pass:
+#   1. pip finds no unmet requirement of the mcp package in that venv
+#   2. scripts/mcp_check.py starts the server over stdio, exactly as a client
+#      does, and it answers initialize and tools/list with every tool
+# Skipped, with a note, when there is no MCP venv: it is optional.
+fe_check_mcp() {
+    if [[ ! -x "$FE_MCP_VENV/bin/python" ]]; then
+        fe_say "no MCP venv at $FE_MCP_VENV, nothing to check"
+        return 0
+    fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        fe_say "[dry-run] would check $FE_MCP_VENV and start the MCP server over stdio"
+        return 0
+    fi
+
+    local conflicts
+    conflicts="$("$FE_MCP_VENV/bin/pip" check 2>/dev/null | grep -i '^mcp ' || true)"
+    if [[ -n "$conflicts" ]]; then
+        printf '\n%s[FAILED] the MCP venv does not satisfy the MCP SDK%s\n' "$_FE_RED$_FE_BOLD" "$_FE_OFF" >&2
+        printf '  %s\n' "$conflicts" >&2
+        printf '  Repair: sudo %s/bin/pip install -r %s/requirements-mcp.txt\n' "$FE_MCP_VENV" "$FE_APP_SRC" >&2
+        exit 1
+    fi
+
+    if ! fe_as_service_user env -C "$FE_APP_SRC" bash -c \
+            'set -a; [[ -f "$1" ]] && . "$1"; set +a; exec "$2" scripts/mcp_check.py "$2"' \
+            _ "$FE_ENV_FILE" "$FE_MCP_VENV/bin/python"; then
+        printf '\n%s[FAILED] the MCP server did not start and list its tools%s\n' "$_FE_RED$_FE_BOLD" "$_FE_OFF" >&2
+        printf '  The web app is live; only the MCP server is affected.\n' >&2
+        printf '  Re-run by hand: cd %s && %s/bin/python scripts/mcp_check.py\n' "$FE_APP_SRC" "$FE_MCP_VENV" >&2
+        exit 1
+    fi
+    fe_ok "MCP server starts over stdio and lists its tools"
 }
 
 # ------------------------------------------------- system packages -----------
