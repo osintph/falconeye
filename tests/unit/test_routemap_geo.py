@@ -267,3 +267,99 @@ def test_a_silent_hop_in_the_middle_is_not_the_tail():
             _located(hop=3, min_rtt_ms=20.0, loss_pct=0.0, addresses=["c"])]
     geo.annotate(hops)
     assert geo.ANNOT_NO_ICMP not in hops[1]["annotations"]
+
+
+# ---------- reverse DNS: the defect the first live Atlas trace exposed ----------
+
+def test_a_nameless_trace_gets_hostnames_before_the_sources_are_asked(monkeypatch):
+    """RIPE Atlas returns hop addresses and no names at all.
+
+    The first live trace to heise.de came back with every hostname column
+    empty, so Hoiho and the site-code table had nothing to work on and every
+    hop fell back to the IP database: the Marseille router rendered as "FR" and
+    the Singapore and Paris hops were not placed. The hostname-first design was
+    silently inert on the primary path.
+
+    Names are now filled in from PTR before any source is consulted, which also
+    covers a pasted "traceroute -n" or "tracert -d".
+    """
+    import asyncio
+
+    async def fake_ptr(addresses):
+        assert "62.115.112.222" in addresses
+        return {"62.115.112.222": "sng-b6-link.ip.twelve99.net"}
+
+    async def no_hoiho(hostnames):
+        return {}, None
+
+    async def no_ip(addresses):
+        return {}
+
+    monkeypatch.setattr(geo, "reverse_dns", fake_ptr)
+    monkeypatch.setattr(geo, "ip_geolocate", no_ip)
+    monkeypatch.setattr("app.routemap.hoiho.lookup", no_hoiho)
+
+    # A hop exactly as Atlas delivers it: an address, no name.
+    hop = Hop(hop=7, addresses=["62.115.112.222"], rtts_ms=[58.5], sent=3, lost=0)
+    result = asyncio.run(geo.resolve([hop], MANILA))
+    entry = result["hops"][0]
+
+    assert entry["hostname"] == "sng-b6-link.ip.twelve99.net", (
+        "the hop was never given a name, so the hostname sources cannot fire")
+    assert entry["source"] == geo.SOURCE_SITE_CODE
+    assert "Singapore" in entry["place"]
+
+
+def test_reverse_dns_is_not_asked_about_private_addresses(monkeypatch):
+    """A private hop is the operator's own network; it is not looked up."""
+    import asyncio
+
+    asked = {}
+
+    async def fake_ptr(addresses):
+        asked["addresses"] = list(addresses)
+        return {}
+
+    async def no_hoiho(hostnames):
+        return {}, None
+
+    async def no_ip(addresses):
+        return {}
+
+    monkeypatch.setattr(geo, "reverse_dns", fake_ptr)
+    monkeypatch.setattr(geo, "ip_geolocate", no_ip)
+    monkeypatch.setattr("app.routemap.hoiho.lookup", no_hoiho)
+
+    hops = [Hop(hop=1, addresses=["192.168.1.1"], rtts_ms=[1.0], sent=3, lost=0),
+            Hop(hop=2, addresses=["198.51.100.1"], rtts_ms=[8.0], sent=3, lost=0),
+            Hop(hop=3, addresses=["62.115.112.222"], rtts_ms=[58.0], sent=3, lost=0)]
+    asyncio.run(geo.resolve(hops, MANILA))
+    assert asked["addresses"] == ["62.115.112.222"], (
+        f"private hops were sent to the resolver: {asked['addresses']}")
+
+
+def test_a_hop_that_already_has_a_name_is_not_re_resolved(monkeypatch):
+    """The tool's own answer is authoritative; PTR only fills gaps."""
+    import asyncio
+
+    asked = {}
+
+    async def fake_ptr(addresses):
+        asked["addresses"] = list(addresses)
+        return {}
+
+    async def no_hoiho(hostnames):
+        return {}, None
+
+    async def no_ip(addresses):
+        return {}
+
+    monkeypatch.setattr(geo, "reverse_dns", fake_ptr)
+    monkeypatch.setattr(geo, "ip_geolocate", no_ip)
+    monkeypatch.setattr("app.routemap.hoiho.lookup", no_hoiho)
+
+    hop = Hop(hop=7, addresses=["62.115.112.222"],
+              hostnames=["sng-b6-link.ip.twelve99.net"],
+              rtts_ms=[58.5], sent=3, lost=0)
+    asyncio.run(geo.resolve([hop], MANILA))
+    assert not asked.get("addresses"), "a hop that already had a name was re-resolved"
