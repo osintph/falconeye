@@ -329,3 +329,29 @@ def test_capabilities_reports_an_unreachable_store_as_upload_disabled(client, mo
     body = client.get("/api/routemap/capabilities").json()
     assert body["upload_enabled"] is False
     assert body["upload_store"] == "unavailable"
+
+
+def test_an_unidentifiable_visitor_falls_back_to_the_country_of_their_origin(
+        client, monkeypatch):
+    """Found running the first live trace: a request whose address yields no
+    ASN (a local caller, a visitor behind something that hides it) gave up with
+    "no probe near you", while the origin they had already supplied narrowed it
+    perfectly well. Resolving a country from those coordinates is a lookup in
+    the bundled city table, so it costs no request and tells nobody anything.
+    """
+    seen = {}
+
+    async def no_network(client_ip):
+        return None, None
+
+    async def fake_trace(target, asn, country, origin, af=4):
+        seen.update(asn=asn, country=country)
+        raise atlas.AtlasUnavailable("noprobe", "none")
+
+    monkeypatch.setattr(atlas, "configured", lambda: True)
+    monkeypatch.setattr("app.routemap.routes._client_network", no_network)
+    monkeypatch.setattr(atlas, "trace", fake_trace)
+
+    client.post("/api/routemap/trace", json={"target": "heise.de", **MANILA})
+    assert seen["country"] == "PH", (
+        "the Manila origin did not yield a country for probe selection")

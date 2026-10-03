@@ -267,6 +267,16 @@ async def trace(request: Request, body: TraceRequest):
     origin = _origin(body.origin_lat, body.origin_lon)
     asn, country = await _client_network(client_ip)
 
+    # Neither the ASN nor the country could be read from the address: the
+    # visitor is behind something that hides it, or the lookup failed. The
+    # origin they already gave us still narrows it, and resolving a country
+    # from coordinates is a lookup in the bundled city table, so it costs no
+    # request and tells nobody anything. Without this the trace gives up with
+    # "no probe near you" while a perfectly good probe sits in their country.
+    if not asn and not country and origin is not None:
+        nearby = cities.nearest(*origin)
+        country = (nearby or {}).get("cc")
+
     try:
         run = await atlas.trace(target, asn, country, origin)
     except atlas.AtlasUnavailable as exc:
