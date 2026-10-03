@@ -5,6 +5,30 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.1] - 2026-10-03
+
+### Upgrades no longer break the MCP server's venv, and prove it
+
+v3.36.0 was the first upgrade since the MCP server shipped to change
+`requirements.txt`, and `scripts/upgrade.sh` reinstalled that file alone into
+`/opt/falconeye/mcp-venv`. It pins `uvicorn==0.29.0` for the web app; the MCP
+SDK needs `>=0.31.1`. pip printed a resolver conflict, the script carried on,
+and nothing checked. The venv was repaired by hand on the box the same day.
+
+- `requirements-mcp.txt` lists what the MCP venv needs on top of the app
+  (`mcp==2.2.0`, `uvicorn[standard]==0.54.0`). Every package it names
+  overrides that package's line in `requirements.txt`, and the two are
+  installed in one pip run, so the venv never passes through the broken state.
+  A change to either file triggers the install.
+- Upgrade step 9 checks the MCP server whenever the venv exists: pip must find
+  no unmet requirement of `mcp`, and `scripts/mcp_check.py` starts the server
+  over stdio, as a client does, and must get every declared tool back from
+  `tools/list`. Either failure stops the upgrade with a repair command.
+
+The app venv is untouched by all of this.
+
+---
+
 ## [3.36.0] - 2026-10-03
 
 ### The Route Map engine is its own package

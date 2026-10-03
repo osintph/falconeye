@@ -1,0 +1,14 @@
+# The MCP server venv (/opt/falconeye/mcp-venv): requirements.txt PLUS these,
+# with every package named here OVERRIDING its line in requirements.txt.
+#
+# Why a second file: the SDK needs uvicorn>=0.31.1, and the web app pins
+# uvicorn==0.29.0 because the client-IP trust model is verified against that
+# version (docs/deploy-runbook.md). Installing requirements.txt alone into this
+# venv silently downgrades uvicorn under the SDK, which is what v3.36.0's
+# upgrade did. scripts/lib/common.sh (fe_pip_sync) installs both files in ONE
+# pip run with the overridden lines removed, so the venv is never in that state,
+# and scripts/mcp_check.py proves the server answers afterwards.
+#
+# The app venv never reads this file.
+mcp==2.2.0
+uvicorn[standard]==0.54.0

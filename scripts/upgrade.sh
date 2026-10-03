@@ -74,11 +74,11 @@ fe_say "currently: $PREVIOUS_REF (version $PREVIOUS_VERSION)"
 [[ "$DRY_RUN" == "true" ]] && fe_warn "dry run: nothing will be changed"
 
 # ---- 1. backups, before anything is touched -----------------------------------
-fe_step "1/8 Backing up .env, database and the installed unit"
+fe_step "1/9 Backing up .env, database and the installed unit"
 fe_backup
 
 # ---- 2. move the checkout ------------------------------------------------------
-fe_step "2/8 Fetching tags and checking out the target"
+fe_step "2/9 Fetching tags and checking out the target"
 if [[ -z "$TARGET" ]]; then
     # Fetch first or "the latest tag" is whatever this clone last heard about.
     fe_git_fetch
@@ -96,7 +96,7 @@ TARGET_VERSION="$(fe_source_version "$TARGET")"
 fe_say "version in $TARGET: $TARGET_VERSION"
 
 # ---- 3. dependencies -----------------------------------------------------------
-fe_step "3/8 System packages and Python dependencies"
+fe_step "3/9 System packages and Python dependencies"
 # System packages first: a release that needs a new native library needs it
 # before the import smoke test, and before the restart at step 7. This is the
 # step whose absence meant a new apt package only ever reached fresh installs.
@@ -105,30 +105,35 @@ fe_check_binaries || true
 fe_pip_sync "$PREVIOUS_REF" "$TARGET"
 
 # ---- 4. systemd unit -----------------------------------------------------------
-fe_step "4/8 systemd unit"
+fe_step "4/9 systemd unit"
 fe_ensure_log_dir
 fe_install_unit
 
 # ---- 5. nginx ------------------------------------------------------------------
-fe_step "5/8 nginx snippets and conf.d"
+fe_step "5/9 nginx snippets and conf.d"
 fe_install_nginx_snippets
 fe_sync_nginx_confd
 fe_check_vhost_drift
 fe_nginx_test_reload
 
 # ---- 6. migrations and cache flushes the release declares ----------------------
-fe_step "6/8 Database migrations and release actions"
+fe_step "6/9 Database migrations and release actions"
 fe_db_init
 fe_apply_release_actions "$PREVIOUS_VERSION" "$TARGET_VERSION"
 
 # ---- 7. restart ----------------------------------------------------------------
-fe_step "7/8 Restarting $FE_SERVICE"
+fe_step "7/9 Restarting $FE_SERVICE"
 fe_restart_service
 
 # ---- 8. prove it ---------------------------------------------------------------
-fe_step "8/8 Health check"
+fe_step "8/9 Health check"
 fe_health_check "$TARGET_VERSION" "$PREVIOUS_REF"
 fe_preflight_env
+
+# ---- 9. the MCP server, if this box has one ------------------------------------
+# v3.36.0 left the MCP venv unable to satisfy its own SDK and nothing said so.
+fe_step "9/9 MCP server"
+fe_check_mcp
 
 if [[ "$DRY_RUN" == "true" ]]; then
     printf '\n%s=== dry run complete: %s would replace %s ===%s\n' \
