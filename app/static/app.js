@@ -8577,29 +8577,58 @@ function rmCentreLongitude(points) {
   return Math.atan2(y, x) * 180 / Math.PI;
 }
 
-async function rmBaseMap(containerId, height, centreLon) {
-  const el = RM(containerId);
+/* Build a map into a container. One builder for the on-screen map, the origin
+   picker and the export, so what you export is what you were looking at, drawn
+   at a size that fits the whole route.
+
+   `fit` picks the framing:
+     "world"  the whole globe, which is the familiar default view
+     "route"  tight around every placed marker, which is what an export wants
+              regardless of where the user has panned to. */
+async function rmBaseMap(containerId, height, centreLon, opts) {
+  const el = typeof containerId === 'string' ? RM(containerId) : containerId;
   if (!el || !window.d3 || !window.topojson) return null;
+  opts = opts || {};
   const t = await rmTopo();
   const geo = topojson.feature(t, t.objects.countries);
-  const w = el.clientWidth || 800, h = height || el.clientHeight || 420;
+  const w = opts.width || el.clientWidth || 800;
+  const h = height || opts.height || el.clientHeight || 420;
   el.innerHTML = '';
   const svg = d3.select(el).append('svg')
-    .attr('viewBox', `0 0 ${w} ${h}`).attr('width', '100%').attr('height', '100%');
-  const projection = d3.geoNaturalEarth1().rotate([-(centreLon || 0), 0]).fitSize([w, h], geo);
+    .attr('viewBox', `0 0 ${w} ${h}`)
+    .attr('width', opts.width || '100%')
+    .attr('height', opts.height || '100%');
+
+  const projection = d3.geoNaturalEarth1().rotate([-(centreLon || 0), 0]);
+  if (opts.fitTo) {
+    // Frame the route itself, with padding so markers are not on the edge.
+    const pad = opts.pad == null ? 48 : opts.pad;
+    projection.fitExtent([[pad, pad], [w - pad, h - pad]], opts.fitTo);
+    // A single-point route (everything in one city) fits to an absurd scale.
+    const maxScale = (opts.maxScale == null ? 900 : opts.maxScale);
+    if (projection.scale() > maxScale) {
+      const centre = d3.geoCentroid(opts.fitTo);
+      projection.scale(maxScale).translate([w / 2, h / 2]).center(centre);
+    }
+  } else {
+    projection.fitSize([w, h], geo);
+  }
+
   svg.append('rect').attr('width', w).attr('height', h).attr('fill', '#0f172a');
-  svg.append('g').selectAll('path').data(geo.features).join('path')
+  // Everything that moves under zoom lives in this group.
+  const root = svg.append('g').attr('class', 'rm-zoom-root');
+  root.append('g').selectAll('path').data(geo.features).join('path')
     .attr('d', d3.geoPath(projection)).attr('fill', '#1f2937')
     .attr('stroke', '#0a0a0a').attr('stroke-width', 0.4);
-  return { svg, projection, el, w, h };
+  return { svg, root, projection, el, w, h, geo };
 }
 
 async function rmDrawPickMap() {
   const base = await rmBaseMap('rm-pick-map', 240, 0);
   if (!base) return;
-  const { svg, projection } = base;
+  const { svg, root, projection } = base;
   svg.style('cursor', 'crosshair');
-  const marker = svg.append('circle').attr('r', 5).attr('fill', '#fbbf24')
+  const marker = root.append('circle').attr('r', 5).attr('fill', '#fbbf24')
     .attr('stroke', '#0a0a0a').attr('stroke-width', 1.5).style('display', 'none');
   svg.on('click', function (event) {
     const [x, y] = d3.pointer(event, this);
@@ -8626,26 +8655,112 @@ function rmCollapse(hops) {
   return out;
 }
 
-function rmClusterOnScreen(points, projection) {
+function rmClusterOnScreen(points, projection, radiusPx) {
+  const limit = radiusPx == null ? RM_CLUSTER_PX : radiusPx;
   const clusters = [];
   for (const p of points) {
     const [x, y] = projection([p.lon, p.lat]);
     const near = clusters.find(c =>
-      Math.hypot(c.x - x, c.y - y) <= RM_CLUSTER_PX && !c.isOrigin && !p.isOrigin);
+      Math.hypot(c.x - x, c.y - y) <= limit && !c.isOrigin && !p.isOrigin);
     if (near) { near.members.push(p); continue; }
     clusters.push({ x, y, members: [p], isOrigin: !!p.isOrigin });
   }
   return clusters;
 }
 
-async function rmDrawMap(data) {
+/* The ordered markers of a route: the origin first, then each placed hop,
+   consecutive hops in one place collapsed into one marker. */
+function rmRoutePoints(data) {
   const origin = data.origin || {};
-  if (origin.lat == null) return;
-  const markers = rmCollapse(data.hops);
+  const markers = rmCollapse(data.hops || []);
+  if (origin.lat == null) return markers;
   const originMarker = { key: '__origin', place: origin.label, lat: origin.lat,
                          lon: origin.lon, source: 'origin', hops: [], isOrigin: true };
-  const points = [originMarker, ...markers.filter(m =>
+  return [originMarker, ...markers.filter(m =>
     !(Math.abs(m.lat - origin.lat) < 0.2 && Math.abs(m.lon - origin.lon) < 0.2))];
+}
+
+function rmRouteGeoJson(points) {
+  return { type: 'MultiPoint', coordinates: points.map(p => [p.lon, p.lat]) };
+}
+
+/* Paint the route onto a prepared base map. Shared by the screen and the
+   export, so they cannot drift. */
+function rmPaintRoute(base, data, points, opts) {
+  opts = opts || {};
+  const { root, projection, el } = base;
+  const scale = opts.scale || 1;
+
+  root.append('path')
+    .datum({ type: 'LineString', coordinates: points.map(p => [p.lon, p.lat]) })
+    .attr('d', d3.geoPath(projection))
+    .attr('fill', 'none').attr('stroke', '#fbbf24')
+    .attr('stroke-width', 1.6 * scale).attr('stroke-opacity', 0.85);
+
+  const clusters = rmClusterOnScreen(points, projection, RM_CLUSTER_PX * scale);
+  const g = root.append('g');
+  let tip = null;
+  if (!opts.static) {
+    tip = d3.select(el).append('div')
+      .style('position', 'absolute').style('pointer-events', 'none').style('opacity', 0)
+      .style('background', '#111827').style('color', '#f3f4f6')
+      .style('border', '1px solid #374151').style('border-radius', '4px')
+      .style('padding', '5px 8px').style('font-size', '11px').style('z-index', 10)
+      .style('max-width', '280px');
+  }
+
+  clusters.forEach((c, i) => {
+    const multi = c.members.length > 1;
+    const circle = g.append('circle')
+      .attr('cx', c.x).attr('cy', c.y)
+      .attr('r', (c.isOrigin ? 6 : (multi ? 7 : 4.5)) * scale)
+      .attr('fill', c.isOrigin ? RM_SRC_COLOR.origin : (RM_SRC_COLOR[c.members[0].source] || '#9ca3af'))
+      .attr('stroke', '#0a0a0a').attr('stroke-width', 1.5 * scale);
+    if (tip) {
+      circle
+        .on('mousemove', function (event) {
+          const r = el.getBoundingClientRect();
+          const html = c.isOrigin
+            ? `<strong>${escapeHtml(c.members[0].place || 'your location')}</strong><br>where you are`
+            : c.members.map(m =>
+                `<strong>${escapeHtml(m.place || 'unknown')}</strong> ` +
+                `<span style="color:${RM_SRC_COLOR[m.source]}">${escapeHtml(m.source)}</span><br>` +
+                `hop ${m.hops.map(x => x.hop).join(', ')}`).join('<hr style="border-color:#374151;margin:3px 0">');
+          tip.style('opacity', 1).html(html)
+            .style('left', (event.clientX - r.left + 12) + 'px')
+            .style('top', (event.clientY - r.top + 12) + 'px');
+        })
+        .on('mouseleave', () => tip.style('opacity', 0));
+    }
+    g.append('text')
+      .attr('x', c.x + (multi ? 0 : 7 * scale)).attr('y', c.y + (multi ? 3 * scale : -6 * scale))
+      .attr('text-anchor', multi ? 'middle' : 'start')
+      .attr('fill', multi ? '#0a0a0a' : '#e5e7eb')
+      .attr('font-size', (multi ? 8 : 9) * scale + 'px')
+      .attr('font-family', 'ui-monospace, Menlo, monospace')
+      .attr('font-weight', multi ? 'bold' : 'normal')
+      .text(c.isOrigin ? 'you' : (multi ? String(c.members.length) : String(i)));
+  });
+  return clusters;
+}
+
+function rmLegendHtml(clusters, data) {
+  const clustered = clusters.filter(c => c.members.length > 1).length;
+  return `
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR.origin}"></span>you</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR.hoiho}"></span>hostname (Hoiho)</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR['site-code']}"></span>carrier site code</span>
+    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR['ip-db']}"></span>IP database</span>
+    <span class="text-gray-600">${clusters.length - 1} markers, ${data.hops.length} hops${clustered ? `, ${clustered} clustered` : ''}</span>`;
+}
+
+var _rmZoom = null;
+var _rmZoomRoot = null;
+var _rmFitTransform = null;
+
+async function rmDrawMap(data) {
+  const points = rmRoutePoints(data);
+  if (!points.length) return;
 
   const base = await rmBaseMap('rm-map-container', null, rmCentreLongitude(points));
   if (!base) {
@@ -8653,61 +8768,177 @@ async function rmDrawMap(data) {
       '<p class="text-gray-500 text-sm p-4">Map library did not load.</p>';
     return;
   }
-  const { svg, projection, el } = base;
+  const clusters = rmPaintRoute(base, data, points);
+  RM('rm-map-legend').innerHTML = rmLegendHtml(clusters, data);
 
-  // Geodesic: a GeoJSON LineString through d3.geoPath is resampled along great
-  // circles by the projection, so these are real geodesics with no new library.
-  svg.append('path')
-    .datum({ type: 'LineString', coordinates: points.map(p => [p.lon, p.lat]) })
-    .attr('d', d3.geoPath(projection))
-    .attr('fill', 'none').attr('stroke', '#fbbf24')
-    .attr('stroke-width', 1.6).attr('stroke-opacity', 0.85);
+  // ---- zoom and pan, using d3's own behaviour. No new dependency.
+  const { svg, root, projection, w, h } = base;
+  _rmZoomRoot = root;
+  _rmZoom = d3.zoom()
+    .scaleExtent([1, 40])
+    // Keep the map inside its frame rather than letting it be dragged away.
+    .translateExtent([[0, 0], [w, h]])
+    .on('zoom', (event) => {
+      const k = event.transform.k;
+      root.attr('transform', event.transform);
+      // Everything inside the zoomed group is counter-scaled, so zooming moves
+      // the map and not the furniture: markers and labels keep their on-screen
+      // size and lines stay hairlines, which is the whole reason to zoom.
+      root.selectAll('circle')
+        .attr('stroke-width', 1.5 / k)
+        .attr('r', function () {
+          const base = +this.getAttribute('data-r') ||
+            (this.setAttribute('data-r', this.getAttribute('r')),
+             +this.getAttribute('r'));
+          return base / k;
+        });
+      root.selectAll('text')
+        .attr('font-size', function () {
+          const base = +this.getAttribute('data-fs') ||
+            (this.setAttribute('data-fs', parseFloat(this.getAttribute('font-size'))),
+             parseFloat(this.getAttribute('font-size')));
+          return (base / k) + 'px';
+        });
+      root.selectAll('path[stroke="#fbbf24"]').attr('stroke-width', 1.6 / k);
+    });
+  svg.call(_rmZoom).style('cursor', 'grab');
+  svg.on('mousedown.cursor', () => svg.style('cursor', 'grabbing'));
+  svg.on('mouseup.cursor', () => svg.style('cursor', 'grab'));
 
-  const clusters = rmClusterOnScreen(points, projection);
-  const tip = d3.select(el).append('div')
-    .style('position', 'absolute').style('pointer-events', 'none').style('opacity', 0)
-    .style('background', '#111827').style('color', '#f3f4f6')
-    .style('border', '1px solid #374151').style('border-radius', '4px')
-    .style('padding', '5px 8px').style('font-size', '11px').style('z-index', 10)
-    .style('max-width', '280px');
+  // The transform that frames the route, precomputed so "fit route" is instant
+  // and so the export can use exactly the same framing.
+  const xs = points.map(p => projection([p.lon, p.lat])[0]);
+  const ys = points.map(p => projection([p.lon, p.lat])[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const pad = 40;
+  const k = Math.max(1, Math.min(40,
+    0.9 / Math.max((x1 - x0 + pad) / w, (y1 - y0 + pad) / h)));
+  _rmFitTransform = d3.zoomIdentity
+    .translate(w / 2, h / 2).scale(k)
+    .translate(-(x0 + x1) / 2, -(y0 + y1) / 2);
 
-  const g = svg.append('g');
-  clusters.forEach((c, i) => {
-    const multi = c.members.length > 1;
-    g.append('circle')
-      .attr('cx', c.x).attr('cy', c.y)
-      .attr('r', c.isOrigin ? 6 : (multi ? 7 : 4.5))
-      .attr('fill', c.isOrigin ? RM_SRC_COLOR.origin : (RM_SRC_COLOR[c.members[0].source] || '#9ca3af'))
-      .attr('stroke', '#0a0a0a').attr('stroke-width', 1.5)
-      .on('mousemove', function (event) {
-        const r = el.getBoundingClientRect();
-        const html = c.isOrigin
-          ? `<strong>${escapeHtml(c.members[0].place || 'your location')}</strong><br>where you are`
-          : c.members.map(m =>
-              `<strong>${escapeHtml(m.place || 'unknown')}</strong> ` +
-              `<span style="color:${RM_SRC_COLOR[m.source]}">${escapeHtml(m.source)}</span><br>` +
-              `hop ${m.hops.map(x => x.hop).join(', ')}`).join('<hr style="border-color:#374151;margin:3px 0">');
-        tip.style('opacity', 1).html(html)
-          .style('left', (event.clientX - r.left + 12) + 'px')
-          .style('top', (event.clientY - r.top + 12) + 'px');
-      })
-      .on('mouseleave', () => tip.style('opacity', 0));
-    g.append('text')
-      .attr('x', c.x + (multi ? 0 : 7)).attr('y', c.y + (multi ? 3 : -6))
-      .attr('text-anchor', multi ? 'middle' : 'start')
-      .attr('fill', multi ? '#0a0a0a' : '#e5e7eb')
-      .attr('font-size', multi ? '8px' : '9px')
-      .attr('font-weight', multi ? 'bold' : 'normal')
-      .text(c.isOrigin ? 'you' : (multi ? String(c.members.length) : String(i)));
+  const zoomBy = (factor) => svg.transition().duration(200).call(_rmZoom.scaleBy, factor);
+  const wire = (id, fn) => { const b = RM(id); if (b) b.onclick = fn; };
+  wire('rm-zoom-in', () => zoomBy(1.6));
+  wire('rm-zoom-out', () => zoomBy(1 / 1.6));
+  wire('rm-zoom-fit', () =>
+    svg.transition().duration(350).call(_rmZoom.transform, _rmFitTransform));
+  wire('rm-zoom-reset', () =>
+    svg.transition().duration(350).call(_rmZoom.transform, d3.zoomIdentity));
+}
+
+/* ---- export -------------------------------------------------------------
+
+   The exported image must show the whole route, not the viewport. Panning and
+   zooming are for reading the map; an export is a record of the result, and a
+   record that cuts off hops 1 and 2 because they happened to be off screen is
+   not one. So the export renders a fresh map, off screen, at a larger size,
+   with the projection fitted to every placed marker. */
+const RM_EXPORT_W = 1600;
+const RM_EXPORT_H = 900;
+
+async function rmRenderExportSvg(data) {
+  const points = rmRoutePoints(data);
+  if (!points.length) return null;
+
+  const holder = document.createElement('div');
+  holder.style.position = 'absolute';
+  holder.style.left = '-10000px';
+  holder.style.top = '0';
+  holder.style.width = RM_EXPORT_W + 'px';
+  holder.style.height = RM_EXPORT_H + 'px';
+  document.body.appendChild(holder);
+
+  try {
+    const base = await rmBaseMap(holder, RM_EXPORT_H, rmCentreLongitude(points), {
+      width: RM_EXPORT_W, height: RM_EXPORT_H,
+      fitTo: rmRouteGeoJson(points), pad: 70,
+    });
+    if (!base) return null;
+    const scale = 1.8;
+    const clusters = rmPaintRoute(base, data, points, { static: true, scale });
+
+    // The legend and the provenance line are part of the record, so they are
+    // drawn into the image rather than left on the page.
+    const { svg } = base;
+    const legend = svg.append('g');
+    legend.append('rect')
+      .attr('x', 0).attr('y', RM_EXPORT_H - 54)
+      .attr('width', RM_EXPORT_W).attr('height', 54)
+      .attr('fill', '#0a0a0a').attr('fill-opacity', 0.82);
+
+    const entries = [
+      ['you', RM_SRC_COLOR.origin],
+      ['hostname (Hoiho)', RM_SRC_COLOR.hoiho],
+      ['carrier site code', RM_SRC_COLOR['site-code']],
+      ['IP database', RM_SRC_COLOR['ip-db']],
+    ];
+    let lx = 18;
+    entries.forEach(([label, colour]) => {
+      legend.append('circle').attr('cx', lx).attr('cy', RM_EXPORT_H - 32)
+        .attr('r', 5).attr('fill', colour);
+      legend.append('text').attr('x', lx + 11).attr('y', RM_EXPORT_H - 28)
+        .attr('fill', '#9ca3af').attr('font-size', '13px')
+        .attr('font-family', 'ui-monospace, Menlo, monospace').text(label);
+      lx += 22 + label.length * 7.6;
+    });
+
+    const probe = data.probe || {};
+    const from = probe.id
+      ? `probe #${probe.id}${probe.asn ? ', AS' + probe.asn : ''}${probe.city ? ', ' + probe.city : ''}`
+      : (data.source === 'upload' ? 'a trace you ran' : 'a pasted trace');
+    const origin = (data.origin && data.origin.label) || 'unknown origin';
+    legend.append('text')
+      .attr('x', 18).attr('y', RM_EXPORT_H - 11)
+      .attr('fill', '#e5e7eb').attr('font-size', '13px')
+      .attr('font-family', 'ui-monospace, Menlo, monospace')
+      .text(`FalconEye Route Map  |  ${origin} to ${data.target || 'target'}  |  from ${from}`);
+
+    const xml = new XMLSerializer().serializeToString(svg.node());
+    return { xml, clusters };
+  } finally {
+    holder.remove();
+  }
+}
+
+function rmSvgToPng(xml, width, height, scale) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const c = document.createElement('canvas');
+      c.width = width * scale; c.height = height * scale;
+      const ctx = c.getContext('2d');
+      ctx.scale(scale, scale);
+      ctx.drawImage(img, 0, 0);
+      resolve(c.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('the map image could not be rendered'));
+    img.src = 'data:image/svg+xml;base64,' +
+      btoa(unescape(encodeURIComponent(xml)));
   });
+}
 
-  const clustered = clusters.filter(c => c.members.length > 1).length;
-  RM('rm-map-legend').innerHTML = `
-    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR.origin}"></span>you</span>
-    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR.hoiho}"></span>hostname (Hoiho)</span>
-    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR['site-code']}"></span>carrier site code</span>
-    <span class="flex items-center gap-1"><span class="inline-block w-2.5 h-2.5 rounded-full" style="background:${RM_SRC_COLOR['ip-db']}"></span>IP database</span>
-    <span class="text-gray-600">${clusters.length - 1} markers, ${data.hops.length} hops${clustered ? `, ${clustered} clustered` : ''}</span>`;
+async function rmExportPng() {
+  if (!_rmLast) return;
+  const btn = RM('rm-export-png');
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Rendering...'; }
+  try {
+    const rendered = await rmRenderExportSvg(_rmLast);
+    if (!rendered) return;
+    const png = await rmSvgToPng(rendered.xml, RM_EXPORT_W, RM_EXPORT_H, 2);
+    const a = document.createElement('a');
+    a.href = png;
+    a.download = 'falconeye-route-map-' +
+      (_rmLast.target || 'trace').replace(/[^A-Za-z0-9.-]+/g, '-') + '.png';
+    a.click();
+  } catch (err) {
+    console.error('route map PNG failed:', err);
+    alert('The map image could not be rendered.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 // ---- the result -----------------------------------------------------------
@@ -8950,24 +9181,118 @@ function rmExportJson() {
   URL.revokeObjectURL(a.href);
 }
 
-function rmExportPng() {
-  const svg = RM('rm-map-container') && RM('rm-map-container').querySelector('svg');
-  if (!svg) return;
-  const xml = new XMLSerializer().serializeToString(svg);
-  const img = new Image();
-  img.onload = () => {
-    const c = document.createElement('canvas');
-    c.width = svg.viewBox.baseVal.width * 2;
-    c.height = svg.viewBox.baseVal.height * 2;
-    const ctx = c.getContext('2d');
-    ctx.scale(2, 2);
-    ctx.drawImage(img, 0, 0);
-    const a = document.createElement('a');
-    a.href = c.toDataURL('image/png');
-    a.download = 'route-map.png';
-    a.click();
-  };
-  img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(xml)));
+/* The PDF report. Same jsPDF path as the IP Reputation and abuse reports:
+   built in the browser, nothing written to disk on the server, and every
+   string routed through the Latin-1 sanitiser in fePdfNew so no glyph renders
+   as a blank gap. */
+async function rmExportPdf() {
+  if (!_rmLast) return;
+  if (!fePdfReady()) { alert('PDF library did not load, reload the page and try again.'); return; }
+  const btn = RM('rm-export-pdf');
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Building...'; }
+  try {
+    const data = _rmLast;
+    const st = fePdfNew();
+    const probe = data.probe || {};
+    const origin = (data.origin && data.origin.label) || 'not specified';
+    const from = probe.id
+      ? 'RIPE Atlas probe #' + probe.id +
+        (probe.asn ? ', AS' + probe.asn : '') + (probe.city ? ', ' + probe.city : '')
+      : 'user-supplied trace';
+
+    feBrandHeader(st, 'Route Map, ' + (data.target || 'trace'), [
+      'Generated ' + fePdfUtcStamp(),
+      'Hop locations are evidence to check, not confirmed fact. See the source column.',
+    ]);
+
+    feHeading(st, 'This trace');
+    feKeyVal(st, 'Target', data.target || 'unknown', { mono: true });
+    feKeyVal(st, 'Route starts at', origin);
+    feKeyVal(st, 'Traced from', from);
+    if (probe.distance_km != null) {
+      feKeyVal(st, 'Probe distance from origin', probe.distance_km + ' km');
+    }
+    feKeyVal(st, 'Parsed as', data.parser_label || data.parser || 'unknown');
+    if (data.hoiho_ruleset_date) feKeyVal(st, 'Hoiho ruleset', data.hoiho_ruleset_date);
+    const placed = data.hops.filter(h => h.lat != null).length;
+    feKeyVal(st, 'Hops', data.hops.length + ' total, ' + placed + ' placed, ' +
+             (data.hops.length - placed) + ' not placed');
+    if (data.measurement_id) {
+      feKeyVal(st, 'Atlas measurement', String(data.measurement_id), { mono: true });
+      feText(st, 'https://atlas.ripe.net/measurements/' + data.measurement_id + '/',
+             { size: 8.5, mono: true, color: FE_PDF.muted });
+    }
+
+    // The map, at full route extent rather than whatever the viewport showed.
+    const rendered = await rmRenderExportSvg(data);
+    if (rendered) {
+      const png = await rmSvgToPng(rendered.xml, RM_EXPORT_W, RM_EXPORT_H, 2);
+      const imgW = st.contentW;
+      const imgH = imgW * (RM_EXPORT_H / RM_EXPORT_W);
+      feEnsure(st, imgH + 8);
+      feHeading(st, 'The path');
+      st.doc.addImage(png, 'PNG', st.M, st.y, imgW, imgH, undefined, 'FAST');
+      st.y += imgH + 4;
+    }
+
+    feHeading(st, 'Hops');
+    feTable(st, [
+      { title: 'Hop', width: 11 },
+      { title: 'IP', width: 30, mono: true },
+      { title: 'Hostname', width: 50, mono: true },
+      { title: 'RTT', width: 15 },
+      { title: 'Loss', width: 13 },
+      { title: 'Location', width: 32 },
+      { title: 'Source', width: 22 },
+      { title: 'Notes', width: 0 },
+    ].map((c, i, all) => i === all.length - 1
+        ? { ...c, width: st.contentW - all.slice(0, -1).reduce((a, x) => a + x.width, 0) }
+        : c),
+      data.hops.map(h => [
+        h.hop,
+        h.address || '-',
+        h.hostname || '-',
+        h.min_rtt_ms == null ? '-' : h.min_rtt_ms.toFixed(1) + ' ms',
+        h.loss_pct == null ? '-' : h.loss_pct + '%',
+        h.place || '-',
+        h.source,
+        (h.annotations || []).join('; ') || '-',
+      ]));
+
+    const unlocated = data.hops.filter(h => h.lat == null);
+    feHeading(st, 'Hops not drawn');
+    if (unlocated.length) {
+      feText(st, 'A hop is never dropped silently. Each one below says why it '
+        + 'could not be placed.', { size: 9, color: FE_PDF.muted, gapAfter: 1 });
+      for (const h of unlocated) {
+        feKeyVal(st, 'hop ' + h.hop + (h.address ? ' (' + h.address + ')' : ''),
+                 h.reason || 'not placed');
+      }
+    } else {
+      feText(st, 'Every hop that answered was placed.', { size: 9 });
+    }
+
+    const notes = [];
+    data.hops.forEach(h => (h.annotation_details || []).forEach(d =>
+      notes.push('hop ' + h.hop + ': ' + d)));
+    if (notes.length) {
+      feHeading(st, 'Read this correctly');
+      for (const n of notes) feText(st, n, { size: 9, gapAfter: 1 });
+    }
+
+    feFooterAll(st, [
+      'FalconEye Route Map, ' + (FE_CONFIG.siteOrigin || 'falconeye'),
+      'Hop placement: router hostname first (CAIDA Hoiho, carrier site codes), IP geolocation as fallback, every placement checked against the measured round trip.',
+    ]);
+    st.doc.save('falconeye-route-map-' + feSanitizeName(data.target || 'trace') +
+                '-' + fePdfDate() + '.pdf');
+  } catch (err) {
+    console.error('route map PDF failed:', err);
+    alert('The PDF could not be built.');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label; }
+  }
 }
 
 // ---- wiring ---------------------------------------------------------------
@@ -9098,6 +9423,8 @@ async function initRouteMap() {
   });
   RM('rm-export-json').onclick = rmExportJson;
   RM('rm-export-png').onclick = rmExportPng;
+  const pdfBtn = RM('rm-export-pdf');
+  if (pdfBtn) pdfBtn.onclick = rmExportPdf;
 
   const sample = RM('rm-sample-heise');
   if (sample) sample.onclick = () => { RM('rm-trace').value = RM_SAMPLE; };

@@ -452,10 +452,15 @@ async def ingest(request: Request, token: str):
     except tokens.TokenError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
-    # Answered as plain text because the thing reading it is a shell pipeline,
-    # not a browser.
-    return Response(content="Trace received. Go back to the Route Map tab.\n",
-                    media_type="text/plain")
+    # JSON on every outcome, success and failure alike. The caller is a shell
+    # pipeline, and a pipeline that gets an HTML page back (a Cloudflare
+    # challenge, say) needs to be able to tell that apart from a result. Every
+    # error path here already raises HTTPException, which FastAPI renders as
+    # JSON, so this is the only branch that had to change.
+    return JSONResponse(status_code=200, content={
+        "status": "received",
+        "message": "Trace received. Go back to the Route Map tab.",
+    })
 
 
 @router.get("/pending/{token}")

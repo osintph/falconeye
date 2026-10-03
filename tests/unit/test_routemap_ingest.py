@@ -250,3 +250,29 @@ def test_every_command_caps_hops_and_per_hop_wait(key, caps):
                    if c["key"] == key)
     for cap in caps:
         assert cap in command, f"{key} command is missing the cap {cap!r}: {command}"
+
+
+@pytest.mark.parametrize("key", ["unix", "mtr"])
+def test_the_curl_commands_fail_loudly(key):
+    """A run from a datacenter host that got a Cloudflare challenge page printed
+    nothing at all and looked like it had worked. "curl -s" swallows everything.
+    """
+    url = "https://falconeye.example/api/routemap/ingest/" + "a" * 64
+    command = next(c["command"] for c in tokens.render_commands("heise.de", url)
+                   if c["key"] == key)
+    assert " -f" in command, f"{key}: curl does not treat an HTTP error as a failure"
+    assert "%{http_code}" in command, f"{key}: the HTTP status is never printed"
+    assert "HTML" in command, (
+        f"{key}: nothing tells the user that an HTML reply means the edge is "
+        f"blocking the endpoint rather than the trace being bad")
+
+
+def test_no_command_contains_a_literal_newline():
+    """The status format string carries an escaped \\n, not a real one.
+
+    A real newline would split the command across two lines in the UI and the
+    second half would run as its own shell command.
+    """
+    url = "https://falconeye.example/api/routemap/ingest/" + "a" * 64
+    for entry in tokens.render_commands("heise.de", url):
+        assert "\n" not in entry["command"], f"{entry['key']} is split across lines"

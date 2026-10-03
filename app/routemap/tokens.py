@@ -171,12 +171,27 @@ def validate_target(raw: str) -> str:
 #                   5s (Unix) default
 #   -q 3 / -c 3     three probes per hop, which is what the physics bound needs
 #                   a meaningful minimum from
+# A failed upload has to be visible. "curl -s" swallows everything, so a run
+# from a datacenter host that got a Cloudflare challenge page instead of the API
+# printed nothing at all and looked like it had worked.
+#
+#   -f   makes curl treat an HTTP error as a failure instead of printing the
+#        error page, so a challenge page does not masquerade as a result
+#   -sS  quiet progress, but keep real errors
+#   -w   always print the status line, success or failure
+#   ||   says the one thing the status code cannot: that an HTML response means
+#        the operator's edge is blocking the endpoint, not that the trace was bad
+_CURL = ("curl -fsS --data-binary @- -w 'HTTP %{{http_code}}\\n' {url} "
+         "|| echo 'Upload failed. If the reply was an HTML page, the operator "
+         "Cloudflare settings are blocking uploads to this endpoint.'")
+
 COMMAND_TEMPLATES = {
+    # Invoke-RestMethod raises on a non-2xx and refuses to parse an HTML body as
+    # JSON, so Windows surfaces both failures without help.
     "windows": ("tracert -h 30 -w 1000 {target} | Out-String | Invoke-RestMethod "
                 "-Method Post -ContentType 'text/plain' -Uri {url}"),
-    "unix": "traceroute -m 30 -q 3 -w 1 {target} 2>&1 | curl -s --data-binary @- {url}",
-    "mtr": ("mtr --report-wide --show-ips -c 3 -m 30 {target} 2>&1 "
-            "| curl -s --data-binary @- {url}"),
+    "unix": "traceroute -m 30 -q 3 -w 1 {target} 2>&1 | " + _CURL,
+    "mtr": "mtr --report-wide --show-ips -c 3 -m 30 {target} 2>&1 | " + _CURL,
 }
 
 COMMAND_LABELS = {

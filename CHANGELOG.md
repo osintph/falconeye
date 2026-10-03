@@ -64,6 +64,42 @@ happened and offers the paste box.
   only backed caches; Route Map's Atlas and upload paths depend on it, because
   both hand a job between two requests that can land on different workers.
 
+### Uploads from a server
+
+The upload command is run in a terminal, often on a server. Cloudflare's Managed
+Challenge treats a bare `curl` from a datacenter IP as a bot and answers with an
+HTML interstitial, so the trace never reaches the application. Observed from an
+OVH host against the public instance.
+
+The edge rule is the operator's to add, and the runbook now documents it with
+the exact path under "Behind Cloudflare". What changed here is that the failure
+is no longer silent:
+
+- the ingest endpoint answers **JSON on every outcome**, so an HTML body is
+  visibly not us
+- the generated `curl` uses `-f` and prints the HTTP status, and says in plain
+  words that an HTML reply means the operator's edge is blocking uploads
+- the note under the command says the same thing
+
+### Map
+
+- **Zoom and pan.** Wheel and pinch to zoom, drag to pan, with `+`, `-`, "fit
+  route" and "reset" controls. d3's own zoom behaviour, no new dependency.
+  Markers, labels and lines are counter-scaled, so zooming moves the map and
+  not the furniture.
+- **Exports cover the whole route, not the viewport.** The exported image used
+  to be whatever happened to be on screen, which cut off hops that had been
+  panned out of view. An export now renders a fresh map off screen at 1600x900,
+  with the projection fitted to every placed marker plus padding, and draws the
+  legend and the origin/probe line into the image. What you looked at no longer
+  decides what you get.
+- **PDF report**, through the same jsPDF path as the IP Reputation and abuse
+  reports: title with target, date, origin and probe (or "user-supplied
+  trace"), the full-extent map, the hop table, the unlocated-hops list with
+  reasons, and the Atlas measurement id with a link when the trace came from
+  Atlas. Built in the browser, nothing written to disk, Latin-1 sanitised like
+  the others so no glyph renders blank.
+
 ### Notes
 
 - The raw trace is dropped the moment it has been analysed, rather than living
