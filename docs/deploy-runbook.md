@@ -501,6 +501,37 @@ to it. Install the conf.d file first, or `nginx -t` fails.
 every log line then starts with a bare `-`. Without Cloudflare, stay on the
 default format.
 
+### Route Map uploads need a challenge skip rule
+
+The Route Map "run it on my machine" command is run from a terminal, often on a
+server. Cloudflare's Managed Challenge and Bot Fight Mode treat a bare `curl`
+from a datacenter IP as a bot and answer with an HTML interstitial
+("Just a moment..."), so the upload never reaches the application and the trace
+never appears in the tab. Observed from an OVH host against the public instance.
+
+Add a WAF skip rule for the ingest path only:
+
+```
+(http.request.uri.path contains "/api/routemap/ingest/")
+```
+
+Action: **Skip**, with *Managed Challenge*, *Bot Fight Mode*, *Browser Integrity
+Check* and *Security Level* ticked. Leave the rest of the site alone: this is
+the one endpoint whose legitimate clients are not browsers.
+
+It stays safe to exempt because the path carries its own credential. The token
+is 32 bytes of `urandom`, single use, expires in ten minutes, is bound to the
+page that minted it by a separate poll key, and the endpoint caps the body at
+256 KB and is rate limited per IP like every other write path. There is nothing
+for an unauthenticated caller to reach: a wrong token is a 404.
+
+Two things make a missing rule obvious rather than silent:
+
+- the endpoint answers JSON on every outcome, so an HTML body is visibly not us
+- the generated `curl` uses `-f` and prints the HTTP status, and says in plain
+  words that an HTML reply means the operator's Cloudflare settings are
+  blocking uploads
+
 ## Deploying behind Cloudflare on other infrastructure
 
 The stock config assumes Cloudflare in front, which is the supported path, but

@@ -1400,12 +1400,26 @@
       <div class="flex gap-2 ml-auto">
         <button id="rm-export-json" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded text-xs hover:bg-gray-700">Export JSON</button>
         <button id="rm-export-png" class="bg-gray-800 text-gray-300 px-3 py-1.5 rounded text-xs hover:bg-gray-700">Export map PNG</button>
+        <button id="rm-export-pdf" class="bg-gray-800 text-amber-300 border border-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-700">Download PDF report</button>
       </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
       <div class="lg:col-span-2">
-        <div id="rm-map-container" class="bg-gray-900 border border-gray-800 rounded relative overflow-hidden"></div>
+        <div class="relative">
+          <div id="rm-map-container" class="bg-gray-900 border border-gray-800 rounded relative overflow-hidden"></div>
+          <div class="absolute top-2 right-2 flex flex-col gap-1">
+            <button id="rm-zoom-in" title="Zoom in" aria-label="Zoom in"
+              class="w-7 h-7 flex items-center justify-center rounded bg-gray-900/90 border border-gray-700 text-gray-200 hover:bg-gray-800 text-sm font-bold">+</button>
+            <button id="rm-zoom-out" title="Zoom out" aria-label="Zoom out"
+              class="w-7 h-7 flex items-center justify-center rounded bg-gray-900/90 border border-gray-700 text-gray-200 hover:bg-gray-800 text-sm font-bold">&minus;</button>
+            <button id="rm-zoom-fit" title="Fit the whole route" aria-label="Fit route"
+              class="px-2 h-7 flex items-center justify-center rounded bg-gray-900/90 border border-gray-700 text-gray-200 hover:bg-gray-800 text-[10px] uppercase tracking-wider">Fit</button>
+            <button id="rm-zoom-reset" title="Reset the view" aria-label="Reset view"
+              class="px-2 h-7 flex items-center justify-center rounded bg-gray-900/90 border border-gray-700 text-gray-200 hover:bg-gray-800 text-[10px] uppercase tracking-wider">Reset</button>
+          </div>
+          <p class="text-[10px] text-gray-600 mt-1">Scroll or pinch to zoom, drag to pan. Exports always cover the whole route, whatever is on screen.</p>
+        </div>
         <div id="rm-map-legend" class="flex flex-wrap items-center gap-3 mt-2 text-[11px] text-gray-500"></div>
       </div>
       <div class="space-y-3">
@@ -1503,6 +1517,7 @@
           </div>
           <p class="text-xs text-gray-600 mt-2">Paste it into a terminal. This page picks the result up on its own; leave the tab open. <span id="rm-expiry" class="text-gray-500"></span></p>
           <p class="text-xs text-gray-500 mt-1">This can take up to a minute. A target that does not answer ICMP walks all 30 hops before it stops.</p>
+          <p class="text-xs text-gray-500 mt-1">If you get an HTML page back ("Just a moment..."), the operator's Cloudflare configuration is blocking uploads from non-browser clients and needs a skip rule for this endpoint.</p>
         </div>
 
         <div id="rm-waiting" class="hidden mt-4 bg-gray-900 border border-gray-800 rounded p-4 flex items-center gap-3">
