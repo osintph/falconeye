@@ -5,6 +5,27 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.35.2] - 2026-10-03
+
+### Browsers were running a stale app.js
+
+The map zoom, the full-extent export and the PDF report shipped in v3.35.1 and
+did not appear in the browser. The server was serving the right file; browsers
+were running a cached one.
+
+`index.html` busts the static cache with `?v=<version>`, which only works if the
+version string changes whenever the asset changes. v3.35.1 was re-tagged twice
+while fixing review items, so three different `app.js` files went out under
+`?v=3.35.1`. Anyone who had loaded the first one kept it. This is the same bug
+class as v3.15.2, arriving by a different route: there the query was missing,
+here it was reused.
+
+No code change was needed, only an honest version. The rule it enforces: **do
+not re-point a tag that has been deployed.** A released version is a claim about
+a specific set of bytes, and the cache believes it.
+
+---
+
 ## [3.35.1] - 2026-10-03
 
 Route Map fixes, all from running v3.35.0 in anger.
