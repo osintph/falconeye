@@ -5,6 +5,13 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.6] - 2026-10-04
+
+### Route Map engine 0.2.2
+
+- `routemap-engine==0.2.2` from PyPI. It changes only comments and examples
+  (no home-network details); behaviour is identical to 0.2.1.
+
 ## [3.36.5] - 2026-10-04
 
 ### Route Map: the sample trace no longer shows a home network

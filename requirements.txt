@@ -12,7 +12,7 @@ feedparser==6.0.11
 dnspython==2.6.1
 # The Route Map engine: https://github.com/osintph/routemap-engine (AGPL-3.0),
 # from PyPI.
-routemap-engine==0.2.1
+routemap-engine==0.2.2
 python-whois==0.9.4
 redis[asyncio]==5.0.8
 rapidfuzz==3.14.5
