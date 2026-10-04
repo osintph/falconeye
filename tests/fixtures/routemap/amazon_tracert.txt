@@ -3,11 +3,11 @@ Tracing route to amazon.com [98.87.170.71]
 over a maximum of 30 hops:
 
   1     4 ms     3 ms     3 ms  192.0.2.1
-  2     5 ms     5 ms     3 ms  192.168.1.1
+  2     5 ms     5 ms     3 ms  192.0.2.2
   3     8 ms     8 ms     8 ms  198.51.100.1
-  4     8 ms     7 ms     6 ms  122.2.187.146.static.pldt.net [122.2.187.146]
-  5     9 ms    10 ms     9 ms  210.213.130.141.static.pldt.net [210.213.130.141]
-  6    26 ms    26 ms    27 ms  210.213.130.75.static.pldt.net [210.213.130.75]
+  4     8 ms     7 ms     6 ms  edge-46.isp.example.net [203.0.113.46]
+  5     9 ms    10 ms     9 ms  edge-141.isp.example.net [203.0.113.141]
+  6    26 ms    26 ms    27 ms  edge-75.isp.example.net [203.0.113.75]
   7    29 ms    29 ms    29 ms  ix-bundle-21.qcore1.h81-hongkong.as6453.net [180.87.146.214]
   8   214 ms     *        *     if-bundle-28-2.qcore2.hk2-hongkong.as6453.net [180.87.162.27]
   9     *        *        *     Request timed out.

@@ -186,9 +186,9 @@ def test_the_picker_prefill_comes_from_the_visitors_own_ip(client, monkeypatch):
     # even considered. Present a real one.
     fronted = TestClient(app, client=("173.245.48.1", 44321))
     body = fronted.get("/api/routemap/origin-guess",
-                       headers={"CF-Connecting-IP": "122.2.187.146"}).json()
+                       headers={"CF-Connecting-IP": "203.0.113.46"}).json()
 
-    assert seen["addresses"] == ["122.2.187.146"], (
+    assert seen["addresses"] == ["203.0.113.46"], (
         "the guess was made for the wrong address; CF-Connecting-IP was not honoured")
     assert body["available"] is True
     # Rounded to about 10 km before it is offered.
@@ -198,7 +198,7 @@ def test_the_picker_prefill_comes_from_the_visitors_own_ip(client, monkeypatch):
 
 def test_the_prefill_degrades_quietly_when_the_address_cannot_be_placed(client):
     body = client.get("/api/routemap/origin-guess",
-                      headers={"CF-Connecting-IP": "122.2.187.146"}).json()
+                      headers={"CF-Connecting-IP": "203.0.113.46"}).json()
     assert body["available"] is False
 
 

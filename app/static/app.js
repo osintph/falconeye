@@ -9509,10 +9509,10 @@ async function initRouteMap() {
 
 const RM_SAMPLE = `traceroute to heise.de (193.99.144.80), 30 hops max, 60 byte packets
  1  router (192.0.2.1)  4.112 ms  3.741 ms  3.698 ms
- 2  192.168.1.1 (192.168.1.1)  5.432 ms  5.802 ms  3.333 ms
+ 2  192.0.2.2 (192.0.2.2)  5.432 ms  5.802 ms  3.333 ms
  3  198.51.100.1 (198.51.100.1)  8.820 ms  8.442 ms  8.051 ms
- 4  122.2.187.146.static.pldt.net (122.2.187.146)  8.323 ms  8.015 ms  6.227 ms
- 5  210.213.130.143.static.pldt.net (210.213.130.143)  9.218 ms  10.291 ms  9.905 ms
+ 4  edge-46.isp.example.net (203.0.113.46)  8.323 ms  8.015 ms  6.227 ms
+ 5  edge-143.isp.example.net (203.0.113.143)  9.218 ms  10.291 ms  9.905 ms
  6  hnk-b4-link.ip.twelve99.net (62.115.209.158)  55.214 ms * *
  7  sng-b6-link.ip.twelve99.net (62.115.112.222)  58.331 ms  58.812 ms  59.004 ms
  8  mei-b6-link.ip.twelve99.net (62.115.140.54)  195.442 ms  195.881 ms  196.122 ms

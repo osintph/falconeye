@@ -5,6 +5,18 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.5] - 2026-10-04
+
+### Route Map: the sample trace no longer shows a home network
+
+- The Route Map tab's sample trace, and every recorded trace in the tests,
+  had the maintainer's home network in its first hops: router name, LAN and
+  carrier-NAT addresses, and the ISP's first public hops. Those hops now carry
+  documentation addresses (192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24)
+  with generic names; round-trip times, hop structure and the backbone hops
+  are unchanged. Tests that used the same addresses as generic private
+  examples now use 192.168.0.1.
+
 ## [3.36.4] - 2026-10-04
 
 ### Route Map engine from PyPI

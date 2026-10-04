@@ -95,7 +95,7 @@ def test_case_and_trailing_dot_do_not_matter():
     # Other carriers: their naming scheme is not Arelion's.
     "if-bundle-2-2.qcore2.sqn-sanjose.as6453.net",
     "te2-2.c301.f.de.plusline.net",
-    "122.2.187.146.static.pldt.net",
+    "edge-46.isp.example.net",
     # A city-ish fragment in an unrelated zone proves nothing.
     "lax-something.example.com",
     "hnk-b4-link.example.com",

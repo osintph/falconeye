@@ -78,7 +78,7 @@ def test_rotating_the_header_from_one_peer_yields_one_key():
 
 def test_private_and_loopback_peers_are_not_trusted_by_default():
     """A misconfigured hop must not become a free pass for the header."""
-    for peer in ("127.0.0.1", "10.0.0.5", "192.168.1.1", "172.16.0.1"):
+    for peer in ("127.0.0.1", "10.0.0.5", "192.168.0.1", "172.16.0.1"):
         req = _make_request({"CF-Connecting-IP": "203.0.113.42"}, client_host=peer)
         assert get_client_ip(req) == peer, peer
 

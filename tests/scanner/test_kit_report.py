@@ -107,7 +107,7 @@ def test_empty_request_is_rejected():
     "http://169.254.169.254/latest/meta-data/",
     "http://[::1]/",
     "http://10.0.0.5/",
-    "http://192.168.1.1/",
+    "http://192.168.0.1/",
     "file:///etc/passwd",
 ])
 def test_acquisition_refuses_blocked_targets(blocked_url):

@@ -84,7 +84,7 @@ def test_the_exact_boundary():
 # ---------- the regression this file exists for ----------
 
 def test_hop_five_dipolog_city_is_judged_on_its_measured_rtt():
-    """210.213.130.143, the PLDT hop the heise fixture places in Dipolog City.
+    """203.0.113.143, the ISP hop the heise fixture places in Dipolog City.
 
     Reviewed as a suspected bound failure. It is not one: Manila to Dipolog is
     717 km, which needs 7.17 ms of round trip, and the hop's fastest probe is
@@ -173,7 +173,7 @@ def test_the_site_code_table_wins_over_the_ip_database():
 
 
 def test_a_private_hop_is_placed_at_the_origin_and_queried_nowhere():
-    for address in ("192.168.1.1", "10.0.0.1", "198.51.100.1", "127.0.0.1"):
+    for address in ("192.0.2.2", "10.0.0.1", "198.51.100.1", "127.0.0.1"):
         hop = _hop(address=address, rtt=3.0)
         entry = geo.locate_hops([hop], {}, {}, MANILA)[0]
         assert entry["source"] == geo.SOURCE_LOCAL, address
@@ -330,7 +330,7 @@ def test_reverse_dns_is_not_asked_about_private_addresses(monkeypatch):
     monkeypatch.setattr(geo, "ip_geolocate", no_ip)
     monkeypatch.setattr("app.routemap.hoiho.lookup", no_hoiho)
 
-    hops = [Hop(hop=1, addresses=["192.168.1.1"], rtts_ms=[1.0], sent=3, lost=0),
+    hops = [Hop(hop=1, addresses=["192.0.2.2"], rtts_ms=[1.0], sent=3, lost=0),
             Hop(hop=2, addresses=["198.51.100.1"], rtts_ms=[8.0], sent=3, lost=0),
             Hop(hop=3, addresses=["62.115.112.222"], rtts_ms=[58.0], sent=3, lost=0)]
     asyncio.run(geo.resolve(hops, MANILA))

@@ -55,7 +55,7 @@ def test_write_investigation_returns_uuid():
 
 def test_write_investigation_ip_is_hashed():
     """The raw client IP must never appear in the DB row; only its SHA-256 hash."""
-    client_ip = "192.168.1.1"
+    client_ip = "192.168.0.1"
     expected_hash = hashlib.sha256(client_ip.encode()).hexdigest()
 
     _, conn_mock, _ = _run_write(client_ip=client_ip)

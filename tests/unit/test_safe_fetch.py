@@ -36,7 +36,7 @@ from app.utils.safe_fetch import (
 def test_blocks_private_ipv4():
     assert is_private_ip("10.0.0.1")
     assert is_private_ip("172.16.0.1")
-    assert is_private_ip("192.168.1.1")
+    assert is_private_ip("192.168.0.1")
 
 
 def test_blocks_loopback():

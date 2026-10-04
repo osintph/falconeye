@@ -119,7 +119,7 @@ def test_safe_fetch_exception_returns_found_false():
 
     async def run():
         with patch("app.utils.urlscan.safe_fetch", new=AsyncMock(side_effect=SafeFetchError("blocked"))):
-            result = await check_urlscan("http://192.168.1.1/")
+            result = await check_urlscan("http://192.168.0.1/")
         assert result["found"] is False
     asyncio.run(run())
 

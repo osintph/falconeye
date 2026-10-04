@@ -56,7 +56,7 @@ ASKED = [
     "ix-bundle-21.qcore1.h81-hongkong.as6453.net",
     "if-bundle-2-2.qcore2.sqn-sanjose.as6453.net",
     "if-bundle-61-4.qcore2.ct8-chicago.as6453.net",
-    "122.2.187.146.static.pldt.net",
+    "edge-46.isp.example.net",
 ]
 
 
@@ -117,7 +117,7 @@ def test_an_unmatched_hostname_is_recorded_as_an_answer(monkeypatch):
         assert set(records) == set(ASKED), "a hostname that was asked about has no record"
         assert records["ix-bundle-21.qcore1.h81-hongkong.as6453.net"]["located"] is True
         for miss in ("hnk-b4-link.ip.twelve99.net", "sng-b6-link.ip.twelve99.net",
-                     "122.2.187.146.static.pldt.net"):
+                     "edge-46.isp.example.net"):
             assert records[miss]["located"] is False
 
     asyncio.run(_scenario())
@@ -154,7 +154,7 @@ def test_nothing_that_is_not_a_router_hostname_is_ever_sent(monkeypatch):
             return R()
 
         monkeypatch.setattr("httpx.AsyncClient.post", capture)
-        await hoiho.lookup(["_gateway", "router", "192.168.1.1", "???",
+        await hoiho.lookup(["_gateway", "router", "192.0.2.2", "???",
                             "hnk-b4-link.ip.twelve99.net"])
         assert sent == ["hnk-b4-link.ip.twelve99.net"], (
             f"these left the server and should not have: {sent}")

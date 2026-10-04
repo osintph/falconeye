@@ -3,10 +3,10 @@ Tracing route to heise.de [193.99.144.80]
 over a maximum of 30 hops:
 
   1     4 ms     3 ms     3 ms  192.0.2.1
-  2     5 ms     5 ms     3 ms  192.168.1.1
+  2     5 ms     5 ms     3 ms  192.0.2.2
   3     8 ms     8 ms     8 ms  198.51.100.1
-  4     8 ms     8 ms     6 ms  122.2.187.146.static.pldt.net [122.2.187.146]
-  5     9 ms    10 ms     9 ms  210.213.130.143.static.pldt.net [210.213.130.143]
+  4     8 ms     8 ms     6 ms  edge-46.isp.example.net [203.0.113.46]
+  5     9 ms    10 ms     9 ms  edge-143.isp.example.net [203.0.113.143]
   6    55 ms     *        *     hnk-b4-link.ip.twelve99.net [62.115.209.158]
   7    58 ms    58 ms    59 ms  sng-b6-link.ip.twelve99.net [62.115.112.222]
   8   195 ms   195 ms   196 ms  mei-b6-link.ip.twelve99.net [62.115.140.54]

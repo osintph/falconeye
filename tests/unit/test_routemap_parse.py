@@ -71,7 +71,7 @@ def test_timeouts_are_loss_not_missing_hops():
 def test_windows_sub_millisecond_is_an_answer_not_a_loss():
     """"<1 ms" is a reply faster than the clock, not a dropped probe."""
     parsed = parse_trace(
-        "  1    <1 ms    <1 ms    <1 ms  192.168.1.1\n")
+        "  1    <1 ms    <1 ms    <1 ms  192.0.2.2\n")
     hop = parsed.hops[0]
     assert hop.loss_pct == 0.0, "'<1 ms' was counted as packet loss"
     assert hop.min_rtt_ms == 0.0
@@ -92,11 +92,11 @@ def test_mtr_hundred_percent_loss_has_no_percent_sign():
 def test_an_ecmp_hop_keeps_every_address_it_answered_from():
     """Continuation lines belong to the hop above them."""
     text = ("traceroute to x (1.1.1.1), 30 hops max, 60 byte packets\n"
-            " 4  a.example.net (122.2.187.142)  8.323 ms\n"
-            "    b.example.net (122.2.187.146)  8.015 ms\n"
-            "    a.example.net (122.2.187.142)  6.227 ms\n")
+            " 4  a.example.net (203.0.113.42)  8.323 ms\n"
+            "    b.example.net (203.0.113.46)  8.015 ms\n"
+            "    a.example.net (203.0.113.42)  6.227 ms\n")
     hop = parse_trace(text).hops[0]
-    assert hop.addresses == ["122.2.187.142", "122.2.187.146"]
+    assert hop.addresses == ["203.0.113.42", "203.0.113.46"]
     assert hop.sent == 3, "the continuation probes were not counted"
     assert hop.min_rtt_ms == 6.227
 
@@ -104,13 +104,13 @@ def test_an_ecmp_hop_keeps_every_address_it_answered_from():
 def test_a_tracert_line_is_not_read_as_traceroute():
     """The one genuine ambiguity between the two Unix/Windows formats.
 
-    "1  1 ms  1 ms  1 ms  192.168.1.1" is a plausible body for both readings.
+    "1  1 ms  1 ms  1 ms  192.0.2.2" is a plausible body for both readings.
     It is resolved structurally: a traceroute hop body always opens with an
     address, never with a timing.
     """
-    parsed = parse_trace("  1     1 ms     1 ms     1 ms  192.168.1.1\n")
+    parsed = parse_trace("  1     1 ms     1 ms     1 ms  192.0.2.2\n")
     assert parsed.parser == "tracert"
-    assert parsed.hops[0].addresses == ["192.168.1.1"]
+    assert parsed.hops[0].addresses == ["192.0.2.2"]
     assert parsed.hops[0].min_rtt_ms == 1.0
 
 
@@ -128,13 +128,13 @@ def test_an_oversized_paste_is_refused_before_it_is_walked():
 
 @pytest.mark.parametrize("name,routable", [
     ("hnk-b4-link.ip.twelve99.net", True),
-    ("122.2.187.146.static.pldt.net", True),
+    ("edge-46.isp.example.net", True),
     ("vks19368.ip-103-5-15.asia", True),
     # Not router hostnames, and so never sent to a third party.
     ("_gateway", False),
     ("router", False),
     ("???", False),
-    ("192.168.1.1", False),
+    ("192.0.2.2", False),
     ("2001:db8::1", False),
     ("", False),
     ("printer.local", False),
