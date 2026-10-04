@@ -94,3 +94,41 @@ def test_the_panel_names_the_target_its_command_traces():
     stale = _function("rmCheckCmdStale")
     assert "target !== _rmCmdTarget" in stale
     assert "addEventListener('input', rmCheckCmdStale)" in APP_JS
+
+
+# ---------- zoom and pan (v3.36.7) ----------
+
+def test_the_wheel_is_handled_by_the_map_not_by_d3_or_the_page():
+    """A trackpad's two-finger scroll zoomed instead of panning, and Safari's
+    pinch zoomed the whole page: d3 took every wheel event as zoom and nothing
+    caught WebKit's gesture events."""
+    draw = _function("rmDrawMap")
+    assert "event.type !== 'wheel'" in draw, "d3 must not take the wheel itself"
+    assert "rmWireMapInput(svg" in draw
+    wire = _function("rmWireMapInput")
+    assert "passive: false" in wire and wire.count("preventDefault") >= 4
+    for event in ("'wheel'", "'gesturestart'", "'gesturechange'", "'gestureend'", "'keydown'"):
+        assert event in wire, event
+
+
+def test_a_trackpad_scroll_pans_and_a_wheel_notch_or_pinch_zooms():
+    action = _function("rmWheelAction")
+    assert "e.ctrlKey" in action and "'zoom'" in action and "'pan'" in action
+    assert "deltaMode" in action, "a mouse that scrolls by lines is still a mouse"
+
+
+def test_keys_zoom_pan_and_fit_without_transitions():
+    wire = _function("rmWireMapInput")
+    for key in ("'+'", "'-'", "'0'", "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"):
+        assert key in wire, key
+    keys = wire[wire.index("const keys"):]
+    assert ".transition()" not in keys, "a transition stalls in a hidden tab"
+    assert "'tabindex', 0" in _function("rmDrawMap")
+
+
+def test_the_map_cannot_shrink_below_the_world_and_lines_keep_their_width():
+    draw = _function("rmDrawMap")
+    assert "scaleExtent(RM_ZOOM_EXTENT)" in draw and "translateExtent" in draw
+    assert re.search(r"const RM_ZOOM_EXTENT = \[1, \d+\];", APP_JS)
+    assert "non-scaling-stroke" in draw
+    assert "touch-action', 'none'" in draw, "a touch pinch must not zoom the page"

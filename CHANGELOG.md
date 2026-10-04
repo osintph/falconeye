@@ -5,6 +5,21 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.36.7] - 2026-10-04
+
+### Route Map: zoom and pan
+
+- A trackpad's two-finger scroll zoomed the map instead of panning it, and in
+  Safari a pinch zoomed the whole page, because every wheel event went to d3's
+  zoom and nothing handled WebKit's gesture events. Now a mouse wheel zooms
+  around the pointer, a two-finger scroll pans, a pinch (Ctrl+wheel in Chrome,
+  Edge and Firefox; gesture events in Safari) zooms the map and never the
+  page, and the map takes `+`, `-`, the arrow keys and `0` (fit the route)
+  once clicked.
+- Zoom runs from the whole world to about city level; the map cannot be
+  dragged out of its frame. Coastlines and the route line keep their width at
+  every zoom, as markers and labels already did.
+
 ## [3.36.6] - 2026-10-04
 
 ### Route Map engine 0.2.2

@@ -8794,6 +8794,71 @@ function rmLegendHtml(clusters, data) {
 var _rmZoom = null;
 var _rmZoomRoot = null;
 var _rmFitTransform = null;
+// Whole map at 1 (the projection already fits the world); about city level at 200.
+const RM_ZOOM_EXTENT = [1, 200];
+
+/* What a wheel event means. Browsers report a mouse notch as a whole step
+   (deltaMode lines, or about 100 pixels with no sideways part) and a trackpad
+   as small pixel deltas, often with a sideways part; a pinch arrives as
+   Ctrl+wheel. Returns ['zoom', factor] or ['pan', dx, dy]. */
+function rmWheelAction(e) {
+  if (e.ctrlKey || e.metaKey) return ['zoom', Math.pow(2, -e.deltaY * (e.deltaMode ? 0.05 : 0.01))];
+  const lines = e.deltaMode === 1 ? 16 : (e.deltaMode === 2 ? 400 : 1);
+  const dx = e.deltaX * lines, dy = e.deltaY * lines;
+  const notch = e.deltaMode !== 0 ||
+    (dx === 0 && Math.abs(dy) >= 50 && Number.isInteger(dy));
+  if (notch) return ['zoom', Math.pow(1.25, -dy / 100)];
+  return ['pan', -dx, -dy];
+}
+
+/* Wheel, Safari pinch and keys for a map whose zoom behaviour is getZoom().
+   preventDefault on everything handled, so the page itself never zooms or
+   scrolls while the pointer is over the map. */
+function rmWireMapInput(svg, getZoom, getFit) {
+  const node = svg.node();
+  const point = (e) => d3.pointer(e, node);
+  node.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoom = getZoom();
+    const act = rmWheelAction(e);
+    if (act[0] === 'zoom') {
+      svg.call(zoom.scaleBy, act[1], point(e));
+    } else {
+      const k = d3.zoomTransform(node).k;
+      svg.call(zoom.translateBy, act[1] / k, act[2] / k);
+    }
+  }, { passive: false });
+  let gestureK = 1;
+  node.addEventListener('gesturestart', (e) => {
+    e.preventDefault();
+    gestureK = d3.zoomTransform(node).k;
+  });
+  node.addEventListener('gesturechange', (e) => {
+    e.preventDefault();
+    svg.call(getZoom().scaleTo, gestureK * e.scale, point(e));
+  });
+  node.addEventListener('gestureend', (e) => e.preventDefault());
+  node.addEventListener('keydown', (e) => {
+    const zoom = getZoom();
+    const k = d3.zoomTransform(node).k;
+    const step = 60 / k;
+    const keys = {
+      // Instant, like the wheel: a transition would also stall in a hidden tab.
+      '+': () => svg.call(zoom.scaleBy, 1.4),
+      '=': () => svg.call(zoom.scaleBy, 1.4),
+      '-': () => svg.call(zoom.scaleBy, 1 / 1.4),
+      '0': () => getFit() && svg.call(zoom.transform, getFit()),
+      ArrowLeft: () => svg.call(zoom.translateBy, step, 0),
+      ArrowRight: () => svg.call(zoom.translateBy, -step, 0),
+      ArrowUp: () => svg.call(zoom.translateBy, 0, step),
+      ArrowDown: () => svg.call(zoom.translateBy, 0, -step),
+    };
+    if (keys[e.key] && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      keys[e.key]();
+    }
+  });
+}
 
 async function rmDrawMap(data) {
   const points = rmRoutePoints(data);
@@ -8809,18 +8874,22 @@ async function rmDrawMap(data) {
   RM('rm-map-legend').innerHTML = rmLegendHtml(clusters, data);
 
   // ---- zoom and pan, using d3's own behaviour. No new dependency.
+  // d3 handles drag, double-click and touch. The wheel is ours: a mouse wheel
+  // zooms, a trackpad's two-finger scroll pans, and a pinch (Ctrl+wheel in
+  // Chrome, Edge and Firefox; gesture events in Safari) zooms the map, never
+  // the page. Lines and markers keep their on-screen size at every zoom.
   const { svg, root, projection, w, h } = base;
   _rmZoomRoot = root;
+  root.selectAll('path').attr('vector-effect', 'non-scaling-stroke');
   _rmZoom = d3.zoom()
-    .scaleExtent([1, 40])
+    .scaleExtent(RM_ZOOM_EXTENT)
     // Keep the map inside its frame rather than letting it be dragged away.
     .translateExtent([[0, 0], [w, h]])
+    .filter((event) => event.type !== 'wheel' && !event.button)
     .on('zoom', (event) => {
       const k = event.transform.k;
       root.attr('transform', event.transform);
-      // Everything inside the zoomed group is counter-scaled, so zooming moves
-      // the map and not the furniture: markers and labels keep their on-screen
-      // size and lines stay hairlines, which is the whole reason to zoom.
+      // Counter-scale the furniture so zooming moves the map, not the markers.
       root.selectAll('circle')
         .attr('stroke-width', 1.5 / k)
         .attr('r', function () {
@@ -8836,11 +8905,13 @@ async function rmDrawMap(data) {
              parseFloat(this.getAttribute('font-size')));
           return (base / k) + 'px';
         });
-      root.selectAll('path[stroke="#fbbf24"]').attr('stroke-width', 1.6 / k);
     });
-  svg.call(_rmZoom).style('cursor', 'grab');
+  svg.call(_rmZoom).style('cursor', 'grab').style('touch-action', 'none')
+    .attr('tabindex', 0).attr('role', 'application')
+    .attr('aria-label', 'Route map: drag or scroll to pan, wheel or pinch to zoom, + and - keys zoom, 0 fits the route');
   svg.on('mousedown.cursor', () => svg.style('cursor', 'grabbing'));
   svg.on('mouseup.cursor', () => svg.style('cursor', 'grab'));
+  rmWireMapInput(svg, () => _rmZoom, () => _rmFitTransform);
 
   // The transform that frames the route, precomputed so "fit route" is instant
   // and so the export can use exactly the same framing.
@@ -8849,7 +8920,7 @@ async function rmDrawMap(data) {
   const x0 = Math.min(...xs), x1 = Math.max(...xs);
   const y0 = Math.min(...ys), y1 = Math.max(...ys);
   const pad = 40;
-  const k = Math.max(1, Math.min(40,
+  const k = Math.max(RM_ZOOM_EXTENT[0], Math.min(RM_ZOOM_EXTENT[1],
     0.9 / Math.max((x1 - x0 + pad) / w, (y1 - y0 + pad) / h)));
   _rmFitTransform = d3.zoomIdentity
     .translate(w / 2, h / 2).scale(k)
