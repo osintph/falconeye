@@ -898,10 +898,14 @@ Three things you are agreeing to, and the first is not reversible:
 1. **Measurements are public.** RIPE Atlas publishes one-off measurements,
    including the target a visitor typed, in its public measurement database.
    The tab says so under the Trace button and the privacy policy says so.
-2. **They cost credits.** One traceroute is **30 credits** (RIPE's formula
-   `10 * packets * (int(size/1500) + 1)`, so `10 * 3 * 1`). Hosting a probe
-   earns about 21,600 credits a day; a new account can claim a one-time 50,000.
-   At the default `ATLAS_DAILY_CREDIT_CAP=15000` that is 500 traces a day.
+2. **They cost credits.** One traceroute is **60 credits**: RIPE's formula
+   `10 * packets * (int(size/1500) + 1)` gives `10 * 3 * 1 = 30`, and a one-off
+   result costs twice a periodic one
+   (<https://atlas.ripe.net/docs/getting-started/credits>). Hosting a probe
+   earns 15 credits a minute while it is connected, about 21,600 a day; a new
+   account can claim a one-time 50,000 (same page). At
+   `ATLAS_DAILY_CREDIT_CAP=15000`, the value `.env.example` suggests, that is
+   about 250 traces a day; unset, the cap is 5000 (about 83 traces).
 3. **The target goes to RIPE. The visitor's coordinates do not.** Probe
    selection is by AS number, then by distance computed on this server from the
    probe's own published coordinates. There is deliberately no `radius=` filter

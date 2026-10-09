@@ -5,6 +5,23 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A Route Map Atlas trace costs 60 credits, not 30.** RIPE's traceroute
+  formula gives 30 with the defaults, and "a one-off measurement result is
+  twice as expensive than a periodic measurement result"
+  (<https://atlas.ripe.net/docs/getting-started/credits>). The instance cap
+  counted every trace at 30, so `ATLAS_DAILY_CREDIT_CAP=15000` let about 500
+  traces through, 30,000 real credits. It now counts 60: 15,000 is about 250
+  traces a day. A test derives the cost from the measurement FalconEye
+  creates. The 3.x notes that say 30 credits and 500 traces a day were wrong.
+- The runbook and `.env.example` called 15,000 the default cap. The code's
+  default is 5000; 15,000 is the suggested value.
+
+---
+
 ## [3.36.7] - 2026-10-04
 
 ### Route Map: zoom and pan

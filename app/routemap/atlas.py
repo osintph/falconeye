@@ -59,9 +59,14 @@ log = logging.getLogger("falconeye.routemap.atlas")
 
 USER_AGENT = f"FalconEye/3.35 ({OPERATOR_CONTACT_UA}; Route Map)"
 
-# What one traceroute costs, per RIPE's published credit table. Used for the
-# pre-flight affordability check; RIPE's own accounting is authoritative.
-TRACEROUTE_CREDITS_PER_RESULT = 30
+# What one traceroute costs. RIPE's formula for a traceroute result is
+# 10 * N * (int(S/1500) + 1), 30 with the defaults, and "a one-off measurement
+# result is twice as expensive than a periodic measurement result"
+# (https://atlas.ripe.net/docs/getting-started/credits). _create asks for one
+# probe, three packets, the default size and is_oneoff: 60. Used for the
+# instance cap and the pre-flight affordability check; RIPE's own accounting
+# is authoritative.
+TRACEROUTE_CREDITS_PER_RESULT = 60
 
 # Spend recorded per UTC day, in the shared cache table, so the instance cap
 # survives a restart and is shared across workers.
