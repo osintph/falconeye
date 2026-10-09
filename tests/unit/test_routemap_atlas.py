@@ -53,8 +53,54 @@ def cold(monkeypatch):
 # ---------- credits ----------
 
 def test_the_published_cost_of_one_traceroute():
-    """RIPE's formula is 10 * N * (int(S/1500) + 1); N=3, S=40 gives 30."""
-    assert atlas.TRACEROUTE_CREDITS_PER_RESULT == 30
+    """RIPE's formula is 10 * N * (int(S/1500) + 1), doubled for a one-off result
+    (https://atlas.ripe.net/docs/getting-started/credits): 60 per trace."""
+    assert atlas.TRACEROUTE_CREDITS_PER_RESULT == 60
+
+
+def test_the_cost_matches_the_measurement_actually_created():
+    """Derived from the body _create sends, so a change to packets, size, probe
+    count or one-off that is not matched in the constant fails here."""
+    seen = {}
+
+    def handler(request):
+        import json
+        seen["body"] = json.loads(request.content)
+        return httpx.Response(201, json={"measurements": [7]})
+
+    async def run():
+        async with httpx.AsyncClient(base_url="https://atlas.example/api/v2",
+                                     transport=httpx.MockTransport(handler)) as client:
+            await atlas._create(client, "example.net", 1, 4)
+
+    asyncio.run(run())
+    body = seen["body"]
+    cost = 0
+    for d in body["definitions"]:
+        unit = 10 * d.get("packets", 3) * (int(d.get("size", 48) / 1500) + 1)
+        probes = sum(p.get("requested", 1) for p in body["probes"])
+        cost += unit * probes * (2 if body.get("is_oneoff") else 1)
+    assert atlas.TRACEROUTE_CREDITS_PER_RESULT == cost
+
+
+def test_a_15000_cap_allows_250_traces_a_day(monkeypatch):
+    """The cap counts credits at the real price: 15,000 / 60 = 250 traces."""
+    monkeypatch.setattr(atlas, "ATLAS_DAILY_CREDIT_CAP", 15000)
+    monkeypatch.setattr(atlas, "configured", lambda: True)
+
+    async def rich():
+        return 10**9
+
+    monkeypatch.setattr(atlas, "balance", rich)
+    # 249 traces spent leaves room for one more; anything past 14,940 does
+    # not (at 30 credits, 14,941 still let a trace through).
+    for spent, allowed in ((249 * 60, True), (249 * 60 + 1, False), (250 * 60, False)):
+        monkeypatch.setattr(atlas, "spent_today", lambda spent=spent: spent)
+        if allowed:
+            asyncio.run(atlas.check_budget())
+        else:
+            with pytest.raises(atlas.AtlasUnavailable):
+                asyncio.run(atlas.check_budget())
 
 
 def test_the_instance_cap_is_enforced_before_the_account_balance():
