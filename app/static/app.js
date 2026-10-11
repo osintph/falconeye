@@ -10219,10 +10219,10 @@ function huntRenderResults(data) {
     asmTile(sc['unrelated'] || 0, 'Unrelated', 'text-sky-400') + '</div>';
   const pp = data.pipeline || {};
   html += '<div class="text-xs text-gray-400 mb-3 font-mono">' +
-    (pp.generated || 0) + ' generated &middot; ' + (pp.resolved || 0) + ' registered &middot; ' +
-    (pp.wildcard || 0) + ' wildcard dropped &middot; ' + (pp.fetched || 0) + ' fetched &middot; ' +
-    (pp.not_fetched || 0) + ' not fetched (cap) &middot; ' + (pp.not_registered || 0) + ' not registered &middot; ' +
-    (pp.keyword_hits || 0) + ' keyword hits</div>';
+    (pp.discovered || 0) + ' discovered &middot; ' + (pp.considered || 0) + ' considered &middot; ' +
+    (pp.resolved || 0) + ' registered &middot; ' + (pp.wildcard || 0) + ' wildcard dropped &middot; ' +
+    (pp.not_registered || 0) + ' not registered &middot; ' + (pp.fetched || 0) + ' fetched &middot; ' +
+    (pp.not_fetched || 0) + ' not fetched (cap) &middot; ' + (pp.keyword_hits || 0) + ' keyword hits</div>';
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
     '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Source</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
     '<th class="text-left py-1">Evidence</th><th class="text-left py-1">Actions</th></tr></thead><tbody>';

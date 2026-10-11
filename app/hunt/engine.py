@@ -138,10 +138,13 @@ async def execute(scan: dict) -> dict:
         })
     rows.sort(key=lambda r: (0 if r["keyword_hit"] else 1, -r["score"]))
 
-    pipeline = {"generated": disc.get("generated_count", len(cands)),
-                "resolved": resolved_count, "fetched": len(to_fetch),
-                "not_fetched": not_fetched, "wildcard": wildcard_count,
-                "not_registered": not_registered,
+    # "considered" is the capped set actually processed, so considered ==
+    # resolved + wildcard + not_registered. "discovered" is the raw count before
+    # the HUNT_MAX_CANDIDATES cap, reported separately so the figures add up.
+    pipeline = {"discovered": disc.get("generated_count", len(cands)),
+                "considered": len(cands), "resolved": resolved_count,
+                "fetched": len(to_fetch), "not_fetched": not_fetched,
+                "wildcard": wildcard_count, "not_registered": not_registered,
                 "keyword_hits": disc.get("keyword_hit_count", 0)}
 
     methodology = (
@@ -163,8 +166,9 @@ async def execute(scan: dict) -> dict:
         "ignored. No port scans, no crawling. Caps this run: "
         f"{config.HUNT_MAX_CANDIDATES} candidates, {config.HUNT_MAX_FETCHES} fetched.")
 
-    sline = (f"{pipeline['generated']} candidates generated, {pipeline['resolved']} registered "
-             f"and resolving, {pipeline['wildcard']} registry-wildcard answers dropped, "
+    sline = (f"{pipeline['discovered']} candidates discovered, {pipeline['considered']} considered "
+             f"after the cap: {pipeline['resolved']} registered and resolving, "
+             f"{pipeline['wildcard']} registry-wildcard answers dropped, "
              f"{pipeline['not_registered']} not registered. {pipeline['fetched']} fetched and "
              f"assessed, {pipeline['not_fetched']} not fetched (fetch cap). "
              f"{pipeline['keyword_hits']} certificate or urlscan keyword hits.")

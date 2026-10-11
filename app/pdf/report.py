@@ -265,11 +265,13 @@ def render_report(payload: dict, out_path: str) -> None:
         p = payload.get("pipeline") or {}
         el.append(Spacer(1, 3 * mm))
         prows = [["Stage", "Count"],
-                 ["Candidates generated", str(p.get("generated", 0))],
-                 ["Resolve in DNS", str(p.get("resolved", 0))],
+                 ["Discovered (before cap)", str(p.get("discovered", 0))],
+                 ["Considered (after cap)", str(p.get("considered", 0))],
+                 ["Registered and resolving", str(p.get("resolved", 0))],
+                 ["Registry wildcard, dropped", str(p.get("wildcard", 0))],
+                 ["Not registered", str(p.get("not_registered", 0))],
                  ["Fetched and assessed", str(p.get("fetched", 0))],
                  ["Not fetched (fetch cap)", str(p.get("not_fetched", 0))],
-                 ["Not registered", str(p.get("not_registered", 0))],
                  ["Certificate or urlscan keyword hits", str(p.get("keyword_hits", 0))]]
         el.append(_kv_table(prows, st, [70 * mm, 22 * mm]))
 

@@ -74,8 +74,9 @@ def test_hunt_pdf_renders_candidates(tmp_path):
                "source_status": [{"source": "crt.sh", "role": "CT", "status": "answered"}],
                "severity_counts": {"likely phishing": 1, "suspicious": 0, "parked": 0,
                                    "unknown": 0, "unrelated": 0},
-               "pipeline": {"generated": 80, "resolved": 12, "fetched": 10, "not_fetched": 2,
-                            "not_registered": 68, "keyword_hits": 1},
+               "pipeline": {"discovered": 120, "considered": 80, "resolved": 12, "fetched": 10,
+                            "not_fetched": 2, "wildcard": 6, "not_registered": 62,
+                            "keyword_hits": 1},
                "summary_line": "candidates", "candidates": [
                    {"domain": "philhealth-refund.ph", "verdict": "likely phishing", "score": 90,
                     "source": "crt.sh", "age_days": 3, "registered": "2026-10-08",
@@ -88,3 +89,4 @@ def test_hunt_pdf_renders_candidates(tmp_path):
     assert "Lookalike candidates" in text
     assert "Not registered" in text  # the pipeline summary block
     assert "Not fetched" in text
+    assert "Discovered" in text and "Considered" in text

@@ -5,6 +5,16 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.3] - 2026-10-11
+
+### Fixed
+
+- **Hunt counts now add up.** The summary mixed the raw discovery count (before
+  the candidate cap) with the post-cap figures, so "415 discovered, 3 registered,
+  20 wildcard, 97 not registered" did not reconcile. The pipeline now reports
+  "discovered" (before the cap) and "considered" (after the cap) separately, and
+  considered equals registered plus wildcard plus not registered.
+
 ## [3.38.2] - 2026-10-11
 
 ### Fixed
