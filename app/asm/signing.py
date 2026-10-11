@@ -73,14 +73,26 @@ def unsign(token: str, salt: str, max_age_seconds: int) -> Optional[dict]:
     a caller that forgets to check the result still denies access rather than
     trusting junk.
     """
+    status, payload = unsign_detail(token, salt, max_age_seconds)
+    return payload if status == "ok" else None
+
+
+def unsign_detail(token: str, salt: str, max_age_seconds: int) -> tuple[str, Optional[dict]]:
+    """Like unsign, but says WHY it failed so a page can show the right message.
+
+    Returns (status, payload): status is "ok", "expired" (good signature, too old)
+    or "bad" (no token, wrong signature, tampered, malformed). A signature failure
+    is "bad", never conflated with expiry or with an application-level state like a
+    rotated link.
+    """
     if not token:
-        return None
+        return ("bad", None)
     try:
         value: Any = _serializer(salt).loads(token, max_age=max_age_seconds)
     except SignatureExpired:
-        return None
+        return ("expired", None)
     except BadSignature:
-        return None
+        return ("bad", None)
     except Exception:  # noqa: BLE001 - any decode failure is a denial, never a 500
-        return None
-    return value if isinstance(value, dict) else None
+        return ("bad", None)
+    return ("ok", value if isinstance(value, dict) else None)

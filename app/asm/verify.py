@@ -151,6 +151,21 @@ def confirm_lookup(raw_token: str) -> Optional[dict]:
     return None
 
 
+def confirm_detail(raw_token: str) -> tuple:
+    """(status, row) for an email confirm link, so each failure gets its own
+    message. status is "ok" (row returned), "used", "expired" or "unknown". These
+    are database-token states; a confirm link is not signed, so there is no
+    "bad signature" case here."""
+    row = store.get_verification_any(hash_token(raw_token))
+    if not row or row.get("method") != "email":
+        return ("unknown", None)
+    if row.get("consumed_at"):
+        return ("used", None)
+    if (row.get("expires_at") or 0) <= store.now():
+        return ("expired", None)
+    return ("ok", row)
+
+
 def confirm_consume(raw_token: str) -> Optional[dict]:
     """Consume the email verification a link proves, atomically (POST).
 
@@ -203,18 +218,31 @@ def management_link(domain: str) -> str:
     return f"{config.OPERATOR_SITE_ORIGIN}/asm/manage?t={token}"
 
 
-def management_domain(token: str) -> Optional[str]:
-    """The domain a management token is still valid for, or None.
-
-    A token is valid only while its embedded version matches the domain's current
-    mgmt_version, so rotating the link invalidates every older one.
+def management_detail(token: str) -> tuple:
+    """(status, domain) for a management link, so each failure gets its own
+    message. status is one of:
+      "ok"       -> domain returned, the link is valid
+      "bad"      -> the signature did not verify (tampered, wrong key, malformed).
+                    This is NEVER reported as "rotated or revoked".
+      "expired"  -> the signature is good but the link is past its max age
+      "rotated"  -> valid signature but a newer link has replaced this one
+      "deleted"  -> valid signature but the domain's data has been deleted
     """
-    payload = signing.unsign(token, signing.MGMT_SALT, 3650 * 86400)
-    if not payload or payload.get("kind") != "mgmt":
-        return None
+    status, payload = signing.unsign_detail(token, signing.MGMT_SALT, 3650 * 86400)
+    if status == "expired":
+        return ("expired", None)
+    if status != "ok" or not payload or payload.get("kind") != "mgmt":
+        return ("bad", None)
     dom = store.get_domain(payload.get("domain", ""))
     if not dom:
-        return None
+        return ("deleted", None)
     if payload.get("v") != dom.get("mgmt_version"):
-        return None
-    return dom["domain"]
+        return ("rotated", None)
+    return ("ok", dom["domain"])
+
+
+def management_domain(token: str) -> Optional[str]:
+    """The domain a management token is valid for, or None. Thin wrapper over
+    management_detail for callers that only need the happy path."""
+    status, domain = management_detail(token)
+    return domain if status == "ok" else None

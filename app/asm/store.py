@@ -395,6 +395,21 @@ def get_live_verification(token_hash: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
+def get_verification_any(token_hash: str) -> Optional[dict]:
+    """The most recent verification for a token hash regardless of consumed or
+    expired state, so a page can tell "already used" from "expired" from
+    "not recognised"."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT * FROM asm_verifications WHERE token_hash = ? ORDER BY id DESC LIMIT 1",
+            (token_hash,),
+        ).fetchone()
+    finally:
+        conn.close()
+    return dict(row) if row else None
+
+
 def consume_verification(verif_id: int) -> bool:
     """Mark a verification consumed. Returns True only if it was still unconsumed,
     so a double-submit of the same link cannot issue two grants."""

@@ -114,11 +114,14 @@ async def verify_start(request: Request, payload: StartReq):
         return JSONResponse(_BLOCK_BODY, status_code=200)
 
     ip = _ip(request)
-    if not _rl_ok("vstart_ip", ip, config.ASM_VERIFY_START_PER_HOUR, _HOUR):
+    # Pre-checks are COUNT ONLY. The limit counters are incremented further down,
+    # and only when a token is actually issued or an email is actually sent, so a
+    # blocked domain, a bad role, an unconfigured mailer or a page reload never
+    # consumes an attempt (the fix for the counters tripping on non-issuing calls).
+    if store.rl_count("vstart_ip", ip, _HOUR) >= config.ASM_VERIFY_START_PER_HOUR:
         return JSONResponse({"error": "Too many verification attempts. Try again later."}, status_code=429)
     if store.rl_count("vstart_dom", domain, _DAY) >= config.ASM_VERIFY_START_PER_DOMAIN_PER_DAY:
         return JSONResponse({"error": "This domain has reached its verification attempts for today."}, status_code=429)
-    store.rl_record("vstart_dom", domain)
 
     if payload.method == "email":
         role = (payload.role or "").strip().lower()
@@ -132,15 +135,18 @@ async def verify_start(request: Request, payload: StartReq):
         if not started:
             return JSONResponse({"error": "Choose a role address."}, status_code=400)
         raw, role_email = started
+        # Count now: a token was issued and an email is about to be sent.
+        store.rl_record("vstart_ip", ip)
+        store.rl_record("vstart_dom", domain)
         store.rl_record("vemail_dom", domain)
-        store.upsert_domain(domain, "pending", source="verify", verify_method="email")
         link = f"{config.OPERATOR_SITE_ORIGIN}/asm/confirm?t={raw}"
         await mailer.send_verification_link(domain, role_email, link)
         return {"method": "email", "sent_to": role_email}
 
-    # DNS method.
+    # DNS method: a token is always issued on this path, so count it.
     token = verify.start_dns_verification(domain, _ip_hash(ip))
-    store.upsert_domain(domain, "pending", source="verify", verify_method="dns")
+    store.rl_record("vstart_ip", ip)
+    store.rl_record("vstart_dom", domain)
     return {
         "method": "dns",
         "apex_record": {"name": domain, "type": "TXT", "value": f"{verify.TXT_PREFIX}{token}"},
@@ -159,8 +165,9 @@ async def verify_check_dns(request: Request, payload: CheckReq, response: Respon
     if not domain or blocklist.is_blocked(domain):
         return JSONResponse(_BLOCK_BODY if domain else {"error": "Enter a valid domain."},
                             status_code=200 if domain else 400)
-    if not _rl_ok("vcheck_ip", _ip(request), 20, _HOUR):
-        return JSONResponse({"error": "Too many checks. Try again shortly."}, status_code=429)
+    # A check is not a token issue or an email send, so it is NOT counted in the
+    # persistent limit table (a user waiting on DNS propagation may poll several
+    # times). The slowapi burst limit above bounds abuse of the DNS probe.
 
     row = await verify.check_dns(domain)
     if not row:
@@ -484,14 +491,29 @@ def _page(title: str, body: str, status: int = 200) -> HTMLResponse:
         f"<body><div class='card'>{body}</div></body></html>", status_code=status)
 
 
+_CONFIRM_ERRORS = {
+    "used": ("Link already used",
+             "This authorisation link has already been used. Start the verification again "
+             "in FalconEye to get a new one."),
+    "expired": ("Link expired",
+                "This authorisation link has expired. Start the verification again in "
+                "FalconEye to get a new one."),
+    "unknown": ("Link not recognised",
+                "This authorisation link is not recognised. Start the verification again in "
+                "FalconEye to get a new one."),
+}
+
+
+def _confirm_error_page(status: str) -> HTMLResponse:
+    title, msg = _CONFIRM_ERRORS.get(status, _CONFIRM_ERRORS["unknown"])
+    return _page(title, f"<h1>{html.escape(title)}</h1><p class='muted'>{msg}</p>", status=410)
+
+
 @pages.get("/asm/confirm")
 async def confirm_page(t: str = ""):
-    row = verify.confirm_lookup(t)
-    if not row:
-        return _page("Link expired",
-                     "<h1>Link expired or already used</h1>"
-                     "<p class='muted'>This authorisation link is no longer valid. Start the "
-                     "verification again in FalconEye to get a new one.</p>", status=410)
+    status, row = verify.confirm_detail(t)
+    if status != "ok":
+        return _confirm_error_page(status)
     domain = html.escape(row["domain"])
     body = (
         f"<h1>Authorise an attack surface scan</h1>"
@@ -514,9 +536,8 @@ async def confirm_submit(request: Request):
     t = str(form.get("t", ""))
     row = verify.confirm_consume(t)
     if not row:
-        return _page("Link expired",
-                     "<h1>Link expired or already used</h1>"
-                     "<p class='muted'>Start the verification again in FalconEye.</p>", status=410)
+        status, _ = verify.confirm_detail(t)
+        return _confirm_error_page(status)
     domain = row["domain"]
     role_email = verify.role_address(domain, row.get("role") or "") or ""
     store.upsert_domain(domain, "verified", source="verify", verify_method="email",
@@ -530,14 +551,28 @@ async def confirm_submit(request: Request):
     return resp
 
 
+_MANAGE_ERRORS = {
+    "bad": ("Link could not be verified",
+            "This management link could not be verified. Use the most recent link exactly as "
+            "it was emailed to you."),
+    "expired": ("Link expired", "This management link has expired."),
+    "rotated": ("Link replaced",
+                "This link has been replaced by a newer one. Use your most recent management link."),
+    "deleted": ("Data already deleted",
+                "The data for this domain has already been deleted, so there is nothing to manage."),
+}
+
+
+def _manage_error_page(status: str) -> HTMLResponse:
+    title, msg = _MANAGE_ERRORS.get(status, _MANAGE_ERRORS["bad"])
+    return _page(title, f"<h1>{html.escape(title)}</h1><p class='muted'>{msg}</p>", status=410)
+
+
 @pages.get("/asm/manage")
 async def manage_page(t: str = ""):
-    domain = verify.management_domain(t)
-    if not domain:
-        return _page("Link invalid",
-                     "<h1>Management link invalid</h1>"
-                     "<p class='muted'>This link has been rotated or revoked. Use your most recent "
-                     "management link.</p>", status=410)
+    status, domain = verify.management_detail(t)
+    if status != "ok":
+        return _manage_error_page(status)
     d = html.escape(domain)
     tok = html.escape(t)
     body = (
@@ -557,10 +592,9 @@ async def manage_submit(request: Request):
     form = await request.form()
     t = str(form.get("t", ""))
     action = str(form.get("action", ""))
-    domain = verify.management_domain(t)
-    if not domain:
-        return _page("Link invalid", "<h1>Management link invalid</h1>"
-                     "<p class='muted'>This link has been rotated or revoked.</p>", status=410)
+    status, domain = verify.management_detail(t)
+    if status != "ok":
+        return _manage_error_page(status)
     if action == "revoke":
         n = store.revoke_all_grants(domain)
         return _page("Revoked", f"<h1>Access revoked</h1><p class='muted'>Revoked {n} grant(s) for "

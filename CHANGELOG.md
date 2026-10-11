@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.37.2] - 2026-10-11
+
+### Fixed
+
+- **A verification link no longer shows a management-link error, and each link
+  failure has its own message.** The verification email already pointed at the
+  authorise confirm page, but the pages conflated failures: the manage page
+  reported every invalid token as "rotated or revoked", including a signature
+  failure. In v3.37.0 a management link signed with one worker's per-process key
+  failed the signature check on another worker and was shown as "rotated or
+  revoked" even though it was never used (v3.37.1's shared signing key fixed the
+  cause). Now the confirm page distinguishes already-used, expired and
+  not-recognised, and the manage page distinguishes a signature failure
+  ("could not be verified"), expired, replaced-by-a-newer-link, and
+  already-deleted. A signature failure is never labelled rotated or revoked.
+- **Verification limits count only attempts that issue a token or send an email.**
+  A blocked domain, an invalid role, an unconfigured mailer and a repeated DNS
+  check no longer consume a verification attempt, and the DNS check no longer
+  writes a persistent counter, so a user polling while DNS propagates is not
+  locked out.
+- **Tab retention copy matches the privacy policy.** The Attack Surface privacy
+  box now states that monitoring snapshots are pruned automatically after 180
+  days, consistent with the privacy policy.
+
+### Added
+
+- **Operator key on the ownership gate.** When operator mode is configured
+  (`ASM_OPERATOR_KEY_HASH` set), the gate shows a third card, "Operator key",
+  next to DNS TXT and Email. It unlocks the operator session in place (key plus a
+  code) and scans the entered domain without verification, still requiring an
+  engagement reference, with the existing lockout, operator-contact emails,
+  optional CIDR allowlist and one identical message for a wrong key or a wrong
+  code. The "no visible trace" rule now applies only to instances where operator
+  mode is not configured.
+- A cross-process test that signs a link in one process and validates it in
+  another, proving grants and management links hold across workers with a shared
+  key and fail without one.
+
 ## [3.37.1] - 2026-10-11
 
 ### Changed

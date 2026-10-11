@@ -9676,10 +9676,20 @@ async function asmBegin() {
 
 function asmRenderGate(domain) {
   const d = escapeHtml(domain);
+  // The operator card is shown only when operator mode is configured on this
+  // instance (asmOperatorConfigured). When it is not configured the card is
+  // absent and nothing hints the feature exists.
+  const opConfigured = !!(window.FALCONEYE_CONFIG || {}).asmOperatorConfigured;
+  const grid = opConfigured ? 'md:grid-cols-3' : 'md:grid-cols-2';
+  const opCard = opConfigured ?
+    ('<div class="bg-gray-900 border border-amber-800 rounded p-4">' +
+     '<h3 class="font-bold mb-1 text-amber-400">Operator key</h3>' +
+     '<p class="text-gray-400 text-sm mb-3">Authorised engagements only. Unlock with the operator key and a code, then scan without verifying.</p>' +
+     '<button id="asm-m-op" class="bg-gray-800 text-amber-400 border border-amber-800 font-bold px-4 py-2 rounded text-sm hover:bg-gray-800 transition">Use operator key</button></div>') : '';
   asmShow(
     '<div class="bg-amber-950 border border-amber-800 rounded p-3 mb-4 text-sm text-amber-200">' +
     'Ownership of <span class="font-mono">' + d + '</span> is not verified. Prove control to scan it.</div>' +
-    '<div class="grid gap-3 md:grid-cols-2">' +
+    '<div class="grid gap-3 ' + grid + '">' +
     '<div class="bg-gray-900 border border-gray-800 rounded p-4">' +
     '<h3 class="font-bold mb-1">DNS TXT record</h3>' +
     '<p class="text-gray-400 text-sm mb-3">Publish a one-time token on the apex. Fastest if you manage DNS.</p>' +
@@ -9688,10 +9698,53 @@ function asmRenderGate(domain) {
     '<h3 class="font-bold mb-1">Email a role address</h3>' +
     '<p class="text-gray-400 text-sm mb-3">We mail a one-time link to a fixed role inbox at the domain.</p>' +
     '<button id="asm-m-email" class="bg-gray-800 text-gray-100 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Use email</button></div>' +
+    opCard +
     '</div><div id="asm-method"></div>'
   );
   document.getElementById('asm-m-dns').addEventListener('click', () => asmStartDns(domain));
   document.getElementById('asm-m-email').addEventListener('click', () => asmRenderEmail(domain));
+  if (opConfigured) {
+    document.getElementById('asm-m-op').addEventListener('click', () => asmGateOperator(domain));
+  }
+}
+
+// Operator unlock in place on the gate, then scan the entered domain (still
+// requiring an engagement reference). Wrong key and wrong code give one message.
+function asmGateOperator(domain) {
+  const box = document.getElementById('asm-method');
+  box.innerHTML =
+    '<div class="mt-4 bg-gray-900 border border-amber-800 rounded p-4 space-y-2">' +
+    '<p class="text-sm text-gray-300">Unlock operator mode to scan <span class="font-mono">' + escapeHtml(domain) + '</span> without verification.</p>' +
+    '<input id="asm-gop-key" type="password" placeholder="Operator key" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm">' +
+    '<input id="asm-gop-code" placeholder="Authenticator code" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm font-mono" style="max-width:200px">' +
+    '<button id="asm-gop-unlock" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Unlock</button>' +
+    '<div id="asm-gop-msg" class="text-sm"></div></div>';
+  document.getElementById('asm-gop-unlock').addEventListener('click', async () => {
+    const key = document.getElementById('asm-gop-key').value;
+    const code = document.getElementById('asm-gop-code').value;
+    const msg = document.getElementById('asm-gop-msg');
+    msg.innerHTML = '<span class="text-gray-400 animate-pulse">Unlocking...</span>';
+    try {
+      const res = await fetch('/api/asm/operator/unlock', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: key, code: code }),
+      });
+      const data = await res.json();
+      if (!res.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'Unlock failed.') + '</span>'; return; }
+      // Unlocked: the session cookie is set. Collect the engagement and scan the
+      // domain that was entered.
+      box.innerHTML =
+        '<div class="mt-4 bg-gray-900 border border-amber-800 rounded p-4 space-y-2">' +
+        '<p class="text-sm text-green-400">Operator session active. Scanning <span class="font-mono">' + escapeHtml(domain) + '</span>.</p>' +
+        '<input id="asm-gop-eng" placeholder="Engagement reference (required)" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm">' +
+        '<button id="asm-gop-scan" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Run operator scan</button>' +
+        '<div id="asm-scan-area"></div></div>';
+      document.getElementById('asm-gop-scan').addEventListener('click', () => {
+        const eng = (document.getElementById('asm-gop-eng').value || '').trim();
+        asmRunScan(domain, true, eng);
+      });
+    } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
+  });
 }
 
 async function asmStartDns(domain) {
