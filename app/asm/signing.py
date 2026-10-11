@@ -25,17 +25,13 @@ No em dashes in this module.
 from __future__ import annotations
 
 import logging
-import secrets
 from typing import Any, Optional
 
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
-from app import config
+from app.utils.env import getenv_clean
 
 log = logging.getLogger("falconeye.asm.signing")
-
-# Per-process fallback, generated once. Only used when ASM_SIGNING_KEY is unset.
-_EPHEMERAL_KEY = secrets.token_urlsafe(48)
 
 GRANT_SALT = "asm-grant-v1"
 MGMT_SALT = "asm-mgmt-v1"
@@ -43,12 +39,26 @@ OPERATOR_SALT = "asm-operator-session-v1"
 
 
 def _key() -> str:
-    """Read the signing key live, so the setup script or a test can set it."""
-    return config.ASM_SIGNING_KEY or _EPHEMERAL_KEY
+    """The configured signing key, read live. There is NO per-process fallback:
+    without ASM_SIGNING_KEY, ASM is disabled at the router (configured() is False)
+    and sign() is never reached. A per-process fallback would silently invalidate
+    every grant on each worker restart and differ between workers, so it is gone."""
+    return getenv_clean("ASM_SIGNING_KEY")
+
+
+def configured() -> bool:
+    """True only when ASM_SIGNING_KEY is set. When False, the ASM router answers
+    503 and the tab shows the feature as unavailable."""
+    return bool(_key())
 
 
 def _serializer(salt: str) -> URLSafeTimedSerializer:
-    return URLSafeTimedSerializer(secret_key=_key(), salt=salt)
+    key = _key()
+    if not key:
+        # Guarded by the router (configured()), so this only trips a direct caller
+        # that skipped the gate. Fail loudly rather than sign with an empty key.
+        raise RuntimeError("ASM_SIGNING_KEY is not set")
+    return URLSafeTimedSerializer(secret_key=key, salt=salt)
 
 
 def sign(payload: dict, salt: str) -> str:

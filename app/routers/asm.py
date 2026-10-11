@@ -19,13 +19,13 @@ import html
 import logging
 import secrets
 
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel
 from slowapi import Limiter
 
 from app import config
-from app.asm import blocklist, jobs, mailer, operator, report, store, verify
+from app.asm import blocklist, jobs, mailer, operator, report, signing, store, verify
 from app.asm.verify import GRANT_COOKIE, ROLE_PREFIXES
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain
@@ -33,8 +33,22 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.asm")
 
-router = APIRouter(prefix="/api/asm", tags=["asm"])
-pages = APIRouter(tags=["asm-pages"])
+# ASM is disabled unless a signing key is configured. There is no per-process key
+# fallback, so a missing key never silently issues grants that die on restart.
+if not signing.configured():
+    log.error("ASM is disabled: ASM_SIGNING_KEY is unset. Set it (see .env.example) "
+              "to enable the Attack Surface tab. Grants and management links need it.")
+
+
+def _asm_guard() -> None:
+    """Refuse every ASM request when the feature is not configured."""
+    if not signing.configured():
+        raise HTTPException(status_code=503,
+                            detail="Attack Surface Management is not configured on this server.")
+
+
+router = APIRouter(prefix="/api/asm", tags=["asm"], dependencies=[Depends(_asm_guard)])
+pages = APIRouter(tags=["asm-pages"], dependencies=[Depends(_asm_guard)])
 limiter = Limiter(key_func=get_client_ip_key)
 
 OP_COOKIE = "asm_operator"
@@ -212,16 +226,15 @@ async def start_scan(request: Request, payload: ScanReq, response: Response):
 
 def _launch(domain: str, mode: str, response: Response, *, operator: int = 0,
             engagement: str = "", grant_id: str = ""):
+    # Capacity is read from the shared scan table, so the cap and queue hold across
+    # every gunicorn worker, not per worker.
     if not jobs.can_accept():
         return JSONResponse({"error": "The scanner is at capacity. Try again in a few minutes."},
                             status_code=503)
     scan_id = secrets.token_urlsafe(18)
     store.create_scan(scan_id, domain, mode, operator=operator, engagement=engagement,
                       grant_id=grant_id, state="queued")
-    if not jobs.submit(scan_id):
-        store.fail_scan(scan_id, "runner full")
-        return JSONResponse({"error": "The scanner is at capacity. Try again in a few minutes."},
-                            status_code=503)
+    jobs.submit(scan_id)
     return {"scan_id": scan_id, "state": "queued", "capacity": jobs.capacity()}
 
 

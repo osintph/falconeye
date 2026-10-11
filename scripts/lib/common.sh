@@ -433,6 +433,30 @@ fe_install_asm_timer() {
     [[ "$DRY_RUN" == "true" ]] || fe_ok "ASM monitoring timer installed and enabled"
 }
 
+# ASM needs a signing key for its grants and management links; without one the
+# feature disables itself rather than fall back to a per-process key. Generate one
+# into .env if the operator has not set it, so a self-hoster gets a working tab.
+fe_ensure_asm_signing_key() {
+    [[ -f "$FE_ENV_FILE" ]] || return 0
+    if grep -qE '^[[:space:]]*ASM_SIGNING_KEY=.+' "$FE_ENV_FILE" 2>/dev/null; then
+        fe_say "ASM signing key already set"
+        return 0
+    fi
+    if [[ ! -x "$FE_VENV/bin/python" ]]; then
+        fe_warn "no venv python, cannot generate ASM_SIGNING_KEY; set it by hand (see .env.example)"
+        return 0
+    fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        fe_say "would generate ASM_SIGNING_KEY and append it to $FE_ENV_FILE"
+        return 0
+    fi
+    local key
+    key="$("$FE_VENV/bin/python" -c 'import secrets; print(secrets.token_urlsafe(48))')"
+    printf '\n# Generated for Attack Surface Management (v3.37.1). Do not share.\nASM_SIGNING_KEY=%s\n' \
+        "$key" >> "$FE_ENV_FILE"
+    fe_ok "generated ASM_SIGNING_KEY into $FE_ENV_FILE"
+}
+
 # ----------------------------------------------------------------- nginx ------
 
 # Every snippet the vhost includes. provision.sh used to copy one of the two by

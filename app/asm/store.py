@@ -24,7 +24,9 @@ log = logging.getLogger("falconeye.asm.store")
 
 
 def _connect() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    # A busy timeout so concurrent gunicorn workers wait briefly for the write
+    # lock instead of failing with "database is locked" under contention.
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -510,6 +512,53 @@ def fail_scan(scan_id: str, error: str) -> None:
             (now(), error[:500], scan_id),
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def count_running_scans(slack_seconds: int) -> int:
+    """Scans currently running, ignoring rows stale past the run-time budget plus
+    slack (a worker that died mid-scan should not hold a slot forever)."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM asm_scans WHERE state = 'running' AND started_at >= ?",
+            (now() - slack_seconds,),
+        ).fetchone()
+    finally:
+        conn.close()
+    return row[0] if row else 0
+
+
+def count_recent_queued_scans(slack_seconds: int) -> int:
+    """Queued scans that are still fresh. A queued row left behind by a dead
+    worker eventually ages out of the queue-capacity accounting."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM asm_scans WHERE state = 'queued' AND created_at >= ?",
+            (now() - slack_seconds,),
+        ).fetchone()
+    finally:
+        conn.close()
+    return row[0] if row else 0
+
+
+def claim_scan_slot(scan_id: str, max_concurrent: int, slack_seconds: int) -> bool:
+    """Atomically move a queued scan to running IFF fewer than *max_concurrent*
+    are running globally. SQLite serializes the single UPDATE (one writer), so the
+    count-and-claim is atomic across all gunicorn workers. Returns True on claim.
+    """
+    conn = _connect()
+    try:
+        cur = conn.execute(
+            "UPDATE asm_scans SET state = 'running', started_at = ? "
+            "WHERE scan_id = ? AND state = 'queued' "
+            "AND (SELECT COUNT(*) FROM asm_scans WHERE state = 'running' AND started_at >= ?) < ?",
+            (now(), scan_id, now() - slack_seconds, max_concurrent),
+        )
+        conn.commit()
+        return cur.rowcount == 1
     finally:
         conn.close()
 

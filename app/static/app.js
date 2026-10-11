@@ -9655,6 +9655,10 @@ function asmMaybeOperator() {
 }
 
 async function asmBegin() {
+  if (!(window.FALCONEYE_CONFIG || {}).asmEnabled) {
+    asmShow('<p class="text-gray-400 text-sm">Attack Surface Management is not configured on this server.</p>');
+    return;
+  }
   const domain = (document.getElementById('asm-input').value || '').trim().toLowerCase();
   if (!domain) { asmShow('<p class="text-red-400 text-sm">Enter a domain.</p>'); return; }
   ASM.domain = domain;

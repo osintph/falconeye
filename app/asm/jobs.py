@@ -1,16 +1,17 @@
-"""The background scan runner.
+"""The background scan runner, with a cap and queue shared across all workers.
 
-Scans do not run in the request worker. POST /scan creates the scan row and
-submits a job here; the route returns a scan id immediately and the UI polls for
-status. At most ASM_MAX_CONCURRENT_SCANS run at once; further submissions queue up
-to ASM_SCAN_QUEUE_MAX, after which a submission is refused. Monitoring runs reuse
-run_scan directly (synchronously, in the timer process), so there is one scan
-path.
+Scans do not run in the request worker. POST /scan creates the scan row ('queued')
+and submits a job here; the route returns a scan id immediately and the UI polls
+for status. The concurrency cap and the queue are SQLITE-BACKED, not in-process,
+so they hold across all gunicorn workers: a worker only moves a scan from 'queued'
+to 'running' through store.claim_scan_slot, whose single UPDATE atomically checks
+that fewer than ASM_MAX_CONCURRENT_SCANS are running globally. Queue depth and
+occupancy are read from the scan table too. Monitoring reuses run_scan directly
+(synchronously, in the timer process), so there is one scan path.
 
-The runner is single-event-loop in-process state: the integer counters are only
-mutated between awaits, so no lock is needed. A worker recycle loses an in-flight
-job, which leaves its row in 'running'; that is surfaced as a stale run rather
-than a wrong result. No em dashes in this module.
+A worker recycle loses an in-flight job: a 'running' row then ages out of the slot
+accounting after the run-time budget plus slack, freeing the slot; a 'queued' row
+left behind ages out of the queue accounting. No em dashes in this module.
 """
 from __future__ import annotations
 
@@ -24,44 +25,46 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.asm.jobs")
 
-_run_sem = asyncio.Semaphore(config.ASM_MAX_CONCURRENT_SCANS)
-_queued = 0
-_active = 0
+
+def _slack() -> int:
+    # A running row older than the run-time budget plus a minute is treated as a
+    # dead worker's leftover and no longer holds its slot.
+    return int(config.ASM_RUN_TIMEOUT_SECONDS) + 60
 
 
 def capacity() -> dict:
-    """Current runner occupancy, for the UI to show a queued state."""
-    return {"active": _active, "queued": _queued,
+    """Current runner occupancy, read from the shared scan table."""
+    return {"active": store.count_running_scans(_slack()),
+            "queued": store.count_recent_queued_scans(_slack()),
             "max_concurrent": config.ASM_MAX_CONCURRENT_SCANS,
             "queue_max": config.ASM_SCAN_QUEUE_MAX}
 
 
 def can_accept() -> bool:
-    return (_active + _queued) < (config.ASM_MAX_CONCURRENT_SCANS + config.ASM_SCAN_QUEUE_MAX)
+    c = capacity()
+    return (c["active"] + c["queued"]) < (config.ASM_MAX_CONCURRENT_SCANS + config.ASM_SCAN_QUEUE_MAX)
 
 
 def submit(scan_id: str) -> bool:
-    """Queue a scan as a background task. Returns False when the runner is full."""
-    global _queued
-    if not can_accept():
-        return False
-    _queued += 1
+    """Schedule a scan as a background task in this worker. The global cap is
+    enforced when the task claims a slot, not here."""
     asyncio.ensure_future(_runner(scan_id))
     return True
 
 
 async def _runner(scan_id: str) -> None:
-    global _queued, _active
-    async with _run_sem:
-        _queued -= 1
-        _active += 1
-        try:
-            await run_scan(scan_id)
-        except Exception as exc:  # noqa: BLE001 - a crash must mark the scan, not vanish
-            log.warning("asm scan %s failed: %s", scan_id, exc)
-            store.fail_scan(scan_id, str(exc))
-        finally:
-            _active -= 1
+    # Wait for a global slot, then run. The claim is atomic across workers.
+    deadline = store.now() + int(config.ASM_RUN_TIMEOUT_SECONDS)
+    try:
+        while not store.claim_scan_slot(scan_id, config.ASM_MAX_CONCURRENT_SCANS, _slack()):
+            if store.now() >= deadline:
+                store.fail_scan(scan_id, "timed out waiting for a free scan slot")
+                return
+            await asyncio.sleep(2)
+        await run_scan(scan_id)
+    except Exception as exc:  # noqa: BLE001 - a crash must mark the scan, not vanish
+        log.warning("asm scan %s failed: %s", scan_id, exc)
+        store.fail_scan(scan_id, str(exc))
 
 
 async def run_scan(scan_id: str) -> dict:

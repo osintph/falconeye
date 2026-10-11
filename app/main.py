@@ -60,7 +60,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.37.0",
+    version="3.37.1",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -118,7 +118,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.37.0"}
+    return {"status": "ok", "version": "3.37.1"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -226,6 +226,9 @@ def _operator_config_script() -> str:
         # renders. These are capability flags, never key material.
         "asmMonitoringEnabled": config.ASM_MONITORING_ENABLED,
         "asmOperatorConfigured": config.asm_operator_configured(),
+        # Whether ASM is usable at all on this instance (needs ASM_SIGNING_KEY).
+        # The tab shows an unavailable notice rather than failing on first use.
+        "asmEnabled": asm.signing.configured(),
     }
     # </script> inside a JSON string would end the block early.
     blob = json.dumps(payload).replace("<", "\\u003c")

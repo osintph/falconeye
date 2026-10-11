@@ -3,6 +3,8 @@ import os
 # Point the DB at a throwaway temp file before any app module is imported, so the
 # ASM tables self-initialize somewhere writable (mirrors tests/abuse).
 os.environ.setdefault("FALCONEYE_DB", "/tmp/falconeye_test.db")
+# ASM is disabled without a signing key; set one so the endpoints are reachable.
+os.environ.setdefault("ASM_SIGNING_KEY", "test-asm-signing-key-not-a-secret")
 
 import pytest
 

@@ -5,6 +5,31 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.37.1] - 2026-10-11
+
+### Changed
+
+- **The ASM scan concurrency cap and queue are now shared across all gunicorn
+  workers.** v3.37.0 held them in per-process state, so with three workers the
+  real cap was six concurrent scans and the queue was per worker. A worker now
+  moves a scan from queued to running only through an atomic SQLite update that
+  checks the global running count, so at most `ASM_MAX_CONCURRENT_SCANS` run at
+  once across the whole instance, and the queue depth is read from the shared
+  scan table. The ASM store opens connections with a busy timeout so concurrent
+  workers wait for the write lock instead of failing under contention. The
+  verification and email rate limits were already SQLite-backed and so already
+  shared; only the per-worker slowapi burst limit is not, matching the rest of
+  the app.
+
+### Security
+
+- **ASM now requires `ASM_SIGNING_KEY`.** The v3.37.0 per-process fallback key is
+  gone: without a configured key, ASM disables itself (every ASM route answers
+  503 and the tab shows it as unavailable) and logs an error at startup, instead
+  of silently minting a key that differed between workers and died on restart.
+  `upgrade.sh` and `provision.sh` generate a key into `.env` when the operator
+  has not set one.
+
 ## [3.37.0] - 2026-10-11
 
 ### Added

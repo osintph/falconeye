@@ -121,6 +121,9 @@ fe_nginx_test_reload
 # ---- 6. migrations and cache flushes the release declares ----------------------
 fe_step "6/9 Database migrations and release actions"
 fe_db_init
+# ASM needs a signing key before the restart below (without it the feature
+# disables itself); generate one if the operator has not set it.
+fe_ensure_asm_signing_key
 fe_apply_release_actions "$PREVIOUS_VERSION" "$TARGET_VERSION"
 
 # ---- 7. restart ----------------------------------------------------------------
