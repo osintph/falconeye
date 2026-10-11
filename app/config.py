@@ -227,3 +227,123 @@ ATLAS_PER_DAY = max(1, int(getenv_clean("ATLAS_PER_DAY", "10")))
 # Probe lists per ASN or country move slowly and are not the interesting part
 # of the budget.
 ATLAS_PROBE_CACHE_TTL_HOURS = 6
+
+
+# ----- Attack Surface Management (v3.37.0) -----
+# ASM maps the internet-facing surface of a domain the requester has PROVEN they
+# control (DNS TXT or a role-address email), or any domain in operator mode for an
+# authorized engagement. No ASM output of any kind is returned for an unverified
+# or blocked domain outside operator mode. Discovery is passive (CT logs, passive
+# DNS, Wayback, RIPEstat); active checks stay inside the target apex. Every
+# outbound HTTP to a target goes through app.utils.safe_fetch; the port scan is a
+# pure-Python TCP connect scan that still resolves through resolve_and_check so a
+# private or reserved address is never connected to. No em dashes in any ASM copy
+# (a test enforces it); keep this section ASCII.
+
+# Signing key for grants, management links, email-confirm tokens and the operator
+# session cookie (itsdangerous). The setup script writes a high-entropy value here
+# so grants survive a restart. Left unset, app/asm/signing.py falls back to a
+# per-process random key: everything still works, but every restart invalidates
+# outstanding grants and links. Never log this value.
+ASM_SIGNING_KEY = getenv_clean("ASM_SIGNING_KEY")
+
+# A successful verification issues a grant bound to the requester's browser
+# session. 30 days by default.
+ASM_GRANT_DAYS = max(1, int(getenv_clean("ASM_GRANT_DAYS", "30")))
+# Verification tokens (DNS token, email link) are single use and expire this fast.
+ASM_VERIFY_TOKEN_TTL_HOURS = max(1, int(getenv_clean("ASM_VERIFY_TOKEN_TTL_HOURS", "24")))
+
+# Verification attempt caps, so the email method cannot be used to mail-bomb a
+# target's postmaster and the DNS method cannot be used as an unmetered probe.
+ASM_VERIFY_START_PER_HOUR = max(1, int(getenv_clean("ASM_VERIFY_START_PER_HOUR", "5")))
+ASM_VERIFY_START_PER_DOMAIN_PER_DAY = max(1, int(getenv_clean("ASM_VERIFY_START_PER_DOMAIN_PER_DAY", "3")))
+ASM_VERIFY_EMAIL_PER_DOMAIN_PER_DAY = max(1, int(getenv_clean("ASM_VERIFY_EMAIL_PER_DOMAIN_PER_DAY", "2")))
+
+# Scan hard caps. Per run: at most this many discovered hosts are actively probed
+# and port scanned; a per-host timeout, a whole-run timeout, and two concurrency
+# ceilings. These bound a run whatever a target's zone looks like.
+ASM_MAX_HOSTS_PER_RUN = max(1, int(getenv_clean("ASM_MAX_HOSTS_PER_RUN", "50")))
+ASM_HOST_TIMEOUT_SECONDS = float(getenv_clean("ASM_HOST_TIMEOUT_SECONDS", "20"))
+ASM_RUN_TIMEOUT_SECONDS = float(getenv_clean("ASM_RUN_TIMEOUT_SECONDS", "240"))
+ASM_PORT_TIMEOUT_SECONDS = float(getenv_clean("ASM_PORT_TIMEOUT_SECONDS", "2.5"))
+# Hard-capped like holehe's concurrency: being a good neighbour is not a tuning knob.
+ASM_PORT_CONCURRENCY = max(1, min(100, int(getenv_clean("ASM_PORT_CONCURRENCY", "50"))))
+ASM_HOST_CONCURRENCY = max(1, min(20, int(getenv_clean("ASM_HOST_CONCURRENCY", "10"))))
+
+# Scans run as background jobs, not in the request worker. At most this many run
+# at once; further requests queue up to the queue cap, then are refused.
+ASM_MAX_CONCURRENT_SCANS = max(1, min(8, int(getenv_clean("ASM_MAX_CONCURRENT_SCANS", "2"))))
+ASM_SCAN_QUEUE_MAX = max(1, int(getenv_clean("ASM_SCAN_QUEUE_MAX", "20")))
+
+# Per source IP daily cap on on-demand scans (burst is a separate slowapi limit).
+ASM_SCAN_PER_DAY = max(1, int(getenv_clean("ASM_SCAN_PER_DAY", "10")))
+
+# Monitoring. Opt-in per verified (or operator-added) domain, run by a systemd
+# timer. Default OFF so a self-hoster turns it on deliberately.
+ASM_MONITORING_ENABLED = getenv_clean("ASM_MONITORING_ENABLED", "false").lower() == "true"
+ASM_MAX_MONITORED = max(1, int(getenv_clean("ASM_MAX_MONITORED", "50")))
+ASM_MAX_PER_NOTIFY = max(1, int(getenv_clean("ASM_MAX_PER_NOTIFY", "10")))
+# Snapshots older than this are pruned. Deleting a domain removes everything now.
+ASM_SNAPSHOT_RETENTION_DAYS = max(1, int(getenv_clean("ASM_SNAPSHOT_RETENTION_DAYS", "180")))
+
+# Free-mail blocklist: a local override file merged on top of the vendored
+# willwhite/freemail list (app/asm/data/free_email_domains.txt). One domain per
+# line, '#' comments allowed. Kept outside the tree like the ransomware watchlist.
+ASM_FREEMAIL_OVERRIDE_PATH = getenv_clean("ASM_FREEMAIL_OVERRIDE_PATH", "/opt/falconeye/private/asm_freemail_override.txt")
+# Extra operator-defined blocked domains, comma separated, merged into the
+# free-mail block layer. Same "this domain cannot be assessed here" response.
+ASM_BLOCKED_DOMAINS = getenv_clean("ASM_BLOCKED_DOMAINS")
+
+# CertSpotter free key lifts the unauthenticated full-domain quota (10/hr). The
+# discovery CT fetchers fall back to unauthenticated use when it is empty.
+CERTSPOTTER_API_KEY = getenv_clean("CERTSPOTTER_API_KEY")
+
+# Shodan enrichment (host ports/services and CVEs). DEFAULT OFF, enrichment only,
+# never changes the host list or a finding on its own. The keyless InternetDB
+# endpoint and the keyed host API both sit behind this one flag. Verified
+# 2026-10-11: shodan/host/{ip} spends no query credits, internetdb.shodan.io is
+# keyless and free for non-commercial use, rate limit 1 req/s.
+SHODAN_ENABLED = getenv_clean("SHODAN_ENABLED", "false").lower() == "true"
+SHODAN_API_KEY = getenv_clean("SHODAN_API_KEY")
+
+# Bright Data Web Unlocker. DEFAULT OFF and OPERATOR ONLY: its acceptable-use
+# policy forbids reselling proxy access, so anonymous users' fetches are never
+# routed through it. Used only to fetch a page the direct safe_fetch probe could
+# not complete, never to scan or port scan. Verified 2026-10-11 against
+# https://brightdata.com/acceptable-use-policy.
+BRIGHTDATA_ENABLED = getenv_clean("BRIGHTDATA_ENABLED", "false").lower() == "true"
+BRIGHTDATA_API_KEY = getenv_clean("BRIGHTDATA_API_KEY")
+BRIGHTDATA_ZONE = getenv_clean("BRIGHTDATA_ZONE")
+
+# Operator mode (master key). Disabled unless BOTH are set. Self-hosters get no
+# operator mode by default and the feature leaves no visible trace in the UI when
+# off. The setup script (scripts/asm_operator_setup.py) generates the key and the
+# TOTP secret, prints both once, and stores only the bcrypt hash and the TOTP
+# secret here. Never configure these on the public instance from an automated run.
+ASM_OPERATOR_KEY_HASH = getenv_clean("ASM_OPERATOR_KEY_HASH")
+ASM_OPERATOR_TOTP_SECRET = getenv_clean("ASM_OPERATOR_TOTP_SECRET")
+# Optional source restriction for the unlock route (e.g. a tailnet range). Comma
+# separated CIDRs; empty means any source may attempt an unlock.
+ASM_OPERATOR_ALLOWED_CIDRS = getenv_clean("ASM_OPERATOR_ALLOWED_CIDRS")
+# Operator session lifetime once unlocked.
+ASM_OPERATOR_SESSION_HOURS = max(1, int(getenv_clean("ASM_OPERATOR_SESSION_HOURS", "8")))
+# The operator's own daily scan cap, which may be higher than a normal user's.
+ASM_OPERATOR_SCAN_PER_DAY = max(1, int(getenv_clean("ASM_OPERATOR_SCAN_PER_DAY", "200")))
+
+# The local stdio MCP server counts as operator context ONLY when this is set in
+# ITS OWN environment. It must NEVER be set in the gunicorn/systemd environment of
+# the public web app: the web process never has it, so a browser cannot reach the
+# operator path even by forging the in-process marker header. See app/mcp_server.py.
+ASM_MCP_OPERATOR = getenv_clean("ASM_MCP_OPERATOR", "false").lower() == "true"
+
+
+def asm_operator_configured() -> bool:
+    """True when operator mode is set up on this instance.
+
+    Read live (not frozen at import) so a test can set the two env vars and the
+    unlock route stops being 404-shaped. When this is False the UI shows no trace
+    of operator mode and the unlock routes answer 404.
+    """
+    return bool(
+        getenv_clean("ASM_OPERATOR_KEY_HASH") and getenv_clean("ASM_OPERATOR_TOTP_SECRET")
+    )

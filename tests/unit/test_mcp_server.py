@@ -31,6 +31,7 @@ from app import mcp_server
 from app.ransomware import routes as ransomware_routes
 from app.routemap import routes as routemap_routes
 from app.routers import (
+    asm,
     domain_intel,
     email_header,
     ip_intel,
@@ -48,6 +49,7 @@ EXPECTED = {
     "qr_analyze": qr_analyzer.decode,
     "ransomware_watch_search": ransomware_routes.search_victims,
     "route_map": routemap_routes.analyze,
+    "asm_discover": asm.mcp_discover,
 }
 
 # Tabs that answer questions about a person rather than about an indicator. Out

@@ -12,7 +12,8 @@ from app.utils.env import getenv_clean
 from app.ip_sources import catalog, reputation
 from app.routemap import atlas
 from app.utils.client_ip import get_client_ip_key
-from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet
+from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet, asm
+from app.asm import catalog as asm_catalog
 from app.prospect import routes as prospect_routes
 from app.image_search import routes as image_routes
 from app.abuse import routes as abuse_routes
@@ -59,7 +60,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.36.8",
+    version="3.37.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -109,13 +110,15 @@ app.include_router(username_routes.router)
 app.include_router(breach_routes.router)
 app.include_router(ransomware_routes.router)
 app.include_router(routemap_routes.router)
+app.include_router(asm.router)
+app.include_router(asm.pages)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.36.8"}
+    return {"status": "ok", "version": "3.37.0"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -165,6 +168,10 @@ def _operator_tokens() -> dict:
         # instance is one the visitor's IP is never sent to, so it is neither
         # named nor counted.
         "{{IP_SOURCE_COUNT}}": str(len(catalog.active_sources())),
+        # Attack Surface tab copy and privacy policy, rendered from
+        # app/asm/catalog.py so the two cannot drift apart.
+        "{{ASM_SOURCES}}": asm_catalog.discovery_labels(),
+        "{{ASM_ALL_SOURCES}}": asm_catalog.all_labels(),
         # Rendered as ", <tagline>" so an operator who clears it gets a clean
         # full stop after their name instead of a dangling comma.
         "{{OPERATOR_TAGLINE_CLAUSE}}": (
@@ -213,6 +220,12 @@ def _operator_config_script() -> str:
         # not a secret: it decides whether the tab shows the Trace button's
         # primary path or goes straight to "use your own trace".
         "atlasEnabled": atlas.configured(),
+        # Whether this instance has monitoring switched on, and whether operator
+        # mode is configured at all. Operator mode leaves no UI trace when off, so
+        # this is False on the public instance and the operator section never
+        # renders. These are capability flags, never key material.
+        "asmMonitoringEnabled": config.ASM_MONITORING_ENABLED,
+        "asmOperatorConfigured": config.asm_operator_configured(),
     }
     # </script> inside a JSON string would end the block early.
     blob = json.dumps(payload).replace("<", "\\u003c")

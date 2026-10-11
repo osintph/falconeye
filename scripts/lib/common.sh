@@ -397,6 +397,42 @@ fe_install_unit() {
     fi
 }
 
+# The ASM monitoring timer is opt-in. It is installed and enabled only when
+# ASM_MONITORING_ENABLED is true in the .env, so a box that does not use
+# monitoring never gains a timer. The service and timer ship in deploy/.
+fe_install_asm_timer() {
+    local svc_src="$FE_APP_SRC/deploy/falconeye-asm-monitor.service"
+    local tmr_src="$FE_APP_SRC/deploy/falconeye-asm-monitor.timer"
+    local svc_dest="/etc/systemd/system/falconeye-asm-monitor.service"
+    local tmr_dest="/etc/systemd/system/falconeye-asm-monitor.timer"
+
+    if ! grep -qE '^[[:space:]]*ASM_MONITORING_ENABLED=true' "$FE_ENV_FILE" 2>/dev/null; then
+        fe_say "ASM monitoring not enabled (ASM_MONITORING_ENABLED), skipping its timer"
+        return 0
+    fi
+    if [[ ! -f "$svc_src" || ! -f "$tmr_src" ]]; then
+        fe_warn "ASM timer files missing in deploy/, skipping"
+        return 0
+    fi
+
+    local changed=false
+    local src dest name
+    for pair in "$svc_src|$svc_dest|falconeye-asm-monitor.service" "$tmr_src|$tmr_dest|falconeye-asm-monitor.timer"; do
+        IFS='|' read -r src dest name <<< "$pair"
+        if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+            continue
+        fi
+        fe_run cp "$src" "$dest"
+        changed=true
+        fe_say "ASM timer file updated: $name"
+    done
+    if [[ "$changed" == "true" ]]; then
+        fe_run systemctl daemon-reload
+    fi
+    fe_run systemctl enable --now falconeye-asm-monitor.timer
+    [[ "$DRY_RUN" == "true" ]] || fe_ok "ASM monitoring timer installed and enabled"
+}
+
 # ----------------------------------------------------------------- nginx ------
 
 # Every snippet the vhost includes. provision.sh used to copy one of the two by

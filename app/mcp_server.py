@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 SERVER_NAME = "falconeye"
-SERVER_VERSION = "3.35.3"
+SERVER_VERSION = "3.37.0"
 
 # app.main mounts StaticFiles(directory="app/static") and that path is relative to
 # the process working directory, so importing the app from anywhere else raises.
@@ -190,6 +190,12 @@ async def route_map(trace_text: str, origin_lat: float | None = None,
     })
 
 
+async def asm_discover(domain: str, engagement_reference: str) -> dict:
+    """Map the attack surface of one domain, in operator context."""
+    return await _request("POST", "/api/asm/mcp/discover", json_body={
+        "domain": domain, "engagement_reference": engagement_reference})
+
+
 # The endpoint's own cap, so a file that cannot possibly be accepted is rejected
 # before it is read into memory.
 _QR_MAX_BYTES = 5 * 1024 * 1024
@@ -215,6 +221,9 @@ _CACHE = {
     "ransomware": "Search results are cached for 1 hour.",
     "route_map": ("Not cached: the trace is parsed and discarded. Router "
                   "hostnames looked up at CAIDA Hoiho are cached for 30 days."),
+    "asm": ("Not cached: each call runs a fresh scan. Discovery uses certificate "
+            "transparency, passive DNS, the Wayback Machine and RIPEstat; active "
+            "checks stay inside the apex."),
 }
 
 _LLM = ("This calls Anthropic with this instance's own ANTHROPIC_API_KEY, so it "
@@ -347,6 +356,26 @@ TOOLS: tuple[Tool, ...] = (
             "was. This tool never runs a traceroute and never creates a RIPE "
             "Atlas measurement: it reads text you already have. "
             + _CACHE["route_map"]
+        ),
+    ),
+    Tool(
+        name="asm_discover",
+        input_hint="a domain and an engagement reference",
+        method="POST",
+        path="/api/asm/mcp/discover",
+        handler=asm_discover,
+        description=(
+            "Map the internet-facing attack surface of one domain: discovered "
+            "subdomains and live hosts, open services, certificates, technology "
+            "fingerprints, subdomain-takeover candidates and the apex mail "
+            "posture. Input is a domain and an engagement reference: the domain "
+            "such as example.com, and engagement_reference naming the approved "
+            "engagement for the assessment, which is required and recorded in "
+            "the audit log. This tool is operator context: it runs only when this "
+            "server was started with ASM_MCP_OPERATOR set, and it refuses "
+            "free-mail, shared-platform and public-suffix domains. Third-party "
+            "hosts a CNAME points at are recorded as references and never probed "
+            "or port scanned. " + _CACHE["asm"]
         ),
     ),
 )

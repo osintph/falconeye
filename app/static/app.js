@@ -39,6 +39,8 @@ const NAV_GROUPS = [
       icon: '<path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/><path d="M18 8v9a3 3 0 0 0 6 0v-1"/>' },
     { id: 'routemap', label: 'Route Map', desc: 'Map the real network path to a target',
       icon: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="m8 8 3 3-3 3"/><path d="m16 16-3-3 3-3"/>' },
+    { id: 'attacksurface', label: 'Attack Surface', desc: 'Map and monitor a domain you control',
+      icon: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>' },
   ]},
   { key: 'threat-intel', label: 'Threat Intel', tabs: [
     { id: 'ransomware', label: 'Ransomware Watch', desc: 'Global + PH/SEA ransomware victim tracking',
@@ -233,6 +235,7 @@ function showTab(tabName) {
 
   if (tabName === 'breach') loadBreachRecent();
   if (tabName === 'routemap') initRouteMap();
+  if (tabName === 'attacksurface') initAttackSurface();
   if (tabName === 'sockpuppet') initSockpuppet();
   if (tabName === 'ransomware') {
     showRwSubview(getRwSubviewFromHash());
@@ -6475,6 +6478,21 @@ function feFooterAll(st, footerLines) {
   }
 }
 
+// Faint diagonal watermark on every page, stamped after the body is laid out
+// (same timing as feFooterAll). Used by the Attack Surface report to carry the
+// domain, and in operator mode the engagement reference, across every page.
+function feWatermark(st, text) {
+  const doc = st.doc;
+  const total = doc.getNumberOfPages();
+  for (let p = 1; p <= total; p++) {
+    doc.setPage(p);
+    doc.setFont(FE_PDF.SANS, 'bold');
+    doc.setFontSize(44);
+    doc.setTextColor(232, 227, 216);
+    doc.text(String(text || ''), st.pageW / 2, st.pageH / 2, { align: 'center', angle: 26 });
+  }
+}
+
 // --- filename + timestamp helpers ---
 function fePad2(n) { return String(n).padStart(2, '0'); }
 function fePdfDate() {
@@ -9595,3 +9613,468 @@ const RM_SAMPLE = `traceroute to heise.de (193.99.144.80), 30 hops max, 60 byte 
 14  82.98.103.3 (82.98.103.3)  258.443 ms  258.919 ms  259.337 ms
 15  212.19.61.13 (212.19.61.13)  256.118 ms  256.662 ms  257.004 ms
 16  heise.de (193.99.144.80)  255.337 ms  255.881 ms  256.223 ms`;
+
+
+// ===ASM_START===
+// Attack Surface Management tab. Verified-ownership scanning, background jobs
+// with polling, operator mode at an unlinked hash, and a watermarked PDF export.
+// No em dashes in this block (a test enforces it).
+const ASM = { domain: '', scanId: '', poll: null, lastData: null };
+
+function asmResult() { return document.getElementById('asm-result'); }
+
+function asmShow(html) {
+  const el = asmResult();
+  if (!el) return;
+  el.innerHTML = html;
+  el.classList.remove('hidden');
+}
+
+function initAttackSurface() {
+  const btn = document.getElementById('asm-begin-btn');
+  const input = document.getElementById('asm-input');
+  if (btn && !btn._asmWired) {
+    btn._asmWired = true;
+    btn.addEventListener('click', asmBegin);
+    if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') asmBegin(); });
+  }
+  asmMaybeOperator();
+  window.addEventListener('hashchange', asmMaybeOperator);
+}
+
+function asmMaybeOperator() {
+  const cfg = window.FALCONEYE_CONFIG || {};
+  const panel = document.getElementById('asm-operator-panel');
+  if (!panel) return;
+  if (cfg.asmOperatorConfigured && location.hash === '#asm-operator') {
+    panel.classList.remove('hidden');
+    asmRenderOperatorUnlock();
+  } else {
+    panel.classList.add('hidden');
+  }
+}
+
+async function asmBegin() {
+  const domain = (document.getElementById('asm-input').value || '').trim().toLowerCase();
+  if (!domain) { asmShow('<p class="text-red-400 text-sm">Enter a domain.</p>'); return; }
+  ASM.domain = domain;
+  asmShow('<p class="text-gray-400 text-sm animate-pulse">Checking...</p>');
+  try {
+    const res = await fetch('/api/asm/session?domain=' + encodeURIComponent(domain));
+    const data = await res.json();
+    if (data.operator) { asmRenderHome(domain, data, true); return; }
+    if (data.verified) { asmRenderHome(domain, data, false); return; }
+    asmRenderGate(domain);
+  } catch (e) {
+    asmShow('<p class="text-red-400 text-sm">Request failed: ' + escapeHtml(e.message) + '</p>');
+  }
+}
+
+function asmRenderGate(domain) {
+  const d = escapeHtml(domain);
+  asmShow(
+    '<div class="bg-amber-950 border border-amber-800 rounded p-3 mb-4 text-sm text-amber-200">' +
+    'Ownership of <span class="font-mono">' + d + '</span> is not verified. Prove control to scan it.</div>' +
+    '<div class="grid gap-3 md:grid-cols-2">' +
+    '<div class="bg-gray-900 border border-gray-800 rounded p-4">' +
+    '<h3 class="font-bold mb-1">DNS TXT record</h3>' +
+    '<p class="text-gray-400 text-sm mb-3">Publish a one-time token on the apex. Fastest if you manage DNS.</p>' +
+    '<button id="asm-m-dns" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Use DNS</button></div>' +
+    '<div class="bg-gray-900 border border-gray-800 rounded p-4">' +
+    '<h3 class="font-bold mb-1">Email a role address</h3>' +
+    '<p class="text-gray-400 text-sm mb-3">We mail a one-time link to a fixed role inbox at the domain.</p>' +
+    '<button id="asm-m-email" class="bg-gray-800 text-gray-100 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700 transition">Use email</button></div>' +
+    '</div><div id="asm-method"></div>'
+  );
+  document.getElementById('asm-m-dns').addEventListener('click', () => asmStartDns(domain));
+  document.getElementById('asm-m-email').addEventListener('click', () => asmRenderEmail(domain));
+}
+
+async function asmStartDns(domain) {
+  const box = document.getElementById('asm-method');
+  box.innerHTML = '<p class="text-gray-400 text-sm animate-pulse mt-4">Creating token...</p>';
+  try {
+    const res = await fetch('/api/asm/verify/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: domain, method: 'dns' }),
+    });
+    const data = await res.json();
+    if (data.assessable === false) { asmShow('<p class="text-red-400 text-sm">' + escapeHtml(data.message) + '</p>'); return; }
+    if (!res.ok) { box.innerHTML = '<p class="text-red-400 text-sm mt-4">' + escapeHtml(data.error || 'failed') + '</p>'; return; }
+    box.innerHTML =
+      '<div class="mt-4 bg-gray-900 border border-gray-800 rounded p-4 space-y-3">' +
+      '<p class="text-sm text-gray-300">Add either record, then check. The record is re-checked before every scan.</p>' +
+      '<div class="bg-gray-950 border border-gray-700 rounded p-2 font-mono text-xs text-amber-400 break-all">' +
+      escapeHtml(data.apex_record.name) + '  IN TXT  "' + escapeHtml(data.apex_record.value) + '"</div>' +
+      '<div class="bg-gray-950 border border-gray-700 rounded p-2 font-mono text-xs text-amber-400 break-all">' +
+      escapeHtml(data.under_record.name) + '  IN TXT  "' + escapeHtml(data.under_record.value) + '"</div>' +
+      '<button id="asm-check" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Check DNS now</button>' +
+      '<div id="asm-check-msg" class="text-sm"></div></div>';
+    document.getElementById('asm-check').addEventListener('click', () => asmCheckDns(domain));
+  } catch (e) {
+    box.innerHTML = '<p class="text-red-400 text-sm mt-4">Request failed: ' + escapeHtml(e.message) + '</p>';
+  }
+}
+
+async function asmCheckDns(domain) {
+  const msg = document.getElementById('asm-check-msg');
+  msg.innerHTML = '<span class="text-gray-400 animate-pulse">Querying DNS...</span>';
+  try {
+    const res = await fetch('/api/asm/verify/check-dns', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: domain }),
+    });
+    const data = await res.json();
+    if (data.verified) { asmBegin(); return; }
+    msg.innerHTML = '<span class="text-amber-300">' + escapeHtml(data.message || data.error || 'Not found yet.') + '</span>';
+  } catch (e) {
+    msg.innerHTML = '<span class="text-red-400">Request failed.</span>';
+  }
+}
+
+function asmRenderEmail(domain) {
+  const box = document.getElementById('asm-method');
+  const roles = ['security', 'postmaster', 'hostmaster', 'admin', 'administrator', 'webmaster'];
+  box.innerHTML =
+    '<div class="mt-4 bg-gray-900 border border-gray-800 rounded p-4 space-y-3">' +
+    '<label class="block text-sm text-gray-400">Role address at ' + escapeHtml(domain) + '</label>' +
+    '<select id="asm-role" class="bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm font-mono">' +
+    roles.map(r => '<option value="' + r + '">' + r + '@' + escapeHtml(domain) + '</option>').join('') +
+    '</select><div><button id="asm-send" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300 transition">Send authorisation link</button></div>' +
+    '<div id="asm-send-msg" class="text-sm"></div></div>';
+  document.getElementById('asm-send').addEventListener('click', () => asmStartEmail(domain));
+}
+
+async function asmStartEmail(domain) {
+  const role = document.getElementById('asm-role').value;
+  const msg = document.getElementById('asm-send-msg');
+  msg.innerHTML = '<span class="text-gray-400 animate-pulse">Sending...</span>';
+  try {
+    const res = await fetch('/api/asm/verify/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: domain, method: 'email', role: role }),
+    });
+    const data = await res.json();
+    if (data.assessable === false) { asmShow('<p class="text-red-400 text-sm">' + escapeHtml(data.message) + '</p>'); return; }
+    if (!res.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'failed') + '</span>'; return; }
+    msg.innerHTML = '<span class="text-green-400">Link sent to ' + escapeHtml(data.sent_to) +
+      '. Open it in the browser you want to scan from and press the button.</span>';
+  } catch (e) {
+    msg.innerHTML = '<span class="text-red-400">Request failed.</span>';
+  }
+}
+
+function asmRenderHome(domain, session, isOperator) {
+  const d = escapeHtml(domain);
+  const mon = session.monitor || {};
+  const monEnabled = session.monitoring_enabled;
+  let html =
+    '<div class="bg-green-950 border border-green-800 rounded p-3 mb-4 text-sm text-green-300">' +
+    (isOperator ? 'Operator session active.' : 'Ownership verified (' + escapeHtml(session.method || 'dns') + ').') +
+    ' Scans run as background jobs; this view polls for progress.</div>' +
+    '<div class="bg-gray-900 border border-gray-800 rounded p-4 mb-3">' +
+    '<h3 class="font-bold mb-2">On-demand scan</h3>' +
+    (isOperator ? '<input id="asm-eng" placeholder="Engagement reference (required)" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2">' : '') +
+    '<button id="asm-run" class="bg-amber-400 text-gray-950 font-bold px-5 py-2 rounded text-sm hover:bg-amber-300 transition">Run scan now</button></div>';
+  if (!isOperator) {
+    html += '<div class="bg-gray-900 border border-gray-800 rounded p-4 mb-3">' +
+      '<h3 class="font-bold mb-2">Monitoring</h3>';
+    if (monEnabled) {
+      html += '<label class="flex items-center gap-2 text-sm mb-2"><input type="checkbox" id="asm-mon-on" ' +
+        (mon.enabled ? 'checked' : '') + '> Enabled</label>' +
+        '<select id="asm-mon-freq" class="bg-gray-950 border border-gray-700 rounded px-3 py-1 text-sm mb-2">' +
+        '<option value="weekly"' + (mon.freq === 'weekly' ? ' selected' : '') + '>Weekly</option>' +
+        '<option value="daily"' + (mon.freq === 'daily' ? ' selected' : '') + '>Daily</option></select>' +
+        '<div><button id="asm-mon-save" class="bg-gray-800 text-gray-100 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700">Save</button></div>' +
+        '<div id="asm-mon-msg" class="text-sm mt-2"></div>';
+    } else {
+      html += '<p class="text-gray-500 text-sm">Monitoring is not enabled on this server.</p>';
+    }
+    html += '</div>' +
+      '<div class="bg-gray-900 border border-gray-800 rounded p-4 mb-3">' +
+      '<h3 class="font-bold mb-2">Management</h3>' +
+      '<p class="text-gray-400 text-sm mb-2">A management link was emailed to the confirmed address. These act immediately.</p>' +
+      '<div class="flex gap-2 flex-wrap">' +
+      '<button id="asm-rotate" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Rotate link</button>' +
+      '<button id="asm-revoke" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Revoke grants</button>' +
+      '<button id="asm-delete" class="border border-red-700 text-red-400 px-3 py-2 rounded text-xs hover:bg-red-950">Delete all data</button>' +
+      '</div><div id="asm-manage-msg" class="text-sm mt-2"></div></div>';
+  }
+  html += '<div id="asm-scan-area"></div>';
+  asmShow(html);
+  document.getElementById('asm-run').addEventListener('click', () => {
+    const eng = isOperator ? (document.getElementById('asm-eng').value || '').trim() : undefined;
+    asmRunScan(domain, isOperator, eng);
+  });
+  if (!isOperator && monEnabled) {
+    document.getElementById('asm-mon-save').addEventListener('click', () => asmSetMonitor(domain));
+    document.getElementById('asm-rotate').addEventListener('click', () => asmManage(domain, 'rotate'));
+    document.getElementById('asm-revoke').addEventListener('click', () => asmManage(domain, 'revoke'));
+    document.getElementById('asm-delete').addEventListener('click', () => asmManage(domain, 'delete'));
+  } else if (!isOperator) {
+    document.getElementById('asm-rotate').addEventListener('click', () => asmManage(domain, 'rotate'));
+    document.getElementById('asm-revoke').addEventListener('click', () => asmManage(domain, 'revoke'));
+    document.getElementById('asm-delete').addEventListener('click', () => asmManage(domain, 'delete'));
+  }
+}
+
+async function asmRunScan(domain, isOperator, engagement, confirmDomain) {
+  const area = document.getElementById('asm-scan-area');
+  area.innerHTML = '<p class="text-gray-400 text-sm animate-pulse mt-2">Submitting scan...</p>';
+  const body = { domain: domain };
+  if (engagement) body.engagement = engagement;
+  if (confirmDomain) body.confirm_domain = confirmDomain;
+  try {
+    const res = await fetch('/api/asm/scan', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (res.status === 409 && data.needs_confirmation) {
+      area.innerHTML = '<div class="mt-2 bg-amber-950 border border-amber-800 rounded p-3 text-sm text-amber-200">' +
+        escapeHtml(data.message) + '<div class="mt-2"><input id="asm-confirm" class="bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm font-mono" placeholder="' + escapeHtml(domain) + '">' +
+        '<button id="asm-confirm-btn" class="ml-2 bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm">Confirm</button></div></div>';
+      document.getElementById('asm-confirm-btn').addEventListener('click', () =>
+        asmRunScan(domain, isOperator, engagement, document.getElementById('asm-confirm').value.trim()));
+      return;
+    }
+    if (!res.ok) { area.innerHTML = '<p class="text-red-400 text-sm mt-2">' + escapeHtml(data.error || 'failed') + '</p>'; return; }
+    ASM.scanId = data.scan_id;
+    asmPoll(data.scan_id);
+  } catch (e) {
+    area.innerHTML = '<p class="text-red-400 text-sm mt-2">Request failed: ' + escapeHtml(e.message) + '</p>';
+  }
+}
+
+function asmPoll(scanId) {
+  const area = document.getElementById('asm-scan-area');
+  if (ASM.poll) clearTimeout(ASM.poll);
+  const tick = async () => {
+    try {
+      const res = await fetch('/api/asm/scan/' + encodeURIComponent(scanId));
+      const data = await res.json();
+      if (res.status === 404) { area.innerHTML = '<p class="text-red-400 text-sm mt-2">Scan not found.</p>'; return; }
+      if (data.state === 'queued' || data.state === 'running') {
+        const cap = data.capacity || {};
+        const label = data.state === 'queued'
+          ? ('Queued (' + (cap.active || 0) + ' running, ' + (cap.queued || 0) + ' waiting)...')
+          : 'Scanning...';
+        area.innerHTML = '<p class="text-gray-400 text-sm mt-2 animate-pulse">' + label + '</p>';
+        ASM.poll = setTimeout(tick, 2500);
+        return;
+      }
+      if (data.state === 'error') { area.innerHTML = '<p class="text-red-400 text-sm mt-2">Scan error: ' + escapeHtml(data.error || 'unknown') + '</p>'; return; }
+      ASM.lastData = data;
+      asmRenderReport(data);
+    } catch (e) {
+      area.innerHTML = '<p class="text-red-400 text-sm mt-2">Polling failed.</p>';
+    }
+  };
+  tick();
+}
+
+function asmSev(sev) {
+  const map = { critical: 'bg-red-950 text-red-400', high: 'bg-orange-950 text-orange-400',
+    medium: 'bg-amber-950 text-amber-400', low: 'bg-sky-950 text-sky-400', info: 'bg-gray-800 text-gray-400' };
+  return '<span class="px-2 py-0.5 rounded text-xs font-mono ' + (map[sev] || map.info) + '">' + escapeHtml(sev) + '</span>';
+}
+
+function asmRenderReport(data) {
+  const area = document.getElementById('asm-scan-area');
+  const s = data.summary || {};
+  const sc = s.severity_counts || {};
+  let html = '<div class="mt-3 bg-gray-900 border border-gray-800 rounded p-4">';
+  html += '<div class="flex justify-between items-center mb-3 flex-wrap gap-2">' +
+    '<h3 class="font-bold">Report: ' + escapeHtml(data.domain) + '</h3>' +
+    '<span class="text-xs text-gray-500 font-mono">' + escapeHtml(s.generated || '') + '</span></div>';
+  html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">' +
+    asmTile(sc.critical || 0, 'Critical', 'text-red-400') +
+    asmTile(sc.high || 0, 'High', 'text-orange-400') +
+    asmTile(sc.medium || 0, 'Medium', 'text-amber-400') +
+    asmTile(s.in_scope || 0, 'Hosts in scope', 'text-gray-100') + '</div>';
+  // findings
+  html += '<h4 class="text-xs uppercase tracking-wide text-gray-500 font-mono mb-2">Findings</h4>';
+  if ((data.findings || []).length) {
+    html += '<div class="space-y-2 mb-4">' + data.findings.map(f =>
+      '<div class="bg-gray-950 border border-gray-800 rounded p-2 text-sm"><div class="flex gap-2 items-center">' +
+      asmSev(f.severity) + '<span class="font-semibold">' + escapeHtml(f.title) + '</span></div>' +
+      '<div class="text-gray-400 font-mono text-xs mt-1 break-all">' + escapeHtml(f.detail || '') + '</div></div>').join('') + '</div>';
+  } else { html += '<p class="text-gray-500 text-sm mb-4">No findings.</p>'; }
+  // hosts
+  html += '<h4 class="text-xs uppercase tracking-wide text-gray-500 font-mono mb-2">Hosts</h4>';
+  html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
+    '<th class="text-left py-1">Host</th><th class="text-left py-1">IP</th><th class="text-left py-1">Ports</th><th class="text-left py-1">Server</th></tr></thead><tbody>';
+  (data.hosts || []).forEach(h => {
+    const ports = h.kind === 'own' ? ((h.ports || []).join(', ') || 'none')
+      : (h.kind === 'cdn' ? ('<span class="text-sky-400">behind CDN (' + escapeHtml(h.cdn || 'CDN') + '), ports not scanned</span>')
+        : ('<span class="text-sky-400">reference only: CNAME ' + escapeHtml(h.cname || '') + '</span>'));
+    html += '<tr class="border-b border-gray-900"><td class="py-1 font-mono">' + escapeHtml(h.host) + '</td>' +
+      '<td class="py-1 font-mono">' + escapeHtml((h.resolved_ips || []).join(', ') || 'n/a') + '</td>' +
+      '<td class="py-1 font-mono">' + ports + '</td>' +
+      '<td class="py-1 font-mono">' + escapeHtml(h.server || 'n/a') + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div class="flex gap-2 mt-4 flex-wrap items-center"><span class="text-xs text-gray-500">Export</span>' +
+    '<button id="asm-ex-json" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">JSON</button>' +
+    '<button id="asm-ex-csv" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">CSV</button>' +
+    '<button id="asm-ex-pdf" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">PDF</button></div>';
+  html += '</div>';
+  area.innerHTML = html;
+  document.getElementById('asm-ex-json').addEventListener('click', () => asmExport(data.scan_id, 'json'));
+  document.getElementById('asm-ex-csv').addEventListener('click', () => asmExport(data.scan_id, 'csv'));
+  document.getElementById('asm-ex-pdf').addEventListener('click', () => downloadAsmPdf(data));
+}
+
+function asmTile(n, label, color) {
+  return '<div class="bg-gray-950 border border-gray-800 rounded p-3"><div class="text-2xl font-bold ' + color + '">' +
+    n + '</div><div class="text-xs text-gray-500 uppercase">' + escapeHtml(label) + '</div></div>';
+}
+
+async function asmExport(scanId, fmt) {
+  try {
+    const res = await fetch('/api/asm/scan/' + encodeURIComponent(scanId) + '/export.' + fmt);
+    if (!res.ok) return;
+    const text = await res.text();
+    const blob = new Blob([text], { type: fmt === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'falconeye-asm-' + (ASM.domain || 'domain').replace(/[^a-z0-9.]/gi, '-') + '.' + fmt;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  } catch (e) { /* ignore */ }
+}
+
+async function asmSetMonitor(domain) {
+  const on = document.getElementById('asm-mon-on').checked;
+  const freq = document.getElementById('asm-mon-freq').value;
+  const msg = document.getElementById('asm-mon-msg');
+  msg.innerHTML = '<span class="text-gray-400 animate-pulse">Saving...</span>';
+  try {
+    const res = await fetch('/api/asm/monitor', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: domain, enabled: on, freq: freq }),
+    });
+    const data = await res.json();
+    msg.innerHTML = res.ok ? '<span class="text-green-400">Saved.</span>'
+      : '<span class="text-red-400">' + escapeHtml(data.error || 'failed') + '</span>';
+  } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
+}
+
+let asmDeleteArmed = false;
+async function asmManage(domain, action) {
+  const msg = document.getElementById('asm-manage-msg');
+  if (action === 'delete' && !asmDeleteArmed) {
+    asmDeleteArmed = true;
+    msg.innerHTML = '<span class="text-red-400">This deletes every record for ' + escapeHtml(domain) +
+      '. Click Delete again within 5 seconds to confirm.</span>';
+    setTimeout(() => { asmDeleteArmed = false; }, 5000);
+    return;
+  }
+  asmDeleteArmed = false;
+  msg.innerHTML = '<span class="text-gray-400 animate-pulse">Working...</span>';
+  try {
+    const res = await fetch('/api/asm/manage/' + action, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ domain: domain }),
+    });
+    const data = await res.json();
+    if (!res.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'failed') + '</span>'; return; }
+    if (action === 'delete') { asmShow('<p class="text-sm text-gray-300">All data for ' + escapeHtml(domain) + ' has been deleted.</p>'); return; }
+    if (action === 'revoke') { asmShow('<p class="text-sm text-gray-300">Access revoked.</p>'); return; }
+    msg.innerHTML = '<span class="text-green-400">Done.' + (data.emailed_to ? ' New link emailed to ' + escapeHtml(data.emailed_to) + '.' : '') + '</span>';
+  } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
+}
+
+// ---- Operator mode (unlinked, only when configured) ----
+function asmRenderOperatorUnlock() {
+  const panel = document.getElementById('asm-operator-panel');
+  panel.innerHTML =
+    '<div class="bg-gray-900 border border-amber-800 rounded p-4 mt-4">' +
+    '<h3 class="font-bold mb-2 text-amber-400">Operator unlock</h3>' +
+    '<p class="text-gray-400 text-sm mb-3">Verification is skipped in operator mode. Each scan needs an engagement reference.</p>' +
+    '<input id="asm-op-key" type="password" placeholder="Operator key" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2">' +
+    '<input id="asm-op-code" placeholder="Authenticator code" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2 font-mono" style="max-width:200px">' +
+    '<button id="asm-op-unlock" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Unlock</button>' +
+    '<div id="asm-op-msg" class="text-sm mt-2"></div></div>';
+  document.getElementById('asm-op-unlock').addEventListener('click', asmOperatorUnlock);
+}
+
+async function asmOperatorUnlock() {
+  const key = document.getElementById('asm-op-key').value;
+  const code = document.getElementById('asm-op-code').value;
+  const msg = document.getElementById('asm-op-msg');
+  msg.innerHTML = '<span class="text-gray-400 animate-pulse">Unlocking...</span>';
+  try {
+    const res = await fetch('/api/asm/operator/unlock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key, code: code }),
+    });
+    const data = await res.json();
+    if (!res.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'Unlock failed.') + '</span>'; return; }
+    asmRenderOperatorScan();
+  } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
+}
+
+function asmRenderOperatorScan() {
+  const panel = document.getElementById('asm-operator-panel');
+  panel.innerHTML =
+    '<div class="bg-gray-900 border border-amber-800 rounded p-4 mt-4">' +
+    '<div class="flex justify-between items-center mb-2"><h3 class="font-bold text-amber-400">Operator scan</h3>' +
+    '<button id="asm-op-lock" class="text-xs text-gray-400 hover:text-amber-400">Lock</button></div>' +
+    '<input id="asm-op-domain" placeholder="domain" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2 font-mono">' +
+    '<input id="asm-op-eng" placeholder="Engagement reference (required)" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2">' +
+    '<button id="asm-op-scan" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Run operator scan</button>' +
+    '<div id="asm-scan-area"></div></div>';
+  document.getElementById('asm-op-lock').addEventListener('click', asmOperatorLock);
+  document.getElementById('asm-op-scan').addEventListener('click', () => {
+    const domain = document.getElementById('asm-op-domain').value.trim().toLowerCase();
+    const eng = document.getElementById('asm-op-eng').value.trim();
+    ASM.domain = domain;
+    asmRunScan(domain, true, eng);
+  });
+}
+
+async function asmOperatorLock() {
+  try { await fetch('/api/asm/operator/lock', { method: 'POST' }); } catch (e) { /* ignore */ }
+  asmRenderOperatorUnlock();
+}
+
+function downloadAsmPdf(data) {
+  if (!fePdfReady()) return;
+  const st = fePdfNew();
+  const s = data.summary || {};
+  const sc = s.severity_counts || {};
+  const sub = ['Attack surface report', 'Generated ' + (s.generated || fePdfUtcStamp())];
+  if (data.operator && data.engagement) sub.push('Engagement: ' + data.engagement);
+  feBrandHeader(st, data.domain + ' attack surface', sub);
+  feHeading(st, 'Summary');
+  feKeyVal(st, 'Hosts in scope', String(s.in_scope || 0));
+  feKeyVal(st, 'Behind CDN', String(s.behind_cdn || 0));
+  feKeyVal(st, 'References', String(s.references || 0));
+  feKeyVal(st, 'Findings', (sc.critical || 0) + ' critical, ' + (sc.high || 0) + ' high, ' +
+    (sc.medium || 0) + ' medium, ' + (sc.low || 0) + ' low');
+  feHeading(st, 'Findings');
+  const frows = (data.findings || []).map(f => [f.severity, f.host || 'n/a', f.title, f.detail || 'n/a']);
+  if (frows.length) {
+    feTable(st, [{ title: 'Severity', width: 22 }, { title: 'Host', width: 38, mono: true },
+      { title: 'Finding', width: 44 }, { title: 'Detail', width: 70 }], frows);
+  } else { feText(st, 'No findings.'); }
+  feHeading(st, 'Hosts');
+  const hrows = (data.hosts || []).map(h => [h.host, h.kind,
+    (h.resolved_ips || []).join(' ') || 'n/a',
+    h.kind === 'own' ? ((h.ports || []).join(' ') || 'none') : 'not scanned',
+    h.server || 'n/a']);
+  if (hrows.length) {
+    feTable(st, [{ title: 'Host', width: 44, mono: true }, { title: 'Kind', width: 20 },
+      { title: 'IPs', width: 38, mono: true }, { title: 'Ports', width: 32, mono: true },
+      { title: 'Server', width: 30 }], hrows);
+  }
+  feHeading(st, 'Sources');
+  (s.attribution || []).forEach(a => feText(st, a, { size: 8, color: FE_PDF.muted }));
+  feWatermark(st, data.domain);
+  const footer = data.domain + ' / generated ' + (s.generated || fePdfUtcStamp()) +
+    (data.operator && data.engagement ? (' / engagement ' + data.engagement) : '');
+  feFooterAll(st, [footer, 'falconeye.osintph.info']);
+  st.doc.save('falconeye-asm-' + feSanitizeName(data.domain) + '-' + fePdfDate() + '.pdf');
+}
+// ===ASM_END===

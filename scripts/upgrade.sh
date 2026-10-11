@@ -108,6 +108,8 @@ fe_pip_sync "$PREVIOUS_REF" "$TARGET"
 fe_step "4/9 systemd unit"
 fe_ensure_log_dir
 fe_install_unit
+# The ASM monitoring timer, installed only when ASM_MONITORING_ENABLED is set.
+fe_install_asm_timer
 
 # ---- 5. nginx ------------------------------------------------------------------
 fe_step "5/9 nginx snippets and conf.d"

@@ -5,6 +5,52 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.37.0] - 2026-10-11
+
+### Added
+
+- **Attack Surface Management, a new tab.** Maps and monitors the internet-facing
+  surface of a domain the requester has proven they control, or any domain in
+  operator mode for an authorised engagement. No ASM output of any kind
+  (discovery, findings, exports, MCP) is returned for an unverified or blocked
+  domain outside operator mode.
+  - **Block list, checked first.** Free and consumer mailbox providers (a
+    vendored open list plus a local override and `ASM_BLOCKED_DOMAINS`),
+    shared-platform apexes from the Public Suffix List private section, and the
+    public suffixes themselves. One identical response whatever the reason. The
+    block by domain never looks at MX, so a company on Google Workspace or
+    Microsoft 365 is fine. Public suffixes are never scannable, operator mode
+    included.
+  - **Verification gate.** DNS TXT (`falconeye-verify=<token>` on the apex or at
+    `_falconeye.<apex>`) or a one-time link to a fixed role address at the domain
+    (admin, administrator, hostmaster, postmaster, webmaster, security). Tokens
+    are random, single use, expire in 24h and are stored hashed. Success issues a
+    signed 30-day grant bound to the requesting browser; the email method binds
+    the grant to the browser that opens the link and presses a button, with no
+    action on a GET. DNS grants re-check the TXT record before every scan.
+  - **Operator mode.** Disabled unless configured, with no UI trace when off.
+    Unlock at an unlinked route with a key plus TOTP from an optional CIDR
+    allowlist, issuing a short-lived session. Each operator scan needs an
+    engagement reference, recorded in an audit table and printed on the report
+    watermark. A blocked domain needs a retyped confirmation; public suffixes stay
+    unscannable.
+  - **Scan engine.** Passive discovery (crt.sh, Cert Spotter, Mnemonic passive
+    DNS, the Wayback Machine, RIPEstat), a light active probe (DNS, HTTP and TLS
+    through `safe_fetch`, header-based tech fingerprint, apex SPF/DMARC/MTA-STS
+    posture), and a conservative pure-Python TCP connect scan. Strict apex scope:
+    a host behind a published CDN edge is marked "behind CDN, ports not scanned"
+    and a CNAME to a third party is a reference only, never probed or port
+    scanned, in operator mode too. Scans run as background jobs (at most two at
+    once, with a small queue) and the UI polls for status.
+  - **Monitoring.** Opt-in per domain via a systemd timer, weekly or daily,
+    diffing each run and emailing only when something changed. Snapshots are
+    pruned past a retention window; deleting a domain removes everything at once.
+  - **MCP.** A new `asm_discover` tool, operator context only
+    (`ASM_MCP_OPERATOR`), requiring an engagement reference.
+  - New dependencies: `itsdangerous` (signed grants and links) and `pyotp`
+    (operator TOTP). Source endpoints, terms and list licences were verified
+    against each provider on 2026-10-11.
+
 ## [3.36.8] - 2026-10-09
 
 ### Fixed

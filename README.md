@@ -1,8 +1,8 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Eighteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
+**Free, self-hosted OSINT investigator's toolkit.** Nineteen focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, attack surface management for domains you control, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.36.8**
+Current version: **3.37.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -29,6 +29,7 @@ claude mcp add falconeye -- /opt/falconeye/mcp-venv/bin/python -m app.mcp_server
 | `url_expand` | a shortened or redirecting URL |
 | `qr_analyze` | a QR code image (file path or data URI) |
 | `ransomware_watch_search` | a victim, sector or group name |
+| `asm_discover` | a domain and an engagement reference (operator context only) |
 
 **It runs against your own instance, your own `.env` and your own API keys.**
 There is no hosted endpoint and no account: each tool calls the same route the
@@ -73,6 +74,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Username** | Check where a username appears across ~950 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
 | **Route Map** | Map the real network path to a target and draw it on a world map, starting from where you are. Enter a domain, URL or IP and a RIPE Atlas probe on your own network runs the traceroute; or paste a trace, or run one yourself and pipe it to a single-use upload link. Windows `tracert`, Unix `traceroute` and `mtr --report` are all parsed, format auto-detected. Hops are placed **hostname first**: CAIDA Hoiho's published ruleset, then a bundled carrier site-code table, and an IP geolocation database only as a fallback, because a backbone router's address geolocates to wherever its operator registered the prefix. Every placement is then checked against the speed of light (about 100 km per ms of round trip) and rejected if the measured RTT could not reach it, so a Tata router cannot be drawn in Harare at the same RTT as San Jose. Hops that cannot be placed are listed with the reason, never silently dropped. Annotates asymmetric return paths, ICMP rate limiting mistaken for packet loss, and a destination that does not answer ICMP. Your location is asked for through the browser's own permission popup, rounded to about 10 km in the browser, used for the render only and never stored; declining falls back to an offline city picker. Atlas measurements are public and the tab says so. Needs an `ATLAS_API_KEY` for the probe path; paste and upload work without one. |
+| **Attack Surface** | Map and monitor the internet-facing surface of a domain you have proven you control (a DNS TXT record, or a one-time link to a role address at the domain), or any domain in operator mode for an authorised engagement. No output of any kind is returned for an unverified or blocked domain outside operator mode. Free and consumer mailbox providers, shared-platform apexes (the PSL private section) and public suffixes are blocked, with one identical response whatever the reason. Passive discovery (certificate transparency, Mnemonic passive DNS, the Wayback Machine) and RIPEstat ASN context feed a light active probe (DNS, HTTP/TLS, header-based tech fingerprint, apex mail posture) and a conservative pure-Python TCP connect scan. Strict scope: only the target's own hosts are probed; a host behind a published CDN edge is marked "behind CDN, ports not scanned" and a CNAME to a third party is recorded as a reference only, never probed or port scanned. Findings cover dangling-CNAME takeover candidates, expiring certificates, exposed admin surfaces, unexpected open services, missing security headers and SPF/DMARC/MTA-STS posture. Scans run as background jobs with a polled status; results are bound to the verifying browser session, never a shareable link. Opt-in weekly or daily monitoring diffs each run and emails only when something changed. Exports to JSON, CSV and a watermarked PDF. |
 | **Ransomware Watch** | Global + PH/SEA ransomware victim tracking: world map, regional (PH/SG/MY/ID/TH/VN/HK/TW) comparison with month-over-month trend, latest victims with cross-source corroboration flags, group activity, leak-site mirror health, and a PH-relevant watchlist. Reads a locally scheduled collector's cache only for its core panels, never queries an upstream from the browser there. Two guarded exceptions: a company search (always live against ransomware.live, min 3 characters, rate-limited, degrades to a local partial-cache fallback if upstream is down) and an on-demand country lookup for any country outside the continuously-collected PH/SEA set (cached 24h, rate-limited). Every entry is labelled a claim, never a confirmed fact. Requires a `RANSOMWARE_LIVE_API_KEY` (ransomware.live PRO); RansomLook needs no key. Data attributed to ransomware.live (non-commercial terms) and RansomLook (CC BY 4.0). |
 
 ### LLM-powered tabs
@@ -103,7 +105,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.36.8:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.37.0:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -323,6 +325,14 @@ Everything in this table is state `git reset --hard` cannot put back. The list
 lives in `fe_state_paths()` in `scripts/lib/common.sh`; this table is generated
 from it and a test fails if the two disagree.
 
+> **v3.37.0 (Attack Surface Management) adds nothing to this list.** Its state is
+> a set of `asm_*` tables inside `data/falconeye.db`, which is already the first
+> essential entry below, plus the operator key hash and TOTP secret and the ASM
+> signing key, which live in `.env`, also already listed. The `asm_*` tables are:
+> `asm_domains`, `asm_verifications`, `asm_grants`, `asm_scans`, `asm_hosts`,
+> `asm_findings`, `asm_snapshots`, `asm_operator_sessions`, `asm_operator_audit`
+> and `asm_rate_limit`.
+
 **Essential** means losing it loses something this repository plus a working
 afternoon cannot recreate. **Convenience** means it can be rebuilt, at the cost
 of history or of an hour.
@@ -434,6 +444,12 @@ All write endpoints accept JSON. Rate limits are enforced per real client IP (`C
 | `/api/threat-pulse` | GET | None |
 | `/api/image/search` | POST | 5/minute per IP |
 | `/api/prospect/investigate` | POST | 10/IP/day |
+| `/api/asm/verify/start` | POST | 10/minute per IP + per-IP and per-domain daily caps |
+| `/api/asm/verify/check-dns` | POST | 20/minute per IP |
+| `/api/asm/scan` | POST | 6/minute per IP + 10/IP/day (higher for operators) |
+| `/api/asm/scan/{id}` | GET | None (grant or operator session required) |
+| `/api/asm/monitor` | POST | None (grant or operator session required) |
+| `/api/asm/operator/unlock` | POST | 10/minute per IP + lockout backoff |
 | `/health` | GET | None |
 
 OpenAPI docs are disabled in production (`FALCONEYE_PUBLIC_DOCS=false` by default).

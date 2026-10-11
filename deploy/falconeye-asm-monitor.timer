@@ -1,0 +1,18 @@
+# Timer for FalconEye ASM monitoring.
+#
+# Install to: /etc/systemd/system/falconeye-asm-monitor.timer
+# Then: sudo systemctl enable --now falconeye-asm-monitor.timer
+#
+# It fires once a day; the monitor itself decides, per domain, whether that
+# domain is due given its daily or weekly setting. A randomized delay spreads the
+# outbound load, and Persistent catches a run missed while the box was off.
+[Unit]
+Description=FalconEye ASM monitoring timer
+
+[Timer]
+OnCalendar=daily
+RandomizedDelaySec=1800
+Persistent=true
+
+[Install]
+WantedBy=timers.target

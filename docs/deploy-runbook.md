@@ -204,7 +204,9 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    it would make and touches nothing. This is the **only supported upgrade
    path**: it backs up `.env`, the database and the installed unit, checks out
    the tag, reinstalls dependencies only if `requirements.txt` moved, copies the
-   systemd unit and reloads systemd **if the unit changed**, updates nginx
+   systemd unit and reloads systemd **if the unit changed**, installs and enables
+   the `falconeye-asm-monitor` timer **only when `ASM_MONITORING_ENABLED=true`**,
+   updates nginx
    snippets (and any `conf.d` file already installed), warns if the shipped vhost
    has drifted without ever overwriting yours, applies the release actions the
    release declares, restarts the service and checks `/health` reports the new
@@ -271,6 +273,12 @@ clean. The old logs stay in the directory you moved.
 > **v3.35.0 adds nothing to this list.** The Route Map tab's only persistent
 > state is four tables inside `data/falconeye.db`, which is already the first
 > essential entry below. See "Route Map" for what they hold.
+>
+> **v3.37.0 (Attack Surface Management) adds nothing either.** Its state is the
+> `asm_*` tables inside `data/falconeye.db` (already the first essential entry),
+> plus the ASM signing key and, where configured, the operator key hash and TOTP
+> secret, which live in `.env` (also already listed). See "Attack Surface
+> Management" for what they hold and how an owner deletes their own records.
 
 
 Everything in this table is state `git reset --hard` cannot put back. The list
@@ -1092,6 +1100,80 @@ The sample inputs (`osintph.info` in the Domain and Breach tabs, and the home
 page example card) are deliberately left alone. They are demo values sitting
 beside a WannaCry wallet address and a `stripe.com` example, not a claim about
 who runs the site, and swapping in a domain with no data makes the demo worse.
+
+## Attack Surface Management (v3.37.0)
+
+The Attack Surface tab maps and monitors the internet-facing surface of a domain
+the requester has proven they control, or any domain in operator mode for an
+authorised engagement. The rule that governs the whole feature: no output of any
+kind is returned for an unverified or blocked domain outside operator mode.
+
+### What it needs
+
+Nothing extra for the free path. Discovery uses crt.sh, Cert Spotter, Mnemonic
+passive DNS, the Wayback Machine and RIPEstat, all free and keyless (a free
+`CERTSPOTTER_API_KEY` lifts the CT rate limit but is optional). The active probe
+goes through `safe_fetch`; the port scan is a pure-Python TCP connect scan, so
+there is no new system package and no raw-socket capability. Set `ASM_SIGNING_KEY`
+to a high-entropy value (see `.env.example`) so grants survive a restart.
+
+Optional enrichment is off by default and operator-gated where a vendor's terms
+require it: `SHODAN_ENABLED` (host ports and CVEs; InternetDB keyless, the keyed
+host lookup spends no query credits), `CENSYS_ENABLED` (unchanged from the IP
+tab), and `BRIGHTDATA_ENABLED` (Web Unlocker, operator-only because its
+acceptable-use policy forbids reselling proxy access; used only to fetch a page
+the direct probe could not reach, never to scan).
+
+### The verification gate
+
+A normal user proves control two ways, their choice:
+
+- **DNS TXT**: publish `falconeye-verify=<token>` on the apex, or the bare
+  `<token>` at `_falconeye.<apex>`. Re-checked before every scan.
+- **Email**: a one-time link to a fixed role address at the domain (admin,
+  administrator, hostmaster, postmaster, webmaster, security). The grant binds to
+  the browser that opens the link and presses the button.
+
+Tokens are single use, expire in 24 hours, and are stored only as a hash.
+Verification needs a working outbound mail path (the same `MAILGUN_*` settings the
+abuse tab uses) for the email method; the DNS method needs nothing.
+
+### Operator mode setup
+
+Operator mode is **disabled unless configured**, and it leaves no trace in the UI
+when off. Do NOT configure it on the public instance from an automated run. To
+set it up on a box, as a human:
+
+```bash
+cd /opt/falconeye/app_src
+sudo -u ubuntu /opt/falconeye/venv/bin/python scripts/asm_operator_setup.py
+```
+
+It prints the operator key and the TOTP secret exactly once (store the key in a
+password manager, the secret in an authenticator app) and shows the two `.env`
+lines to add: `ASM_OPERATOR_KEY_HASH` (a bcrypt hash) and
+`ASM_OPERATOR_TOTP_SECRET`. Add them (or pass `--write /opt/falconeye/.env`),
+optionally set `ASM_OPERATOR_ALLOWED_CIDRS` to a tailnet or office range, and
+restart the service. Unlock at the unlinked route `#asm-operator` in the Attack
+Surface tab with the key and a current TOTP code. Each operator scan needs an
+engagement reference; failed and successful unlocks are emailed to
+`OPERATOR_CONTACT_EMAIL`.
+
+### Monitoring
+
+Set `ASM_MONITORING_ENABLED=true` and the upgrade installs and enables the
+`falconeye-asm-monitor.timer` (daily; each domain is scanned on its own weekly or
+daily schedule). It re-verifies ownership before each run, pauses and notifies the
+owner on failure, and emails a diff only when something changed. Snapshots older
+than `ASM_SNAPSHOT_RETENTION_DAYS` (180 by default) are pruned. Caps bound the
+total monitored domains and domains per notification address.
+
+### State
+
+ASM stores its state in the `asm_*` tables inside `data/falconeye.db` and its
+secrets in `.env`, both already covered by the backup list, so this release adds
+nothing to "State to persist". An owner can delete every record for their domain,
+and revoke all access, from the management link emailed to them or from the tab.
 
 ## Logging, and what it retains
 

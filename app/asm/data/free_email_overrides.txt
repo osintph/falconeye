@@ -1,0 +1,17 @@
+# Free/consumer mailbox providers missing from the vendored willwhite/freemail
+# list (data/free_email_domains.txt, ISC), which was last updated in 2020. One
+# domain per line, '#' comments allowed. Merged on top of the vendored list.
+#
+# An operator can add more without touching the repo via a file at
+# ASM_FREEMAIL_OVERRIDE_PATH, or via ASM_BLOCKED_DOMAINS in .env.
+proton.me
+pm.me
+protonmail.ch
+duck.com
+mail.ru
+tutamail.com
+tuta.com
+tutanota.de
+hey.com
+skiff.com
+fastmail.us

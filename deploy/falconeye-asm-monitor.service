@@ -1,0 +1,21 @@
+# FalconEye ASM monitoring run (oneshot), fired by falconeye-asm-monitor.timer.
+#
+# Install to: /etc/systemd/system/falconeye-asm-monitor.service
+# The upgrade script installs and enables this only when ASM_MONITORING_ENABLED
+# is true in /opt/falconeye/.env, so a box that does not use monitoring never
+# gains a timer it did not ask for.
+#
+# It runs scripts/asm_monitor.py, which scans every monitored domain that is due,
+# re-verifies ownership first, diffs against the previous snapshot, and emails the
+# diff only when something changed. It reads the same .env as the web service.
+[Unit]
+Description=FalconEye ASM monitoring run
+After=network.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/falconeye/app_src
+EnvironmentFile=/opt/falconeye/.env
+ExecStart=/opt/falconeye/venv/bin/python /opt/falconeye/app_src/scripts/asm_monitor.py
