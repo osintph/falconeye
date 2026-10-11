@@ -134,12 +134,17 @@ async def _fail_crt(client, kw):
     return set(), "failed", "crt.sh keyword search returned 502 (crt.sh side)"
 
 
+def _us_meta(age=100):
+    return {"first_seen": "2026-09-01", "title": "", "labels": [], "asn": None,
+            "age_days": age, "server": None, "result_url": "", "observed": set()}
+
+
 async def _ok_urlscan(client, kw):
-    return {f"{kw}-{i}.ph" for i in range(20)}, "answered"
+    return {f"{kw}-{i}.ph": _us_meta() for i in range(20)}, "answered"
 
 
 async def _fail_urlscan(client, kw):
-    return set(), "failed"
+    return {}, "failed"
 
 
 def test_discover_caps_candidates_and_labels_hits(monkeypatch):
@@ -168,6 +173,26 @@ def test_crtsh_failure_alone_does_not_make_incomplete(monkeypatch):
     assert ct["status"] == "failed" and "block" not in (ct.get("note") or "").lower()
 
 
+def test_discover_drops_irrelevant_keyword_hits(monkeypatch):
+    _fast_crtsh(monkeypatch)
+
+    async def crt_none(client, kw):
+        return set(), "answered", ""
+
+    async def us(client, kw):
+        return ({"mmda-ltoncap.net": _us_meta(30), "stammdaten.de": _us_meta(2000),
+                 "emmday.in": _us_meta(500)}, "answered")
+
+    monkeypatch.setattr(sources, "_crtsh", crt_none)
+    monkeypatch.setattr(sources, "_urlscan", us)
+    monkeypatch.setattr(sources, "_nrd", _skip_nrd)
+    out = asyncio.run(sources.discover("mmda", "mmda.gov.ph"))
+    doms = [c["domain"] for c in out["candidates"]]
+    assert "mmda-ltoncap.net" in doms  # relevant lookalike kept
+    assert "stammdaten.de" not in doms and "emmday.in" not in doms  # buried, dropped
+    assert out["irrelevant_count"] >= 2
+
+
 def test_discover_incomplete_when_urlscan_fails(monkeypatch):
     # urlscan is the primary keyword source; its failure makes the run INCOMPLETE.
     _fast_crtsh(monkeypatch)
@@ -186,7 +211,7 @@ def test_discover_excludes_the_legit_domain(monkeypatch):
         return {"philhealth.gov.ph", "philhealth-login.ph"}, "answered", ""
 
     async def no_urlscan(client, kw):
-        return set(), "answered"
+        return {}, "answered"
 
     monkeypatch.setattr(sources, "_crtsh", crt_with_legit)
     monkeypatch.setattr(sources, "_urlscan", no_urlscan)

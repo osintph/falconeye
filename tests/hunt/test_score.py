@@ -1,87 +1,71 @@
-"""Hunt scoring and verdicts (v3.38.2 model).
+"""Hunt scoring and verdicts (v3.38.6 campaign-aware model).
 
-LIKELY PHISHING requires a strong signal (favicon match, close title imitation,
-hunted-brand content, a known-bad listing, or recent registration with live
-non-parked content). Keyword-in-name plus MX alone is SUSPICIOUS at most. Parking,
-registry and marketplace landing pages are PARKED. A resolving domain that could
-not be fetched is UNKNOWN.
+Likely Phishing when ANY of: brand plus theme term and registered under 90 days;
+campaign-cluster membership; an urlscan malicious or phishing label; or page
+content imitating the brand. A domain urlscan observed recently that no longer
+resolves is possibly taken down, never Unknown.
 """
 from app.hunt import score
 
 
 def _c(**kw):
-    base = {"domain": "x.ph", "resolves": True, "fetched": True, "has_mx": False,
-            "has_ns": False, "reg_age_days": None, "fresh_cert": False, "brand_markers": 0,
-            "brand": None, "ph_indicators": 0, "favicon_match": False, "legit_title_sim": 0,
-            "known_bad": False, "cloudflare": False, "title": "", "parked": False, "evidence": []}
+    base = {"domain": "x.com", "resolves": True, "fetched": True, "has_mx": False,
+            "reg_age_days": None, "fresh_cert": False, "brand_markers": 0, "ph_indicators": 0,
+            "favicon_match": False, "legit_title_sim": 0, "known_bad": False, "cloudflare": False,
+            "title": "", "parked": False, "themes": [], "urlscan": None,
+            "campaign_member": False, "evidence": []}
     base.update(kw)
     return base
 
 
-def test_real_lookalike_imitating_the_legit_page_is_likely_phishing():
-    # Strong signal: favicon match and a close title match to the legitimate site.
-    c = score.score_candidate(_c(domain="philhealth-refund.com", favicon_match=True,
-                                 legit_title_sim=92, has_mx=True, reg_age_days=20),
-                              "philhealth", "philhealth.gov.ph")
-    assert c["verdict"] == "likely phishing"
-    assert c["strong"] is True
-
-
-def test_recent_registration_with_live_content_is_likely_phishing():
-    c = score.score_candidate(_c(domain="mmda-verify.com", reg_age_days=5, fetched=True,
-                                 parked=False, has_mx=True),
+def test_campaign_member_is_likely_phishing():
+    c = score.score_candidate(_c(domain="mmda-ltoncap.net", themes=["lto", "ncap"],
+                                 campaign_member=True, reg_age_days=20),
                               "mmda", "mmda.gov.ph")
     assert c["verdict"] == "likely phishing"
+    assert any("campaign" in e for e in c["evidence"])
 
 
-def test_keyword_plus_mx_alone_is_suspicious_not_likely():
-    # No strong signal: an old domain, fetched but benign, keyword and MX only.
-    c = score.score_candidate(_c(domain="mmdalogin.com", has_mx=True, reg_age_days=400,
-                                 fetched=True, parked=False),
+def test_theme_plus_recent_registration_is_likely_phishing():
+    c = score.score_candidate(_c(domain="mmdancap-ncr.icu", themes=["ncap", "ncr"],
+                                 reg_age_days=15),
                               "mmda", "mmda.gov.ph")
-    assert c["verdict"] == "suspicious"
+    assert c["verdict"] == "likely phishing"
 
 
-def test_registry_or_sale_page_with_payment_logos_is_parked():
-    # A for-sale or checkout page listing GCash and Maya logos. assess_content
-    # suppresses the brand and PH markers, so here they are already zero and the
-    # page is parked: it must read Parked, never likely phishing.
-    c = score.score_candidate(_c(domain="mmdaportal.com", parked=True, has_mx=True,
-                                 brand_markers=0, ph_indicators=0, reg_age_days=800,
-                                 title="this domain is for sale"),
+def test_urlscan_malicious_label_is_likely_phishing():
+    c = score.score_candidate(_c(domain="emmday.in", themes=[],
+                                 urlscan={"labels": ["phishing"], "first_seen": "2026-10-01",
+                                          "age_days": 400}),
                               "mmda", "mmda.gov.ph")
-    assert c["verdict"] == "parked"
+    assert c["verdict"] == "likely phishing"  # stronger evidence
 
 
-def test_old_parked_com_with_mx_and_keyword_is_parked():
-    c = score.score_candidate(_c(domain="philhealthlogin.com", parked=True, has_mx=True,
-                                 reg_age_days=3000),
-                              "philhealth", "philhealth.gov.ph")
-    assert c["verdict"] == "parked"
-
-
-def test_old_domain_no_content_signal_is_not_likely():
-    c = score.score_candidate(_c(domain="philhealthcareinc.com", reg_age_days=2500,
-                                 fetched=True, parked=False),
-                              "philhealth", "philhealth.gov.ph")
-    assert c["verdict"] in ("unrelated", "suspicious")
+def test_theme_without_recent_registration_is_suspicious_not_likely():
+    c = score.score_candidate(_c(domain="mmda-ncap-old.com", themes=["ncap"], reg_age_days=1500),
+                              "mmda", "mmda.gov.ph")
+    assert c["verdict"] in ("suspicious", "unrelated")
     assert c["verdict"] != "likely phishing"
 
 
-def test_known_bad_listing_is_likely_phishing():
-    c = score.score_candidate(_c(domain="mmda-login.com", known_bad=True, fetched=True,
-                                 reg_age_days=400),
+def test_possibly_taken_down_keeps_evidence_not_unknown():
+    # urlscan saw it recently but it no longer resolves: not Unknown.
+    c = score.score_candidate(_c(domain="mmda-ltoncap.work", resolves=False, fetched=False,
+                                 themes=["lto", "ncap"], campaign_member=True,
+                                 urlscan={"labels": [], "first_seen": "2026-10-05", "age_days": 30}),
                               "mmda", "mmda.gov.ph")
-    assert c["verdict"] == "likely phishing"
+    assert c["verdict"] != "unknown"
+    assert any("taken down" in e for e in c["evidence"])
 
 
-def test_resolving_but_unfetched_is_unknown():
-    c = score.score_candidate(_c(domain="randomsite.com", fetched=False, reg_age_days=1500),
-                              "philhealth", "philhealth.gov.ph")
+def test_resolving_unfetched_non_observed_is_unknown():
+    c = score.score_candidate(_c(domain="mmda-weird.com", resolves=True, fetched=False,
+                                 urlscan=None),
+                              "mmda", "mmda.gov.ph")
     assert c["verdict"] == "unknown"
 
 
-def test_non_resolving_is_unrelated_zero():
-    c = score.score_candidate(_c(domain="gone.com", resolves=False, fetched=False),
-                              "philhealth", "")
-    assert c["verdict"] == "unrelated" and c["score"] == 0
+def test_cheap_tld_adds_weight():
+    cheap = score.score_candidate(_c(domain="mmda-ncap.sbs", themes=["ncap"], reg_age_days=1500),
+                                  "mmda", "mmda.gov.ph")
+    assert any("cheap" in e for e in cheap["evidence"])

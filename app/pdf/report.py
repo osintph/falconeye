@@ -73,6 +73,10 @@ def _styles():
                              spaceBefore=12, spaceAfter=5, leading=15),
         "cell": ParagraphStyle("cell", fontName="DejaVu", fontSize=7.6, leading=9.5, textColor=INK),
         "cellh": ParagraphStyle("cellh", fontName="DejaVu-Bold", fontSize=7.4, leading=9.5, textColor=MUTED),
+        # Character-level wrap so a long domain or date wraps inside the cell and is
+        # never truncated.
+        "cellw": ParagraphStyle("cellw", fontName="DejaVu", fontSize=7.6, leading=9.5,
+                                textColor=INK, wordWrap="CJK"),
     }
 
 
@@ -270,12 +274,37 @@ def render_report(payload: dict, out_path: str) -> None:
                  ["Discovered (before cap)", str(p.get("discovered", 0))],
                  ["Considered (after cap)", str(p.get("considered", 0))],
                  ["Registered and resolving", str(p.get("resolved", 0))],
+                 ["Possibly taken down", str(p.get("taken_down", 0))],
                  ["Registry wildcard, dropped", str(p.get("wildcard", 0))],
+                 ["Irrelevant keyword matches, dropped", str(p.get("irrelevant", 0))],
                  ["Not registered", str(p.get("not_registered", 0))],
                  ["Fetched and assessed", str(p.get("fetched", 0))],
                  ["Not fetched (fetch cap)", str(p.get("not_fetched", 0))],
-                 ["Certificate or urlscan keyword hits", str(p.get("keyword_hits", 0))]]
-        el.append(_kv_table(prows, st, [70 * mm, 22 * mm]))
+                 ["urlscan or certificate keyword hits", str(p.get("keyword_hits", 0))]]
+        el.append(_kv_table(prows, st, [78 * mm, 22 * mm]))
+
+        # Detected campaigns, at the top of the findings.
+        camps = payload.get("campaigns") or []
+        if camps:
+            el.append(Paragraph("Detected campaigns", st["h2"]))
+            for c in camps:
+                w = c.get("window") or {}
+                win = (f"{w.get('first')} to {w.get('last')}"
+                       if w.get("first") else "dates not published")
+                el.append(Paragraph(
+                    f"<b>Campaign: {_esc(c.get('theme'))}</b> ({c.get('count', 0)} domains, "
+                    f"registered/seen {_esc(win)})", st["body"]))
+                meta = []
+                if c.get("registrars"):
+                    meta.append("registrars: " + _esc(", ".join(c["registrars"])))
+                if c.get("asns"):
+                    meta.append("hosting: " + _esc(", ".join(c["asns"][:4])))
+                if c.get("tlds"):
+                    meta.append("TLDs: " + _esc(", ".join(c["tlds"])))
+                if meta:
+                    el.append(Paragraph("; ".join(meta), st["small"]))
+                el.append(Paragraph(_esc(", ".join(c.get("members") or [])), st["small"]))
+                el.append(Spacer(1, 2 * mm))
 
     # Findings (asm) or candidates (hunt)
     if kind == "asm":
@@ -334,14 +363,23 @@ def render_report(payload: dict, out_path: str) -> None:
             if reg and isinstance(age, int) and age >= 0:
                 reg = f"{reg} ({age}d)"
             reg = reg or c.get("reg_note") or "n/a"
-            rows.append([Paragraph(_esc(c.get("domain")), st["cell"]),
-                         Paragraph(_esc(c.get("source") or "dnstwist"), st["cell"]),
+            dom = _esc(c.get("domain"))
+            if c.get("campaign_id"):
+                dom = f"<b>{dom}</b>"
+            ev_parts = list(c.get("evidence") or [])
+            if c.get("urlscan_first_seen"):
+                u = f"urlscan first seen {c['urlscan_first_seen']}"
+                if c.get("urlscan_result"):
+                    u += f": {c['urlscan_result']}"
+                ev_parts.append(u)
+            rows.append([Paragraph(dom, st["cellw"]),
+                         Paragraph(_esc(c.get("source") or "dnstwist"), st["cellw"]),
                          _verdict_para(c.get("verdict", "unrelated"), st),
                          Paragraph(str(c.get("score", 0)), st["cell"]),
-                         Paragraph(_esc(reg), st["cell"]),
-                         Paragraph(_esc("; ".join(c.get("evidence") or []) or "n/a"), st["cell"])])
+                         Paragraph(_esc(reg), st["cellw"]),
+                         Paragraph(_esc("; ".join(ev_parts) or "n/a"), st["cellw"])])
         if rows:
-            el.append(_data_table(hdr, rows, [34 * mm, 22 * mm, 22 * mm, 16 * mm, 26 * mm, 54 * mm], st))
+            el.append(_data_table(hdr, rows, [34 * mm, 22 * mm, 22 * mm, 14 * mm, 28 * mm, 54 * mm], st))
         else:
             el.append(Paragraph("No candidates found.", st["body"]))
 

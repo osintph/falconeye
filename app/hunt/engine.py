@@ -1,17 +1,18 @@
 """Run one Phishing Hunt and build its one-time payload.
 
 execute(scan) is called by the shared background job runner. For a hunt row the
-keyword is stored in scan["domain"] and the optional legitimate domain in
-scan["engagement"] (the hunt reuses the generic job row).
+keyword is in scan["domain"] and the optional legitimate domain in
+scan["engagement"].
 
-Pipeline, per the v3.38.1 and v3.38.2 briefs. Stage one resolves cheap DNS for
-every generated candidate (concurrency capped) and resolves random control labels
-per TLD to detect registry wildcards (dot.ph answers every .ph label with one
-address). Candidates matching the wildcard control are not registered and are
-dropped. Stage two spends the fetch budget only on candidates that actually
-resolve, keyword hits first. Non-resolving and wildcard candidates never become
-rows. The counts are reported honestly and stay consistent (fetched never exceeds
-resolved). No em dashes in this module.
+Pipeline. Discovery (sources.discover) collapses hits to registrable domains,
+attaches urlscan evidence and brand theme terms, and drops irrelevant keyword
+matches. Stage one resolves cheap DNS for every candidate and drops registry
+wildcards. The fetch budget probes the resolving candidates; a domain urlscan saw
+recently that no longer resolves is kept as "possibly taken down" with its urlscan
+evidence. Candidates sharing a brand theme term are clustered into campaigns, a
+cluster of three or more is reported at the top and boosts its members, and
+scoring recognises themes, campaigns, urlscan verdicts and cheap TLDs. No em
+dashes in this module.
 """
 from __future__ import annotations
 
@@ -23,6 +24,7 @@ import httpx
 
 from app import config
 from app.hunt import candidate as candidate_mod
+from app.hunt import cluster as cluster_mod
 from app.hunt import score as score_mod
 from app.hunt import sources
 from app.hunt import wildcard
@@ -32,12 +34,19 @@ log = logging.getLogger("falconeye.hunt.engine")
 
 _GSB = "https://safebrowsing.google.com/safebrowsing/report_phish/?url="
 _ATTRIBUTION = [
-    "Certificate transparency keyword search: crt.sh.",
+    "Keyword search: urlscan.io (primary).",
     "Permutations: dnstwist (Apache-2.0).",
-    "Keyword search: urlscan.io.",
+    "Certificate transparency keyword search: crt.sh (best effort).",
     "Known-bad enrichment: URLhaus (abuse.ch).",
     "Registration and routing: RDAP, system whois and RIPEstat (RIPE NCC).",
 ]
+
+
+def _reg_date(registered, urls) -> str | None:
+    if registered:
+        return str(registered)[:10]
+    fs = (urls or {}).get("first_seen")
+    return str(fs)[:10] if fs else None
 
 
 async def execute(scan: dict) -> dict:
@@ -50,8 +59,6 @@ async def execute(scan: dict) -> dict:
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
         legit_sig = await candidate_mod.legit_signature(client, legit)
-
-        # Stage one: cheap DNS for every candidate, concurrency capped.
         rsem = asyncio.Semaphore(config.HUNT_RESOLVE_CONCURRENCY)
 
         async def _resolve(dom):
@@ -66,8 +73,7 @@ async def execute(scan: dict) -> dict:
         resolved = await asyncio.gather(*[_resolve(c["domain"]) for c in cands])
         res_map = {r["domain"]: r for r in resolved}
 
-        # Wildcard control: resolve random control labels per TLD present, so a
-        # candidate whose answer equals the registry catch-all is dropped.
+        # Wildcard control per TLD.
         suffixes = sorted({wildcard.suffix_of(c["domain"]) for c in cands})
 
         async def _control(sfx):
@@ -85,22 +91,26 @@ async def execute(scan: dict) -> dict:
 
         def _is_wildcard(dom):
             r = res_map[dom]
-            return wildcard.is_control_answer(r["ips"], r["cname"],
-                                              controls.get(wildcard.suffix_of(dom)))
+            return r["resolves"] and wildcard.is_control_answer(
+                r["ips"], r["cname"], controls.get(wildcard.suffix_of(dom)))
 
-        wildcard_hits = {c["domain"] for c in cands if res_map[c["domain"]]["resolves"]
-                         and _is_wildcard(c["domain"])}
+        wildcard_hits = {c["domain"] for c in cands if _is_wildcard(c["domain"])}
 
-        # Worth fetching: resolves for real (not a wildcard answer). Non-resolving
-        # and wildcard candidates are never rows. Keyword hits lead the order.
-        worth = [c for c in cands
-                 if res_map[c["domain"]]["resolves"] and c["domain"] not in wildcard_hits]
-        resolved_count = len(worth)
+        resolving = [c for c in cands
+                     if res_map[c["domain"]]["resolves"] and c["domain"] not in wildcard_hits]
+        # urlscan saw these recently but they no longer resolve: possibly taken down.
+        taken_down = [c for c in cands
+                      if c["domain"] not in wildcard_hits
+                      and not res_map[c["domain"]]["resolves"] and c.get("urlscan")]
         wildcard_count = len(wildcard_hits)
-        not_registered = len(cands) - resolved_count - wildcard_count
+        not_registered = len(cands) - len(resolving) - len(taken_down) - wildcard_count
 
-        to_fetch = worth[:config.HUNT_MAX_FETCHES]
-        not_fetched = resolved_count - len(to_fetch)
+        # Fetch budget: resolving candidates, themed and keyword hits first.
+        resolving.sort(key=lambda c: (0 if c.get("themes") else 1,
+                                      0 if c["keyword_hit"] else 1, len(c["domain"])))
+        to_fetch = resolving[:config.HUNT_MAX_FETCHES]
+        dns_only = resolving[config.HUNT_MAX_FETCHES:]
+        not_fetched = len(dns_only)
 
         fsem = asyncio.Semaphore(8)
 
@@ -108,78 +118,105 @@ async def execute(scan: dict) -> dict:
             async with fsem:
                 dom = c["domain"]
                 try:
-                    r = await asyncio.wait_for(
+                    return await asyncio.wait_for(
                         candidate_mod.probe(client, dom, keyword, legit, legit_sig,
                                             dns_data=res_map[dom]["dns"]),
                         timeout=config.HUNT_CANDIDATE_TIMEOUT + 6)
-                except Exception as exc:  # noqa: BLE001 - one candidate must not sink the run
+                except Exception as exc:  # noqa: BLE001
                     log.info("hunt candidate gave up %s: %s", tag(dom), type(exc).__name__)
-                    r = {"domain": dom, "resolves": True, "fetched": False,
-                         "has_mx": res_map[dom]["has_mx"], "evidence": ["probe failed"]}
-                return r
+                    return {"domain": dom, "resolves": True, "fetched": False, "evidence": []}
 
-        probed = await asyncio.gather(*[_probe(c) for c in to_fetch])
+        probed = {p["domain"]: p for p in await asyncio.gather(*[_probe(c) for c in to_fetch])}
 
-    scored = [score_mod.score_candidate(c, keyword, legit) for c in probed]
+    # Assemble unified records (probe data + discovery evidence) for every row.
+    records = []
+    for c in resolving + taken_down:
+        dom = c["domain"]
+        p = probed.get(dom, {})
+        urls = c.get("urlscan") or {}
+        rec = dict(p)
+        rec["domain"] = dom
+        rec.setdefault("resolves", res_map[dom]["resolves"])
+        rec.setdefault("fetched", False)
+        rec["urlscan"] = urls
+        rec["themes"] = c.get("themes") or []
+        rec["observed_hosts"] = c.get("observed") or []
+        rec["keyword_hit"] = c.get("keyword_hit")
+        rec["origins"] = c.get("origins") or []
+        rec["reg_date"] = _reg_date(rec.get("registered"), urls)
+        if rec.get("reg_age_days") is None and isinstance(urls.get("age_days"), int):
+            rec["reg_age_days"] = urls["age_days"]
+        if not rec.get("asn") and urls.get("asn"):
+            rec["asn"] = urls["asn"]
+        records.append(rec)
+
+    # Campaign clustering, then score with campaign membership known.
+    campaigns, dom_to_cid = cluster_mod.build(records)
+    for rec in records:
+        rec["campaign_member"] = rec["domain"] in dom_to_cid
+        rec["campaign_id"] = dom_to_cid.get(rec["domain"])
+
+    scored = [score_mod.score_candidate(rec, keyword, legit) for rec in records]
 
     counts = {v: 0 for v in ("likely phishing", "suspicious", "parked", "unknown", "unrelated")}
     rows = []
     for c in scored:
         counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1
-        meta = by_domain.get(c["domain"], {})
+        urls = c.get("urlscan") or {}
         rows.append({
             "domain": c["domain"], "verdict": c["verdict"], "score": c.get("score", 0),
-            "registered": c.get("registered"), "reg_note": c.get("reg_note"),
-            "registrar": c.get("registrar"), "age_days": c.get("reg_age_days"),
-            "asn": c.get("asn"),
-            "source": ", ".join(meta.get("origins") or []) or "dnstwist",
-            "keyword_hit": bool(meta.get("keyword_hit")),
+            "registered": c.get("reg_date"), "reg_note": c.get("reg_note"),
+            "age_days": c.get("reg_age_days"), "registrar": c.get("registrar"),
+            "asn": c.get("asn"), "source": ", ".join(c.get("origins") or []) or "dnstwist",
+            "keyword_hit": bool(c.get("keyword_hit")), "themes": c.get("themes") or [],
+            "campaign_id": c.get("campaign_id"), "observed": c.get("observed_hosts") or [],
+            "urlscan_first_seen": (urls.get("first_seen") or "")[:10],
+            "urlscan_title": urls.get("title") or "", "urlscan_labels": urls.get("labels") or [],
+            "urlscan_result": urls.get("result_url") or "",
             "evidence": c.get("evidence") or [], "gsb_url": _GSB + f"http://{c['domain']}/",
         })
-    rows.sort(key=lambda r: (0 if r["keyword_hit"] else 1, -r["score"]))
+    rows.sort(key=lambda r: (0 if r["campaign_id"] else 1, -r["score"]))
 
-    # "considered" is the capped set actually processed, so considered ==
-    # resolved + wildcard + not_registered. "discovered" is the raw count before
-    # the HUNT_MAX_CANDIDATES cap, reported separately so the figures add up.
     pipeline = {"discovered": disc.get("generated_count", len(cands)),
-                "considered": len(cands), "resolved": resolved_count,
+                "considered": len(cands), "resolved": len(resolving),
                 "fetched": len(to_fetch), "not_fetched": not_fetched,
-                "wildcard": wildcard_count, "not_registered": not_registered,
+                "taken_down": len(taken_down), "wildcard": wildcard_count,
+                "not_registered": not_registered, "irrelevant": disc.get("irrelevant_count", 0),
                 "keyword_hits": disc.get("keyword_hit_count", 0)}
 
     methodology = (
-        "Discovery: urlscan.io keyword search (the primary keyword source), "
-        "permutations of the legitimate domain (dnstwist: homoglyph, IDN and "
-        "punycode, bitsquatting, TLD swap to open registrable TLDs, hyphenation, "
-        "phishing-word combos), a certificate transparency keyword lookup (crt.sh, "
-        "best effort and non-gating; it has no cheap substring search), and an "
-        "optional newly-registered-domain feed. Restricted "
-        "namespaces an attacker cannot register (.gov.ph and the like) and the "
-        "legitimate domain and its subdomains are excluded. Every candidate is DNS "
-        "resolved, and random control labels per TLD detect registry wildcards (a "
-        "candidate matching the wildcard answer is not a real registration and is "
-        "dropped). The fetch budget is spent only on candidates that resolve, "
-        "keyword hits first. Per fetched candidate: RDAP and whois registration, "
-        "hosting ASN, cert freshness, a URLhaus known-bad check, and one homepage "
-        "GET through the SSRF-safe fetcher plus a favicon fetch; parking and "
-        "marketplace landing pages are classified and their payment-logo markers "
-        "ignored. No port scans, no crawling. Caps this run: "
+        "Discovery: urlscan.io keyword search (the primary keyword source, with "
+        "first-seen, title, classification labels and the public result link kept "
+        "as evidence), permutations of the legitimate domain (dnstwist), a best "
+        "effort certificate transparency keyword lookup (crt.sh, non-gating), and "
+        "an optional newly-registered-domain feed. Hits are collapsed to the "
+        "registrable domain. A keyword match whose brand letters are buried in an "
+        "unrelated word, with no brand theme term and no urlscan flag, is dropped "
+        "as irrelevant. Registry wildcards are detected with random control labels "
+        "and dropped. The legitimate domain, its subdomains and restricted "
+        "namespaces are excluded. Candidates sharing a brand theme term are "
+        "clustered into campaigns; a cluster of three or more is boosted and "
+        "reported. Scoring weighs theme terms, campaign membership, urlscan "
+        "verdicts, recent registration, cheap abuse-heavy TLDs and page content "
+        "imitating the brand. A domain urlscan saw recently that no longer resolves "
+        "is kept as possibly taken down. No port scans, no crawling. Caps this run: "
         f"{config.HUNT_MAX_CANDIDATES} candidates, {config.HUNT_MAX_FETCHES} fetched.")
 
-    sline = (f"{pipeline['discovered']} candidates discovered, {pipeline['considered']} considered "
-             f"after the cap: {pipeline['resolved']} registered and resolving, "
-             f"{pipeline['wildcard']} registry-wildcard answers dropped, "
-             f"{pipeline['not_registered']} not registered. {pipeline['fetched']} fetched and "
-             f"assessed, {pipeline['not_fetched']} not fetched (fetch cap). "
-             f"{pipeline['keyword_hits']} certificate or urlscan keyword hits.")
+    sline = (f"{pipeline['discovered']} discovered, {pipeline['considered']} considered: "
+             f"{pipeline['resolved']} registered, {pipeline['taken_down']} possibly taken down, "
+             f"{pipeline['wildcard']} registry-wildcard and {pipeline['irrelevant']} irrelevant "
+             f"keyword matches dropped, {pipeline['not_registered']} not registered. "
+             f"{len(campaigns)} campaign(s) detected. {pipeline['keyword_hits']} urlscan or "
+             f"certificate keyword hits.")
     if disc["incomplete"]:
-        sline = "INCOMPLETE run. " + sline + " A discovery source did not answer."
+        sline = "INCOMPLETE run. " + sline + " The primary keyword source did not answer."
 
     return {
         "kind": "hunt", "title": keyword, "legit_domain": legit, "generated_ts": time.time(),
         "scan_id": scan["scan_id"], "state": "done", "mode": "Public", "engagement": "",
         "operator": False, "incomplete": disc["incomplete"], "nrd_off": disc["nrd_off"],
         "source_status": disc["source_status"], "severity_counts": counts,
-        "pipeline": pipeline, "summary_line": sline, "candidates": rows,
-        "hosts_probed": len(to_fetch), "methodology": methodology, "attribution": _ATTRIBUTION,
+        "pipeline": pipeline, "campaigns": campaigns, "summary_line": sline,
+        "candidates": rows, "hosts_probed": len(to_fetch), "methodology": methodology,
+        "attribution": _ATTRIBUTION,
     }

@@ -10220,24 +10220,46 @@ function huntRenderResults(data) {
   const pp = data.pipeline || {};
   html += '<div class="text-xs text-gray-400 mb-3 font-mono">' +
     (pp.discovered || 0) + ' discovered &middot; ' + (pp.considered || 0) + ' considered &middot; ' +
-    (pp.resolved || 0) + ' registered &middot; ' + (pp.wildcard || 0) + ' wildcard dropped &middot; ' +
+    (pp.resolved || 0) + ' registered &middot; ' + (pp.taken_down || 0) + ' possibly taken down &middot; ' +
+    (pp.wildcard || 0) + ' wildcard &middot; ' + (pp.irrelevant || 0) + ' irrelevant dropped &middot; ' +
     (pp.not_registered || 0) + ' not registered &middot; ' + (pp.fetched || 0) + ' fetched &middot; ' +
-    (pp.not_fetched || 0) + ' not fetched (cap) &middot; ' + (pp.keyword_hits || 0) + ' keyword hits</div>';
+    (pp.keyword_hits || 0) + ' keyword hits</div>';
+  (data.campaigns || []).forEach(cm => {
+    const w = cm.window || {};
+    const win = w.first ? (escapeHtml(w.first) + ' to ' + escapeHtml(w.last || w.first)) : 'dates not published';
+    const meta = [];
+    if ((cm.registrars || []).length) meta.push('registrars: ' + escapeHtml(cm.registrars.join(', ')));
+    if ((cm.asns || []).length) meta.push('hosting: ' + escapeHtml(cm.asns.slice(0, 4).join(', ')));
+    if ((cm.tlds || []).length) meta.push('TLDs: ' + escapeHtml(cm.tlds.join(', ')));
+    html += '<div class="bg-red-950 border border-red-800 rounded p-3 mb-3">' +
+      '<div class="font-bold text-red-300 text-sm mb-1">Campaign: ' + escapeHtml(cm.theme || 'brand lookalikes') +
+      ' <span class="text-red-400 font-normal">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
+      (meta.length ? '<div class="text-xs text-gray-400 mb-1">' + meta.join(' &middot; ') + '</div>' : '') +
+      '<div class="text-xs text-gray-300 font-mono break-all">' + escapeHtml((cm.members || []).join(', ')) + '</div></div>';
+  });
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
     '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Source</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
     '<th class="text-left py-1">Evidence</th><th class="text-left py-1">Actions</th></tr></thead><tbody>';
   (data.candidates || []).forEach(c => {
-    const ev = (c.evidence || []).map(x => escapeHtml(x)).join('; ');
+    const evList = (c.evidence || []).slice();
+    if (c.urlscan_first_seen) {
+      evList.push('urlscan first seen ' + c.urlscan_first_seen);
+    }
+    let ev = evList.map(x => escapeHtml(x)).join('; ');
+    if (c.urlscan_result) {
+      ev += ' <a href="' + escapeAttr(c.urlscan_result) + '" target="_blank" rel="noopener" class="text-amber-400">urlscan result</a>';
+    }
     const reg = c.registered ? ('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : '')) : (c.reg_note ? escapeHtml(c.reg_note) : '');
+    const camp = c.campaign_id ? ' <span class="text-red-400" title="campaign member">&#9733;</span>' : '';
     const acts = '<a href="' + escapeAttr(c.gsb_url || '#') + '" target="_blank" rel="noopener" class="text-amber-400 mr-2">Safe Browsing</a>' +
       '<a href="#" class="text-amber-400 mr-2" data-piv-domain="' + escapeAttr(c.domain) + '">Domain Intel</a>' +
       '<a href="#" class="text-amber-400" data-piv-kit="' + escapeAttr(c.domain) + '">Deep Kit</a>';
     html += '<tr class="border-b border-gray-900 align-top">' +
-      '<td class="py-1 font-mono">' + escapeHtml(c.domain) + (reg ? '<div class="text-gray-600">' + reg + '</div>' : '') + '</td>' +
+      '<td class="py-1 font-mono break-all">' + escapeHtml(c.domain) + camp + (reg ? '<div class="text-gray-600">' + reg + '</div>' : '') + '</td>' +
       '<td class="py-1 text-gray-500 font-mono">' + escapeHtml(c.source || 'dnstwist') + '</td>' +
       '<td class="py-1">' + huntVerdict(c.verdict) + '</td>' +
       '<td class="py-1 font-mono">' + (c.score || 0) + '</td>' +
-      '<td class="py-1 text-gray-400">' + (ev || 'n/a') + '</td>' +
+      '<td class="py-1 text-gray-400 break-all">' + (ev || 'n/a') + '</td>' +
       '<td class="py-1">' + acts + '</td></tr>';
   });
   html += '</tbody></table></div>';

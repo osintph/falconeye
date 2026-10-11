@@ -68,25 +68,39 @@ def test_watermark_does_not_overlap_and_ips_are_intact(tmp_path):
 
 
 @pytest.mark.skipif(not _HAVE_PYPDF, reason="pypdf not installed")
-def test_hunt_pdf_renders_candidates(tmp_path):
-    payload = {"kind": "hunt", "title": "philhealth", "legit_domain": "philhealth.gov.ph",
+def test_hunt_pdf_renders_candidates_campaign_and_long_domain(tmp_path):
+    long_domain = "mmda-ncap-lto-violation-fine-portal-xy.sbs"  # 42 chars, must stay intact
+    assert len(long_domain) >= 40
+    payload = {"kind": "hunt", "title": "mmda", "legit_domain": "mmda.gov.ph",
                "generated_ts": time.time(), "mode": "Public", "incomplete": False, "nrd_off": True,
-               "source_status": [{"source": "crt.sh", "role": "CT", "status": "answered"}],
-               "severity_counts": {"likely phishing": 1, "suspicious": 0, "parked": 0,
+               "source_status": [{"source": "urlscan.io", "role": "primary", "status": "answered"}],
+               "severity_counts": {"likely phishing": 2, "suspicious": 0, "parked": 0,
                                    "unknown": 0, "unrelated": 0},
                "pipeline": {"discovered": 120, "considered": 80, "resolved": 12, "fetched": 10,
-                            "not_fetched": 2, "wildcard": 6, "not_registered": 62,
-                            "keyword_hits": 1},
+                            "not_fetched": 2, "wildcard": 6, "taken_down": 1, "irrelevant": 9,
+                            "not_registered": 62, "keyword_hits": 5},
+               "campaigns": [{"id": 1, "theme": "lto, ncap", "count": 2,
+                              "members": ["mmda-ltoncap.net", long_domain],
+                              "window": {"first": "2026-08-10", "last": "2026-10-01"},
+                              "registrars": ["NameSilo"], "asns": ["AS1 Host"],
+                              "tlds": ["net", "sbs"]}],
                "summary_line": "candidates", "candidates": [
-                   {"domain": "philhealth-refund.ph", "verdict": "likely phishing", "score": 90,
-                    "source": "crt.sh", "age_days": 3, "registered": "2026-10-08",
-                    "evidence": ["fresh cert", "login form"]}],
-               "methodology": "method", "attribution": ["crt.sh"]}
+                   {"domain": long_domain, "verdict": "likely phishing", "score": 92,
+                    "source": "urlscan.io", "age_days": 20, "registered": "2026-09-20",
+                    "campaign_id": 1, "urlscan_first_seen": "2026-09-21",
+                    "urlscan_result": "https://urlscan.io/result/abc/",
+                    "evidence": ["member of a detected campaign cluster"]},
+                   {"domain": "mmda-ltoncap.net", "verdict": "likely phishing", "score": 90,
+                    "source": "urlscan.io", "age_days": 22, "registered": "2026-09-18",
+                    "campaign_id": 1, "evidence": ["cheap, abuse-heavy TLD"]}],
+               "methodology": "method", "attribution": ["urlscan.io"]}
     out = str(tmp_path / "h.pdf")
     pdfr.render_report(payload, out)
     text = "\n".join(p.extract_text() or "" for p in pypdf.PdfReader(out).pages)
-    assert "philhealth-refund.ph" in text
     assert "Lookalike candidates" in text
-    assert "Not registered" in text  # the pipeline summary block
-    assert "Not fetched" in text
-    assert "Discovered" in text and "Considered" in text
+    assert "Detected campaigns" in text
+    assert "Irrelevant keyword matches" in text and "Possibly taken down" in text
+    # A 40-plus character domain must render intact (wrapping is fine, truncation
+    # is not), so it survives once whitespace from any wrap is removed.
+    squashed = "".join(text.split())
+    assert long_domain in squashed, "the long domain was truncated or altered"

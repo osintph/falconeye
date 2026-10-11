@@ -11,6 +11,7 @@ from app.asm import jobs, store
 from app.hunt import candidate as candidate_mod
 from app.hunt import engine
 from app.hunt import sources
+from app.hunt import themes
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
 
@@ -117,6 +118,67 @@ def test_engine_drops_wildcard_candidates(monkeypatch):
     assert "mmda-real.com" in domains
     assert payload["pipeline"]["wildcard"] == 1
     assert payload["pipeline"]["resolved"] == 1
+
+
+_NCAP = ["mmda-ltoncap.net", "mmdaltoncaps.com", "mmdancap-ncr.icu", "ncapmmdar.com",
+         "mmda-ncaplto.club"]
+
+
+def test_engine_detects_ncap_campaign_and_drops_noise(monkeypatch):
+    # The live LTO/NCAP fine-lure set must come out as one Likely Phishing cluster;
+    # emmday.in (no theme, no campaign, no verdict) must not outrank it.
+    async def fdisc(kw, legit):
+        cands = []
+        for d in _NCAP:
+            cands.append({"domain": d, "origins": ["urlscan.io"], "keyword_hit": True,
+                          "observed": [d], "themes": themes.classify(d, "mmda")["themes"],
+                          "relevant": True,
+                          "urlscan": {"labels": [], "first_seen": "2026-09-15", "title": "",
+                                      "age_days": 30, "asn": "AS1 Host",
+                                      "result_url": "https://urlscan.io/result/x/"}})
+        cands.append({"domain": "emmday.in", "origins": ["urlscan.io"], "keyword_hit": True,
+                      "observed": ["emmday.in"], "themes": [], "relevant": True,
+                      "urlscan": {"labels": [], "first_seen": "2026-10-01", "title": "",
+                                  "age_days": 500, "asn": None, "result_url": ""}})
+        return {"candidates": cands,
+                "source_status": [{"source": "urlscan.io", "role": "x", "status": "answered"}],
+                "incomplete": False, "nrd_off": True, "generated_count": 80,
+                "keyword_hit_count": 6, "irrelevant_count": 7}
+
+    async def fresolve(dom):
+        if dom.startswith("zq"):
+            return {"domain": dom, "dns": {"A": [], "AAAA": [], "MX": [], "NS": [], "CNAME": []},
+                    "ips": [], "cname": "", "resolves": False, "has_mx": False, "has_ns": False}
+        import hashlib
+        ip = "203.0.113." + str(int(hashlib.sha1(dom.encode()).hexdigest(), 16) % 200 + 1)
+        return {"domain": dom, "dns": {"A": [ip], "AAAA": [], "MX": [], "NS": [], "CNAME": []},
+                "ips": [ip], "cname": "", "resolves": True, "has_mx": False, "has_ns": True}
+
+    ages = {d: 30 for d in _NCAP}
+    ages["emmday.in"] = 500
+
+    async def fprobe(client, dom, kw, legit, sig, dns_data=None):
+        return {"domain": dom, "resolves": True, "fetched": True, "parked": False,
+                "reg_age_days": ages.get(dom, 1000), "registrar": "NameSilo"}
+
+    async def fsig(client, legit):
+        return {}
+
+    monkeypatch.setattr(sources, "discover", fdisc)
+    monkeypatch.setattr(candidate_mod, "resolve", fresolve)
+    monkeypatch.setattr(candidate_mod, "probe", fprobe)
+    monkeypatch.setattr(candidate_mod, "legit_signature", fsig)
+
+    payload = asyncio.run(engine.execute({"scan_id": "h3", "domain": "mmda",
+                                          "engagement": "mmda.gov.ph"}))
+    assert len(payload["campaigns"]) == 1
+    assert payload["campaigns"][0]["count"] == 5
+    rows = {r["domain"]: r for r in payload["candidates"]}
+    for d in _NCAP:
+        assert rows[d]["verdict"] == "likely phishing", d
+    assert rows["emmday.in"]["verdict"] != "likely phishing"
+    assert payload["candidates"][0]["domain"] in _NCAP  # a campaign member leads
+    assert payload["pipeline"]["irrelevant"] == 7
 
 
 def _client(ip="203.0.113.9"):

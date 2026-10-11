@@ -33,12 +33,13 @@ import httpx
 
 from app import config
 from app.asm import store
+from app.hunt import themes
 from app.scanner.scope import registrable
 from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.5 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.6 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -137,8 +138,16 @@ async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
         return set(), "failed", "crt.sh keyword search errored (crt.sh side)"
 
 
+def _public_result(api_url: str) -> str:
+    return (api_url or "").replace("/api/v1/result/", "/result/")
+
+
 async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
-    hosts = set()
+    """urlscan keyword search (the primary keyword source). Returns (meta, status)
+    where meta maps a registrable domain to its urlscan evidence: first seen, page
+    title, classification labels, hosting ASN, urlscan-reported age, and the public
+    result link. urlscan gives the apex domain directly, so hits collapse cleanly."""
+    meta: dict = {}
     headers = {"User-Agent": _UA}
     key = config.URLSCAN_API_KEY
     if key:
@@ -147,15 +156,37 @@ async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
         r = await client.get(_URLSCAN, params={"q": f"page.domain:*{keyword}*", "size": 100},
                              timeout=_TIMEOUT, headers=headers)
         if r.status_code != 200:
-            return hosts, "failed"
+            return meta, "failed"
         for res in (r.json().get("results") or []):
-            h = _clean_host(((res.get("page") or {}).get("domain")) or "")
-            if h and keyword in h:
-                hosts.add(h)
+            page = res.get("page") or {}
+            task = res.get("task") or {}
+            apex = _clean_host(page.get("apexDomain") or task.get("apexDomain")
+                               or page.get("domain") or "")
+            observed = _clean_host(page.get("domain") or task.get("domain") or "")
+            if not apex:
+                continue
+            labels = [str(x).lower() for x in (res.get("labels") or [])]
+            age = page.get("apexDomainAgeDays")
+            if age is None:
+                age = page.get("domainAgeDays")
+            m = meta.setdefault(apex, {
+                "first_seen": task.get("time"), "title": page.get("title") or "",
+                "labels": [], "asn": page.get("asnname") or page.get("asn"),
+                "age_days": age, "server": page.get("server"),
+                "result_url": _public_result(res.get("result")), "observed": set(),
+            })
+            m["labels"] = sorted(set(m["labels"]) | set(labels))
+            if observed:
+                m["observed"].add(observed)
+            # Keep the earliest first-seen and a non-empty title if one appears.
+            if task.get("time") and (not m["first_seen"] or task["time"] < m["first_seen"]):
+                m["first_seen"] = task["time"]
+            if not m["title"] and page.get("title"):
+                m["title"] = page["title"]
     except Exception as exc:  # noqa: BLE001
         log.info("hunt urlscan failed for %s: %s", tag(keyword), type(exc).__name__)
-        return hosts, "failed"
-    return hosts, "answered"
+        return meta, "failed"
+    return meta, "answered"
 
 
 def _brand_label(legit_domain: str, keyword: str) -> str:
@@ -237,66 +268,96 @@ def _priority(host: str, origins: set) -> int:
     return 2 if _has_phish_word(host) else 3
 
 
+def _is_malicious(labels) -> bool:
+    return any(x in ("phishing", "malicious", "suspicious") for x in (labels or []))
+
+
 async def discover(keyword: str, legit_domain: str) -> dict:
-    """Gather, dedupe and cap candidate domains, tracking which source found each.
-    Returns candidates (each with its source labels and a keyword_hit flag),
-    source_status, incomplete and nrd_off."""
+    """Gather, dedupe and cap candidates, collapsed to registrable domains, each
+    with its source labels, observed hostnames, urlscan evidence and brand theme
+    terms. urlscan and CT keyword hits whose brand letters are buried in an
+    unrelated word (and that urlscan did not flag) are dropped as irrelevant and
+    counted. urlscan is the primary keyword source and the only one that gates the
+    run. Returns candidates, source_status, incomplete, nrd_off and counts."""
     status = []
     incomplete = False
-    origins: dict = {}
+    origins: dict = {}        # registrable -> set(source labels)
+    observed: dict = {}       # registrable -> set(observed hostnames)
+    us_meta: dict = {}        # registrable -> urlscan evidence
 
-    def _add(found, label):
-        for h in found:
-            if _allowed(h, legit_domain):
-                origins.setdefault(h, set()).add(label)
+    def _add_hosts(hosts, label):
+        for h in hosts:
+            reg = registrable(h) or h
+            if not _allowed(reg, legit_domain) or _is_restricted(reg):
+                continue
+            origins.setdefault(reg, set()).add(label)
+            observed.setdefault(reg, set())
+            if h != reg:
+                observed[reg].add(h)
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        # crt.sh keyword search is best effort and never gates the run (crt.sh has
-        # no cheap substring search); urlscan is the primary keyword source.
         ct_hosts, ct_status, ct_note = await _crtsh(client, keyword)
-        _add(ct_hosts, "crt.sh")
+        _add_hosts(ct_hosts, "crt.sh")
         ct_entry = {"source": "crt.sh", "role": "CT keyword search (best effort)",
                     "status": ct_status}
         if ct_note:
             ct_entry["note"] = ct_note
         status.append(ct_entry)
 
-        us_hosts, us_status = await _urlscan(client, keyword)
-        _add(us_hosts, "urlscan.io")
+        us_result, us_status = await _urlscan(client, keyword)
+        for apex, m in us_result.items():
+            if not _allowed(apex, legit_domain) or _is_restricted(apex):
+                continue
+            origins.setdefault(apex, set()).add("urlscan.io")
+            observed.setdefault(apex, set()).update(m.get("observed") or set())
+            us_meta[apex] = {k: v for k, v in m.items() if k != "observed"}
         status.append({"source": "urlscan.io", "role": "keyword search (primary)",
                        "status": us_status})
-        # The run is INCOMPLETE only when the primary keyword source (urlscan) did
-        # not answer, so a chronically degraded crt.sh does not turn every run into
-        # a false INCOMPLETE. If urlscan answered, the result is COMPLETE.
         if us_status == "failed":
             incomplete = True
 
         if legit_domain:
             perms = _permutations(legit_domain, keyword)
-            _add(perms, "dnstwist")
+            _add_hosts(perms, "dnstwist")
             status.append({"source": "dnstwist", "role": "permutations of the legit domain",
                            "status": "answered" if perms else "failed"})
         else:
             perms = _permutations("", keyword)
-            _add(perms, "dnstwist")
+            _add_hosts(perms, "dnstwist")
             status.append({"source": "dnstwist", "role": "keyword permutations",
                            "status": "answered" if perms else "skipped"})
 
         nrd_hosts, nrd_status = await _nrd(client, keyword)
-        _add(nrd_hosts, "WHOISDS")
+        _add_hosts(nrd_hosts, "WHOISDS")
         status.append({"source": "WHOISDS NRD", "role": "newly registered domains",
                        "status": nrd_status})
 
-    generated = len(origins)
     ranked = sorted(origins.items(), key=lambda kv: (_priority(kv[0], kv[1]), len(kv[0]), kv[0]))
     candidates = []
     keyword_hits = 0
-    for host, orig in ranked[:config.HUNT_MAX_CANDIDATES]:
+    irrelevant = 0
+    for host, orig in ranked:
         is_hit = bool(orig & {"crt.sh", "urlscan.io"})
+        meta = us_meta.get(host)
+        title = (meta or {}).get("title") or ""
+        cls = themes.classify(host, keyword, title)
+        # A keyword hit that is not relevant (brand buried in an unrelated word, or
+        # only in a shared-host registrable), with no urlscan malicious label, is
+        # noise: drop and count it. A permutation is a targeted lookalike by
+        # construction, so it is always kept.
+        if is_hit and not cls["relevant"] and not _is_malicious((meta or {}).get("labels")):
+            irrelevant += 1
+            continue
+        if len(candidates) >= config.HUNT_MAX_CANDIDATES:
+            continue
         if is_hit:
             keyword_hits += 1
-        candidates.append({"domain": host, "origins": sorted(orig), "keyword_hit": is_hit})
+        candidates.append({
+            "domain": host, "origins": sorted(orig), "keyword_hit": is_hit,
+            "observed": sorted(observed.get(host) or []), "urlscan": meta,
+            "themes": cls["themes"], "relevant": cls["relevant"],
+        })
 
     return {"candidates": candidates, "source_status": status, "incomplete": incomplete,
-            "nrd_off": not config.HUNT_NRD_URL, "generated_count": generated,
-            "keyword_hit_count": keyword_hits}
+            "nrd_off": not config.HUNT_NRD_URL, "generated_count": len(origins),
+            "keyword_hit_count": keyword_hits, "irrelevant_count": irrelevant}

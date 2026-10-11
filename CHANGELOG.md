@@ -5,6 +5,32 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.6] - 2026-10-12
+
+### Changed
+
+- **Hunt scoring recognises real campaigns.** Keyword hits are classified for
+  relevance: a brand that is a real token or sits next to a brand theme term is
+  kept, while brand letters buried in an unrelated word (stammdaten, hommdays) are
+  dropped and counted as "irrelevant keyword matches". Per-brand theme lexicons
+  (MMDA: ncap, lto, ncr, violation, fine, ...; PhilHealth: member, konsulta,
+  benefit, ...; plus SSS, Pag-IBIG, BIR, LTO, DFA, GSIS, GCash, Maya, BDO, BPI,
+  Landbank, Metrobank) seed the scoring and clustering. Candidates sharing a theme
+  term are grouped into campaigns; a cluster of three or more is reported as a
+  named section at the top of the screen and PDF (theme, members, registration
+  window, registrars, hosting ASNs, TLDs) and boosts every member.
+- **Likely Phishing** now fires on any strong signal: brand plus theme term with a
+  registration under 90 days, campaign-cluster membership, an urlscan malicious or
+  phishing label, or page content imitating the brand. Cheap abuse-heavy TLDs
+  (.icu, .sbs, .work, .club, .xyz, .cam, .vip and similar) add weight. A domain
+  urlscan observed recently that no longer resolves is "possibly taken down": it
+  keeps its urlscan evidence and score and is never dropped to Unknown.
+- **urlscan evidence per hit:** first seen, page title, classification labels and
+  the public result link are shown as evidence; hits collapse to the registrable
+  domain with observed hostnames kept, and dates read YYYY-MM-DD plus age in days.
+- **PDF:** long domain names and dates wrap inside the cell and are never
+  truncated; a campaign section and an irrelevant-keyword-matches count are added.
+
 ## [3.38.5] - 2026-10-11
 
 ### Changed

@@ -1244,6 +1244,17 @@ In the Hunt, crt.sh keyword search is therefore BEST EFFORT and never gates a ru
 Keyword discovery therefore rests on urlscan, dnstwist permutations and the
 optional NRD feed, with crt.sh contributing when it is healthy.
 
+### Theme lexicons and campaign detection (v3.38.6)
+
+Each watchlist brand has a theme lexicon in `app/hunt/themes.py` (MMDA: ncap, lto,
+ncr, violation, fine, ...; PhilHealth: member, konsulta, benefit, ...; and the
+other PH brands). A keyword hit whose brand is buried in an unrelated word with no
+theme term and no urlscan flag is dropped as an irrelevant keyword match and
+counted. Candidates that share a theme term are clustered into campaigns; a
+cluster of three or more is reported as a named section and marks its members
+Likely Phishing. To extend coverage, add a brand and its theme terms to the
+`THEMES` dict, or a cheap TLD to `CHEAP_TLDS`, in that file; no env change needed.
+
 ### Newly registered domain feed (WHOISDS), optional
 
 Brand-new registrations are covered only when `HUNT_NRD_URL` is set. WHOISDS
