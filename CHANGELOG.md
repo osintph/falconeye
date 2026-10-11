@@ -5,6 +5,28 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.8] - 2026-10-12
+
+### Changed
+
+- **Likely Phishing is tighter and evidence-led.** A theme-term group is boosted
+  to a campaign only when it is corroborated: registrations inside a 60-day window
+  AND a shared registrar, nameserver, hosting ASN or cheap-TLD family. A
+  theme-only group with no corroboration is reported as "related brand-themed
+  domains" and gives no boost, so a loose run of name matches over many months is
+  not called a campaign.
+- **Fetched pages are content-classified.** A credential or payment form,
+  imitation of the legitimate site (favicon or close title match), or a
+  known-bad listing is phishing content; a fetched page with none of that is a
+  "Brand-referencing" site, not Likely Phishing on its name alone. Likely Phishing
+  now requires a corroborated campaign, phishing content, an urlscan malicious or
+  phishing tag, or brand-plus-theme registered under 90 days with live
+  non-informational content. Old informational name-matches
+  (aboutphilhealth.org, philhealthguide.com style) land in Brand-referencing.
+- **Public wording.** The Hunt PDF and portal carry the line "Verdicts are
+  automated assessments from public data, not determinations; verify before
+  acting", and the "Likely Phishing" label appears only where evidence is listed.
+
 ## [3.38.7] - 2026-10-12
 
 ### Fixed

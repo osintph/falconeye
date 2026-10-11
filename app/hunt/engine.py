@@ -19,6 +19,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
+from datetime import datetime, timedelta, timezone
 
 import httpx
 
@@ -27,6 +28,7 @@ from app.hunt import candidate as candidate_mod
 from app.hunt import cluster as cluster_mod
 from app.hunt import score as score_mod
 from app.hunt import sources
+from app.hunt import themes as themes_mod
 from app.hunt import wildcard
 from app.utils.logsafe import tag
 
@@ -42,9 +44,11 @@ _ATTRIBUTION = [
 ]
 
 
-def _reg_date(registered, urls) -> str | None:
+def _reg_date(registered, urls, age_days=None) -> str | None:
     if registered:
         return str(registered)[:10]
+    if isinstance(age_days, int) and age_days >= 0:
+        return (datetime.now(timezone.utc) - timedelta(days=age_days)).strftime("%Y-%m-%d")
     fs = (urls or {}).get("first_seen")
     return str(fs)[:10] if fs else None
 
@@ -143,22 +147,26 @@ async def execute(scan: dict) -> dict:
         rec["observed_hosts"] = c.get("observed") or []
         rec["keyword_hit"] = c.get("keyword_hit")
         rec["origins"] = c.get("origins") or []
-        rec["reg_date"] = _reg_date(rec.get("registered"), urls)
         if rec.get("reg_age_days") is None and isinstance(urls.get("age_days"), int):
             rec["reg_age_days"] = urls["age_days"]
+        rec["reg_date"] = _reg_date(rec.get("registered"), urls, rec.get("reg_age_days"))
         if not rec.get("asn") and urls.get("asn"):
             rec["asn"] = urls["asn"]
+        rec["ns"] = list((res_map[dom]["dns"] or {}).get("NS") or [])
+        rec["cheap"] = themes_mod.cheap_tld(dom)
         records.append(rec)
 
-    # Campaign clustering, then score with campaign membership known.
-    campaigns, dom_to_cid = cluster_mod.build(records)
+    # Theme clustering, split into corroborated campaigns (which boost) and
+    # uncorroborated related groups (which do not), then score.
+    campaigns, related_groups, dom_to_cid = cluster_mod.build(records)
     for rec in records:
         rec["campaign_member"] = rec["domain"] in dom_to_cid
         rec["campaign_id"] = dom_to_cid.get(rec["domain"])
 
     scored = [score_mod.score_candidate(rec, keyword, legit) for rec in records]
 
-    counts = {v: 0 for v in ("likely phishing", "suspicious", "parked", "unknown", "unrelated")}
+    counts = {v: 0 for v in ("likely phishing", "suspicious", "brand-referencing",
+                             "parked", "unknown", "unrelated")}
     rows = []
     for c in scored:
         counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1
@@ -206,8 +214,9 @@ async def execute(scan: dict) -> dict:
              f"{pipeline['resolved']} registered, {pipeline['taken_down']} possibly taken down, "
              f"{pipeline['wildcard']} registry-wildcard and {pipeline['irrelevant']} irrelevant "
              f"keyword matches dropped, {pipeline['not_registered']} not registered. "
-             f"{len(campaigns)} campaign(s) detected. {pipeline['keyword_hits']} urlscan or "
-             f"certificate keyword hits.")
+             f"{len(campaigns)} corroborated campaign(s), {len(related_groups)} related "
+             f"brand-themed group(s). {pipeline['keyword_hits']} urlscan or certificate "
+             f"keyword hits.")
     if disc["incomplete"]:
         sline = "INCOMPLETE run. " + sline + " The primary keyword source did not answer."
 
@@ -216,7 +225,7 @@ async def execute(scan: dict) -> dict:
         "scan_id": scan["scan_id"], "state": "done", "mode": "Public", "engagement": "",
         "operator": False, "incomplete": disc["incomplete"], "nrd_off": disc["nrd_off"],
         "source_status": disc["source_status"], "severity_counts": counts,
-        "pipeline": pipeline, "campaigns": campaigns, "summary_line": sline,
-        "candidates": rows, "hosts_probed": len(to_fetch), "methodology": methodology,
-        "attribution": _ATTRIBUTION,
+        "pipeline": pipeline, "campaigns": campaigns, "related_groups": related_groups,
+        "summary_line": sline, "candidates": rows, "hosts_probed": len(to_fetch),
+        "methodology": methodology, "attribution": _ATTRIBUTION,
     }

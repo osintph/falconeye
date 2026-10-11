@@ -47,8 +47,8 @@ SEV = {"critical": colors.HexColor("#b91c1c"), "high": colors.HexColor("#c2410c"
        "medium": colors.HexColor("#b4740c"), "low": colors.HexColor("#0369a1"),
        "info": MUTED}
 VERDICT = {"likely phishing": colors.HexColor("#b91c1c"), "suspicious": colors.HexColor("#c2410c"),
-           "parked": MUTED, "unknown": colors.HexColor("#6b7280"),
-           "unrelated": colors.HexColor("#0369a1")}
+           "brand-referencing": colors.HexColor("#0369a1"), "parked": MUTED,
+           "unknown": colors.HexColor("#6b7280"), "unrelated": colors.HexColor("#0369a1")}
 
 MANILA = ZoneInfo("Asia/Manila")
 
@@ -263,7 +263,8 @@ def render_report(payload: dict, out_path: str) -> None:
         order = ["critical", "high", "medium", "low", "info"]
         crows = [[_sev_para(s, st), str(counts.get(s, 0))] for s in order]
     else:
-        order = ["likely phishing", "suspicious", "parked", "unknown", "unrelated"]
+        order = ["likely phishing", "suspicious", "brand-referencing", "parked",
+                 "unknown", "unrelated"]
         crows = [[_verdict_para(s, st), str(counts.get(s, 0))] for s in order]
     el.append(_kv_table([["Category", "Count"]] + crows, st, [52 * mm, 22 * mm]))
 
@@ -284,27 +285,38 @@ def render_report(payload: dict, out_path: str) -> None:
         el.append(_kv_table(prows, st, [78 * mm, 22 * mm]))
 
         # Detected campaigns, at the top of the findings.
+        def _group_block(c, label):
+            w = c.get("window") or {}
+            win = (f"{w.get('first')} to {w.get('last')}"
+                   if w.get("first") else "dates not published")
+            el.append(Paragraph(
+                f"<b>{label}: {_esc(c.get('theme'))}</b> ({c.get('count', 0)} domains, "
+                f"registered/seen {_esc(win)})", st["body"]))
+            meta = []
+            if c.get("corroboration"):
+                meta.append("corroboration: " + _esc("; ".join(c["corroboration"])))
+            if c.get("registrars"):
+                meta.append("registrars: " + _esc(", ".join(c["registrars"])))
+            if c.get("asns"):
+                meta.append("hosting: " + _esc(", ".join(c["asns"][:4])))
+            if c.get("tlds"):
+                meta.append("TLDs: " + _esc(", ".join(c["tlds"])))
+            if meta:
+                el.append(Paragraph("; ".join(meta), st["small"]))
+            el.append(Paragraph(_esc(", ".join(c.get("members") or [])), st["small"]))
+            el.append(Spacer(1, 2 * mm))
+
         camps = payload.get("campaigns") or []
         if camps:
             el.append(Paragraph("Detected campaigns", st["h2"]))
             for c in camps:
-                w = c.get("window") or {}
-                win = (f"{w.get('first')} to {w.get('last')}"
-                       if w.get("first") else "dates not published")
-                el.append(Paragraph(
-                    f"<b>Campaign: {_esc(c.get('theme'))}</b> ({c.get('count', 0)} domains, "
-                    f"registered/seen {_esc(win)})", st["body"]))
-                meta = []
-                if c.get("registrars"):
-                    meta.append("registrars: " + _esc(", ".join(c["registrars"])))
-                if c.get("asns"):
-                    meta.append("hosting: " + _esc(", ".join(c["asns"][:4])))
-                if c.get("tlds"):
-                    meta.append("TLDs: " + _esc(", ".join(c["tlds"])))
-                if meta:
-                    el.append(Paragraph("; ".join(meta), st["small"]))
-                el.append(Paragraph(_esc(", ".join(c.get("members") or [])), st["small"]))
-                el.append(Spacer(1, 2 * mm))
+                _group_block(c, "Campaign")
+        related = payload.get("related_groups") or []
+        if related:
+            el.append(Paragraph("Related brand-themed domains (not corroborated as a campaign)",
+                                st["h2"]))
+            for c in related:
+                _group_block(c, "Group")
 
     # Findings (asm) or candidates (hunt)
     if kind == "asm":
@@ -400,6 +412,11 @@ def render_report(payload: dict, out_path: str) -> None:
     el.append(Paragraph("Sources and attribution", st["h2"]))
     for line in payload.get("attribution", []):
         el.append(Paragraph(_esc(line), st["small"]))
+
+    if kind == "hunt":
+        el.append(Spacer(1, 3 * mm))
+        el.append(Paragraph("Verdicts are automated assessments from public data, not "
+                            "determinations; verify before acting.", st["small"]))
 
     subject = title_subject or "report"
     doc.build(el, canvasmaker=_canvas_factory(subject, gen_utc, engagement))

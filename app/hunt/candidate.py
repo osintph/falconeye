@@ -34,7 +34,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.7"
+_UA = "FalconEye-Hunt/3.38.8"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -82,6 +82,9 @@ _MARKETPLACE_SIGNALS = ("add to cart", "add to basket", "proceed to checkout", "
                         "place your order", "payment methods", "we accept", "pay with gcash",
                         "cash on delivery", "view cart")
 _PH_SUFFIXES = ("ph", "com.ph", "net.ph", "org.ph", "gov.ph", "edu.ph", "mil.ph")
+_PASSWORD_RE = re.compile(r'type\s*=\s*["\']?\s*password', re.IGNORECASE)
+_PAYMENT_HINTS = ("card number", "cardnumber", "card-number", "cc-number", "cvv", "cvc",
+                  "credit card", "card holder", "cardholder", "expiry", "expiration date")
 
 
 def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
@@ -94,7 +97,8 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
     Brand impersonation is counted only when it relates to the hunted brand or the
     legitimate site, never an unrelated brand."""
     out = {"parked": False, "landing": "", "brand": None, "brand_markers": 0,
-           "ph_indicators": 0, "legit_title_sim": 0, "title": ""}
+           "ph_indicators": 0, "legit_title_sim": 0, "title": "",
+           "has_cred_form": False, "has_payment_form": False, "page_class": ""}
     low = (body or "").lower()
 
     m = _TITLE_RE.search(body or "")
@@ -130,6 +134,23 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
             out["brand"] = bn
             out["brand_markers"] = len(brand.get("matched_markers") or [])
         out["ph_indicators"] = len(match_ph_indicators(body or "", final_url or ""))
+
+    # Credential and payment form detection, and the page class. A page that
+    # collects a password or card, or imitates the legit title, is phishing
+    # content; a fetched page with none of that is informational (brand
+    # referencing), not phishing on its name alone.
+    has_cred = bool(_PASSWORD_RE.search(body or "")) or (
+        "<form" in low and "password" in low
+        and any(s in low for s in ("login", "log in", "sign in", "signin")))
+    has_pay = ("<form" in low or "<input" in low) and any(h in low for h in _PAYMENT_HINTS)
+    out["has_cred_form"] = has_cred
+    out["has_payment_form"] = has_pay
+    if parked:
+        out["page_class"] = "parked"
+    elif has_cred or has_pay or out["legit_title_sim"] >= 80:
+        out["page_class"] = "phishing"
+    elif body:
+        out["page_class"] = "informational"
     return out
 
 
@@ -172,7 +193,8 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         "asn": None, "fresh_cert": False, "http_status": None, "title": "",
         "favicon_match": False, "brand_markers": 0, "brand": None, "cloudflare": False,
         "ph_indicators": 0, "legit_title_sim": 0, "known_bad": False, "landing": "",
-        "parked": False, "fetched": False, "evidence": [],
+        "parked": False, "fetched": False, "page_class": "", "has_cred_form": False,
+        "has_payment_form": False, "evidence": [],
     }
     if not resolves:
         out["evidence"].append("does not resolve")
@@ -269,12 +291,21 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         out["brand_markers"] = assess["brand_markers"]
         out["ph_indicators"] = assess["ph_indicators"]
         out["legit_title_sim"] = assess["legit_title_sim"]
+        out["page_class"] = assess["page_class"]
+        out["has_cred_form"] = assess["has_cred_form"]
+        out["has_payment_form"] = assess["has_payment_form"]
         if assess["parked"]:
             out["evidence"].append(f"parking or landing page ({assess['landing']})")
+        if assess["has_cred_form"]:
+            out["evidence"].append("collects a password (credential form)")
+        if assess["has_payment_form"]:
+            out["evidence"].append("collects card or payment details")
         if out["brand_markers"]:
             out["evidence"].append(f"brand impersonation content for {out['brand']}")
-        if out["legit_title_sim"] >= 70:
+        if out["legit_title_sim"] >= 80:
             out["evidence"].append("page title closely imitates the legitimate site")
+        elif assess["page_class"] == "informational":
+            out["evidence"].append("informational or brand-referencing page, no credential or payment form")
         # Favicon hash: one small fetch, from the page's icon href or /favicon.ico.
         icon = _ICON_RE.search(body)
         icon_url = None
@@ -293,6 +324,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
                 out["favicon_hash"] = fh
                 if fh is not None and legit_favicon is not None and fh == legit_favicon:
                     out["favicon_match"] = True
+                    out["page_class"] = "phishing"  # favicon match is imitation
                     out["evidence"].append("favicon matches the legitimate site")
         except Exception:  # noqa: BLE001
             pass

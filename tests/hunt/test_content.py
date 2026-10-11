@@ -48,3 +48,28 @@ def test_short_legit_title_never_triggers_imitation():
     out = candidate.assess_content("<title>Some Random Page</title>", "https://x.com/", "mmda",
                                    "mmda.gov.ph", "MMDA")  # legit title under 8 chars
     assert out["legit_title_sim"] == 0
+
+
+def test_credential_form_is_phishing_content():
+    body = ('<title>PhilHealth Member Login</title><form action="/login">'
+            '<input type="password" name="pw"></form>')
+    out = candidate.assess_content(body, "https://philhealthportal.com/", "philhealth",
+                                   "philhealth.gov.ph", "")
+    assert out["has_cred_form"] is True
+    assert out["page_class"] == "phishing"
+
+
+def test_payment_form_is_phishing_content():
+    body = '<form><input name="cardnumber" placeholder="Card Number"><label>CVV</label></form>'
+    out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
+    assert out["has_payment_form"] is True
+    assert out["page_class"] == "phishing"
+
+
+def test_informational_page_is_brand_referencing():
+    body = ("<title>A Guide to PhilHealth Benefits</title><article>How to claim your "
+            "benefits. Read more about contributions.</article>")
+    out = candidate.assess_content(body, "https://philhealthguide.com/", "philhealth",
+                                   "philhealth.gov.ph", "")
+    assert out["has_cred_form"] is False and out["has_payment_form"] is False
+    assert out["page_class"] == "informational"

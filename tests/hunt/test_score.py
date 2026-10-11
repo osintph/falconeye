@@ -13,7 +13,8 @@ def _c(**kw):
             "reg_age_days": None, "fresh_cert": False, "brand_markers": 0, "ph_indicators": 0,
             "favicon_match": False, "legit_title_sim": 0, "known_bad": False, "cloudflare": False,
             "title": "", "parked": False, "themes": [], "urlscan": None,
-            "campaign_member": False, "evidence": []}
+            "campaign_member": False, "page_class": "", "has_cred_form": False,
+            "has_payment_form": False, "evidence": []}
     base.update(kw)
     return base
 
@@ -69,3 +70,27 @@ def test_cheap_tld_adds_weight():
     cheap = score.score_candidate(_c(domain="mmda-ncap.sbs", themes=["ncap"], reg_age_days=1500),
                                   "mmda", "mmda.gov.ph")
     assert any("cheap" in e for e in cheap["evidence"])
+
+
+def test_informational_brand_site_is_not_likely_phishing():
+    # An old PhilHealth guide/article site with no forms: brand-referencing, not
+    # likely phishing on its name alone.
+    c = score.score_candidate(_c(domain="philhealthguide.com", themes=["portal"],
+                                 reg_age_days=1500, page_class="informational"),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "brand-referencing"
+
+
+def test_portal_lookalike_with_login_form_is_likely_phishing():
+    c = score.score_candidate(_c(domain="philhealthportal.com", themes=["portal"],
+                                 reg_age_days=1500, page_class="phishing", has_cred_form=True),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "likely phishing"
+
+
+def test_informational_but_urlscan_malicious_is_likely_phishing():
+    c = score.score_candidate(_c(domain="philhealthguide.com", themes=["portal"],
+                                 reg_age_days=1500, page_class="informational",
+                                 urlscan={"labels": ["phishing"]}),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "likely phishing"

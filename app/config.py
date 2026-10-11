@@ -385,6 +385,10 @@ HUNT_CRTSH_BACKOFF = max(0, int(getenv_clean("HUNT_CRTSH_BACKOFF", "600")))
 # Random control labels resolved per TLD per run to detect registry wildcards (a
 # TLD, for example .ph, that answers every label with the same address).
 HUNT_WILDCARD_CONTROLS = max(1, int(getenv_clean("HUNT_WILDCARD_CONTROLS", "2")))
+# A theme-term group is boosted to a campaign only when its registrations fall in
+# a window this many days wide AND it shares a registrar, nameserver, hosting ASN
+# or cheap-TLD family. Theme-only groups with no corroboration do not boost.
+HUNT_CAMPAIGN_WINDOW_DAYS = max(1, int(getenv_clean("HUNT_CAMPAIGN_WINDOW_DAYS", "60")))
 # Newly registered domain feed (WHOISDS). DEFAULT OFF: set this to a URL that
 # returns a daily list of newly registered domains (plain text or a zipped text
 # list), which WHOISDS provides to an account. Until set, new-registration

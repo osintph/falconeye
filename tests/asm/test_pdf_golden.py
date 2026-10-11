@@ -74,16 +74,23 @@ def test_hunt_pdf_renders_candidates_campaign_and_long_domain(tmp_path):
     payload = {"kind": "hunt", "title": "mmda", "legit_domain": "mmda.gov.ph",
                "generated_ts": time.time(), "mode": "Public", "incomplete": False, "nrd_off": True,
                "source_status": [{"source": "urlscan.io", "role": "primary", "status": "answered"}],
-               "severity_counts": {"likely phishing": 2, "suspicious": 0, "parked": 0,
-                                   "unknown": 0, "unrelated": 0},
+               "severity_counts": {"likely phishing": 2, "suspicious": 0, "brand-referencing": 1,
+                                   "parked": 0, "unknown": 0, "unrelated": 0},
                "pipeline": {"discovered": 120, "considered": 80, "resolved": 12, "fetched": 10,
                             "not_fetched": 2, "wildcard": 6, "taken_down": 1, "irrelevant": 9,
                             "not_registered": 62, "keyword_hits": 5},
                "campaigns": [{"id": 1, "theme": "lto, ncap", "count": 2,
                               "members": ["mmda-ltoncap.net", long_domain],
                               "window": {"first": "2026-08-10", "last": "2026-10-01"},
+                              "corroboration": ["registered within 52 days", "cheap-TLD family"],
                               "registrars": ["NameSilo"], "asns": ["AS1 Host"],
                               "tlds": ["net", "sbs"]}],
+               "related_groups": [{"theme": "portal", "count": 3,
+                                   "members": ["philhealthguide.com", "aboutphilhealth.org",
+                                               "philhealthhub.com"],
+                                   "window": {"first": "2025-11-07", "last": "2026-10-01"},
+                                   "corroboration": [], "registrars": [], "asns": [],
+                                   "tlds": ["com", "org"]}],
                "summary_line": "candidates", "candidates": [
                    {"domain": long_domain, "verdict": "likely phishing", "score": 92,
                     "source": "urlscan.io", "age_days": 20, "registered": "2026-09-20",
@@ -99,7 +106,9 @@ def test_hunt_pdf_renders_candidates_campaign_and_long_domain(tmp_path):
     text = "\n".join(p.extract_text() or "" for p in pypdf.PdfReader(out).pages)
     assert "Lookalike candidates" in text
     assert "Detected campaigns" in text
+    assert "Related brand-themed domains" in text  # uncorroborated group section
     assert "Irrelevant keyword matches" in text and "Possibly taken down" in text
+    assert "not determinations" in text  # the Hunt footer disclaimer
     # A 40-plus character domain must render intact (wrapping is fine, truncation
     # is not), so it survives once whitespace from any wrap is removed.
     squashed = "".join(text.split())

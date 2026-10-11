@@ -10194,8 +10194,8 @@ function huntPoll(id) {
 
 function huntVerdict(v) {
   const map = { 'likely phishing': 'bg-red-950 text-red-400', 'suspicious': 'bg-orange-950 text-orange-400',
-    'parked': 'bg-gray-800 text-gray-400', 'unknown': 'bg-gray-800 text-gray-300',
-    'unrelated': 'bg-sky-950 text-sky-400' };
+    'brand-referencing': 'bg-sky-950 text-sky-300', 'parked': 'bg-gray-800 text-gray-400',
+    'unknown': 'bg-gray-800 text-gray-300', 'unrelated': 'bg-sky-950 text-sky-400' };
   const label = String(v || 'unrelated').replace(/\b\w/g, m => m.toUpperCase());
   return '<span class="px-2 py-0.5 rounded text-xs font-mono ' + (map[v] || map.unrelated) + '">' + escapeHtml(label) + '</span>';
 }
@@ -10211,9 +10211,10 @@ function huntRenderResults(data) {
   if (data.nrd_off) {
     html += '<div class="bg-gray-950 border border-gray-800 rounded p-2 mb-3 text-xs text-gray-400">Newly registered domain feed is not configured, so brand-new registrations may be missed.</div>';
   }
-  html += '<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">' +
+  html += '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">' +
     asmTile(sc['likely phishing'] || 0, 'Likely phishing', 'text-red-400') +
     asmTile(sc['suspicious'] || 0, 'Suspicious', 'text-orange-400') +
+    asmTile(sc['brand-referencing'] || 0, 'Brand-referencing', 'text-sky-300') +
     asmTile(sc['parked'] || 0, 'Parked', 'text-gray-300') +
     asmTile(sc['unknown'] || 0, 'Unknown', 'text-gray-300') +
     asmTile(sc['unrelated'] || 0, 'Unrelated', 'text-sky-400') + '</div>';
@@ -10224,18 +10225,25 @@ function huntRenderResults(data) {
     (pp.wildcard || 0) + ' wildcard &middot; ' + (pp.irrelevant || 0) + ' irrelevant dropped &middot; ' +
     (pp.not_registered || 0) + ' not registered &middot; ' + (pp.fetched || 0) + ' fetched &middot; ' +
     (pp.keyword_hits || 0) + ' keyword hits</div>';
-  (data.campaigns || []).forEach(cm => {
+  const groupBlock = (cm, label, cls, titleCls) => {
     const w = cm.window || {};
     const win = w.first ? (escapeHtml(w.first) + ' to ' + escapeHtml(w.last || w.first)) : 'dates not published';
     const meta = [];
+    if ((cm.corroboration || []).length) meta.push('corroboration: ' + escapeHtml(cm.corroboration.join('; ')));
     if ((cm.registrars || []).length) meta.push('registrars: ' + escapeHtml(cm.registrars.join(', ')));
     if ((cm.asns || []).length) meta.push('hosting: ' + escapeHtml(cm.asns.slice(0, 4).join(', ')));
     if ((cm.tlds || []).length) meta.push('TLDs: ' + escapeHtml(cm.tlds.join(', ')));
-    html += '<div class="bg-red-950 border border-red-800 rounded p-3 mb-3">' +
-      '<div class="font-bold text-red-300 text-sm mb-1">Campaign: ' + escapeHtml(cm.theme || 'brand lookalikes') +
-      ' <span class="text-red-400 font-normal">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
+    return '<div class="' + cls + ' rounded p-3 mb-3">' +
+      '<div class="font-bold ' + titleCls + ' text-sm mb-1">' + label + ': ' + escapeHtml(cm.theme || 'brand lookalikes') +
+      ' <span class="font-normal text-gray-400">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
       (meta.length ? '<div class="text-xs text-gray-400 mb-1">' + meta.join(' &middot; ') + '</div>' : '') +
       '<div class="text-xs text-gray-300 font-mono break-all">' + escapeHtml((cm.members || []).join(', ')) + '</div></div>';
+  };
+  (data.campaigns || []).forEach(cm => {
+    html += groupBlock(cm, 'Campaign', 'bg-red-950 border border-red-800', 'text-red-300');
+  });
+  (data.related_groups || []).forEach(cm => {
+    html += groupBlock(cm, 'Related brand-themed', 'bg-gray-900 border border-gray-800', 'text-sky-300');
   });
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
     '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Source</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
@@ -10266,7 +10274,7 @@ function huntRenderResults(data) {
   html += '<div class="flex gap-2 mt-4 flex-wrap items-center">' +
     '<button id="hunt-dl-pdf" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Download PDF</button>' +
     '<button id="hunt-ex-json" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">JSON</button></div>';
-  html += '<p class="text-gray-600 text-xs mt-3">Verdicts are evidence-based estimates, not confirmations. Sources: crt.sh, dnstwist, urlscan.io, URLhaus, RIPEstat.</p>';
+  html += '<p class="text-gray-600 text-xs mt-3">Verdicts are automated assessments from public data, not determinations; verify before acting. Sources: urlscan.io, dnstwist, crt.sh, URLhaus, RIPEstat.</p>';
   html += '</div>';
   huntShow(html);
   huntEl('hunt-dl-pdf').addEventListener('click', () => asmDownloadPdf('/api/hunt', data.scan_id, 'hunt-dl-pdf'));

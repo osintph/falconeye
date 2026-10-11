@@ -133,9 +133,18 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     score = min(100, score)
     c["score"] = score
 
-    # Likely Phishing conditions (any one is enough).
-    content_imitates = favicon or title_imitates or hunted_brand or known_bad
-    likely = bool(campaign or urlscan_malicious or content_imitates or (theme_hit and recent))
+    page_class = c.get("page_class") or ""
+    informational = page_class == "informational"
+    # Phishing CONTENT: a credential or payment form, imitation of the legit site
+    # (favicon or close title match), or a page urlscan or the engine flagged.
+    phish_content = bool(page_class == "phishing" or favicon or title_imitates
+                         or c.get("has_cred_form") or c.get("has_payment_form") or known_bad)
+
+    # Likely Phishing requires at least one strong, evidenced condition. A brand
+    # plus theme name alone, especially on an old informational page, is not enough.
+    theme_recent_live = bool(theme_hit and recent and fetched and not informational
+                             and not c.get("parked"))
+    likely = bool(campaign or phish_content or urlscan_malicious or theme_recent_live)
 
     if taken_down:
         ev.append("possibly taken down (urlscan observed it recently, no longer resolves)")
@@ -144,6 +153,8 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
         c["verdict"] = "parked"
     elif likely:
         c["verdict"] = "likely phishing"
+    elif informational:
+        c["verdict"] = "brand-referencing"
     elif score >= SUSPICIOUS:
         c["verdict"] = "suspicious"
     elif resolves and not fetched and not observed:
