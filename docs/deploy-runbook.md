@@ -1219,9 +1219,35 @@ Domain tabs. Until it is set, hunts still run from crt.sh, permutations and the
 optional NRD feed, but they report urlscan as failed.
 
 crt.sh is rate limited (about 5 requests a minute per IP) and shared across
-concurrent hunts; FalconEye now retries it with backoff and serialises its calls
+concurrent hunts; FalconEye retries it with backoff and serialises its calls
 through a SQLite-backed gate (`HUNT_CRTSH_MIN_INTERVAL`, default 13s), so running
 several hunts at once no longer trips the limit. No key is needed for crt.sh.
+
+### crt.sh blocks the VPS egress IP (v3.38.2)
+
+Measured from the VPS on 2026-10-11: crt.sh returns a fast HTTP 502 from its own
+nginx (no Cloudflare ray header) to the VPS egress IP, while the same query
+succeeds from other IPs. This is crt.sh degrading that IP, not a Cloudflare block
+and not a per-query timeout. Its public PostgreSQL interface (crt.sh:5432) is
+filtered from the VPS and there is no `psql` on the box, so that route is not
+available. Without crt.sh, every hunt is marked INCOMPLETE on the CT source; the
+permutation engine still runs.
+
+Two config options restore crt.sh, both off by default:
+
+- `HUNT_CRTSH_PROXY` routes only the crt.sh request through an HTTP proxy. The
+  recommended route is a small HTTP proxy on a fleet host whose egress crt.sh
+  serves. `osintph` (tailnet 100.91.60.22) and `boxoftricks` (100.100.182.122)
+  are online on the tailnet with a residential egress crt.sh serves normally. On
+  that host run an HTTP proxy bound to its tailnet address (for example
+  `tinyproxy` listening on the tailnet IP), then set
+  `HUNT_CRTSH_PROXY=http://100.91.60.22:8888` in `/opt/falconeye/.env` and
+  restart. This changes only that one fleet host, and only to add a proxy.
+- `HUNT_CRTSH_BASE` points the query at a mirror or reverse proxy URL instead, if
+  you would rather run a reverse proxy than a forward proxy.
+
+Recommendation: run the forward proxy on `osintph` and set `HUNT_CRTSH_PROXY`.
+Nothing on other hosts is changed without your say-so.
 
 ### Newly registered domain feed (WHOISDS), optional
 

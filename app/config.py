@@ -374,6 +374,17 @@ HUNT_RESOLVE_CONCURRENCY = max(2, int(getenv_clean("HUNT_RESOLVE_CONCURRENCY", "
 # concurrent hunts, so crt.sh calls are serialised through a global gate that
 # spaces them by this many seconds and retried with backoff when it does answer.
 HUNT_CRTSH_MIN_INTERVAL = max(0.0, float(getenv_clean("HUNT_CRTSH_MIN_INTERVAL", "13")))
+# crt.sh access. Its HTTP endpoint returns a fast 502 (its own nginx, backend
+# down) to some egress IPs, the production VPS among them, while serving others;
+# its public PostgreSQL interface is firewalled from the VPS. HUNT_CRTSH_BASE
+# points the keyword query at a mirror or reverse proxy, and HUNT_CRTSH_PROXY
+# routes it through an HTTP proxy, for example one on a fleet host over the tailnet
+# whose egress crt.sh serves normally. Empty proxy means a direct request.
+HUNT_CRTSH_BASE = getenv_clean("HUNT_CRTSH_BASE", "https://crt.sh/") or "https://crt.sh/"
+HUNT_CRTSH_PROXY = getenv_clean("HUNT_CRTSH_PROXY")
+# Random control labels resolved per TLD per run to detect registry wildcards (a
+# TLD, for example .ph, that answers every label with the same address).
+HUNT_WILDCARD_CONTROLS = max(1, int(getenv_clean("HUNT_WILDCARD_CONTROLS", "2")))
 # Newly registered domain feed (WHOISDS). DEFAULT OFF: set this to a URL that
 # returns a daily list of newly registered domains (plain text or a zipped text
 # list), which WHOISDS provides to an account. Until set, new-registration

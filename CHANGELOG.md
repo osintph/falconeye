@@ -5,6 +5,44 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.2] - 2026-10-11
+
+### Fixed
+
+- **Hunt false positives.** The biggest source was registry wildcards: dot.ph
+  answers every unregistered .ph, .com.ph, .net.ph and .org.ph label with one
+  address (45.79.222.138), so permutations like mmdalogin.ph looked registered
+  when they were not. The hunt now resolves random control labels per TLD per run
+  and drops any candidate whose answer matches the wildcard control. Non-resolving
+  and wildcard candidates never appear as rows, and the counts stay consistent
+  (fetched never exceeds resolved).
+- **Parking and payment-logo false positives.** Parking, registrar, registry and
+  marketplace landing pages are now classified as Parked, and brand and PH-bank
+  checks are suppressed on them, so GCash, Maya and bank logos on a for-sale or
+  checkout page no longer read as impersonation. Brand-impersonation evidence is
+  counted only when it relates to the hunted brand or the legitimate site, not an
+  unrelated brand.
+- **Scoring.** Likely Phishing now requires a strong signal: content imitating the
+  hunted brand or its legitimate site (favicon hash match, a close title match, or
+  hunted-brand markers), a known-bad listing (URLhaus), or a recent registration
+  (under 90 days) together with live non-parked content. Keyword in the name plus
+  MX alone is Suspicious at most, and a registration older than two years with no
+  content signal is lowered.
+- **.ph registration dates.** dot.ph does not publish a registration date in
+  whois, so the report now says "registry does not publish registration date" for
+  the PH registries instead of a bare n/a.
+- **PDF.** The Score column is wider so its header no longer wraps.
+
+### Added
+
+- **crt.sh access options.** crt.sh returns a fast 502 to the production VPS
+  egress IP (its own backend, not a Cloudflare block) while serving other IPs, and
+  its public PostgreSQL interface is firewalled from the VPS. HUNT_CRTSH_PROXY
+  routes the crt.sh query through an HTTP proxy (for example a fleet host over the
+  tailnet whose IP crt.sh serves), and HUNT_CRTSH_BASE points it at a mirror. A
+  URLhaus known-bad check per candidate (when ABUSECH_AUTH_KEY is set) is a strong
+  phishing signal.
+
 ## [3.38.1] - 2026-10-11
 
 ### Changed

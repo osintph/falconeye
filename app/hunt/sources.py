@@ -35,8 +35,7 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.1 (+{config.OPERATOR_SITE_ORIGIN})"
-_CRTSH = "https://crt.sh/"
+_UA = f"FalconEye-Hunt/3.38.2 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -86,6 +85,19 @@ def _allowed(host: str, legit: str) -> bool:
     return bool(host) and not _is_legit_or_sub(host, legit)
 
 
+async def _crtsh_get(client: httpx.AsyncClient, params: dict):
+    """One crt.sh GET, through HUNT_CRTSH_PROXY and HUNT_CRTSH_BASE when set. crt.sh
+    returns a fast 502 to some egress IPs (the production VPS among them); a proxy
+    on a host whose IP it serves restores access."""
+    base = config.HUNT_CRTSH_BASE
+    proxy = config.HUNT_CRTSH_PROXY
+    headers = {"User-Agent": _UA}
+    if proxy:
+        async with httpx.AsyncClient(proxy=proxy, follow_redirects=True) as pc:
+            return await pc.get(base, params=params, timeout=_TIMEOUT, headers=headers)
+    return await client.get(base, params=params, timeout=_TIMEOUT, headers=headers)
+
+
 async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
     """CT keyword search. crt.sh only (Cert Spotter has no keyword search).
 
@@ -100,8 +112,7 @@ async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
         if wait > 0:
             await asyncio.sleep(min(wait, 30.0))
         try:
-            r = await client.get(_CRTSH, params={"q": f"%{keyword}%", "output": "json"},
-                                 timeout=_TIMEOUT, headers={"User-Agent": _UA})
+            r = await _crtsh_get(client, {"q": f"%{keyword}%", "output": "json"})
             if r.status_code in (429, 500, 502, 503, 504):
                 raise httpx.HTTPError(f"crt.sh {r.status_code}")
             if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():

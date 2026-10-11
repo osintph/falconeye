@@ -10219,15 +10219,16 @@ function huntRenderResults(data) {
     asmTile(sc['unrelated'] || 0, 'Unrelated', 'text-sky-400') + '</div>';
   const pp = data.pipeline || {};
   html += '<div class="text-xs text-gray-400 mb-3 font-mono">' +
-    (pp.generated || 0) + ' generated &middot; ' + (pp.resolved || 0) + ' resolve &middot; ' +
-    (pp.fetched || 0) + ' fetched &middot; ' + (pp.not_fetched || 0) + ' not fetched (cap) &middot; ' +
-    (pp.not_registered || 0) + ' not registered &middot; ' + (pp.keyword_hits || 0) + ' keyword hits</div>';
+    (pp.generated || 0) + ' generated &middot; ' + (pp.resolved || 0) + ' registered &middot; ' +
+    (pp.wildcard || 0) + ' wildcard dropped &middot; ' + (pp.fetched || 0) + ' fetched &middot; ' +
+    (pp.not_fetched || 0) + ' not fetched (cap) &middot; ' + (pp.not_registered || 0) + ' not registered &middot; ' +
+    (pp.keyword_hits || 0) + ' keyword hits</div>';
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
     '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Source</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
     '<th class="text-left py-1">Evidence</th><th class="text-left py-1">Actions</th></tr></thead><tbody>';
   (data.candidates || []).forEach(c => {
     const ev = (c.evidence || []).map(x => escapeHtml(x)).join('; ');
-    const reg = c.registered ? ('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : '')) : '';
+    const reg = c.registered ? ('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : '')) : (c.reg_note ? escapeHtml(c.reg_note) : '');
     const acts = '<a href="' + escapeAttr(c.gsb_url || '#') + '" target="_blank" rel="noopener" class="text-amber-400 mr-2">Safe Browsing</a>' +
       '<a href="#" class="text-amber-400 mr-2" data-piv-domain="' + escapeAttr(c.domain) + '">Domain Intel</a>' +
       '<a href="#" class="text-amber-400" data-piv-kit="' + escapeAttr(c.domain) + '">Deep Kit</a>';

@@ -325,10 +325,11 @@ def render_report(payload: dict, out_path: str) -> None:
         hdr = ["Candidate", "Source", "Verdict", "Score", "Registered", "Evidence"]
         rows = []
         for c in payload.get("candidates", []):
-            reg = c.get("registered") or "n/a"
+            reg = c.get("registered")
             age = c.get("age_days")
-            if isinstance(age, int) and age >= 0:
+            if reg and isinstance(age, int) and age >= 0:
                 reg = f"{reg} ({age}d)"
+            reg = reg or c.get("reg_note") or "n/a"
             rows.append([Paragraph(_esc(c.get("domain")), st["cell"]),
                          Paragraph(_esc(c.get("source") or "dnstwist"), st["cell"]),
                          _verdict_para(c.get("verdict", "unrelated"), st),
@@ -336,7 +337,7 @@ def render_report(payload: dict, out_path: str) -> None:
                          Paragraph(_esc(reg), st["cell"]),
                          Paragraph(_esc("; ".join(c.get("evidence") or []) or "n/a"), st["cell"])])
         if rows:
-            el.append(_data_table(hdr, rows, [36 * mm, 24 * mm, 22 * mm, 12 * mm, 26 * mm, 54 * mm], st))
+            el.append(_data_table(hdr, rows, [34 * mm, 22 * mm, 22 * mm, 16 * mm, 26 * mm, 54 * mm], st))
         else:
             el.append(Paragraph("No candidates found.", st["body"]))
 
