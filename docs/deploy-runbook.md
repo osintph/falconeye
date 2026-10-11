@@ -279,6 +279,12 @@ clean. The old logs stay in the directory you moved.
 > plus the ASM signing key and, where configured, the operator key hash and TOTP
 > secret, which live in `.env` (also already listed). See "Attack Surface
 > Management" for what they hold and how an owner deletes their own records.
+>
+> **v3.38.0 (one-time results + Phishing Hunt) adds nothing, and stores less.**
+> Scan and hunt results are no longer stored; `ASM_PDF_DIR`
+> (`data/asm_pdfs/` by default) holds report PDFs only until download or the TTL
+> sweep, so it is deliberately ephemeral and is NOT backed up. The Hunt keeps no
+> persistent state beyond the metadata-only audit row in `data/falconeye.db`.
 
 
 Everything in this table is state `git reset --hard` cannot put back. The list
@@ -1101,12 +1107,23 @@ page example card) are deliberately left alone. They are demo values sitting
 beside a WannaCry wallet address and a `stripe.com` example, not a claim about
 who runs the site, and swapping in a domain with no data makes the demo worse.
 
-## Attack Surface Management (v3.37.0)
+## Attack Surface Management (v3.37.0, one-time since v3.38.0)
 
-The Attack Surface tab maps and monitors the internet-facing surface of a domain
-the requester has proven they control, or any domain in operator mode for an
-authorised engagement. The rule that governs the whole feature: no output of any
-kind is returned for an unverified or blocked domain outside operator mode.
+The Attack Surface tab maps the internet-facing surface of a domain the requester
+has proven they control, or any domain in operator mode for an authorised
+engagement. The rule that governs the whole feature: no output of any kind is
+returned for an unverified or blocked domain outside operator mode.
+
+> **v3.38.0 made this one-time and removed monitoring.** A scan is shown once and
+> delivered as a server-side PDF, then purged: the PDF and the on-screen result
+> are deleted after the download completes, or by a sweep after
+> `ASM_RESULT_TTL_SECONDS` (default one hour). No scan results, host or finding
+> rows, history or "my domains" view are kept; only metadata (time, counts, mode,
+> domain hashed) is retained for audit. The management link keeps only "revoke all
+> grants". Monitoring is removed from the UI, API and MCP; its code is dormant
+> behind `ASM_MONITORING_ENABLED` (off) for a future paid tier, and the timer is
+> not installed. The v3.38.0 upgrade purges any host, finding and snapshot rows
+> left by earlier versions.
 
 ### What it needs
 
@@ -1174,6 +1191,43 @@ ASM stores its state in the `asm_*` tables inside `data/falconeye.db` and its
 secrets in `.env`, both already covered by the backup list, so this release adds
 nothing to "State to persist". An owner can delete every record for their domain,
 and revoke all access, from the management link emailed to them or from the tab.
+
+## Phishing Domain Hunt (v3.38.0)
+
+The Phishing Hunt tab finds newly registered and active domains impersonating a
+brand. It hunts attacker infrastructure, so it is public and ungated; the Attack
+Surface ownership gate is unchanged for scanning a domain the operator or a
+visitor owns.
+
+### What it needs
+
+Nothing extra for the default path. Discovery uses crt.sh keyword search (Cert
+Spotter has no keyword search and is used only per candidate for cert freshness),
+dnstwist permutations (offline, no network), and urlscan.io keyword search (a free
+`URLSCAN_API_KEY` lifts the quota and is recommended). URLhaus enrichment reuses
+the existing `ABUSECH_AUTH_KEY`. Each candidate gets one homepage GET through the
+SSRF-safe fetcher plus a favicon fetch; there are no port scans. Caps:
+`HUNT_MAX_CANDIDATES` (120), `HUNT_MAX_FETCHES` (40), `HUNT_PER_DAY` (20 per IP).
+Set `HUNT_ENABLED=false` to hide the tab and 503 the API.
+
+### Newly registered domain feed (WHOISDS), optional
+
+Brand-new registrations are covered only when `HUNT_NRD_URL` is set. WHOISDS
+provides a daily list of newly registered domains, free and permissively
+reusable, but automated download needs an account:
+
+1. Create an account at whoisds.com and find your newly-registered-domains
+   download URL (a daily plain-text or zipped text list, one domain per line).
+2. Set `HUNT_NRD_URL=<that URL>` in `/opt/falconeye/.env` and restart.
+
+Until it is set, the report notes that newly registered domain coverage is off.
+The hunt still works from CT, permutations and urlscan without it.
+
+### State
+
+Hunt results are one-time, exactly like Attack Surface scans: shown once,
+delivered as a PDF, then purged. Nothing is stored except the same metadata-only
+audit row. There is no new persistent state to back up.
 
 ## Logging, and what it retains
 

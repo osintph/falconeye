@@ -25,7 +25,7 @@ from pydantic import BaseModel
 from slowapi import Limiter
 
 from app import config
-from app.asm import blocklist, jobs, mailer, operator, report, signing, store, verify
+from app.asm import blocklist, jobs, mailer, operator, report, serve, signing, store, verify
 from app.asm.verify import GRANT_COOKIE, ROLE_PREFIXES
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain
@@ -258,41 +258,34 @@ async def get_scan(request: Request, scan_id: str):
     # is never revealed.
     if not scan or not _authorize_scan(request, scan):
         return JSONResponse({"error": "Not found."}, status_code=404)
-    body = {"scan_id": scan_id, "state": scan["state"], "capacity": jobs.capacity()}
-    if scan["state"] == "done":
-        body = report.api_payload(scan, store.get_hosts(scan_id), store.get_findings(scan_id))
-        body["capacity"] = jobs.capacity()
-    elif scan["state"] == "error":
-        body["error"] = scan.get("error")
-    return body
+    return serve.payload_response(scan, scan_id)
 
 
 @router.get("/scan/{scan_id}/export.{fmt}")
 async def export_scan(request: Request, scan_id: str, fmt: str):
     scan = store.get_scan(scan_id)
-    if not scan or not _authorize_scan(request, scan) or scan["state"] != "done":
+    if not scan or not _authorize_scan(request, scan):
         return JSONResponse({"error": "Not found."}, status_code=404)
-    hosts, found = store.get_hosts(scan_id), store.get_findings(scan_id)
-    base = f"falconeye-asm-{scan['domain'].replace('.', '-')}"
-    if fmt == "csv":
-        return PlainTextResponse(report.export_csv(scan, hosts, found), media_type="text/csv",
-                                 headers={"Content-Disposition": f'attachment; filename="{base}.csv"'})
-    if fmt == "json":
-        return PlainTextResponse(report.export_json(scan, hosts, found), media_type="application/json",
-                                 headers={"Content-Disposition": f'attachment; filename="{base}.json"'})
-    return JSONResponse({"error": "Unknown format."}, status_code=400)
+    return serve.export_response(scan_id, fmt)
+
+
+@router.get("/scan/{scan_id}/report.pdf")
+async def scan_pdf(request: Request, scan_id: str):
+    scan = store.get_scan(scan_id)
+    if not scan or not _authorize_scan(request, scan):
+        return JSONResponse({"error": "Not found."}, status_code=404)
+    return serve.pdf_response(scan_id)
 
 
 # ------------------------------------------------------------- session view ----
 
 @router.get("/session")
 async def session_view(request: Request, domain: str = ""):
-    """What this browser may do with *domain*: whether it holds a grant, and the
-    domain's monitoring state. Requires the grant cookie, so it reveals nothing to
-    anyone else."""
+    """Whether this browser holds a grant for *domain*. Requires the grant cookie,
+    so it reveals nothing to anyone else. Monitoring is removed from the public
+    product, so there is no monitoring state here."""
     dom = _norm(domain)
     out = {"operator": _operator(request) is not None,
-           "monitoring_enabled": config.ASM_MONITORING_ENABLED,
            "operator_configured": config.asm_operator_configured()}
     if not dom:
         return out
@@ -300,51 +293,13 @@ async def session_view(request: Request, domain: str = ""):
     if not grant:
         out["verified"] = False
         return out
-    row = store.get_domain(dom) or {}
-    out.update({
-        "verified": True, "domain": dom, "method": grant.get("method"),
-        "monitor": {"enabled": bool(row.get("monitor_enabled")),
-                    "freq": row.get("monitor_freq") or "weekly",
-                    "paused": bool(row.get("monitor_paused")),
-                    "notify_email": row.get("notify_email") or grant.get("notify_email") or ""},
-    })
+    out.update({"verified": True, "domain": dom, "method": grant.get("method")})
     return out
 
 
-# -------------------------------------------------------------- monitoring ----
-
-class MonitorReq(BaseModel):
-    domain: str
-    enabled: bool = True
-    freq: str = "weekly"
-    notify_email: str = ""
-
-
-@router.post("/monitor")
-async def set_monitor(request: Request, payload: MonitorReq):
-    domain = _norm(payload.domain)
-    if not domain:
-        return JSONResponse({"error": "Enter a valid domain."}, status_code=400)
-    op = _operator(request)
-    grant = _grant_for(request, domain)
-    if not op and not grant:
-        return JSONResponse({"error": "Not authorized."}, status_code=403)
-    if not config.ASM_MONITORING_ENABLED:
-        return JSONResponse({"error": "Monitoring is not enabled on this server."}, status_code=400)
-    freq = payload.freq if payload.freq in ("daily", "weekly") else "weekly"
-    row = store.get_domain(domain) or {}
-    notify = (payload.notify_email or row.get("notify_email")
-              or (grant.get("notify_email") if grant else "") or config.OPERATOR_CONTACT_EMAIL)
-    if payload.enabled:
-        if not row.get("monitor_enabled") and store.count_monitored() >= config.ASM_MAX_MONITORED:
-            return JSONResponse({"error": "This instance has reached its monitored-domain limit."}, status_code=400)
-        if store.count_monitored_for_notify(notify) >= config.ASM_MAX_PER_NOTIFY and not row.get("monitor_enabled"):
-            return JSONResponse({"error": "This address has reached its monitored-domain limit."}, status_code=400)
-    store.set_monitoring(domain, payload.enabled, freq, notify)
-    return {"ok": True, "enabled": payload.enabled, "freq": freq}
-
-
 # ------------------------------------------------------- in-tab management ----
+# The one-time model keeps no durable per-domain result data, so management is
+# just revoking the access grant. Rotate and delete are gone.
 
 class ManageReq(BaseModel):
     domain: str
@@ -358,33 +313,6 @@ async def manage_revoke(request: Request, payload: ManageReq, response: Response
     n = store.revoke_all_grants(domain)
     response.delete_cookie(GRANT_COOKIE, path="/")
     return {"ok": True, "revoked": n}
-
-
-@router.post("/manage/delete")
-async def manage_delete(request: Request, payload: ManageReq, response: Response):
-    domain = _norm(payload.domain)
-    if not domain or not (_operator(request) or _grant_for(request, domain)):
-        return JSONResponse({"error": "Not authorized."}, status_code=403)
-    store.delete_domain(domain)
-    response.delete_cookie(GRANT_COOKIE, path="/")
-    log.info("asm data deleted domain=%s", tag(domain))
-    return {"ok": True}
-
-
-@router.post("/manage/rotate")
-async def manage_rotate(request: Request, payload: ManageReq):
-    domain = _norm(payload.domain)
-    grant = _grant_for(request, domain)
-    if not domain or not (_operator(request) or grant):
-        return JSONResponse({"error": "Not authorized."}, status_code=403)
-    store.bump_mgmt_version(domain)
-    row = store.get_domain(domain) or {}
-    notify = row.get("notify_email") or (grant.get("notify_email") if grant else "")
-    if notify:
-        await mailer.send_management_link(notify, domain, verify.management_link(domain))
-        return {"ok": True, "emailed_to": notify}
-    return {"ok": True, "emailed_to": None,
-            "note": "No confirmed address on file, so the old link is now invalid but no new one was mailed."}
 
 
 # ----------------------------------------------------------- operator mode ----
@@ -575,14 +503,15 @@ async def manage_page(t: str = ""):
         return _manage_error_page(status)
     d = html.escape(domain)
     tok = html.escape(t)
+    # One-time model: scan results are never stored, so the only lasting thing to
+    # manage is the access grant. The link does one thing, revoke.
     body = (
         f"<h1>Manage access for <span class='amber'>{d}</span></h1>"
-        f"<p class='muted'>These actions take effect immediately.</p>"
+        f"<p class='muted'>FalconEye keeps no scan results; the only lasting access is your "
+        f"browser's grant. Revoking it ends access for every browser you authorised.</p>"
         f"<form method='post' action='/asm/manage' style='display:flex;flex-direction:column;gap:12px'>"
         f"<input type='hidden' name='t' value='{tok}'>"
-        f"<button name='action' value='rotate'>Rotate this management link</button>"
-        f"<button name='action' value='revoke'>Revoke all access grants</button>"
-        f"<button name='action' value='delete'>Delete all data for {d}</button></form>"
+        f"<button name='action' value='revoke'>Revoke all access grants</button></form>"
     )
     return _page("Manage access", body)
 
@@ -599,17 +528,4 @@ async def manage_submit(request: Request):
         n = store.revoke_all_grants(domain)
         return _page("Revoked", f"<h1>Access revoked</h1><p class='muted'>Revoked {n} grant(s) for "
                      f"{html.escape(domain)}.</p>")
-    if action == "delete":
-        store.delete_domain(domain)
-        log.info("asm data deleted (mgmt link) domain=%s", tag(domain))
-        return _page("Deleted", f"<h1>Data deleted</h1><p class='muted'>Every record for "
-                     f"{html.escape(domain)} has been removed.</p>")
-    if action == "rotate":
-        store.bump_mgmt_version(domain)
-        row = store.get_domain(domain) or {}
-        notify = row.get("notify_email") or ""
-        if notify and mailer.configured():
-            await mailer.send_management_link(notify, domain, verify.management_link(domain))
-        return _page("Rotated", "<h1>Link rotated</h1><p class='muted'>The old link no longer works. "
-                     "A new management link has been emailed to the address on file.</p>")
     return _page("Unknown action", "<h1>Unknown action</h1>", status=400)

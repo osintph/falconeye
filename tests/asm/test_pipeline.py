@@ -56,45 +56,36 @@ def mocked(monkeypatch):
     return hosts
 
 
-def test_run_scan_stores_hosts_findings_and_a_summary(mocked):
+def test_run_scan_returns_a_one_time_payload(mocked):
+    # One-time model: run_scan returns the payload (and caches it), it does NOT
+    # store hosts or findings in durable tables.
     store.create_scan("s1", "acme.test", "on_demand", operator=0, grant_id="g")
-    summary = asyncio.run(jobs.run_scan("s1"))
+    payload = asyncio.run(jobs.run_scan("s1"))
 
-    scan = store.get_scan("s1")
-    assert scan["state"] == "done"
-    assert summary["hosts_probed"] == 5
-    assert summary["behind_cdn"] == 1
-    assert summary["references"] == 1
+    assert store.get_scan("s1")["state"] == "done"
+    assert payload["hosts_probed"] == 5
+    assert payload["behind_cdn"] == 1
+    assert payload["references"] == 1
+    assert len(payload["hosts"]) == 5
 
-    hosts = store.get_hosts("s1")
-    assert len(hosts) == 5
-
-    findings = store.get_findings("s1")
-    kinds = {f["kind"] for f in findings}
-    # A dangling CNAME, an exposed database, and a missing DMARC record.
+    kinds = {f["kind"] for f in payload["findings"]}
     assert "takeover" in kinds
     assert "open_service" in kinds
     assert "mail_posture" in kinds
 
 
-def test_cdn_and_reference_hosts_are_not_port_scanned_in_the_report(mocked):
+def test_cdn_and_reference_hosts_are_not_port_scanned_in_the_payload(mocked):
     store.create_scan("s2", "acme.test", "on_demand", operator=0, grant_id="g")
-    asyncio.run(jobs.run_scan("s2"))
-    scan = store.get_scan("s2")
-    hosts = store.get_hosts("s2")
-    found = store.get_findings("s2")
-    csv = report.export_csv(scan, hosts, found)
+    payload = asyncio.run(jobs.run_scan("s2"))
+    csv = report.export_csv_payload(payload)
     assert "not scanned" in csv  # the CDN and reference rows
-    data = json.loads(report.export_json(scan, hosts, found))
-    cdn_row = next(h for h in data["hosts"] if h["host"] == "cdn.acme.test")
+    cdn_row = next(h for h in payload["hosts"] if h["host"] == "cdn.acme.test")
     assert cdn_row["kind"] == "cdn" and cdn_row["ports"] == []
 
 
-def test_api_payload_lists_findings_most_severe_first(mocked):
+def test_payload_lists_findings_most_severe_first(mocked):
     store.create_scan("s3", "acme.test", "on_demand", operator=0, grant_id="g")
-    asyncio.run(jobs.run_scan("s3"))
-    scan = store.get_scan("s3")
-    payload = report.api_payload(scan, store.get_hosts("s3"), store.get_findings("s3"))
+    payload = asyncio.run(jobs.run_scan("s3"))
     sevs = [f["severity"] for f in payload["findings"]]
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
     assert sevs == sorted(sevs, key=lambda s: order[s])

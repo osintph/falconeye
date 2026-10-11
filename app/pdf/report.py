@@ -1,0 +1,340 @@
+"""Render an Attack Surface or Phishing Hunt report to a PDF file.
+
+render_report(payload, out_path) is the only entry point. The payload is the
+same structure the portal renders on screen, so the PDF and the screen cannot
+disagree. ReportLab Platypus lays out the flowables; a two-pass canvas stamps
+the watermark, header, footer and "Page x of Y" on every page. ASCII copy only.
+No em dashes in this module.
+"""
+from __future__ import annotations
+
+import os
+import time
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen import canvas
+from reportlab.platypus import (BaseDocTemplate, Frame, NextPageTemplate, PageBreak,
+                                PageTemplate, Paragraph, Spacer, Table, TableStyle)
+
+_FONT_DIR = os.path.join(os.path.dirname(__file__), "fonts")
+_REGISTERED = False
+
+
+def _register_fonts() -> None:
+    global _REGISTERED
+    if _REGISTERED:
+        return
+    pdfmetrics.registerFont(TTFont("DejaVu", os.path.join(_FONT_DIR, "DejaVuSans.ttf")))
+    pdfmetrics.registerFont(TTFont("DejaVu-Bold", os.path.join(_FONT_DIR, "DejaVuSans-Bold.ttf")))
+    _REGISTERED = True
+
+
+AMBER = colors.HexColor("#b4740c")
+INK = colors.HexColor("#212529")
+MUTED = colors.HexColor("#6b7280")
+RULE = colors.HexColor("#d1d5db")
+FILL = colors.HexColor("#f3f4f6")
+OKC = colors.HexColor("#15803d")
+FAILC = colors.HexColor("#b91c1c")
+SEV = {"critical": colors.HexColor("#b91c1c"), "high": colors.HexColor("#c2410c"),
+       "medium": colors.HexColor("#b4740c"), "low": colors.HexColor("#0369a1"),
+       "info": MUTED}
+VERDICT = {"likely phishing": colors.HexColor("#b91c1c"), "suspicious": colors.HexColor("#c2410c"),
+           "parked": MUTED, "unrelated": colors.HexColor("#0369a1")}
+
+MANILA = ZoneInfo("Asia/Manila")
+
+
+def _styles():
+    return {
+        "body": ParagraphStyle("body", fontName="DejaVu", fontSize=9, leading=12.5, textColor=INK),
+        "small": ParagraphStyle("small", fontName="DejaVu", fontSize=7.5, leading=10, textColor=MUTED),
+        "h2": ParagraphStyle("h2", fontName="DejaVu-Bold", fontSize=12, textColor=AMBER,
+                             spaceBefore=12, spaceAfter=5, leading=15),
+        "cell": ParagraphStyle("cell", fontName="DejaVu", fontSize=7.6, leading=9.5, textColor=INK),
+        "cellh": ParagraphStyle("cellh", fontName="DejaVu-Bold", fontSize=7.4, leading=9.5, textColor=MUTED),
+    }
+
+
+def _sev_para(s, st):
+    c = SEV.get(s, MUTED).hexval()[2:]
+    return Paragraph(f'<font color="#{c}"><b>{s.upper()}</b></font>', st["cell"])
+
+
+def _verdict_para(v, st):
+    c = VERDICT.get(v, MUTED).hexval()[2:]
+    return Paragraph(f'<font color="#{c}"><b>{v.upper()}</b></font>', st["cell"])
+
+
+def _canvas_factory(domain, gen_utc, engagement):
+    class NumberedCanvas(canvas.Canvas):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            self._saved = []
+
+        def showPage(self):
+            self._saved.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self):
+            total = len(self._saved)
+            for st in self._saved:
+                self.__dict__.update(st)
+                self._decorate(total)
+                super().showPage()
+            super().save()
+
+        def _decorate(self, total):
+            w, h = A4
+            self.saveState()
+            self.setFont("DejaVu-Bold", 44)
+            self.setFillColor(colors.Color(0.91, 0.89, 0.85))
+            self.translate(w / 2, h / 2)
+            self.rotate(26)
+            self.drawCentredString(0, 0, domain[:40])
+            self.restoreState()
+            if self._pageNumber > 1:
+                self.setFont("DejaVu-Bold", 9)
+                self.setFillColor(AMBER)
+                self.drawString(18 * mm, h - 12 * mm, "FalconEye")
+                self.setFont("DejaVu", 7.5)
+                self.setFillColor(MUTED)
+                self.drawRightString(w - 18 * mm, h - 12 * mm, domain[:60])
+                self.setStrokeColor(RULE)
+                self.setLineWidth(0.4)
+                self.line(18 * mm, h - 14 * mm, w - 18 * mm, h - 14 * mm)
+            self.setStrokeColor(RULE)
+            self.setLineWidth(0.4)
+            self.line(18 * mm, 14 * mm, w - 18 * mm, 14 * mm)
+            self.setFont("DejaVu", 7)
+            self.setFillColor(MUTED)
+            foot = f"{domain}  -  generated {gen_utc}"
+            if engagement:
+                foot += f"  -  engagement {engagement}"
+            self.drawString(18 * mm, 10 * mm, foot[:120])
+            self.drawRightString(w - 18 * mm, 10 * mm, f"Page {self._pageNumber} of {total}")
+
+    return NumberedCanvas
+
+
+def _kv_table(rows, st, widths):
+    t = Table(rows, colWidths=widths)
+    t.setStyle(TableStyle([("FONT", (0, 0), (-1, 0), "DejaVu-Bold", 8),
+                           ("TEXTCOLOR", (0, 0), (-1, 0), MUTED),
+                           ("BACKGROUND", (0, 0), (-1, 0), FILL),
+                           ("LINEBELOW", (0, 0), (-1, -1), 0.3, RULE),
+                           ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                           ("TOPPADDING", (0, 0), (-1, -1), 3),
+                           ("BOTTOMPADDING", (0, 0), (-1, -1), 3)]))
+    return t
+
+
+def _data_table(header, rows, widths, st):
+    data = [[Paragraph(x, st["cellh"]) for x in header]] + rows
+    t = Table(data, colWidths=widths, repeatRows=1)
+    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, 0), FILL),
+                           ("LINEBELOW", (0, 0), (-1, -1), 0.25, RULE),
+                           ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                           ("TOPPADDING", (0, 0), (-1, -1), 2.5),
+                           ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5)]))
+    return t
+
+
+def render_report(payload: dict, out_path: str) -> None:
+    """Render *payload* to a PDF at *out_path*."""
+    _register_fonts()
+    st = _styles()
+    kind = payload.get("kind", "asm")
+    title_subject = payload.get("title", "report")
+    gen_ts = payload.get("generated_ts") or time.time()
+    gen_utc = datetime.fromtimestamp(gen_ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    gen_manila = datetime.fromtimestamp(gen_ts, MANILA).strftime("%Y-%m-%d %H:%M:%S (Asia/Manila)")
+    engagement = payload.get("engagement", "")
+
+    doc = BaseDocTemplate(out_path, pagesize=A4,
+                          title=f"FalconEye report {title_subject}", author="FalconEye",
+                          leftMargin=18 * mm, rightMargin=18 * mm, topMargin=18 * mm,
+                          bottomMargin=20 * mm)
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
+    cover = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="cover")
+    doc.addPageTemplates([PageTemplate(id="cover", frames=[cover]),
+                          PageTemplate(id="body", frames=[frame])])
+    el = []
+
+    # Cover
+    report_name = "Attack Surface Assessment" if kind == "asm" else "Phishing Domain Hunt"
+    el.append(Spacer(1, 38 * mm))
+    el.append(Paragraph('<font color="#b4740c"><b>FalconEye</b></font>',
+                        ParagraphStyle("wm", fontName="DejaVu-Bold", fontSize=24)))
+    el.append(Spacer(1, 6 * mm))
+    el.append(Paragraph(report_name, ParagraphStyle("ct", fontName="DejaVu-Bold", fontSize=20,
+                                                    textColor=INK, leading=24)))
+    el.append(Spacer(1, 3 * mm))
+    el.append(Paragraph(title_subject, ParagraphStyle("cd", fontName="DejaVu", fontSize=15,
+                                                      textColor=AMBER)))
+    el.append(Spacer(1, 10 * mm))
+    cover_rows = [("Run time", f"{gen_manila}  /  {gen_utc}"), ("Mode", payload.get("mode", "On-demand"))]
+    if engagement:
+        cover_rows.append(("Engagement", engagement))
+    if kind == "hunt":
+        cover_rows.append(("Legitimate domain", payload.get("legit_domain") or "not provided"))
+    cover_rows.append(("Notice", "Results are not kept. This PDF is the only copy; the server "
+                                 "purges the on-screen results after download or within the hour."))
+    if payload.get("incomplete"):
+        cover_rows.append(("Status", "INCOMPLETE: at least one discovery source did not answer. "
+                                     "See the source status below; a zero result here is not a "
+                                     "clean result."))
+    if kind == "hunt" and payload.get("nrd_off"):
+        cover_rows.append(("Coverage", "Newly registered domain feed is not configured, so "
+                                       "brand-new registrations may be missed."))
+    for k, v in cover_rows:
+        el.append(Paragraph(f"<b>{k}:</b> {v}", st["body"]))
+        el.append(Spacer(1, 2 * mm))
+    el.append(NextPageTemplate("body"))
+    el.append(PageBreak())
+
+    # Source status
+    el.append(Paragraph("Source status", st["h2"]))
+    srows = [[Paragraph("Source", st["cellh"]), Paragraph("Role", st["cellh"]),
+              Paragraph("Status", st["cellh"])]]
+    for s in payload.get("source_status", []):
+        status = s.get("status", "skipped")
+        c = {"answered": OKC, "failed": FAILC}.get(status, MUTED).hexval()[2:]
+        srows.append([Paragraph(s.get("source", ""), st["cell"]),
+                      Paragraph(s.get("role", ""), st["cell"]),
+                      Paragraph(f'<font color="#{c}"><b>{status}</b></font>', st["cell"])])
+    sstyle = _data_table(["", "", ""], srows[1:], [70 * mm, 50 * mm, 40 * mm], st)
+    el.append(Table([srows[0]] + srows[1:], colWidths=[70 * mm, 50 * mm, 40 * mm], repeatRows=1,
+                    style=TableStyle([("BACKGROUND", (0, 0), (-1, 0), FILL),
+                                      ("LINEBELOW", (0, 0), (-1, -1), 0.25, RULE),
+                                      ("TOPPADDING", (0, 0), (-1, -1), 3),
+                                      ("BOTTOMPADDING", (0, 0), (-1, -1), 3)])))
+    if payload.get("incomplete"):
+        el.append(Spacer(1, 2 * mm))
+        el.append(Paragraph('<font color="#b91c1c"><b>This run is INCOMPLETE.</b></font> One or '
+                            "more discovery sources did not answer, so missing results below are "
+                            "not evidence of absence.", st["body"]))
+
+    # Executive summary
+    el.append(Paragraph("Executive summary", st["h2"]))
+    el.append(Paragraph(payload.get("summary_line", ""), st["body"]))
+    el.append(Spacer(1, 3 * mm))
+    counts = payload.get("severity_counts") or {}
+    if kind == "asm":
+        order = ["critical", "high", "medium", "low", "info"]
+        crows = [[_sev_para(s, st), str(counts.get(s, 0))] for s in order]
+    else:
+        order = ["likely phishing", "suspicious", "parked", "unrelated"]
+        crows = [[_verdict_para(s, st), str(counts.get(s, 0))] for s in order]
+    el.append(_kv_table([["Category", "Count"]] + crows, st, [52 * mm, 22 * mm]))
+
+    # Findings (asm) or candidates (hunt)
+    if kind == "asm":
+        el.append(Paragraph("Findings", st["h2"]))
+        if not payload.get("findings"):
+            el.append(Paragraph("No findings.", st["body"]))
+        for f in payload.get("findings", []):
+            rows = [[_sev_para(f["severity"], st),
+                     Paragraph(f"<b>{_esc(f.get('title'))}</b>  <font color='#6b7280'>"
+                               f"{_esc(f.get('host') or '')}</font>", st["cell"])],
+                    ["", Paragraph(f"<b>Evidence.</b> {_esc(f.get('detail') or 'n/a')}", st["cell"])],
+                    ["", Paragraph(f"<b>Remediation.</b> {_esc(f.get('remediation') or _default_fix(f))}",
+                                   st["cell"])]]
+            ft = Table(rows, colWidths=[24 * mm, 150 * mm])
+            ft.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"),
+                                    ("LEFTPADDING", (0, 0), (-1, -1), 2),
+                                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                                    ("LINEBELOW", (0, -1), (-1, -1), 0.3, RULE)]))
+            el.append(ft)
+            el.append(Spacer(1, 2 * mm))
+
+        el.append(Paragraph("Hosts", st["h2"]))
+        hdr = ["Host", "IP", "Open ports", "Server", "TLS", "Notes"]
+        rows = []
+        for h in payload.get("hosts", []):
+            k = h.get("kind", "own")
+            if k == "cdn":
+                ports = f"behind CDN ({h.get('cdn') or 'CDN'}), ports not scanned"
+            elif k == "reference":
+                ports = f"reference only: CNAME to {h.get('cname') or 'third party'}"
+            else:
+                ports = ", ".join(str(p) for p in (h.get("ports") or [])) or "none"
+            rows.append([Paragraph(_esc(h.get("host")), st["cell"]),
+                         Paragraph(_esc(", ".join(h.get("resolved_ips") or []) or "n/a"), st["cell"]),
+                         Paragraph(_esc(ports), st["cell"]),
+                         Paragraph(_esc(h.get("server") or "n/a"), st["cell"]),
+                         Paragraph(_esc(_tls_brief(h.get("tls"))), st["cell"]),
+                         Paragraph(_esc(k), st["cell"])])
+        if rows:
+            el.append(_data_table(hdr, rows, [42 * mm, 24 * mm, 46 * mm, 20 * mm, 18 * mm, 24 * mm], st))
+    else:
+        el.append(Paragraph("Lookalike candidates", st["h2"]))
+        hdr = ["Candidate", "Verdict", "Score", "Registered", "Evidence"]
+        rows = []
+        for c in payload.get("candidates", []):
+            rows.append([Paragraph(_esc(c.get("domain")), st["cell"]),
+                         _verdict_para(c.get("verdict", "unrelated"), st),
+                         Paragraph(str(c.get("score", 0)), st["cell"]),
+                         Paragraph(_esc(c.get("registered") or "n/a"), st["cell"]),
+                         Paragraph(_esc("; ".join(c.get("evidence") or []) or "n/a"), st["cell"])])
+        if rows:
+            el.append(_data_table(hdr, rows, [44 * mm, 24 * mm, 14 * mm, 22 * mm, 70 * mm], st))
+        else:
+            el.append(Paragraph("No candidates found.", st["body"]))
+
+    # Posture (asm) and references
+    if kind == "asm" and payload.get("posture"):
+        p = payload["posture"]
+        el.append(Paragraph("Mail and DNS posture", st["h2"]))
+        el.append(Paragraph(f"SPF: {_yn(p.get('spf'))}. DMARC: {_yn(p.get('dmarc'))} "
+                            f"(policy {p.get('dmarc_policy') or 'n/a'}). MTA-STS: {_yn(p.get('mta_sts'))}. "
+                            f"TLS-RPT: {_yn(p.get('tls_rpt'))}.", st["body"]))
+    if payload.get("references_note"):
+        el.append(Paragraph("CDN and third-party references", st["h2"]))
+        el.append(Paragraph(_esc(payload["references_note"]), st["body"]))
+
+    # Methodology and sources
+    el.append(Paragraph("Methodology and caps", st["h2"]))
+    el.append(Paragraph(_esc(payload.get("methodology", "")), st["body"]))
+    el.append(Paragraph("Sources and attribution", st["h2"]))
+    for line in payload.get("attribution", []):
+        el.append(Paragraph(_esc(line), st["small"]))
+
+    subject = title_subject or "report"
+    doc.build(el, canvasmaker=_canvas_factory(subject, gen_utc, engagement))
+
+
+def _esc(s) -> str:
+    s = "" if s is None else str(s)
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _yn(v) -> str:
+    return "present" if v else "absent"
+
+
+def _tls_brief(tls) -> str:
+    if not tls:
+        return "n/a"
+    return (tls.get("issuer") or "cert")[:18]
+
+
+def _default_fix(f) -> str:
+    kind = f.get("kind")
+    return {
+        "takeover": "Remove the dangling CNAME or re-claim the backing resource now.",
+        "cert": "Renew the certificate and confirm auto-renewal.",
+        "private_ip": "Remove the private address from public DNS.",
+        "admin_surface": "Take the admin surface off the public internet or behind an allowlist.",
+        "open_service": "Close the service to the internet or restrict it to known addresses.",
+        "headers": "Add the missing security headers at the server or CDN.",
+        "mail_posture": "Publish the missing mail authentication records.",
+    }.get(kind, "Review and remediate as appropriate.")

@@ -12,8 +12,9 @@ from app.utils.env import getenv_clean
 from app.ip_sources import catalog, reputation
 from app.routemap import atlas
 from app.utils.client_ip import get_client_ip_key
-from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet, asm
+from app.routers import crypto, scanner, news, domain_intel, ip_intel, sandbox, threat_pulse, email_header, dork_generator, script_decoder, url_expander, qr_analyzer, sockpuppet, asm, hunt
 from app.asm import catalog as asm_catalog
+from app.hunt import catalog as hunt_catalog
 from app.prospect import routes as prospect_routes
 from app.image_search import routes as image_routes
 from app.abuse import routes as abuse_routes
@@ -60,7 +61,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.37.2",
+    version="3.38.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -112,13 +113,14 @@ app.include_router(ransomware_routes.router)
 app.include_router(routemap_routes.router)
 app.include_router(asm.router)
 app.include_router(asm.pages)
+app.include_router(hunt.router)
 
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.37.2"}
+    return {"status": "ok", "version": "3.38.0"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -172,6 +174,7 @@ def _operator_tokens() -> dict:
         # app/asm/catalog.py so the two cannot drift apart.
         "{{ASM_SOURCES}}": asm_catalog.discovery_labels(),
         "{{ASM_ALL_SOURCES}}": asm_catalog.all_labels(),
+        "{{HUNT_SOURCES}}": hunt_catalog.discovery_labels(),
         # Rendered as ", <tagline>" so an operator who clears it gets a clean
         # full stop after their name instead of a dangling comma.
         "{{OPERATOR_TAGLINE_CLAUSE}}": (
@@ -229,6 +232,8 @@ def _operator_config_script() -> str:
         # Whether ASM is usable at all on this instance (needs ASM_SIGNING_KEY).
         # The tab shows an unavailable notice rather than failing on first use.
         "asmEnabled": asm.signing.configured(),
+        # Whether the public Phishing Hunt is enabled on this instance.
+        "huntEnabled": config.HUNT_ENABLED,
     }
     # </script> inside a JSON string would end the block early.
     blob = json.dumps(payload).replace("<", "\\u003c")

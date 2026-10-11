@@ -102,7 +102,7 @@ def _infer_kind(h: dict) -> str:
 
 
 def api_payload(scan: dict, hosts: list, found: list) -> dict:
-    """What GET /api/asm/scan/{id} returns."""
+    """What GET /api/asm/scan/{id} returns (legacy, from stored hosts/findings)."""
     return {
         "scan_id": scan["scan_id"],
         "domain": scan["domain"],
@@ -115,6 +115,133 @@ def api_payload(scan: dict, hosts: list, found: list) -> dict:
         "hosts": [_host_view(h) for h in hosts],
         "findings": sorted(found, key=lambda f: SEVERITY_ORDER.get(f.get("severity"), 9)),
     }
+
+
+# ---------------------------------------------- one-time payload (v3.38.0) ----
+
+def asm_source_status(disc: dict) -> tuple:
+    """Return (status_list, incomplete). CT, passive DNS and Wayback are
+    discovery sources: if any failed, the run is INCOMPLETE and a zero result is
+    not a clean result. RIPEstat is ASN context and does not make a run
+    incomplete on its own."""
+    sources = disc.get("sources") or {}
+    out = []
+    incomplete = False
+    for key, role in (("ct", "CT discovery (crt.sh, Cert Spotter)"),
+                      ("passive_dns", "passive DNS (Mnemonic)"),
+                      ("wayback", "historic hostnames (Wayback)")):
+        info = sources.get(key) or {}
+        answered = bool(info.get("ok"))
+        if not answered:
+            incomplete = True
+        out.append({"source": _SRC_LABEL[key], "role": role,
+                    "status": "answered" if answered else "failed"})
+    asn_ok = bool((disc.get("asn") or {}).get("available"))
+    out.append({"source": "RIPEstat", "role": "ASN and routing context",
+                "status": "answered" if asn_ok else "skipped"})
+    return out, incomplete
+
+
+_SRC_LABEL = {"ct": "crt.sh / Cert Spotter", "passive_dns": "Mnemonic", "wayback": "Wayback Machine"}
+
+
+def host_view_from_record(r: dict) -> dict:
+    """A host row from a probe record (the one-time path does not store hosts)."""
+    kind = "reference" if r.get("is_reference") else ("cdn" if r.get("cdn_provider") else "own")
+    http = r.get("http") or {}
+    return {
+        "host": r.get("host"), "kind": kind,
+        "resolved_ips": r.get("resolved_ips") or [],
+        "cname": r.get("cname_target") or r.get("cname") or "",
+        "cdn": r.get("cdn_provider") or "",
+        "ports": [p.get("port") for p in (r.get("open_ports") or [])],
+        "server": http.get("server", ""), "status": http.get("status"),
+        "title": http.get("title", ""), "tls": r.get("tls"),
+        "tech": r.get("fingerprint") or [],
+    }
+
+
+def build_asm_payload(scan: dict, records: list, found: list, disc: dict, posture: dict,
+                      generated_ts) -> dict:
+    """The one-time payload: rendered on screen once and into the PDF, then
+    purged. Same structure for both so they cannot disagree."""
+    from app import config
+    status_list, incomplete = asm_source_status(disc)
+    counts = {s: 0 for s in SEVERITY_ORDER}
+    for f in found:
+        counts[f["severity"]] = counts.get(f["severity"], 0) + 1
+    hosts = [host_view_from_record(r) for r in records]
+    kinds = [h["kind"] for h in hosts]
+    in_scope = sum(1 for k in kinds if k in ("own", "cdn"))
+    behind = sum(1 for k in kinds if k == "cdn")
+    refs = sum(1 for k in kinds if k == "reference")
+    refhosts = [h["host"] for h in hosts if h["kind"] in ("cdn", "reference")]
+    refnote = ("CDN-fronted and third-party-CNAME hosts were not port scanned: "
+               + ", ".join(refhosts[:12]) + ".") if refhosts else ""
+    methodology = (
+        "Passive discovery (crt.sh, Cert Spotter, Mnemonic passive DNS, the Wayback "
+        "Machine) and RIPEstat ASN context, then a light active probe (DNS, HTTP and "
+        "TLS through the SSRF-safe fetcher, header-based tech fingerprint) and a "
+        "conservative TCP connect scan. Only the target's own hosts are probed; CDN "
+        "edges and third-party CNAME targets are recorded as references and never port "
+        f"scanned. Caps this run: {config.ASM_MAX_HOSTS_PER_RUN} hosts, about 25 ports "
+        f"per host, {config.ASM_PORT_TIMEOUT_SECONDS}s per connect, "
+        f"{config.ASM_RUN_TIMEOUT_SECONDS}s per run.")
+    sline = (f"{len(disc.get('hosts') or [])} hosts discovered, {in_scope} in scope, "
+             f"{behind} behind a CDN and not port scanned, {refs} third-party reference(s).")
+    if incomplete:
+        sline = "INCOMPLETE run. " + sline + " A discovery source did not answer."
+    return {
+        "kind": "asm", "title": scan["domain"], "generated_ts": generated_ts,
+        "scan_id": scan["scan_id"], "state": "done",
+        "mode": scan.get("mode", "On-demand"), "engagement": scan.get("engagement") or "",
+        "operator": bool(scan.get("operator")), "incomplete": incomplete,
+        "source_status": status_list, "severity_counts": counts, "summary_line": sline,
+        "in_scope": in_scope, "behind_cdn": behind, "references": refs,
+        "discovered": len(disc.get("hosts") or []), "hosts_probed": len(records),
+        "findings": sorted(found, key=lambda f: SEVERITY_ORDER.get(f.get("severity"), 9)),
+        "hosts": hosts, "posture": _posture_brief(posture or {}),
+        "references_note": refnote, "methodology": methodology,
+        "attribution": SOURCE_ATTRIBUTION,
+    }
+
+
+def export_json_payload(payload: dict) -> str:
+    return json.dumps(payload, indent=2)
+
+
+def export_csv_payload(payload: dict) -> str:
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow([f"FalconEye {payload.get('kind', 'asm')} report for {payload.get('title')}"])
+    w.writerow([f"Generated {_utc_iso(payload.get('generated_ts'))}"])
+    if payload.get("incomplete"):
+        w.writerow(["INCOMPLETE: a discovery source did not answer"])
+    w.writerow([])
+    w.writerow(["Source", "Status"])
+    for s in payload.get("source_status", []):
+        w.writerow([s.get("source"), s.get("status")])
+    w.writerow([])
+    if payload.get("kind") == "hunt":
+        w.writerow(["Candidate", "Verdict", "Score", "Registered", "Evidence"])
+        for c in payload.get("candidates", []):
+            w.writerow([c.get("domain"), c.get("verdict"), c.get("score"),
+                        c.get("registered") or "n/a", "; ".join(c.get("evidence") or [])])
+        return buf.getvalue()
+    w.writerow(["Findings"])
+    w.writerow(["severity", "kind", "host", "title", "detail"])
+    for f in payload.get("findings", []):
+        w.writerow([f.get("severity"), f.get("kind"), f.get("host") or "n/a",
+                    f.get("title"), f.get("detail") or "n/a"])
+    w.writerow([])
+    w.writerow(["Hosts"])
+    w.writerow(["host", "kind", "ips", "ports", "server"])
+    for h in payload.get("hosts", []):
+        ports = ("|".join(str(p) for p in h.get("ports") or [])
+                 if h["kind"] == "own" else "not scanned")
+        w.writerow([h["host"], h["kind"], "|".join(h.get("resolved_ips") or []) or "n/a",
+                    ports or "none", h.get("server") or "n/a"])
+    return buf.getvalue()
 
 
 def export_json(scan: dict, hosts: list, found: list) -> str:

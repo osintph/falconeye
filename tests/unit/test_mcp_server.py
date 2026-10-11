@@ -32,6 +32,7 @@ from app.ransomware import routes as ransomware_routes
 from app.routemap import routes as routemap_routes
 from app.routers import (
     asm,
+    hunt,
     domain_intel,
     email_header,
     ip_intel,
@@ -50,6 +51,7 @@ EXPECTED = {
     "ransomware_watch_search": ransomware_routes.search_victims,
     "route_map": routemap_routes.analyze,
     "asm_discover": asm.mcp_discover,
+    "phishing_hunt": hunt.mcp_hunt,
 }
 
 # Tabs that answer questions about a person rather than about an indicator. Out

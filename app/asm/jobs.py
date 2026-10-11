@@ -16,7 +16,10 @@ left behind ages out of the queue accounting. No em dashes in this module.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
+import os
+import time
 
 from app import config
 from app.asm import discovery, findings as findings_mod, probe, report, store
@@ -68,32 +71,69 @@ async def _runner(scan_id: str) -> None:
 
 
 async def run_scan(scan_id: str) -> dict:
-    """Execute one scan to completion and persist it. Returns the summary.
+    """Execute one run to completion and finalize it (render the PDF, cache the
+    result briefly, write the metadata audit). Returns the one-time payload.
 
-    Used both by the background runner and by the monitoring timer. Raises on an
-    unrecoverable error so the caller can record it.
+    One-time model: result content is NOT written to durable tables. It lives in
+    the ephemeral result cache plus the PDF file, both purged on download or by
+    the TTL sweep. Only a metadata audit row lasts.
     """
     scan = store.get_scan(scan_id)
     if not scan:
         raise RuntimeError("scan row missing")
     domain = scan["domain"]
+    kind = scan.get("kind") or "asm"
     store.set_scan_running(scan_id)
-    log.info("asm scan start id=%s domain=%s mode=%s", scan_id, tag(domain), scan["mode"])
+    log.info("asm run start id=%s kind=%s subject=%s", scan_id, kind, tag(domain))
 
     try:
-        summary = await asyncio.wait_for(
-            _execute(scan_id, domain), timeout=config.ASM_RUN_TIMEOUT_SECONDS)
+        if kind == "hunt":
+            from app.hunt import engine as hunt_engine
+            payload = await asyncio.wait_for(
+                hunt_engine.execute(scan), timeout=config.ASM_RUN_TIMEOUT_SECONDS)
+        else:
+            payload = await asyncio.wait_for(
+                _execute_asm(scan), timeout=config.ASM_RUN_TIMEOUT_SECONDS)
     except asyncio.TimeoutError as exc:
-        store.fail_scan(scan_id, "scan exceeded the run time cap")
+        store.fail_scan(scan_id, "run exceeded the time cap")
         raise RuntimeError("run timeout") from exc
-    return summary
+
+    _finalize(scan, payload)
+    return payload
 
 
-async def _execute(scan_id: str, domain: str) -> dict:
+def _finalize(scan: dict, payload: dict) -> None:
+    """Render the PDF, cache the result, write the audit, mark the scan done."""
+    scan_id = scan["scan_id"]
+    kind = payload.get("kind", "asm")
+    pdf_path = None
+    try:
+        from app.pdf import report as pdf_report
+        os.makedirs(config.ASM_PDF_DIR, exist_ok=True)
+        pdf_path = os.path.join(config.ASM_PDF_DIR, scan_id + ".pdf")
+        pdf_report.render_report(payload, pdf_path)
+    except Exception as exc:  # noqa: BLE001 - a PDF failure must not lose the result
+        log.warning("asm pdf render failed id=%s: %s", scan_id, exc)
+        pdf_path = None
+    payload["pdf_ready"] = bool(pdf_path)
+
+    store.cache_result(scan_id, kind, payload, pdf_path or "")
+    counts = payload.get("severity_counts") or {}
+    domain_hash = hashlib.sha256((scan.get("domain") or "").encode("utf-8")).hexdigest()[:32]
+    store.record_scan_audit(scan_id, kind, scan.get("mode", ""), int(bool(scan.get("operator"))),
+                            scan.get("engagement") or "", domain_hash,
+                            payload.get("hosts_probed") or len(payload.get("candidates") or []),
+                            {k: counts.get(k, 0) for k in ("critical", "high", "medium", "low")})
+    # The scan row keeps only metadata: state done plus the counts, not content.
+    store.finish_scan(scan_id, {"severity_counts": counts, "incomplete": payload.get("incomplete", False)})
+    log.info("asm run done id=%s kind=%s incomplete=%s", scan_id, kind, payload.get("incomplete"))
+
+
+async def _execute_asm(scan: dict) -> dict:
+    scan_id, domain = scan["scan_id"], scan["domain"]
     disc = await discovery.discover(domain)
     reg = disc.get("registrable") or registrable(domain) or domain
 
-    # Prioritise the apex and www, then the rest, then apply the host cap.
     names = list(disc.get("hosts") or [])
     priority = [domain, f"www.{domain}"]
     ordered = [h for h in priority if h in names] + [h for h in names if h not in priority]
@@ -116,18 +156,4 @@ async def _execute(scan_id: str, domain: str) -> dict:
     records = [r for r in await asyncio.gather(*[_one(h) for h in ordered]) if r]
     posture = await probe.apex_mail_posture(domain)
     found = findings_mod.build(domain, records, posture)
-
-    for r in records:
-        store.add_host(scan_id, r["host"], r.get("resolved_ips"), r.get("cname"),
-                       r.get("is_reference", 0),
-                       r.get("cdn_provider") or (r.get("cname_target") if r.get("kind") == "reference" else ""),
-                       r.get("http"), r.get("tls"), {"tech": r.get("fingerprint") or []},
-                       r.get("open_ports"))
-    for f in found:
-        store.add_finding(scan_id, f.get("host"), f["severity"], f["kind"], f["title"], f.get("detail", ""))
-
-    summary = report.summarize(domain, records, found, disc, posture)
-    store.finish_scan(scan_id, summary)
-    log.info("asm scan done id=%s domain=%s hosts=%d findings=%d",
-             scan_id, tag(domain), len(records), len(found))
-    return summary
+    return report.build_asm_payload(scan, records, found, disc, posture, time.time())

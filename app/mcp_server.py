@@ -53,7 +53,7 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 SERVER_NAME = "falconeye"
-SERVER_VERSION = "3.37.2"
+SERVER_VERSION = "3.38.0"
 
 # app.main mounts StaticFiles(directory="app/static") and that path is relative to
 # the process working directory, so importing the app from anywhere else raises.
@@ -196,6 +196,12 @@ async def asm_discover(domain: str, engagement_reference: str) -> dict:
         "domain": domain, "engagement_reference": engagement_reference})
 
 
+async def phishing_hunt(keyword: str, legit_domain: str = "") -> dict:
+    """Hunt for domains impersonating a brand keyword. Public, nothing stored."""
+    return await _request("POST", "/api/hunt/mcp", json_body={
+        "keyword": keyword, "legit_domain": legit_domain})
+
+
 # The endpoint's own cap, so a file that cannot possibly be accepted is rejected
 # before it is read into memory.
 _QR_MAX_BYTES = 5 * 1024 * 1024
@@ -224,6 +230,8 @@ _CACHE = {
     "asm": ("Not cached: each call runs a fresh scan. Discovery uses certificate "
             "transparency, passive DNS, the Wayback Machine and RIPEstat; active "
             "checks stay inside the apex."),
+    "hunt": ("Not cached and nothing stored: each call runs a fresh hunt and "
+             "returns the result inline."),
 }
 
 _LLM = ("This calls Anthropic with this instance's own ANTHROPIC_API_KEY, so it "
@@ -376,6 +384,25 @@ TOOLS: tuple[Tool, ...] = (
             "free-mail, shared-platform and public-suffix domains. Third-party "
             "hosts a CNAME points at are recorded as references and never probed "
             "or port scanned. " + _CACHE["asm"]
+        ),
+    ),
+    Tool(
+        name="phishing_hunt",
+        input_hint="a brand keyword and an optional legitimate domain",
+        method="POST",
+        path="/api/hunt/mcp",
+        handler=phishing_hunt,
+        description=(
+            "Hunt for newly registered and active domains impersonating a brand. "
+            "Input is a brand keyword and an optional legitimate domain: keyword "
+            "such as philhealth, and legit_domain such as philhealth.gov.ph which "
+            "improves permutation and similarity scoring. Discovery uses "
+            "certificate transparency keyword search, permutations, and urlscan; "
+            "each candidate gets DNS, registration, hosting and a single page fetch "
+            "with no port scan. It returns ranked candidates with a verdict (likely "
+            "phishing, suspicious, parked, unrelated), a score and the evidence. "
+            "This is public and ungated, and it hunts attacker infrastructure, not "
+            "a domain you own. " + _CACHE["hunt"]
         ),
     ),
 )

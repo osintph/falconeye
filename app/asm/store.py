@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
 import time
 from typing import Optional
@@ -86,6 +87,7 @@ def init_tables() -> None:
             CREATE TABLE IF NOT EXISTS asm_scans (
               scan_id TEXT PRIMARY KEY,
               domain TEXT NOT NULL,
+              kind TEXT NOT NULL DEFAULT 'asm',
               mode TEXT NOT NULL,
               state TEXT NOT NULL,
               operator INTEGER NOT NULL DEFAULT 0,
@@ -155,8 +157,40 @@ def init_tables() -> None:
               event_at INTEGER NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_asm_rl ON asm_rate_limit(scope, key, event_at);
+
+            -- v3.38.0 one-time model: result content lives here only, briefly.
+            CREATE TABLE IF NOT EXISTS asm_result_cache (
+              id TEXT PRIMARY KEY,
+              kind TEXT NOT NULL,
+              payload_json TEXT NOT NULL,
+              pdf_path TEXT,
+              created_at INTEGER NOT NULL,
+              delivered_at INTEGER
+            );
+            CREATE INDEX IF NOT EXISTS idx_asm_result_created ON asm_result_cache(created_at);
+
+            -- Metadata-only audit that lasts; no hostnames or findings, domain hashed.
+            CREATE TABLE IF NOT EXISTS asm_scan_audit (
+              id TEXT PRIMARY KEY,
+              at INTEGER NOT NULL,
+              kind TEXT NOT NULL,
+              mode TEXT,
+              operator INTEGER NOT NULL DEFAULT 0,
+              engagement TEXT,
+              domain_hash TEXT,
+              host_count INTEGER DEFAULT 0,
+              crit INTEGER DEFAULT 0,
+              high INTEGER DEFAULT 0,
+              med INTEGER DEFAULT 0,
+              low INTEGER DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_asm_scan_audit_at ON asm_scan_audit(at);
             """
         )
+        # Add the kind column to a pre-v3.38.0 asm_scans table.
+        cols = {r[1] for r in conn.execute("PRAGMA table_info(asm_scans)")}
+        if "kind" not in cols:
+            conn.execute("ALTER TABLE asm_scans ADD COLUMN kind TEXT NOT NULL DEFAULT 'asm'")
         conn.commit()
     finally:
         conn.close()
@@ -483,14 +517,14 @@ def revoke_all_grants(domain: str) -> int:
 
 # --------------------------------------------------------------------- scans ----
 
-def create_scan(scan_id: str, domain: str, mode: str, *, operator: int = 0,
+def create_scan(scan_id: str, domain: str, mode: str, *, kind: str = "asm", operator: int = 0,
                 engagement: str = "", grant_id: str = "", state: str = "queued") -> None:
     conn = _connect()
     try:
         conn.execute(
-            "INSERT INTO asm_scans (scan_id, domain, mode, state, operator, engagement, grant_id, created_at) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (scan_id, domain, mode, state, operator, engagement, grant_id, now()),
+            "INSERT INTO asm_scans (scan_id, domain, kind, mode, state, operator, engagement, grant_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (scan_id, domain, kind, mode, state, operator, engagement, grant_id, now()),
         )
         conn.commit()
     finally:
@@ -525,6 +559,98 @@ def fail_scan(scan_id: str, error: str) -> None:
         conn.execute(
             "UPDATE asm_scans SET state = 'error', finished_at = ?, error = ? WHERE scan_id = ?",
             (now(), error[:500], scan_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ------------------------------------------- one-time result cache + audit ----
+
+def cache_result(result_id: str, kind: str, payload: dict, pdf_path: str) -> None:
+    """Hold a finished result and its PDF path, briefly. This is the only place
+    result content lives, and only until download or the TTL sweep."""
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO asm_result_cache (id, kind, payload_json, pdf_path, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (result_id, kind, json.dumps(payload), pdf_path, now()),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_result(result_id: str) -> Optional[dict]:
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT * FROM asm_result_cache WHERE id = ?", (result_id,)).fetchone()
+    finally:
+        conn.close()
+    if not row:
+        return None
+    out = dict(row)
+    try:
+        out["payload"] = json.loads(out["payload_json"])
+    except (ValueError, TypeError):
+        out["payload"] = None
+    return out
+
+
+def delete_result(result_id: str) -> None:
+    """Delete the ephemeral row and its PDF file. Used after a completed download
+    and by the sweep."""
+    row = get_result(result_id)
+    if row and row.get("pdf_path"):
+        try:
+            os.remove(row["pdf_path"])
+        except OSError:
+            pass
+    conn = _connect()
+    try:
+        conn.execute("DELETE FROM asm_result_cache WHERE id = ?", (result_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def sweep_results(ttl_seconds: int) -> int:
+    """Delete every ephemeral result (and its PDF) older than the TTL. Called
+    lazily on submit and on status reads, so there is no timer."""
+    cutoff = now() - ttl_seconds
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT id, pdf_path FROM asm_result_cache WHERE created_at < ?", (cutoff,)).fetchall()
+    finally:
+        conn.close()
+    for r in rows:
+        if r["pdf_path"]:
+            try:
+                os.remove(r["pdf_path"])
+            except OSError:
+                pass
+    conn = _connect()
+    try:
+        conn.execute("DELETE FROM asm_result_cache WHERE created_at < ?", (cutoff,))
+        conn.commit()
+    finally:
+        conn.close()
+    return len(rows)
+
+
+def record_scan_audit(result_id: str, kind: str, mode: str, operator: int, engagement: str,
+                      domain_hash: str, host_count: int, counts: dict) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT OR REPLACE INTO asm_scan_audit "
+            "(id, at, kind, mode, operator, engagement, domain_hash, host_count, crit, high, med, low) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (result_id, now(), kind, mode, operator, engagement, domain_hash, host_count,
+             counts.get("critical", 0), counts.get("high", 0),
+             counts.get("medium", 0), counts.get("low", 0)),
         )
         conn.commit()
     finally:

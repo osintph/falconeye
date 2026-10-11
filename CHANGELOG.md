@@ -5,6 +5,56 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.0] - 2026-10-11
+
+### Added
+
+- **Phishing Domain Hunt, a new public tab.** Finds newly registered and active
+  domains impersonating a brand, with PH government and financial brands in mind.
+  It hunts attacker infrastructure, so it is public and ungated; the Attack
+  Surface ownership gate is unchanged for scanning a domain you own. Discovery
+  from certificate transparency keyword search (crt.sh), permutations (dnstwist:
+  homoglyph, IDN and punycode, bitsquatting, TLD swap, hyphenation, keyword
+  combos), urlscan.io keyword search, and an optional newly-registered-domain
+  feed. Per candidate: DNS, RDAP registration and registrar, hosting ASN, cert
+  freshness and one homepage GET through the SSRF-safe fetcher with a favicon
+  hash; no port scans, no crawling. Ranked verdicts (likely phishing, suspicious,
+  parked, unrelated) with evidence and action links (registrar and hosting abuse,
+  Google Safe Browsing, Deep Kit Report, Domain Intel). An `phishing_hunt` MCP
+  tool runs it inline. New dependencies: reportlab, dnstwist, mmh3.
+- **Server-side PDF reports.** A new ReportLab report engine with an embedded
+  DejaVuSans renders everything shown on screen: cover (Asia/Manila and UTC
+  times, mode, engagement reference), executive summary, findings with evidence
+  and remediation, the full host table (ASM) or lookalike table (Hunt), posture,
+  references, methodology, sourced attribution, page numbers, header, footer and a
+  watermark. Long tables paginate with the header repeated. The client jsPDF path
+  for ASM is replaced. A golden test checks sections, no em dashes, an embedded
+  font and a sane page count.
+- **Per-source status on every run.** Each discovery and enrichment source is
+  listed as answered, failed or skipped, on screen and in the PDF. If crt.sh or
+  any discovery source fails, the run is marked INCOMPLETE and a missing result is
+  not presented as a clean zero.
+
+### Changed
+
+- **Attack Surface and Hunt are now one-time assessments.** Results are shown
+  once and delivered as a PDF, then purged from the server: the PDF and the
+  on-screen payload are deleted after the download completes, or by a sweep after
+  a short expiry (ASM_RESULT_TTL_SECONDS, default one hour). There is no result
+  history and no "my domains" view; only metadata (time, counts, mode, domain
+  hashed) is kept for audit. The engine no longer stores hosts, findings or
+  snapshots, and a migration purges any such rows left by earlier versions. The
+  management link keeps only "revoke all grants".
+- **The PDF is deleted only after the download stream completes.** An interrupted
+  download leaves the result available until the TTL sweep.
+
+### Removed
+
+- **Monitoring is removed from the public product** and will return as a separate
+  paid feature. It is gone from the UI, API and MCP, the timer is not installed,
+  ASM_MONITORING_ENABLED stays off, and existing snapshot rows are purged. The
+  monitoring code stays dormant behind that flag for the future paid tier.
+
 ## [3.37.2] - 2026-10-11
 
 ### Fixed

@@ -20,7 +20,10 @@ _DASH_ENTITIES = ("&mdash;", "&ndash;", "&#8212;", "&#8211;")
 
 def _asm_python_files():
     files = sorted((REPO / "app" / "asm").rglob("*.py"))
+    files += sorted((REPO / "app" / "pdf").rglob("*.py"))
+    files += sorted((REPO / "app" / "hunt").rglob("*.py"))
     files.append(REPO / "app" / "routers" / "asm.py")
+    files.append(REPO / "app" / "routers" / "hunt.py")
     return files
 
 
@@ -50,3 +53,44 @@ def test_no_em_dash_in_asm_frontend_code():
                      "// ===ASM_START===", "// ===ASM_END===")
     for needle in _DASH_CHARS + _DASH_ENTITIES:
         assert needle not in region, f"the ASM frontend code contains {needle!r}"
+
+
+def test_no_em_dash_in_hunt_tab_markup():
+    region = _region(REPO / "app" / "static" / "index.html",
+                     "<!--HUNT_TAB_START-->", "<!--HUNT_TAB_END-->")
+    for needle in _DASH_CHARS + _DASH_ENTITIES:
+        assert needle not in region, f"the Hunt tab markup contains {needle!r}"
+
+
+def test_no_em_dash_in_hunt_frontend_code():
+    region = _region(REPO / "app" / "static" / "app.js",
+                     "// ===HUNT_START===", "// ===HUNT_END===")
+    for needle in _DASH_CHARS + _DASH_ENTITIES:
+        assert needle not in region, f"the Hunt frontend code contains {needle!r}"
+
+
+def test_no_em_dash_in_a_rendered_pdf():
+    # The brief extends the em-dash rule to the PDFs themselves.
+    try:
+        import pypdf
+    except Exception:  # noqa: BLE001
+        import pytest
+        pytest.skip("pypdf not installed")
+    import time
+    from app.pdf import report as pdfr
+    payload = {"kind": "asm", "title": "example.com", "generated_ts": time.time(),
+               "mode": "On-demand", "incomplete": False, "source_status": [],
+               "severity_counts": {"critical": 0, "high": 0, "medium": 0, "low": 0, "info": 0},
+               "summary_line": "s", "findings": [], "hosts": [], "posture": {},
+               "methodology": "m", "attribution": ["a"]}
+    out = str(pathlib.Path(__file__).resolve().parent / "_tmp_dash.pdf")
+    try:
+        pdfr.render_report(payload, out)
+        text = "\n".join(p.extract_text() or "" for p in pypdf.PdfReader(out).pages)
+        for ch in _DASH_CHARS:
+            assert ch not in text, "a rendered PDF contains an em or en dash"
+    finally:
+        try:
+            pathlib.Path(out).unlink()
+        except OSError:
+            pass

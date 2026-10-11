@@ -347,3 +347,29 @@ def asm_operator_configured() -> bool:
     return bool(
         getenv_clean("ASM_OPERATOR_KEY_HASH") and getenv_clean("ASM_OPERATOR_TOTP_SECRET")
     )
+
+
+# ----- v3.38.0: one-time results + Phishing Hunt -----
+import os as _os  # noqa: E402  (only needed for the PDF directory path)
+
+# Where server-side report PDFs are written before download. One per finished
+# run, deleted after the download completes or by the TTL sweep.
+ASM_PDF_DIR = getenv_clean("ASM_PDF_DIR") or _os.path.join(_os.path.dirname(DB_PATH), "asm_pdfs")
+# How long an undownloaded result (on-screen payload plus PDF) is kept before the
+# lazy sweep purges it. ASM scans and Hunt queries are one-time; nothing is kept
+# beyond this.
+ASM_RESULT_TTL_SECONDS = max(60, int(getenv_clean("ASM_RESULT_TTL_SECONDS", "3600")))
+
+# Phishing Domain Hunt (public, ungated). Finds brand-impersonation domains. It
+# hunts attacker infrastructure, so it is NOT behind the ASM ownership gate.
+HUNT_ENABLED = getenv_clean("HUNT_ENABLED", "true").lower() != "false"
+HUNT_MAX_CANDIDATES = max(10, int(getenv_clean("HUNT_MAX_CANDIDATES", "120")))
+HUNT_MAX_FETCHES = max(5, int(getenv_clean("HUNT_MAX_FETCHES", "40")))
+HUNT_PER_DAY = max(1, int(getenv_clean("HUNT_PER_DAY", "20")))
+HUNT_CANDIDATE_TIMEOUT = float(getenv_clean("HUNT_CANDIDATE_TIMEOUT", "8"))
+# Newly registered domain feed (WHOISDS). DEFAULT OFF: set this to a URL that
+# returns a daily list of newly registered domains (plain text or a zipped text
+# list), which WHOISDS provides to an account. Until set, new-registration
+# coverage is off and the report says so. Verified 2026-10-11: WHOISDS lists are
+# free and permissively reusable but automated download needs an account.
+HUNT_NRD_URL = getenv_clean("HUNT_NRD_URL")

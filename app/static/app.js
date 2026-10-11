@@ -39,8 +39,10 @@ const NAV_GROUPS = [
       icon: '<path d="M18 8a3 3 0 0 0-3-3h-2a3 3 0 0 0-3 3v9a3 3 0 0 1-3 3"/><path d="M18 8v9a3 3 0 0 0 6 0v-1"/>' },
     { id: 'routemap', label: 'Route Map', desc: 'Map the real network path to a target',
       icon: '<circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="m8 8 3 3-3 3"/><path d="m16 16-3-3 3-3"/>' },
-    { id: 'attacksurface', label: 'Attack Surface', desc: 'Map and monitor a domain you control',
+    { id: 'attacksurface', label: 'Attack Surface', desc: 'Map a domain you control (one-time report)',
       icon: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/>' },
+    { id: 'hunt', label: 'Phishing Hunt', desc: 'Find domains impersonating a brand',
+      icon: '<path d="m21 21-4.3-4.3"/><circle cx="11" cy="11" r="7"/><path d="M11 8v6M8 11h6"/>' },
   ]},
   { key: 'threat-intel', label: 'Threat Intel', tabs: [
     { id: 'ransomware', label: 'Ransomware Watch', desc: 'Global + PH/SEA ransomware victim tracking',
@@ -236,6 +238,7 @@ function showTab(tabName) {
   if (tabName === 'breach') loadBreachRecent();
   if (tabName === 'routemap') initRouteMap();
   if (tabName === 'attacksurface') initAttackSurface();
+  if (tabName === 'hunt') initPhishingHunt();
   if (tabName === 'sockpuppet') initSockpuppet();
   if (tabName === 'ransomware') {
     showRwSubview(getRwSubviewFromHash());
@@ -9835,27 +9838,10 @@ function asmRenderHome(domain, session, isOperator) {
     '<button id="asm-run" class="bg-amber-400 text-gray-950 font-bold px-5 py-2 rounded text-sm hover:bg-amber-300 transition">Run scan now</button></div>';
   if (!isOperator) {
     html += '<div class="bg-gray-900 border border-gray-800 rounded p-4 mb-3">' +
-      '<h3 class="font-bold mb-2">Monitoring</h3>';
-    if (monEnabled) {
-      html += '<label class="flex items-center gap-2 text-sm mb-2"><input type="checkbox" id="asm-mon-on" ' +
-        (mon.enabled ? 'checked' : '') + '> Enabled</label>' +
-        '<select id="asm-mon-freq" class="bg-gray-950 border border-gray-700 rounded px-3 py-1 text-sm mb-2">' +
-        '<option value="weekly"' + (mon.freq === 'weekly' ? ' selected' : '') + '>Weekly</option>' +
-        '<option value="daily"' + (mon.freq === 'daily' ? ' selected' : '') + '>Daily</option></select>' +
-        '<div><button id="asm-mon-save" class="bg-gray-800 text-gray-100 font-bold px-4 py-2 rounded text-sm hover:bg-gray-700">Save</button></div>' +
-        '<div id="asm-mon-msg" class="text-sm mt-2"></div>';
-    } else {
-      html += '<p class="text-gray-500 text-sm">Monitoring is not enabled on this server.</p>';
-    }
-    html += '</div>' +
-      '<div class="bg-gray-900 border border-gray-800 rounded p-4 mb-3">' +
-      '<h3 class="font-bold mb-2">Management</h3>' +
-      '<p class="text-gray-400 text-sm mb-2">A management link was emailed to the confirmed address. These act immediately.</p>' +
-      '<div class="flex gap-2 flex-wrap">' +
-      '<button id="asm-rotate" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Rotate link</button>' +
-      '<button id="asm-revoke" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Revoke grants</button>' +
-      '<button id="asm-delete" class="border border-red-700 text-red-400 px-3 py-2 rounded text-xs hover:bg-red-950">Delete all data</button>' +
-      '</div><div id="asm-manage-msg" class="text-sm mt-2"></div></div>';
+      '<h3 class="font-bold mb-2">Access</h3>' +
+      '<p class="text-gray-400 text-sm mb-2">FalconEye keeps no scan results. The only lasting access is this browser grant, and a revoke link was emailed to the confirmed address. You can revoke it here or from that link.</p>' +
+      '<button id="asm-revoke" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Revoke all grants</button>' +
+      '<div id="asm-manage-msg" class="text-sm mt-2"></div></div>';
   }
   html += '<div id="asm-scan-area"></div>';
   asmShow(html);
@@ -9863,15 +9849,8 @@ function asmRenderHome(domain, session, isOperator) {
     const eng = isOperator ? (document.getElementById('asm-eng').value || '').trim() : undefined;
     asmRunScan(domain, isOperator, eng);
   });
-  if (!isOperator && monEnabled) {
-    document.getElementById('asm-mon-save').addEventListener('click', () => asmSetMonitor(domain));
-    document.getElementById('asm-rotate').addEventListener('click', () => asmManage(domain, 'rotate'));
+  if (!isOperator) {
     document.getElementById('asm-revoke').addEventListener('click', () => asmManage(domain, 'revoke'));
-    document.getElementById('asm-delete').addEventListener('click', () => asmManage(domain, 'delete'));
-  } else if (!isOperator) {
-    document.getElementById('asm-rotate').addEventListener('click', () => asmManage(domain, 'rotate'));
-    document.getElementById('asm-revoke').addEventListener('click', () => asmManage(domain, 'revoke'));
-    document.getElementById('asm-delete').addEventListener('click', () => asmManage(domain, 'delete'));
   }
 }
 
@@ -9920,6 +9899,7 @@ function asmPoll(scanId) {
         return;
       }
       if (data.state === 'error') { area.innerHTML = '<p class="text-red-400 text-sm mt-2">Scan error: ' + escapeHtml(data.error || 'unknown') + '</p>'; return; }
+      if (data.state === 'expired') { area.innerHTML = '<p class="text-gray-400 text-sm mt-2">' + escapeHtml(data.message || 'Results are not kept. Run a new scan.') + '</p>'; return; }
       ASM.lastData = data;
       asmRenderReport(data);
     } catch (e) {
@@ -9935,20 +9915,56 @@ function asmSev(sev) {
   return '<span class="px-2 py-0.5 rounded text-xs font-mono ' + (map[sev] || map.info) + '">' + escapeHtml(sev) + '</span>';
 }
 
+// Shared one-time result chrome, used by ASM and Hunt report views.
+function asmOneTimeNotice() {
+  return '<div class="bg-amber-950 border border-amber-800 rounded p-3 mb-3 text-sm text-amber-200 font-semibold">' +
+    'Results are not kept. Download the PDF now. This page is purged after download or within the hour.</div>';
+}
+function asmSourceStatusHtml(data) {
+  const ss = data.source_status || [];
+  if (!ss.length) return '';
+  const chip = s => {
+    const c = s.status === 'answered' ? 'text-green-400' : (s.status === 'failed' ? 'text-red-400' : 'text-gray-500');
+    return '<span class="text-xs font-mono ' + c + '">' + escapeHtml(s.source) + ': ' + escapeHtml(s.status) + '</span>';
+  };
+  let h = '';
+  if (data.incomplete) {
+    h += '<div class="bg-red-950 border border-red-800 rounded p-2 mb-2 text-xs text-red-300">INCOMPLETE run: a discovery source did not answer, so a missing result is not a clean zero.</div>';
+  }
+  h += '<div class="flex flex-wrap gap-x-4 gap-y-1 mb-3">' + ss.map(chip).join('') + '</div>';
+  return h;
+}
+async function asmDownloadPdf(urlBase, id, label) {
+  const btn = document.getElementById(label);
+  const prev = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Preparing...'; btn.disabled = true; }
+  try {
+    const res = await fetch(urlBase + '/' + encodeURIComponent(id) + '/report.pdf');
+    if (!res.ok) { if (btn) { btn.textContent = 'Not available'; } return; }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'falconeye-report-' + id + '.pdf';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    if (btn) { btn.textContent = 'Downloaded (purged)'; }
+  } catch (e) { if (btn) { btn.textContent = prev || 'Download PDF'; btn.disabled = false; } }
+}
+
 function asmRenderReport(data) {
   const area = document.getElementById('asm-scan-area');
-  const s = data.summary || {};
-  const sc = s.severity_counts || {};
+  const sc = data.severity_counts || {};
   let html = '<div class="mt-3 bg-gray-900 border border-gray-800 rounded p-4">';
   html += '<div class="flex justify-between items-center mb-3 flex-wrap gap-2">' +
-    '<h3 class="font-bold">Report: ' + escapeHtml(data.domain) + '</h3>' +
-    '<span class="text-xs text-gray-500 font-mono">' + escapeHtml(s.generated || '') + '</span></div>';
+    '<h3 class="font-bold">Report: ' + escapeHtml(data.title || data.domain || '') + '</h3></div>';
+  html += asmOneTimeNotice();
+  html += asmSourceStatusHtml(data);
   html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">' +
     asmTile(sc.critical || 0, 'Critical', 'text-red-400') +
     asmTile(sc.high || 0, 'High', 'text-orange-400') +
     asmTile(sc.medium || 0, 'Medium', 'text-amber-400') +
-    asmTile(s.in_scope || 0, 'Hosts in scope', 'text-gray-100') + '</div>';
-  // findings
+    asmTile(data.in_scope || 0, 'Hosts in scope', 'text-gray-100') + '</div>';
   html += '<h4 class="text-xs uppercase tracking-wide text-gray-500 font-mono mb-2">Findings</h4>';
   if ((data.findings || []).length) {
     html += '<div class="space-y-2 mb-4">' + data.findings.map(f =>
@@ -9956,7 +9972,6 @@ function asmRenderReport(data) {
       asmSev(f.severity) + '<span class="font-semibold">' + escapeHtml(f.title) + '</span></div>' +
       '<div class="text-gray-400 font-mono text-xs mt-1 break-all">' + escapeHtml(f.detail || '') + '</div></div>').join('') + '</div>';
   } else { html += '<p class="text-gray-500 text-sm mb-4">No findings.</p>'; }
-  // hosts
   html += '<h4 class="text-xs uppercase tracking-wide text-gray-500 font-mono mb-2">Hosts</h4>';
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
     '<th class="text-left py-1">Host</th><th class="text-left py-1">IP</th><th class="text-left py-1">Ports</th><th class="text-left py-1">Server</th></tr></thead><tbody>';
@@ -9970,15 +9985,15 @@ function asmRenderReport(data) {
       '<td class="py-1 font-mono">' + escapeHtml(h.server || 'n/a') + '</td></tr>';
   });
   html += '</tbody></table></div>';
-  html += '<div class="flex gap-2 mt-4 flex-wrap items-center"><span class="text-xs text-gray-500">Export</span>' +
+  html += '<div class="flex gap-2 mt-4 flex-wrap items-center">' +
+    '<button id="asm-dl-pdf" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Download PDF</button>' +
     '<button id="asm-ex-json" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">JSON</button>' +
-    '<button id="asm-ex-csv" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">CSV</button>' +
-    '<button id="asm-ex-pdf" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">PDF</button></div>';
+    '<button id="asm-ex-csv" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">CSV</button></div>';
   html += '</div>';
   area.innerHTML = html;
-  document.getElementById('asm-ex-json').addEventListener('click', () => asmExport(data.scan_id, 'json'));
-  document.getElementById('asm-ex-csv').addEventListener('click', () => asmExport(data.scan_id, 'csv'));
-  document.getElementById('asm-ex-pdf').addEventListener('click', () => downloadAsmPdf(data));
+  document.getElementById('asm-dl-pdf').addEventListener('click', () => asmDownloadPdf('/api/asm/scan', data.scan_id, 'asm-dl-pdf'));
+  document.getElementById('asm-ex-json').addEventListener('click', () => asmExport('/api/asm/scan', data.scan_id, 'json'));
+  document.getElementById('asm-ex-csv').addEventListener('click', () => asmExport('/api/asm/scan', data.scan_id, 'csv'));
 }
 
 function asmTile(n, label, color) {
@@ -9986,48 +10001,23 @@ function asmTile(n, label, color) {
     n + '</div><div class="text-xs text-gray-500 uppercase">' + escapeHtml(label) + '</div></div>';
 }
 
-async function asmExport(scanId, fmt) {
+async function asmExport(urlBase, scanId, fmt) {
   try {
-    const res = await fetch('/api/asm/scan/' + encodeURIComponent(scanId) + '/export.' + fmt);
+    const res = await fetch(urlBase + '/' + encodeURIComponent(scanId) + '/export.' + fmt);
     if (!res.ok) return;
     const text = await res.text();
     const blob = new Blob([text], { type: fmt === 'csv' ? 'text/csv;charset=utf-8' : 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'falconeye-asm-' + (ASM.domain || 'domain').replace(/[^a-z0-9.]/gi, '-') + '.' + fmt;
+    a.download = 'falconeye-report-' + scanId + '.' + fmt;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   } catch (e) { /* ignore */ }
 }
 
-async function asmSetMonitor(domain) {
-  const on = document.getElementById('asm-mon-on').checked;
-  const freq = document.getElementById('asm-mon-freq').value;
-  const msg = document.getElementById('asm-mon-msg');
-  msg.innerHTML = '<span class="text-gray-400 animate-pulse">Saving...</span>';
-  try {
-    const res = await fetch('/api/asm/monitor', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ domain: domain, enabled: on, freq: freq }),
-    });
-    const data = await res.json();
-    msg.innerHTML = res.ok ? '<span class="text-green-400">Saved.</span>'
-      : '<span class="text-red-400">' + escapeHtml(data.error || 'failed') + '</span>';
-  } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
-}
-
-let asmDeleteArmed = false;
 async function asmManage(domain, action) {
   const msg = document.getElementById('asm-manage-msg');
-  if (action === 'delete' && !asmDeleteArmed) {
-    asmDeleteArmed = true;
-    msg.innerHTML = '<span class="text-red-400">This deletes every record for ' + escapeHtml(domain) +
-      '. Click Delete again within 5 seconds to confirm.</span>';
-    setTimeout(() => { asmDeleteArmed = false; }, 5000);
-    return;
-  }
-  asmDeleteArmed = false;
   msg.innerHTML = '<span class="text-gray-400 animate-pulse">Working...</span>';
   try {
     const res = await fetch('/api/asm/manage/' + action, {
@@ -10036,9 +10026,8 @@ async function asmManage(domain, action) {
     });
     const data = await res.json();
     if (!res.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'failed') + '</span>'; return; }
-    if (action === 'delete') { asmShow('<p class="text-sm text-gray-300">All data for ' + escapeHtml(domain) + ' has been deleted.</p>'); return; }
     if (action === 'revoke') { asmShow('<p class="text-sm text-gray-300">Access revoked.</p>'); return; }
-    msg.innerHTML = '<span class="text-green-400">Done.' + (data.emailed_to ? ' New link emailed to ' + escapeHtml(data.emailed_to) + '.' : '') + '</span>';
+    msg.innerHTML = '<span class="text-green-400">Done.</span>';
   } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
 }
 
@@ -10135,3 +10124,135 @@ function downloadAsmPdf(data) {
   st.doc.save('falconeye-asm-' + feSanitizeName(data.domain) + '-' + fePdfDate() + '.pdf');
 }
 // ===ASM_END===
+
+
+// ===HUNT_START===
+// Phishing Domain Hunt tab. Public and ungated. One-time results plus a
+// server-side PDF. No em dashes in this block (a test enforces it).
+const HUNT = { poll: null };
+
+function huntEl(id) { return document.getElementById(id); }
+function huntResult() { return huntEl('hunt-result'); }
+function huntShow(html) { const el = huntResult(); if (el) { el.innerHTML = html; el.classList.remove('hidden'); } }
+
+function initPhishingHunt() {
+  const btn = huntEl('hunt-btn');
+  if (btn && !btn._wired) {
+    btn._wired = true;
+    btn.addEventListener('click', huntRun);
+    const kw = huntEl('hunt-keyword');
+    if (kw) kw.addEventListener('keydown', e => { if (e.key === 'Enter') huntRun(); });
+  }
+}
+
+async function huntRun() {
+  if (!((window.FALCONEYE_CONFIG || {}).huntEnabled)) {
+    huntShow('<p class="text-gray-400 text-sm">The Phishing Hunt is not enabled on this server.</p>');
+    return;
+  }
+  const keyword = (huntEl('hunt-keyword').value || '').trim().toLowerCase();
+  const legit = (huntEl('hunt-legit').value || '').trim().toLowerCase();
+  if (keyword.length < 3 || /[*%]/.test(keyword)) {
+    huntShow('<p class="text-red-400 text-sm">Enter a brand keyword of at least 3 characters, no wildcards.</p>');
+    return;
+  }
+  huntShow('<p class="text-gray-400 text-sm animate-pulse">Submitting hunt...</p>');
+  try {
+    const res = await fetch('/api/hunt', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword: keyword, legit_domain: legit }),
+    });
+    const data = await res.json();
+    if (!res.ok) { huntShow('<p class="text-red-400 text-sm">' + escapeHtml(data.error || 'failed') + '</p>'); return; }
+    huntPoll(data.scan_id);
+  } catch (e) { huntShow('<p class="text-red-400 text-sm">Request failed: ' + escapeHtml(e.message) + '</p>'); }
+}
+
+function huntPoll(id) {
+  if (HUNT.poll) clearTimeout(HUNT.poll);
+  const tick = async () => {
+    try {
+      const res = await fetch('/api/hunt/' + encodeURIComponent(id));
+      const data = await res.json();
+      if (res.status === 404) { huntShow('<p class="text-red-400 text-sm">Hunt not found.</p>'); return; }
+      if (data.state === 'queued' || data.state === 'running') {
+        const cap = data.capacity || {};
+        huntShow('<p class="text-gray-400 text-sm animate-pulse">' +
+          (data.state === 'queued' ? ('Queued (' + (cap.active || 0) + ' running)...') : 'Hunting...') + '</p>');
+        HUNT.poll = setTimeout(tick, 2500);
+        return;
+      }
+      if (data.state === 'error') { huntShow('<p class="text-red-400 text-sm">Hunt error: ' + escapeHtml(data.error || 'unknown') + '</p>'); return; }
+      if (data.state === 'expired') { huntShow('<p class="text-gray-400 text-sm">' + escapeHtml(data.message || 'Results are not kept. Run a new hunt.') + '</p>'); return; }
+      huntRenderResults(data);
+    } catch (e) { huntShow('<p class="text-red-400 text-sm">Polling failed.</p>'); }
+  };
+  tick();
+}
+
+function huntVerdict(v) {
+  const map = { 'likely phishing': 'bg-red-950 text-red-400', 'suspicious': 'bg-orange-950 text-orange-400',
+    'parked': 'bg-gray-800 text-gray-400', 'unrelated': 'bg-sky-950 text-sky-400' };
+  return '<span class="px-2 py-0.5 rounded text-xs font-mono ' + (map[v] || map.unrelated) + '">' + escapeHtml(v) + '</span>';
+}
+
+function huntRenderResults(data) {
+  const sc = data.severity_counts || {};
+  let html = '<div class="bg-gray-900 border border-gray-800 rounded p-4">';
+  html += '<div class="flex justify-between items-center mb-3 flex-wrap gap-2">' +
+    '<h3 class="font-bold">Hunt: ' + escapeHtml(data.title || '') +
+    (data.legit_domain ? ' <span class="text-gray-500 text-sm font-mono">vs ' + escapeHtml(data.legit_domain) + '</span>' : '') + '</h3></div>';
+  html += asmOneTimeNotice();
+  html += asmSourceStatusHtml(data);
+  if (data.nrd_off) {
+    html += '<div class="bg-gray-950 border border-gray-800 rounded p-2 mb-3 text-xs text-gray-400">Newly registered domain feed is not configured, so brand-new registrations may be missed.</div>';
+  }
+  html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">' +
+    asmTile(sc['likely phishing'] || 0, 'Likely phishing', 'text-red-400') +
+    asmTile(sc['suspicious'] || 0, 'Suspicious', 'text-orange-400') +
+    asmTile(sc['parked'] || 0, 'Parked', 'text-gray-300') +
+    asmTile(sc['unrelated'] || 0, 'Unrelated', 'text-sky-400') + '</div>';
+  html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
+    '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
+    '<th class="text-left py-1">Evidence</th><th class="text-left py-1">Actions</th></tr></thead><tbody>';
+  (data.candidates || []).forEach(c => {
+    const ev = (c.evidence || []).map(x => escapeHtml(x)).join('; ');
+    const acts = '<a href="' + escapeAttr(c.gsb_url || '#') + '" target="_blank" rel="noopener" class="text-amber-400 mr-2">Safe Browsing</a>' +
+      '<a href="#" class="text-amber-400 mr-2" data-piv-domain="' + escapeAttr(c.domain) + '">Domain Intel</a>' +
+      '<a href="#" class="text-amber-400" data-piv-kit="' + escapeAttr(c.domain) + '">Deep Kit</a>';
+    html += '<tr class="border-b border-gray-900 align-top">' +
+      '<td class="py-1 font-mono">' + escapeHtml(c.domain) + (c.registered ? '<div class="text-gray-600">reg ' + escapeHtml(c.registered) + '</div>' : '') + '</td>' +
+      '<td class="py-1">' + huntVerdict(c.verdict) + '</td>' +
+      '<td class="py-1 font-mono">' + (c.score || 0) + '</td>' +
+      '<td class="py-1 text-gray-400">' + (ev || 'n/a') + '</td>' +
+      '<td class="py-1">' + acts + '</td></tr>';
+  });
+  html += '</tbody></table></div>';
+  html += '<div class="flex gap-2 mt-4 flex-wrap items-center">' +
+    '<button id="hunt-dl-pdf" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Download PDF</button>' +
+    '<button id="hunt-ex-json" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">JSON</button></div>';
+  html += '<p class="text-gray-600 text-xs mt-3">Verdicts are evidence-based estimates, not confirmations. Sources: crt.sh, dnstwist, urlscan.io, URLhaus, RIPEstat.</p>';
+  html += '</div>';
+  huntShow(html);
+  huntEl('hunt-dl-pdf').addEventListener('click', () => asmDownloadPdf('/api/hunt', data.scan_id, 'hunt-dl-pdf'));
+  huntEl('hunt-ex-json').addEventListener('click', () => asmExport('/api/hunt', data.scan_id, 'json'));
+  huntResult().querySelectorAll('[data-piv-domain]').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault(); huntPivot('domain', a.getAttribute('data-piv-domain'));
+  }));
+  huntResult().querySelectorAll('[data-piv-kit]').forEach(a => a.addEventListener('click', e => {
+    e.preventDefault(); huntPivot('scanner', a.getAttribute('data-piv-kit'));
+  }));
+}
+
+function huntPivot(tab, value) {
+  const ids = { domain: 'domain-input', scanner: 'scan-url' };
+  showTab(tab);
+  setTimeout(() => {
+    const inp = document.getElementById(ids[tab]);
+    if (inp) {
+      inp.value = tab === 'scanner' ? ('https://' + value + '/') : value;
+      inp.focus();
+    }
+  }, 50);
+}
+// ===HUNT_END===
