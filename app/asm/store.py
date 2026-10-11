@@ -166,6 +166,14 @@ def init_tables() -> None:
               next_at REAL NOT NULL
             );
 
+            -- A short-lived cache of crt.sh keyword results, so repeated hunts for a
+            -- keyword reuse one answer and crt.sh sees one request a day per keyword.
+            CREATE TABLE IF NOT EXISTS hunt_ct_cache (
+              keyword TEXT PRIMARY KEY,
+              hosts_json TEXT NOT NULL,
+              fetched_at INTEGER NOT NULL
+            );
+
             -- v3.38.0 one-time model: result content lives here only, briefly.
             CREATE TABLE IF NOT EXISTS asm_result_cache (
               id TEXT PRIMARY KEY,
@@ -278,6 +286,72 @@ def reserve_gate_slot(name: str, min_interval: float) -> float:
     except Exception as exc:  # noqa: BLE001 - a gate failure must not sink a hunt
         log.info("asm gate reserve failed for %s: %s", name, type(exc).__name__)
         return 0.0
+    finally:
+        conn.close()
+
+
+def gate_wait(name: str) -> float:
+    """Peek how many seconds until a gate allows a call, without reserving a slot.
+    A large value means a backoff is in effect (set after an upstream error)."""
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT next_at FROM asm_gate WHERE name = ?", (name,)).fetchone()
+    except Exception:  # noqa: BLE001
+        return 0.0
+    finally:
+        conn.close()
+    if not row or row[0] is None:
+        return 0.0
+    return max(0.0, float(row[0]) - time.time())
+
+
+def gate_set_backoff(name: str, seconds: float) -> None:
+    """Hold a gate shut for *seconds* from now (used after an upstream 502 so later
+    hunts skip the source and retry once the backoff clears, instead of hammering)."""
+    nxt = time.time() + max(0.0, seconds)
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO asm_gate (name, next_at) VALUES (?, ?) "
+            "ON CONFLICT(name) DO UPDATE SET next_at = excluded.next_at",
+            (name, nxt))
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.info("asm gate backoff failed for %s: %s", name, type(exc).__name__)
+    finally:
+        conn.close()
+
+
+def ct_cache_get(keyword: str, ttl_seconds: int):
+    """Fresh cached crt.sh hosts for *keyword*, or None if absent or stale."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT hosts_json FROM hunt_ct_cache WHERE keyword = ? AND fetched_at > ?",
+            (keyword, now() - ttl_seconds)).fetchone()
+    except Exception:  # noqa: BLE001
+        return None
+    finally:
+        conn.close()
+    if not row:
+        return None
+    try:
+        return json.loads(row[0])
+    except (ValueError, TypeError):
+        return None
+
+
+def ct_cache_put(keyword: str, hosts: list) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO hunt_ct_cache (keyword, hosts_json, fetched_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(keyword) DO UPDATE SET hosts_json = excluded.hosts_json, "
+            "fetched_at = excluded.fetched_at",
+            (keyword, json.dumps(sorted(set(hosts))), now()))
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.info("asm ct cache write failed: %s", type(exc).__name__)
     finally:
         conn.close()
 

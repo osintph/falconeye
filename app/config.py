@@ -382,6 +382,11 @@ HUNT_CRTSH_MIN_INTERVAL = max(0.0, float(getenv_clean("HUNT_CRTSH_MIN_INTERVAL",
 # whose egress crt.sh serves normally. Empty proxy means a direct request.
 HUNT_CRTSH_BASE = getenv_clean("HUNT_CRTSH_BASE", "https://crt.sh/") or "https://crt.sh/"
 HUNT_CRTSH_PROXY = getenv_clean("HUNT_CRTSH_PROXY")
+# crt.sh results are cached per keyword to cut request volume to one a day, and a
+# 502 holds crt.sh shut for a backoff window (a later hunt retries) instead of
+# hammering it with in-run retries.
+HUNT_CT_CACHE_TTL = max(0, int(getenv_clean("HUNT_CT_CACHE_TTL", "86400")))
+HUNT_CRTSH_BACKOFF = max(0, int(getenv_clean("HUNT_CRTSH_BACKOFF", "600")))
 # Random control labels resolved per TLD per run to detect registry wildcards (a
 # TLD, for example .ph, that answers every label with the same address).
 HUNT_WILDCARD_CONTROLS = max(1, int(getenv_clean("HUNT_WILDCARD_CONTROLS", "2")))

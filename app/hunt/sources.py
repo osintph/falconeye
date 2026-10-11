@@ -35,7 +35,7 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.3 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.4 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -101,34 +101,43 @@ async def _crtsh_get(client: httpx.AsyncClient, params: dict):
 async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
     """CT keyword search. crt.sh only (Cert Spotter has no keyword search).
 
-    crt.sh is rate limited and shared across concurrent hunts, so each call first
-    reserves a spaced slot from a global gate, then retries with backoff. A clean
-    empty answer is 'answered'; exhausting the retries is 'failed' (which makes the
-    run INCOMPLETE)."""
-    hosts = set()
-    attempts = 3
-    for i in range(attempts):
-        wait = store.reserve_gate_slot("crtsh", config.HUNT_CRTSH_MIN_INTERVAL)
-        if wait > 0:
-            await asyncio.sleep(min(wait, 30.0))
-        try:
-            r = await _crtsh_get(client, {"q": f"%{keyword}%", "output": "json"})
-            if r.status_code in (429, 500, 502, 503, 504):
-                raise httpx.HTTPError(f"crt.sh {r.status_code}")
-            if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
-                return hosts, "failed"
-            for row in r.json():
-                for name in str(row.get("name_value", "")).split("\n"):
-                    h = _clean_host(name)
-                    if h and keyword in h:
-                        hosts.add(h)
-            return hosts, "answered"
-        except Exception as exc:  # noqa: BLE001
-            log.info("hunt crt.sh attempt %d/%d for %s: %s", i + 1, attempts,
-                     tag(keyword), type(exc).__name__)
-            if i < attempts - 1:
-                await asyncio.sleep(2.0 * (i + 1))
-    return hosts, "failed"
+    Volume is kept low so crt.sh stops degrading the egress IP: a 24h per-keyword
+    cache serves repeat hunts, each hunt makes at most ONE request, and a 502 holds
+    crt.sh shut for a backoff window (a later hunt retries) rather than retrying
+    in-run. Returns (hosts, status, note). A failure marks the run INCOMPLETE but
+    never aborts it."""
+    # 1. Fresh cache: no network at all.
+    cached = store.ct_cache_get(keyword, config.HUNT_CT_CACHE_TTL)
+    if cached is not None:
+        return {h for h in cached if keyword in h}, "answered", "served from the 24h cache"
+
+    # 2. A backoff from a recent 502 is in effect: skip the request, retry later.
+    if store.gate_wait("crtsh") > config.HUNT_CRTSH_MIN_INTERVAL + 2:
+        return set(), "failed", "backing off after a recent 502, will retry on a later hunt"
+
+    # 3. One request, through a spaced slot shared across concurrent hunts.
+    wait = store.reserve_gate_slot("crtsh", config.HUNT_CRTSH_MIN_INTERVAL)
+    if wait > 0:
+        await asyncio.sleep(min(wait, 30.0))
+    try:
+        r = await _crtsh_get(client, {"q": f"%{keyword}%", "output": "json"})
+        if r.status_code in (429, 500, 502, 503, 504):
+            store.gate_set_backoff("crtsh", config.HUNT_CRTSH_BACKOFF)
+            return set(), "failed", f"crt.sh returned {r.status_code}, backing off"
+        if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
+            return set(), "failed", "crt.sh did not return JSON"
+        hosts = set()
+        for row in r.json():
+            for name in str(row.get("name_value", "")).split("\n"):
+                h = _clean_host(name)
+                if h and keyword in h:
+                    hosts.add(h)
+        store.ct_cache_put(keyword, sorted(hosts))
+        return hosts, "answered", ""
+    except Exception as exc:  # noqa: BLE001
+        log.info("hunt crt.sh failed for %s: %s", tag(keyword), type(exc).__name__)
+        store.gate_set_backoff("crtsh", config.HUNT_CRTSH_BACKOFF)
+        return set(), "failed", "crt.sh request errored, backing off"
 
 
 async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
@@ -245,9 +254,12 @@ async def discover(keyword: str, legit_domain: str) -> dict:
                 origins.setdefault(h, set()).add(label)
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        ct_hosts, ct_status = await _crtsh(client, keyword)
+        ct_hosts, ct_status, ct_note = await _crtsh(client, keyword)
         _add(ct_hosts, "crt.sh")
-        status.append({"source": "crt.sh", "role": "CT keyword search", "status": ct_status})
+        ct_entry = {"source": "crt.sh", "role": "CT keyword search", "status": ct_status}
+        if ct_note:
+            ct_entry["note"] = ct_note
+        status.append(ct_entry)
         if ct_status == "failed":
             incomplete = True
 

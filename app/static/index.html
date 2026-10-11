@@ -80,7 +80,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.38.3",
+    "softwareVersion": "3.38.4",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.38.3" />
+  <link rel="stylesheet" href="/static/style.css?v=3.38.4" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -498,7 +498,7 @@
       <p class="text-gray-400 text-sm mb-4">Paste a Telegram username, @handle, channel, or t.me link. Resolves the entity type and extracts all public metadata, messages, and IOCs. Public data only.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the identifier is looked up three ways &mdash; Telegram's public t.me web preview, the Bot API (channels/groups only), and, if the server operator has authenticated an MTProto session, direct entity resolution. Each tier degrades independently if unavailable; results cached 6 hours.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the identifier is looked up three ways - Telegram's public t.me web preview, the Bot API (channels/groups only), and, if the server operator has authenticated an MTProto session, direct entity resolution. Each tier degrades independently if unavailable; results cached 6 hours.</div>
       </div>
 
       <div class="flex gap-3 mb-3">
@@ -524,7 +524,7 @@
       <p class="text-gray-400 text-sm mb-4">Paste a public IPv4 or IPv6 address for a multi-source reputation verdict ({{IP_REPUTATION_SOURCES}}), ASN, geolocation consensus, merged open ports, vulnerabilities, scanner activity, and URLhaus history. Results cached for 6 hours.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the IP you look up is sent to external reputation services &mdash; {{IP_ALL_SOURCES}}.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the IP you look up is sent to external reputation services - {{IP_ALL_SOURCES}}.</div>
       </div>
 
       <!-- Populated on load from FALCONEYE_CONFIG.ipReputation. Warns before a
@@ -1118,7 +1118,7 @@
       <p class="text-gray-400 text-sm mb-4">
         Data sources: <a href="https://ransomware.live" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">ransomware.live</a>
         and <a href="https://www.ransomlook.io" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 underline">RansomLook</a>.
-        Collected on a schedule and served from a local cache &mdash; this tab never queries either service directly from your browser.
+        Collected on a schedule and served from a local cache - this tab never queries either service directly from your browser.
       </p>
 
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
@@ -1173,7 +1173,7 @@
       <!-- ============ Regional: PH & SEA comparison + victim list ============ -->
       <div id="rw-subview-regional" class="rw-subview hidden">
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Philippines &amp; Southeast Asia <span id="rw-phsea-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count &mdash; where the Philippines sits relative to its neighbors is the finding worth seeing. Bars, month table, and victim list below all share this same window.</p>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Regional comparison, not a PH-only count - where the Philippines sits relative to its neighbors is the finding worth seeing. Bars, month table, and victim list below all share this same window.</p>
         <div id="rw-phsea-bars" class="mb-4"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
         <div id="rw-phsea-trend" class="mb-4"></div>
         <div class="overflow-x-auto mb-1">
@@ -1204,7 +1204,7 @@
         <p id="rw-latest-asof" class="text-xs text-gray-600 mb-6"></p>
 
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Company Search</h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live directly, live &mdash; not the local cache above, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live directly, live - not the local cache above, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
         <input id="rw-search-input" type="text" placeholder="Company name or domain&hellip;" autocomplete="off"
           class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400" />
         <div id="rw-search-status" class="text-xs text-gray-600 mb-2"></div>
@@ -1237,7 +1237,7 @@
       <!-- ============ Groups: group activity, leak site health ============ -->
       <div id="rw-subview-groups" class="rw-subview hidden">
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Group Activity</h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Top 10 per window, straight from RansomLook &mdash; no local ranking.</p>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Top 10 per window, straight from RansomLook - no local ranking.</p>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-1">
           <div>
             <p class="text-xs text-gray-500 mb-2">Last 7 days <span id="rw-groups-7d-range-label" class="text-gray-600"></span></p>
@@ -1259,7 +1259,7 @@
         <p id="rw-groups-asof" class="text-xs text-gray-600 mb-6"></p>
 
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Leak Site Health</h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Mirrors are shown as positional labels only (Mirror 1, Mirror 2, &hellip;) &mdash; never a URL. Uptime marked "API" is RansomLook's own 30-day figure; uptime marked "computed" is derived locally from a longer observation window when one is available.</p>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Mirrors are shown as positional labels only (Mirror 1, Mirror 2, &hellip;) - never a URL. Uptime marked "API" is RansomLook's own 30-day figure; uptime marked "computed" is derived locally from a longer observation window when one is available.</p>
         <div id="rw-mirrors-list" class="space-y-3 mb-1"><p class="text-gray-500 text-sm animate-pulse">Loading&hellip;</p></div>
         <p id="rw-mirrors-groups-more" class="text-xs text-gray-600 mb-1"></p>
         <p id="rw-mirrors-asof" class="text-xs text-gray-600 mb-6"></p>
@@ -1268,7 +1268,7 @@
       <!-- ============ Watchlist ============ -->
       <div id="rw-subview-watchlist" class="rw-subview hidden">
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Watchlist <span id="rw-watchlist-range-label" class="text-gray-500 normal-case tracking-normal font-normal"></span></h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Hits from RansomLook's search against a curated list of PH-relevant terms, checked on the same schedule as the rest of this tab. <strong class="text-gray-400">Tier 1</strong> is high-precision named organizations, shown below. <strong class="text-gray-400">Tier 2</strong> is broad geographic terms (philippines, manila, .ph, &hellip;) &mdash; noisy by design, logged for manual review, never feeds an alert, and collapsed by default.</p>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Hits from RansomLook's search against a curated list of PH-relevant terms, checked on the same schedule as the rest of this tab. <strong class="text-gray-400">Tier 1</strong> is high-precision named organizations, shown below. <strong class="text-gray-400">Tier 2</strong> is broad geographic terms (philippines, manila, .ph, &hellip;) - noisy by design, logged for manual review, never feeds an alert, and collapsed by default.</p>
 
         <p class="text-xs text-gray-600 mb-1">Tier 1</p>
         <div class="overflow-x-auto mb-4">
@@ -1285,7 +1285,7 @@
           </table>
         </div>
 
-        <button id="rw-watchlist-tier2-toggle" type="button" class="text-xs font-bold text-gray-400 hover:text-amber-400 transition mb-1">Tier 2 &mdash; 0 hits (noisy by design) &middot; click to expand</button>
+        <button id="rw-watchlist-tier2-toggle" type="button" class="text-xs font-bold text-gray-400 hover:text-amber-400 transition mb-1">Tier 2 - 0 hits (noisy by design) &middot; click to expand</button>
         <div id="rw-watchlist-tier2-wrap" class="hidden overflow-x-auto mb-1">
           <table class="w-full text-xs">
             <thead>
@@ -1985,6 +1985,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.38.3"></script>
+  <script src="/static/app.js?v=3.38.4"></script>
 </body>
 </html>

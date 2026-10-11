@@ -159,6 +159,8 @@ def render_report(payload: dict, out_path: str) -> None:
     st = _styles()
     kind = payload.get("kind", "asm")
     title_subject = payload.get("title", "report")
+    for _d in (chr(0x2014), chr(0x2013), chr(0x2012), chr(0x2015)):
+        title_subject = str(title_subject).replace(_d, "-")
     gen_ts = payload.get("generated_ts") or time.time()
     gen_utc = datetime.fromtimestamp(gen_ts, timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
     gen_manila = datetime.fromtimestamp(gen_ts, MANILA).strftime("%Y-%m-%d %H:%M:%S (Asia/Manila)")
@@ -367,6 +369,11 @@ def render_report(payload: dict, out_path: str) -> None:
 
 def _esc(s) -> str:
     s = "" if s is None else str(s)
+    # Normalise em, en, figure and horizontal-bar dashes from any external data
+    # (page titles, registrar names, evidence) to a hyphen, so no em dash reaches
+    # the PDF whatever a fetched page contained.
+    for d in (chr(0x2014), chr(0x2013), chr(0x2012), chr(0x2015)):
+        s = s.replace(d, "-")
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 

@@ -61,7 +61,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.38.3",
+    version="3.38.4",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -120,7 +120,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.38.3"}
+    return {"status": "ok", "version": "3.38.4"}
 
 
 # Operator identity is substituted into the page server-side rather than patched

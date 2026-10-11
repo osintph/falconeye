@@ -60,14 +60,19 @@ def test_crtsh_keyword_extracts_matching_hosts(monkeypatch):
     async def go():
         async with _mock_client(handler) as client:
             return await sources._crtsh(client, "philhealth")
-    hosts, status = asyncio.run(go())
+    hosts, status, note = asyncio.run(go())
     assert status == "answered"
     assert "philhealth-refund.ph" in hosts
     assert "unrelated.com" not in hosts  # must contain the keyword
 
 
-def test_crtsh_failure_retries_then_reports_failed(monkeypatch):
+def test_crtsh_502_makes_one_request_and_backs_off(monkeypatch):
     _fast_crtsh(monkeypatch)
+    monkeypatch.setattr(sources.store, "ct_cache_get", lambda *a, **k: None)
+    monkeypatch.setattr(sources.store, "gate_wait", lambda *a, **k: 0.0)
+    backoff = {"set": 0}
+    monkeypatch.setattr(sources.store, "gate_set_backoff",
+                        lambda *a, **k: backoff.__setitem__("set", backoff["set"] + 1))
     calls = {"n": 0}
 
     def handler(request):
@@ -77,9 +82,47 @@ def test_crtsh_failure_retries_then_reports_failed(monkeypatch):
     async def go():
         async with _mock_client(handler) as client:
             return await sources._crtsh(client, "philhealth")
-    hosts, status = asyncio.run(go())
+    hosts, status, note = asyncio.run(go())
     assert status == "failed" and not hosts
-    assert calls["n"] >= 2  # retried, not a single shot
+    assert calls["n"] == 1  # ONE request per hunt, no in-run retry
+    assert backoff["set"] == 1 and "backing off" in note
+
+
+def test_crtsh_served_from_cache_makes_no_request(monkeypatch):
+    _fast_crtsh(monkeypatch)
+    monkeypatch.setattr(sources.store, "ct_cache_get",
+                        lambda kw, ttl: ["philhealth-refund.ph", "other.com"])
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, json=[], headers={"content-type": "application/json"})
+
+    async def go():
+        async with _mock_client(handler) as client:
+            return await sources._crtsh(client, "philhealth")
+    hosts, status, note = asyncio.run(go())
+    assert status == "answered" and calls["n"] == 0  # cache hit, no network
+    assert "philhealth-refund.ph" in hosts and "other.com" not in hosts  # keyword filter
+    assert "cache" in note
+
+
+def test_crtsh_skips_request_while_backing_off(monkeypatch):
+    _fast_crtsh(monkeypatch)
+    monkeypatch.setattr(sources.store, "ct_cache_get", lambda *a, **k: None)
+    monkeypatch.setattr(sources.store, "gate_wait", lambda *a, **k: 999.0)  # long backoff
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        return httpx.Response(200, json=[], headers={"content-type": "application/json"})
+
+    async def go():
+        async with _mock_client(handler) as client:
+            return await sources._crtsh(client, "philhealth")
+    hosts, status, note = asyncio.run(go())
+    assert status == "failed" and calls["n"] == 0  # skipped the request during backoff
+    assert "retry" in note
 
 
 async def _skip_nrd(client, kw):
@@ -91,7 +134,7 @@ def test_discover_caps_candidates_flags_incomplete_and_labels_hits(monkeypatch):
     monkeypatch.setattr(config, "HUNT_MAX_CANDIDATES", 5)
 
     async def fail_crt(client, kw):
-        return set(), "failed"
+        return set(), "failed", "crt.sh down"
 
     async def ok_urlscan(client, kw):
         return {f"{kw}-{i}.ph" for i in range(20)}, "answered"
@@ -114,7 +157,7 @@ def test_discover_excludes_the_legit_domain(monkeypatch):
 
     async def crt_with_legit(client, kw):
         # crt.sh returns the legit domain and a lookalike; the legit must be dropped.
-        return {"philhealth.gov.ph", "philhealth-login.ph"}, "answered"
+        return {"philhealth.gov.ph", "philhealth-login.ph"}, "answered", ""
 
     async def no_urlscan(client, kw):
         return set(), "answered"

@@ -192,7 +192,7 @@ html[data-theme="light"] {
   font-variant-numeric: tabular-nums;
 }
 
-/* Prospect tab — ad creative thumbnails with hover-to-enlarge */
+/* Prospect tab - ad creative thumbnails with hover-to-enlarge */
 .prospect-thumb-wrap {
   position: relative;
   display: inline-block;
@@ -215,7 +215,7 @@ html[data-theme="light"] {
 
 /* ============================================================================
    Navigation shell (v3.15.0): responsive sidebar (>=1024px) + mobile bottom-
-   sheet drawer (<1024px) + command palette. Viewport-driven via @media only —
+   sheet drawer (<1024px) + command palette. Viewport-driven via @media only -
    deliberately no navigator.userAgent branching anywhere in this feature.
    UA sniffing breaks on: DevTools docked to the side (narrows the viewport,
    UA still says desktop), iPad landscape (~1180px, reports mobile but has
@@ -229,7 +229,7 @@ html[data-theme="light"] {
    ============================================================================ */
 
 /* One sidebar nav row, built by app.js from NAV_GROUPS. Border color itself is
-   NOT set here — the item carries Tailwind's own `border-l-2 border-transparent`
+   NOT set here - the item carries Tailwind's own `border-l-2 border-transparent`
    utility classes so the existing, unmodified showTab() active-state toggle
    (which adds/removes `border-amber-400`/`border-transparent` by class name)
    works identically to the old horizontal strip's `border-b-2`, just on the
@@ -263,7 +263,7 @@ html[data-sidebar-collapsed="true"] .nav-label,
 html[data-sidebar-collapsed="true"] .nav-group-label { display: none; }
 
 /* Explicit width override (attribute selector on <html> beats the plain
-   Tailwind utility class on specificity — no !important needed). Pixel values
+   Tailwind utility class on specificity - no !important needed). Pixel values
    match the Tailwind defaults they override (w-14 = 56px, xl:w-56 = 224px) so
    toggling never causes a visible size jump. */
 html[data-sidebar-collapsed="true"] #sidebar { width: 56px; }
@@ -273,14 +273,14 @@ html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-
 /* Collapsed-rail tooltip (v3.15.0). A pure-CSS ::after tooltip was tried first
    and rejected: #sidebar needs `overflow-y: auto` so a tall grouped list can
    scroll independently, but per the CSS overflow spec, setting overflow-y to
-   anything but `visible` silently forces overflow-x to `auto` too — so a
+   anything but `visible` silently forces overflow-x to `auto` too - so a
    ::after trying to escape the sidebar via `left: 100%` got clipped at the
    sidebar's own right edge (confirmed empirically: computed opacity/content
    were correct, nothing painted). A `position: fixed` tooltip positioned by
    JS (see app.js's nav-tooltip section) escapes every scrolling ancestor
    instead, which a clipped-by-design ::after fundamentally cannot. Shown only
-   where hover is meaningful — app.js gates it on (hover:hover) and
-   (pointer:fine), not UA — and only while the sidebar is actually collapsed. */
+   where hover is meaningful - app.js gates it on (hover:hover) and
+   (pointer:fine), not UA - and only while the sidebar is actually collapsed. */
 #nav-tooltip {
   position: fixed;
   background: rgb(var(--g800));
@@ -296,7 +296,7 @@ html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-
 
 /* Mobile drawer row (same NAV_GROUPS data, drawer-nav container). Border color
    comes from Tailwind's `border-l-2 border-transparent` utility classes on the
-   element itself — see .sidebar-item's comment above. */
+   element itself - see .sidebar-item's comment above. */
 .drawer-item {
   display: flex;
   align-items: center;
@@ -313,7 +313,7 @@ html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-
 
 /* iOS safe-area insets (v3.15.0 mobile-nav fix). The trigger is
    `fixed` + `bottom-*` via Tailwind, but a bare pixel offset sits under the
-   iPhone home-indicator gesture bar on notched devices — `env()` adds the
+   iPhone home-indicator gesture bar on notched devices - `env()` adds the
    device's own reserved bottom inset on top of the visual offset we want.
    `env(..., 0px)` falls back to a plain 20px on devices/browsers without a
    safe area (the fallback argument is required by spec, not decorative). */
@@ -338,7 +338,7 @@ html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-
   background: rgb(var(--am400) / 0.12);
 }
 
-/* Home launcher grid card — same hover-lift as .example-card. */
+/* Home launcher grid card - same hover-lift as .example-card. */
 .launcher-card { transition: transform 0.15s ease, border-color 0.15s ease; }
 .launcher-card:hover { transform: translateY(-1px); }
 
@@ -350,7 +350,7 @@ html[data-sidebar-collapsed="true"] #sidebar-collapse-icon { transform: scaleX(-
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Focus-visible ring for keyboard navigation — sidebar, drawer, palette, and
+/* Focus-visible ring for keyboard navigation - sidebar, drawer, palette, and
    (as a general accessibility improvement) every other interactive element.
    Only shows for keyboard focus, never for a mouse click, so it doesn't
    clutter mouse-driven use of the rest of the app. */

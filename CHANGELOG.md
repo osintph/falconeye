@@ -5,6 +5,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.4] - 2026-10-11
+
+### Changed
+
+- **crt.sh query volume cut to reduce the 502s.** crt.sh results are cached per
+  keyword for 24 hours (repeat hunts reuse one answer), each hunt makes at most
+  one crt.sh request, and a 502 now holds crt.sh shut for a backoff window so a
+  later hunt retries instead of the run retrying in place. The source status shows
+  when a result came from cache or when crt.sh is backing off.
+
+### Fixed
+
+- **No em dashes anywhere.** Removed the em and en dashes that remained in the
+  wider UI copy, the stylesheet comments and one router, normalised dashes out of
+  any external data that reaches a PDF, and added a repo-wide guard test (every
+  authored Python file, the HTML template, the stylesheet and the frontend bundle,
+  plus a rendered PDF built from dash-laden data).
+
 ## [3.38.3] - 2026-10-11
 
 ### Fixed

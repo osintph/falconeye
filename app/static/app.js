@@ -1488,7 +1488,7 @@ function renderUrlExpand(el, data) {
     const err = hop.error
       ? `<div class="text-xs text-red-400 mt-1">${escapeHtml(String(hop.error))}</div>`
       : '';
-    const statusLabel = hop.status ? hop.status : '&mdash;';
+    const statusLabel = hop.status ? hop.status : '-';
     return `
       <div class="bg-gray-900 border border-gray-800 rounded p-3">
         <div class="flex items-center gap-3">
@@ -5611,7 +5611,7 @@ function renderAbuseReportCard(container, info) {
     </div>
     <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the report is composed &mdash; and any PDF built &mdash; in your browser. Recipient addresses are redacted in the evidence by default; review and remove any of your own details before sending. If the operator sends via Mailgun, the send is logged (timestamp, recipient, target, category, and subject line &mdash; not the report body).</div>
+      <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the report is composed - and any PDF built - in your browser. Recipient addresses are redacted in the evidence by default; review and remove any of your own details before sending. If the operator sends via Mailgun, the send is logged (timestamp, recipient, target, category, and subject line - not the report body).</div>
     </div>
     <div class="abuse-contact text-sm text-gray-400 mb-4"><span class="animate-pulse">Looking up abuse contact via RDAP…</span></div>
     <div class="abuse-form space-y-3">
@@ -6296,7 +6296,7 @@ function feSan(s) {
   if (Array.isArray(s)) return s.map(feSan);
   if (s == null) return s;
   return String(s)
-    .replace(/[—–]/g, '-')
+    .replace(/[\u2014\u2013]/g, '-')
     .replace(/…/g, '...')
     .replace(/[‘’‛]/g, "'")
     .replace(/[“”]/g, '"')
@@ -7434,14 +7434,14 @@ function rwAsOfLine(meta, label) {
     const attempted = meta.last_attempted_at
       ? `Last attempted: ${rwTimeAgo(meta.last_attempted_at)}.`
       : 'No collection has been attempted yet.';
-    return `<span class="text-gray-600">${escapeHtml(label)} &mdash; data collection has not run yet. ${attempted}</span>`;
+    return `<span class="text-gray-600">${escapeHtml(label)} - data collection has not run yet. ${attempted}</span>`;
   }
   const src = meta.source_label ? ` via ${escapeHtml(meta.source_label)}` : '';
   if (meta.source_status === 'ok') {
     return `<span>${escapeHtml(label)} as of ${rwTimeAgo(meta.as_of)}${src}</span>`;
   }
   const word = meta.source_status === 'degraded' ? 'degraded' : 'unavailable';
-  return `<span class="text-amber-500">${escapeHtml(label)} as of ${rwTimeAgo(meta.as_of)}${src} &mdash; ${word}${meta.detail ? ': ' + escapeHtml(meta.detail) : ''}</span>`;
+  return `<span class="text-amber-500">${escapeHtml(label)} as of ${rwTimeAgo(meta.as_of)}${src} - ${word}${meta.detail ? ': ' + escapeHtml(meta.detail) : ''}</span>`;
 }
 
 async function loadRwStatusBanner() {
@@ -7827,7 +7827,7 @@ function renderRwPulse(data, range) {
   ];
   el.innerHTML = `<div class="grid grid-cols-2 md:grid-cols-4 gap-3">${tiles.map(([label, val]) => `
     <div class="bg-gray-900 border border-gray-800 rounded p-3 text-center">
-      <div class="text-2xl font-bold text-amber-400">${val == null ? '&mdash;' : val}</div>
+      <div class="text-2xl font-bold text-amber-400">${val == null ? '-' : val}</div>
       <div class="text-xs text-gray-500 mt-1">${escapeHtml(label)}</div>
     </div>`).join('')}</div>
     ${data.infostealer_sample_line ? `<p class="text-xs text-gray-400 mt-3">${escapeHtml(data.infostealer_sample_line)}</p>` : ''}`;

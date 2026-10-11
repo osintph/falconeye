@@ -404,8 +404,8 @@ def _strip_dashes(text: str) -> str:
     if not text:
         return text
     return (
-        text.replace("—", " ").replace("–", "-")
-        .replace("‘", "'").replace("’", "'")
+        text.replace(chr(0x2014), " ").replace(chr(0x2013), "-")
+        .replace(chr(0x2018), "'").replace(chr(0x2019), "'")
         .replace("“", '"').replace("”", '"')
         .replace("…", "...")
     )
