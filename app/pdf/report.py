@@ -47,9 +47,22 @@ SEV = {"critical": colors.HexColor("#b91c1c"), "high": colors.HexColor("#c2410c"
        "medium": colors.HexColor("#b4740c"), "low": colors.HexColor("#0369a1"),
        "info": MUTED}
 VERDICT = {"likely phishing": colors.HexColor("#b91c1c"), "suspicious": colors.HexColor("#c2410c"),
-           "parked": MUTED, "unrelated": colors.HexColor("#0369a1")}
+           "parked": MUTED, "unknown": colors.HexColor("#6b7280"),
+           "unrelated": colors.HexColor("#0369a1")}
 
 MANILA = ZoneInfo("Asia/Manila")
+
+
+def _mode_label(mode, kind) -> str:
+    """A human mode label for the cover, never a raw token like on_demand."""
+    m = (mode or "").strip().lower()
+    mapped = {"on_demand": "On-demand assessment", "public": "Public hunt",
+              "operator": "Operator assessment"}.get(m)
+    if mapped:
+        return mapped
+    if mode:
+        return mode
+    return "Public hunt" if kind == "hunt" else "On-demand assessment"
 
 
 def _styles():
@@ -70,7 +83,7 @@ def _sev_para(s, st):
 
 def _verdict_para(v, st):
     c = VERDICT.get(v, MUTED).hexval()[2:]
-    return Paragraph(f'<font color="#{c}"><b>{v.upper()}</b></font>', st["cell"])
+    return Paragraph(f'<font color="#{c}"><b>{(v or "").title()}</b></font>', st["cell"])
 
 
 def _canvas_factory(domain, gen_utc, engagement):
@@ -93,13 +106,6 @@ def _canvas_factory(domain, gen_utc, engagement):
 
         def _decorate(self, total):
             w, h = A4
-            self.saveState()
-            self.setFont("DejaVu-Bold", 44)
-            self.setFillColor(colors.Color(0.91, 0.89, 0.85))
-            self.translate(w / 2, h / 2)
-            self.rotate(26)
-            self.drawCentredString(0, 0, domain[:40])
-            self.restoreState()
             if self._pageNumber > 1:
                 self.setFont("DejaVu-Bold", 9)
                 self.setFillColor(AMBER)
@@ -164,8 +170,24 @@ def render_report(payload: dict, out_path: str) -> None:
                           bottomMargin=20 * mm)
     frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="main")
     cover = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="cover")
-    doc.addPageTemplates([PageTemplate(id="cover", frames=[cover]),
-                          PageTemplate(id="body", frames=[frame])])
+
+    wm_text = (title_subject or "FalconEye")[:40]
+
+    def _watermark(canvas_obj, _doc):
+        # One faint, single-line diagonal string, drawn BEFORE the frame lays down
+        # the content (onPage runs first), so it sits under the text and never
+        # overlaps it as stray letters. Light grey, not letter-spaced.
+        w, h = A4
+        canvas_obj.saveState()
+        canvas_obj.setFont("DejaVu-Bold", 38)
+        canvas_obj.setFillColor(colors.Color(0.93, 0.92, 0.90))
+        canvas_obj.translate(w / 2, h / 2)
+        canvas_obj.rotate(26)
+        canvas_obj.drawCentredString(0, 0, wm_text)
+        canvas_obj.restoreState()
+
+    doc.addPageTemplates([PageTemplate(id="cover", frames=[cover], onPage=_watermark),
+                          PageTemplate(id="body", frames=[frame], onPage=_watermark)])
     el = []
 
     # Cover
@@ -180,7 +202,8 @@ def render_report(payload: dict, out_path: str) -> None:
     el.append(Paragraph(title_subject, ParagraphStyle("cd", fontName="DejaVu", fontSize=15,
                                                       textColor=AMBER)))
     el.append(Spacer(1, 10 * mm))
-    cover_rows = [("Run time", f"{gen_manila}  /  {gen_utc}"), ("Mode", payload.get("mode", "On-demand"))]
+    cover_rows = [("Run time", f"{gen_manila}  /  {gen_utc}"),
+                  ("Mode", _mode_label(payload.get("mode"), kind))]
     if engagement:
         cover_rows.append(("Engagement", engagement))
     if kind == "hunt":
@@ -207,9 +230,12 @@ def render_report(payload: dict, out_path: str) -> None:
     for s in payload.get("source_status", []):
         status = s.get("status", "skipped")
         c = {"answered": OKC, "failed": FAILC}.get(status, MUTED).hexval()[2:]
-        srows.append([Paragraph(s.get("source", ""), st["cell"]),
-                      Paragraph(s.get("role", ""), st["cell"]),
-                      Paragraph(f'<font color="#{c}"><b>{status}</b></font>', st["cell"])])
+        role = _esc(s.get("role", ""))
+        if s.get("note"):
+            role += f' <font color="#6b7280">({_esc(s["note"])})</font>'
+        srows.append([Paragraph(_esc(s.get("source", "")), st["cell"]),
+                      Paragraph(role, st["cell"]),
+                      Paragraph(f'<font color="#{c}"><b>{status.title()}</b></font>', st["cell"])])
     sstyle = _data_table(["", "", ""], srows[1:], [70 * mm, 50 * mm, 40 * mm], st)
     el.append(Table([srows[0]] + srows[1:], colWidths=[70 * mm, 50 * mm, 40 * mm], repeatRows=1,
                     style=TableStyle([("BACKGROUND", (0, 0), (-1, 0), FILL),
@@ -231,9 +257,21 @@ def render_report(payload: dict, out_path: str) -> None:
         order = ["critical", "high", "medium", "low", "info"]
         crows = [[_sev_para(s, st), str(counts.get(s, 0))] for s in order]
     else:
-        order = ["likely phishing", "suspicious", "parked", "unrelated"]
+        order = ["likely phishing", "suspicious", "parked", "unknown", "unrelated"]
         crows = [[_verdict_para(s, st), str(counts.get(s, 0))] for s in order]
     el.append(_kv_table([["Category", "Count"]] + crows, st, [52 * mm, 22 * mm]))
+
+    if kind == "hunt":
+        p = payload.get("pipeline") or {}
+        el.append(Spacer(1, 3 * mm))
+        prows = [["Stage", "Count"],
+                 ["Candidates generated", str(p.get("generated", 0))],
+                 ["Resolve in DNS", str(p.get("resolved", 0))],
+                 ["Fetched and assessed", str(p.get("fetched", 0))],
+                 ["Not fetched (fetch cap)", str(p.get("not_fetched", 0))],
+                 ["Not registered", str(p.get("not_registered", 0))],
+                 ["Certificate or urlscan keyword hits", str(p.get("keyword_hits", 0))]]
+        el.append(_kv_table(prows, st, [70 * mm, 22 * mm]))
 
     # Findings (asm) or candidates (hunt)
     if kind == "asm":
@@ -267,26 +305,38 @@ def render_report(payload: dict, out_path: str) -> None:
                 ports = f"reference only: CNAME to {h.get('cname') or 'third party'}"
             else:
                 ports = ", ".join(str(p) for p in (h.get("ports") or [])) or "none"
+            ips = h.get("resolved_ips") or []
+            # One address per line so an address is never wrapped mid-value.
+            ip_cell = "<br/>".join(_esc(ip) for ip in ips) if ips else "n/a"
             rows.append([Paragraph(_esc(h.get("host")), st["cell"]),
-                         Paragraph(_esc(", ".join(h.get("resolved_ips") or []) or "n/a"), st["cell"]),
+                         Paragraph(ip_cell, st["cell"]),
                          Paragraph(_esc(ports), st["cell"]),
                          Paragraph(_esc(h.get("server") or "n/a"), st["cell"]),
                          Paragraph(_esc(_tls_brief(h.get("tls"))), st["cell"]),
                          Paragraph(_esc(k), st["cell"])])
         if rows:
-            el.append(_data_table(hdr, rows, [42 * mm, 24 * mm, 46 * mm, 20 * mm, 18 * mm, 24 * mm], st))
+            el.append(_data_table(hdr, rows, [40 * mm, 32 * mm, 44 * mm, 16 * mm, 16 * mm, 26 * mm], st))
     else:
         el.append(Paragraph("Lookalike candidates", st["h2"]))
-        hdr = ["Candidate", "Verdict", "Score", "Registered", "Evidence"]
+        el.append(Paragraph("Certificate and urlscan keyword hits are listed first, then by score. "
+                            f"{(payload.get('pipeline') or {}).get('not_registered', 0)} generated "
+                            "permutations did not resolve and are not listed.", st["small"]))
+        el.append(Spacer(1, 1.5 * mm))
+        hdr = ["Candidate", "Source", "Verdict", "Score", "Registered", "Evidence"]
         rows = []
         for c in payload.get("candidates", []):
+            reg = c.get("registered") or "n/a"
+            age = c.get("age_days")
+            if isinstance(age, int) and age >= 0:
+                reg = f"{reg} ({age}d)"
             rows.append([Paragraph(_esc(c.get("domain")), st["cell"]),
+                         Paragraph(_esc(c.get("source") or "dnstwist"), st["cell"]),
                          _verdict_para(c.get("verdict", "unrelated"), st),
                          Paragraph(str(c.get("score", 0)), st["cell"]),
-                         Paragraph(_esc(c.get("registered") or "n/a"), st["cell"]),
+                         Paragraph(_esc(reg), st["cell"]),
                          Paragraph(_esc("; ".join(c.get("evidence") or []) or "n/a"), st["cell"])])
         if rows:
-            el.append(_data_table(hdr, rows, [44 * mm, 24 * mm, 14 * mm, 22 * mm, 70 * mm], st))
+            el.append(_data_table(hdr, rows, [36 * mm, 24 * mm, 22 * mm, 12 * mm, 26 * mm, 54 * mm], st))
         else:
             el.append(Paragraph("No candidates found.", st["body"]))
 

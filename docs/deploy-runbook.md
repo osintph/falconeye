@@ -1203,12 +1203,25 @@ visitor owns.
 
 Nothing extra for the default path. Discovery uses crt.sh keyword search (Cert
 Spotter has no keyword search and is used only per candidate for cert freshness),
-dnstwist permutations (offline, no network), and urlscan.io keyword search (a free
-`URLSCAN_API_KEY` lifts the quota and is recommended). URLhaus enrichment reuses
-the existing `ABUSECH_AUTH_KEY`. Each candidate gets one homepage GET through the
-SSRF-safe fetcher plus a favicon fetch; there are no port scans. Caps:
-`HUNT_MAX_CANDIDATES` (120), `HUNT_MAX_FETCHES` (40), `HUNT_PER_DAY` (20 per IP).
-Set `HUNT_ENABLED=false` to hide the tab and 503 the API.
+dnstwist permutations (offline, no network), and urlscan.io keyword search.
+URLhaus enrichment reuses the existing `ABUSECH_AUTH_KEY`. Each candidate gets one
+homepage GET through the SSRF-safe fetcher plus a favicon fetch; there are no port
+scans. Caps: `HUNT_MAX_CANDIDATES` (120), `HUNT_MAX_FETCHES` (40), `HUNT_PER_DAY`
+(20 per IP). Set `HUNT_ENABLED=false` to hide the tab and 503 the API.
+
+### urlscan.io key (recommended)
+
+urlscan's search API returns 403 to unauthenticated clients, so without a key the
+urlscan source fails on every hunt and the run is marked INCOMPLETE. Get a free
+key from urlscan.io (Settings, API keys) and set `URLSCAN_API_KEY=<key>` in
+`/opt/falconeye/.env`, then restart. The same key already benefits the URL and
+Domain tabs. Until it is set, hunts still run from crt.sh, permutations and the
+optional NRD feed, but they report urlscan as failed.
+
+crt.sh is rate limited (about 5 requests a minute per IP) and shared across
+concurrent hunts; FalconEye now retries it with backoff and serialises its calls
+through a SQLite-backed gate (`HUNT_CRTSH_MIN_INTERVAL`, default 13s), so running
+several hunts at once no longer trips the limit. No key is needed for crt.sh.
 
 ### Newly registered domain feed (WHOISDS), optional
 

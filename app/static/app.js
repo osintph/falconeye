@@ -9923,9 +9923,11 @@ function asmOneTimeNotice() {
 function asmSourceStatusHtml(data) {
   const ss = data.source_status || [];
   if (!ss.length) return '';
+  const titleCase = w => String(w || '').replace(/\b\w/g, m => m.toUpperCase());
   const chip = s => {
     const c = s.status === 'answered' ? 'text-green-400' : (s.status === 'failed' ? 'text-red-400' : 'text-gray-500');
-    return '<span class="text-xs font-mono ' + c + '">' + escapeHtml(s.source) + ': ' + escapeHtml(s.status) + '</span>';
+    const note = s.note ? ' <span class="text-gray-600">(' + escapeHtml(s.note) + ')</span>' : '';
+    return '<span class="text-xs font-mono ' + c + '">' + escapeHtml(s.source) + ': ' + escapeHtml(titleCase(s.status)) + note + '</span>';
   };
   let h = '';
   if (data.incomplete) {
@@ -10192,8 +10194,10 @@ function huntPoll(id) {
 
 function huntVerdict(v) {
   const map = { 'likely phishing': 'bg-red-950 text-red-400', 'suspicious': 'bg-orange-950 text-orange-400',
-    'parked': 'bg-gray-800 text-gray-400', 'unrelated': 'bg-sky-950 text-sky-400' };
-  return '<span class="px-2 py-0.5 rounded text-xs font-mono ' + (map[v] || map.unrelated) + '">' + escapeHtml(v) + '</span>';
+    'parked': 'bg-gray-800 text-gray-400', 'unknown': 'bg-gray-800 text-gray-300',
+    'unrelated': 'bg-sky-950 text-sky-400' };
+  const label = String(v || 'unrelated').replace(/\b\w/g, m => m.toUpperCase());
+  return '<span class="px-2 py-0.5 rounded text-xs font-mono ' + (map[v] || map.unrelated) + '">' + escapeHtml(label) + '</span>';
 }
 
 function huntRenderResults(data) {
@@ -10207,21 +10211,29 @@ function huntRenderResults(data) {
   if (data.nrd_off) {
     html += '<div class="bg-gray-950 border border-gray-800 rounded p-2 mb-3 text-xs text-gray-400">Newly registered domain feed is not configured, so brand-new registrations may be missed.</div>';
   }
-  html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">' +
+  html += '<div class="grid grid-cols-2 md:grid-cols-5 gap-2 mb-3">' +
     asmTile(sc['likely phishing'] || 0, 'Likely phishing', 'text-red-400') +
     asmTile(sc['suspicious'] || 0, 'Suspicious', 'text-orange-400') +
     asmTile(sc['parked'] || 0, 'Parked', 'text-gray-300') +
+    asmTile(sc['unknown'] || 0, 'Unknown', 'text-gray-300') +
     asmTile(sc['unrelated'] || 0, 'Unrelated', 'text-sky-400') + '</div>';
+  const pp = data.pipeline || {};
+  html += '<div class="text-xs text-gray-400 mb-3 font-mono">' +
+    (pp.generated || 0) + ' generated &middot; ' + (pp.resolved || 0) + ' resolve &middot; ' +
+    (pp.fetched || 0) + ' fetched &middot; ' + (pp.not_fetched || 0) + ' not fetched (cap) &middot; ' +
+    (pp.not_registered || 0) + ' not registered &middot; ' + (pp.keyword_hits || 0) + ' keyword hits</div>';
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
-    '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
+    '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Source</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
     '<th class="text-left py-1">Evidence</th><th class="text-left py-1">Actions</th></tr></thead><tbody>';
   (data.candidates || []).forEach(c => {
     const ev = (c.evidence || []).map(x => escapeHtml(x)).join('; ');
+    const reg = c.registered ? ('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : '')) : '';
     const acts = '<a href="' + escapeAttr(c.gsb_url || '#') + '" target="_blank" rel="noopener" class="text-amber-400 mr-2">Safe Browsing</a>' +
       '<a href="#" class="text-amber-400 mr-2" data-piv-domain="' + escapeAttr(c.domain) + '">Domain Intel</a>' +
       '<a href="#" class="text-amber-400" data-piv-kit="' + escapeAttr(c.domain) + '">Deep Kit</a>';
     html += '<tr class="border-b border-gray-900 align-top">' +
-      '<td class="py-1 font-mono">' + escapeHtml(c.domain) + (c.registered ? '<div class="text-gray-600">reg ' + escapeHtml(c.registered) + '</div>' : '') + '</td>' +
+      '<td class="py-1 font-mono">' + escapeHtml(c.domain) + (reg ? '<div class="text-gray-600">' + reg + '</div>' : '') + '</td>' +
+      '<td class="py-1 text-gray-500 font-mono">' + escapeHtml(c.source || 'dnstwist') + '</td>' +
       '<td class="py-1">' + huntVerdict(c.verdict) + '</td>' +
       '<td class="py-1 font-mono">' + (c.score || 0) + '</td>' +
       '<td class="py-1 text-gray-400">' + (ev || 'n/a') + '</td>' +

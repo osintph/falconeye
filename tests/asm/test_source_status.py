@@ -36,3 +36,12 @@ def test_ripestat_absence_alone_does_not_make_incomplete():
     assert incomplete is False
     ripe = next(s for s in status if s["source"] == "RIPEstat")
     assert ripe["status"] == "skipped"
+
+
+def test_ripestat_skip_states_a_reason():
+    # A skipped RIPEstat must say why, so the report never shows a bare "skipped".
+    disc = {"sources": {"ct": {"ok": True}, "passive_dns": {"ok": True}, "wayback": {"ok": True}},
+            "asn": {"available": False, "reason": "all hosts resolve to a CDN edge"}}
+    status, _ = report.asm_source_status(disc)
+    ripe = next(s for s in status if s["source"] == "RIPEstat")
+    assert ripe.get("note")

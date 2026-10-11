@@ -158,6 +158,14 @@ def init_tables() -> None:
             );
             CREATE INDEX IF NOT EXISTS idx_asm_rl ON asm_rate_limit(scope, key, event_at);
 
+            -- A global gate for a serialised, rate-limited external source (crt.sh).
+            -- One row per named gate holds the next allowed call time; the claim is
+            -- atomic across workers so concurrent hunts do not hammer the source.
+            CREATE TABLE IF NOT EXISTS asm_gate (
+              name TEXT PRIMARY KEY,
+              next_at REAL NOT NULL
+            );
+
             -- v3.38.0 one-time model: result content lives here only, briefly.
             CREATE TABLE IF NOT EXISTS asm_result_cache (
               id TEXT PRIMARY KEY,
@@ -243,6 +251,35 @@ def rl_last_ts(scope: str, key: str) -> Optional[int]:
     finally:
         conn.close()
     return row[0] if row and row[0] is not None else None
+
+
+def reserve_gate_slot(name: str, min_interval: float) -> float:
+    """Reserve the next slot for a globally serialised external call (crt.sh).
+
+    Atomically reads the gate's next-allowed time, pushes it forward by
+    *min_interval*, and returns how many seconds the caller must wait before it
+    may use its reserved slot. One SQLite writer serialises the read-then-write,
+    so two concurrent hunts in different workers each get a distinct, spaced slot
+    instead of calling the source at the same instant. Never raises; returns 0 on
+    any error so a gate failure cannot sink a hunt."""
+    nowf = time.time()
+    conn = _connect()
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        row = conn.execute("SELECT next_at FROM asm_gate WHERE name = ?", (name,)).fetchone()
+        base = max(nowf, float(row[0]) if row and row[0] is not None else 0.0)
+        conn.execute(
+            "INSERT INTO asm_gate (name, next_at) VALUES (?, ?) "
+            "ON CONFLICT(name) DO UPDATE SET next_at = excluded.next_at",
+            (name, base + max(0.0, min_interval)),
+        )
+        conn.commit()
+        return max(0.0, base - nowf)
+    except Exception as exc:  # noqa: BLE001 - a gate failure must not sink a hunt
+        log.info("asm gate reserve failed for %s: %s", name, type(exc).__name__)
+        return 0.0
+    finally:
+        conn.close()
 
 
 def rl_clear(scope: str, key: str) -> None:

@@ -129,13 +129,16 @@ async def discover(domain: str) -> dict:
             h for h in hosts if h and _HOST_RE.match(h) and in_scope(h, reg))
 
         # RIPEstat context for the apex's first resolved IP.
-        asn = {"available": False}
+        asn = {"available": False, "reason": "no resolved IP for the apex"}
         try:
             first_ip = await _first_resolved_ip(domain)
             if first_ip:
                 asn = await asn_intel.fetch(client, None, first_ip)
+                if not (asn or {}).get("available"):
+                    asn = {"available": False, "reason": "RIPEstat did not return routing context"}
         except Exception as exc:  # noqa: BLE001
             log.info("asm discovery asn failed for %s: %s", tag(domain), type(exc).__name__)
+            asn = {"available": False, "reason": "RIPEstat lookup error"}
 
     return {"hosts": in_scope_hosts, "sources": sources, "asn": asn, "registrable": reg}
 

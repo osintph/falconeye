@@ -5,6 +5,35 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.1] - 2026-10-11
+
+### Changed
+
+- **Phishing Hunt finds phishing, not just permutations.** Discovery excludes the
+  legitimate domain and its subdomains, and no longer generates permutations under
+  namespaces an attacker cannot register (.gov.ph, .edu.ph, .mil.ph and the like);
+  TLD swaps go to open, cheap TLDs instead. The pipeline is now two stages: every
+  generated candidate is DNS resolved first (concurrency capped), then the fetch
+  budget is spent only on candidates that resolve or were observed, keyword hits
+  first. The counts (generated, resolved, fetched, not fetched, not registered)
+  are reported honestly on screen and in the PDF. Certificate and urlscan keyword
+  hits are always listed, with their source labelled. Registration dates now use
+  the shared RDAP-with-whois helper, so .ph domains get a date and age.
+- **crt.sh is reliable under load.** Calls are retried with backoff and serialised
+  through a global, SQLite-backed gate that spaces them, so concurrent hunts no
+  longer trip crt.sh's rate limit and turn a run INCOMPLETE.
+- **Reworked scoring and verdicts.** A registered lookalike with a second signal
+  (MX, a phishing keyword, a recent registration or fresh cert, or brand content)
+  now lands in SUSPICIOUS or LIKELY PHISHING with the evidence listed. A new
+  UNKNOWN verdict covers domains that resolve but could not be fetched (probe
+  failed or a Cloudflare challenge); a failed probe is never counted as UNRELATED.
+  Non-resolving permutations are a "not registered" count, not table rows.
+- **PDF layout.** The watermark is one faint single-line diagonal string drawn
+  under the content, never letter-spaced. Host IP addresses are one per line and
+  never wrapped mid-address. Human labels throughout: "On-demand assessment" not
+  on_demand, verdict and status labels title cased, and a skipped RIPEstat states
+  why. The Hunt PDF gains a pipeline summary block and a source column.
+
 ## [3.38.0] - 2026-10-11
 
 ### Added

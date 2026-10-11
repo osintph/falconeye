@@ -1,35 +1,64 @@
 """Candidate discovery for the Phishing Domain Hunt, with per-source status.
 
-Returns (candidates, status_list, incomplete). Each source reports answered,
-failed or skipped; if crt.sh or urlscan (the network discovery sources) fails,
-the run is INCOMPLETE and a zero result is not a clean result. Permutations run
-offline (dnstwist) and the newly-registered-domain feed is optional. No em
-dashes in this module.
+discover(keyword, legit) returns the candidate domains with the source that found
+each one, a per-source status list, and honest counts. Each source reports
+answered, failed or skipped; if crt.sh or urlscan (the network discovery sources)
+fails, the run is INCOMPLETE and a zero result is not a clean result.
+
+Rules, from the v3.38.1 brief:
+  - The legitimate domain and all its subdomains are never candidates.
+  - Permutations are not generated under restricted namespaces an attacker cannot
+    register (.gov.ph, .edu.ph, .mil.ph and equivalents); TLD swaps go to open,
+    cheap TLDs instead.
+  - Certificate transparency keyword hits (crt.sh) and urlscan hits carry a source
+    label so the report can show them first.
+  - crt.sh is retried with backoff and serialised through a global gate so
+    concurrent hunts respect its rate limit.
+
+Permutations run offline (dnstwist); the newly registered domain feed is optional.
+No em dashes in this module.
 """
 from __future__ import annotations
 
+import asyncio
 import io
 import logging
+import re
 import zipfile
 
 import httpx
 
 from app import config
+from app.asm import store
 from app.scanner.scope import registrable
 from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.0 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.1 (+{config.OPERATOR_SITE_ORIGIN})"
 _CRTSH = "https://crt.sh/"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
-# Keyword combinations and PH TLDs appended to permutations of a legit domain.
-_COMBO_WORDS = ("login", "verify", "refund", "payment", "update", "portal", "online", "ph", "secure")
-_PH_TLDS = ("ph", "com.ph", "net.ph", "org.ph", "gov.ph")
+# Phishing words combined with the brand label, and the open, cheap TLDs an
+# attacker can actually register. Restricted namespaces below are never generated.
+_COMBO_WORDS = ("login", "verify", "refund", "payment", "update", "portal", "claim",
+                "secure", "account", "online", "ph")
+_OPEN_TLDS = ("ph", "com.ph", "net.ph", "org.ph", "com", "net", "org", "online",
+              "site", "info", "xyz", "top", "shop", "click", "link", "live", "app", "icu")
 
-_HOST_OK = __import__("re").compile(
+# Namespaces an attacker cannot register (government, education, military and the
+# like). A permutation landing in one of these is a real institutional domain, not
+# a lookalike, so it is dropped before it becomes a candidate. Small by design.
+_RESTRICTED_SUFFIXES = (
+    ".gov.ph", ".edu.ph", ".mil.ph", ".sss.gov.ph",
+    ".gov", ".mil", ".edu", ".int",
+    ".gov.uk", ".ac.uk", ".mod.uk",
+    ".gob.es", ".gouv.fr", ".go.id", ".go.th", ".go.kr",
+    ".gov.au", ".edu.au", ".govt.nz", ".gc.ca",
+)
+
+_HOST_OK = re.compile(
     r"^(?=.{1,253}$)(?!-)[a-z0-9-]{1,63}(?<!-)(\.(?!-)[a-z0-9-]{1,63}(?<!-))+$")
 
 
@@ -41,23 +70,54 @@ def _clean_host(v: str) -> str:
     return v if _HOST_OK.match(v) else ""
 
 
+def _is_legit_or_sub(host: str, legit: str) -> bool:
+    """True if *host* is the legitimate domain or any subdomain of it. The legit
+    domain and its own subdomains are the site being protected, never candidates."""
+    if not legit:
+        return False
+    return host == legit or host.endswith("." + legit)
+
+
+def _is_restricted(host: str) -> bool:
+    return any(host == s.lstrip(".") or host.endswith(s) for s in _RESTRICTED_SUFFIXES)
+
+
+def _allowed(host: str, legit: str) -> bool:
+    return bool(host) and not _is_legit_or_sub(host, legit)
+
+
 async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
-    """CT keyword search. crt.sh only: Cert Spotter has no keyword search."""
+    """CT keyword search. crt.sh only (Cert Spotter has no keyword search).
+
+    crt.sh is rate limited and shared across concurrent hunts, so each call first
+    reserves a spaced slot from a global gate, then retries with backoff. A clean
+    empty answer is 'answered'; exhausting the retries is 'failed' (which makes the
+    run INCOMPLETE)."""
     hosts = set()
-    try:
-        r = await client.get(_CRTSH, params={"q": f"%{keyword}%", "output": "json"},
-                             timeout=_TIMEOUT, headers={"User-Agent": _UA})
-        if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
-            return hosts, "failed"
-        for row in r.json():
-            for name in str(row.get("name_value", "")).split("\n"):
-                h = _clean_host(name)
-                if h and keyword in h:
-                    hosts.add(h)
-    except Exception as exc:  # noqa: BLE001
-        log.info("hunt crt.sh failed for %s: %s", tag(keyword), type(exc).__name__)
-        return hosts, "failed"
-    return hosts, "answered"
+    attempts = 3
+    for i in range(attempts):
+        wait = store.reserve_gate_slot("crtsh", config.HUNT_CRTSH_MIN_INTERVAL)
+        if wait > 0:
+            await asyncio.sleep(min(wait, 30.0))
+        try:
+            r = await client.get(_CRTSH, params={"q": f"%{keyword}%", "output": "json"},
+                                 timeout=_TIMEOUT, headers={"User-Agent": _UA})
+            if r.status_code in (429, 500, 502, 503, 504):
+                raise httpx.HTTPError(f"crt.sh {r.status_code}")
+            if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
+                return hosts, "failed"
+            for row in r.json():
+                for name in str(row.get("name_value", "")).split("\n"):
+                    h = _clean_host(name)
+                    if h and keyword in h:
+                        hosts.add(h)
+            return hosts, "answered"
+        except Exception as exc:  # noqa: BLE001
+            log.info("hunt crt.sh attempt %d/%d for %s: %s", i + 1, attempts,
+                     tag(keyword), type(exc).__name__)
+            if i < attempts - 1:
+                await asyncio.sleep(2.0 * (i + 1))
+    return hosts, "failed"
 
 
 async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
@@ -69,8 +129,6 @@ async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
     try:
         r = await client.get(_URLSCAN, params={"q": f"page.domain:*{keyword}*", "size": 100},
                              timeout=_TIMEOUT, headers=headers)
-        if r.status_code == 429:
-            return hosts, "failed"
         if r.status_code != 200:
             return hosts, "failed"
         for res in (r.json().get("results") or []):
@@ -83,9 +141,15 @@ async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
     return hosts, "answered"
 
 
+def _brand_label(legit_domain: str, keyword: str) -> str:
+    base = registrable(legit_domain).split(".", 1)[0] if legit_domain else keyword
+    return base or keyword
+
+
 def _permutations(legit_domain: str, keyword: str) -> set:
-    """dnstwist permutations of the legit domain, offline, plus keyword combos and
-    PH TLD swaps. Homoglyph output is huge, so it is sampled."""
+    """dnstwist permutations of the legit domain (offline), plus phishing-word
+    combos on open TLDs. Homoglyph output is huge, so it is sampled. Restricted
+    namespaces and the legit domain and its subdomains are excluded."""
     out = set()
     try:
         import dnstwist
@@ -94,7 +158,7 @@ def _permutations(legit_domain: str, keyword: str) -> set:
         homo = 0
         for p in fuzz.permutations():
             dom = _clean_host(p.get("domain", ""))
-            if not dom or dom == legit_domain:
+            if not dom or _is_legit_or_sub(dom, legit_domain) or _is_restricted(dom):
                 continue
             if p.get("fuzzer") in ("homoglyph", "cyrillic"):
                 homo += 1
@@ -103,16 +167,14 @@ def _permutations(legit_domain: str, keyword: str) -> set:
             out.add(dom)
     except Exception as exc:  # noqa: BLE001
         log.info("hunt permutations failed: %s", type(exc).__name__)
-    # Keyword combos and PH TLD variants of the base label.
-    base = registrable(legit_domain).split(".", 1)[0] if legit_domain else keyword
-    base = base or keyword
-    for w in _COMBO_WORDS:
-        for tld in _PH_TLDS:
+    # Phishing-word combos and plain TLD swaps on open, registrable TLDs only.
+    base = _brand_label(legit_domain, keyword)
+    for tld in _OPEN_TLDS:
+        out.add(_clean_host(f"{base}.{tld}"))
+        for w in _COMBO_WORDS:
             out.add(_clean_host(f"{base}-{w}.{tld}"))
             out.add(_clean_host(f"{base}{w}.{tld}"))
-    for tld in _PH_TLDS:
-        out.add(_clean_host(f"{base}.{tld}"))
-    return {h for h in out if h}
+    return {h for h in out if h and not _is_restricted(h) and not _is_legit_or_sub(h, legit_domain)}
 
 
 async def _nrd(client: httpx.AsyncClient, keyword: str) -> tuple:
@@ -144,42 +206,72 @@ async def _nrd(client: httpx.AsyncClient, keyword: str) -> tuple:
     return hosts, "answered"
 
 
+def _has_phish_word(host: str) -> bool:
+    return any(w in host for w in _COMBO_WORDS if len(w) > 2)
+
+
+def _priority(host: str, origins: set) -> int:
+    """Lower sorts first. Keyword hits (CT, urlscan) first, then NRD, then combos
+    with a phishing word, then plain permutations."""
+    if origins & {"crt.sh", "urlscan.io"}:
+        return 0
+    if "WHOISDS" in origins:
+        return 1
+    return 2 if _has_phish_word(host) else 3
+
+
 async def discover(keyword: str, legit_domain: str) -> dict:
-    """Gather, dedupe and cap candidate domains. Returns a dict with candidates,
+    """Gather, dedupe and cap candidate domains, tracking which source found each.
+    Returns candidates (each with its source labels and a keyword_hit flag),
     source_status, incomplete and nrd_off."""
     status = []
     incomplete = False
-    all_hosts = set()
+    origins: dict = {}
+
+    def _add(found, label):
+        for h in found:
+            if _allowed(h, legit_domain):
+                origins.setdefault(h, set()).add(label)
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
         ct_hosts, ct_status = await _crtsh(client, keyword)
-        all_hosts |= ct_hosts
+        _add(ct_hosts, "crt.sh")
         status.append({"source": "crt.sh", "role": "CT keyword search", "status": ct_status})
         if ct_status == "failed":
             incomplete = True
 
         us_hosts, us_status = await _urlscan(client, keyword)
-        all_hosts |= us_hosts
+        _add(us_hosts, "urlscan.io")
         status.append({"source": "urlscan.io", "role": "keyword search", "status": us_status})
         if us_status == "failed":
             incomplete = True
 
         if legit_domain:
             perms = _permutations(legit_domain, keyword)
-            all_hosts |= perms
+            _add(perms, "dnstwist")
             status.append({"source": "dnstwist", "role": "permutations of the legit domain",
                            "status": "answered" if perms else "failed"})
         else:
-            status.append({"source": "dnstwist", "role": "permutations",
-                           "status": "skipped"})
+            perms = _permutations("", keyword)
+            _add(perms, "dnstwist")
+            status.append({"source": "dnstwist", "role": "keyword permutations",
+                           "status": "answered" if perms else "skipped"})
 
         nrd_hosts, nrd_status = await _nrd(client, keyword)
-        all_hosts |= nrd_hosts
+        _add(nrd_hosts, "WHOISDS")
         status.append({"source": "WHOISDS NRD", "role": "newly registered domains",
                        "status": nrd_status})
 
-    # Prioritise candidates that actually contain the keyword, then cap.
-    ranked = sorted(all_hosts, key=lambda h: (keyword not in h, len(h)))
-    candidates = ranked[:config.HUNT_MAX_CANDIDATES]
+    generated = len(origins)
+    ranked = sorted(origins.items(), key=lambda kv: (_priority(kv[0], kv[1]), len(kv[0]), kv[0]))
+    candidates = []
+    keyword_hits = 0
+    for host, orig in ranked[:config.HUNT_MAX_CANDIDATES]:
+        is_hit = bool(orig & {"crt.sh", "urlscan.io"})
+        if is_hit:
+            keyword_hits += 1
+        candidates.append({"domain": host, "origins": sorted(orig), "keyword_hit": is_hit})
+
     return {"candidates": candidates, "source_status": status, "incomplete": incomplete,
-            "nrd_off": not config.HUNT_NRD_URL, "generated_count": len(all_hosts)}
+            "nrd_off": not config.HUNT_NRD_URL, "generated_count": generated,
+            "keyword_hit_count": keyword_hits}

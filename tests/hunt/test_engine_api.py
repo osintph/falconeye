@@ -25,23 +25,32 @@ def test_hunt_package_never_port_scans():
 
 def test_engine_builds_a_payload(monkeypatch):
     async def fdisc(kw, legit):
-        return {"candidates": ["philhealth-refund.ph", "old.example.com"],
+        return {"candidates": [{"domain": "philhealth-refund.ph", "origins": ["crt.sh"],
+                                "keyword_hit": True},
+                               {"domain": "old.example.com", "origins": ["dnstwist"],
+                                "keyword_hit": False}],
                 "source_status": [{"source": "crt.sh", "role": "CT", "status": "answered"}],
-                "incomplete": False, "nrd_off": True, "generated_count": 50}
+                "incomplete": False, "nrd_off": True, "generated_count": 50,
+                "keyword_hit_count": 1}
 
-    async def fprobe(client, dom, kw, legit, fav):
+    async def fresolve(dom):
+        return {"domain": dom, "dns": {"A": ["1.2.3.4"], "AAAA": [], "MX": [], "NS": []},
+                "resolves": True, "has_mx": dom.startswith("philhealth"), "has_ns": True}
+
+    async def fprobe(client, dom, kw, legit, fav, dns_data=None):
         if dom.startswith("philhealth"):
-            return {"domain": dom, "resolves": True, "has_mx": True, "reg_age_days": 3,
-                    "fresh_cert": True, "brand_markers": 2, "ph_indicators": 3, "favicon_match": True,
-                    "cloudflare": False, "title": "Login", "parked": False, "evidence": [],
-                    "registered": "2026-10-08", "registrar": "X", "asn": 1}
-        return {"domain": dom, "resolves": True, "has_mx": False, "reg_age_days": 3000,
-                "evidence": [], "parked": False}
+            return {"domain": dom, "resolves": True, "has_mx": True, "fetched": True,
+                    "reg_age_days": 3, "fresh_cert": True, "brand_markers": 2, "ph_indicators": 3,
+                    "favicon_match": True, "cloudflare": False, "title": "Login", "parked": False,
+                    "evidence": [], "registered": "2026-10-08", "registrar": "X", "asn": 1}
+        return {"domain": dom, "resolves": True, "has_mx": False, "fetched": True,
+                "reg_age_days": 3000, "evidence": [], "parked": False}
 
     async def ffav(client, legit):
         return 123
 
     monkeypatch.setattr(sources, "discover", fdisc)
+    monkeypatch.setattr(candidate_mod, "resolve", fresolve)
     monkeypatch.setattr(candidate_mod, "probe", fprobe)
     monkeypatch.setattr(candidate_mod, "legit_favicon_hash", ffav)
 
@@ -50,6 +59,8 @@ def test_engine_builds_a_payload(monkeypatch):
     assert payload["kind"] == "hunt"
     assert payload["severity_counts"]["likely phishing"] >= 1
     assert payload["candidates"][0]["verdict"] == "likely phishing"
+    assert payload["candidates"][0]["source"] == "crt.sh"  # keyword hit, labelled, listed first
+    assert payload["pipeline"]["fetched"] == 2
     assert payload["nrd_off"] is True
     assert all("gsb_url" in c for c in payload["candidates"])
 

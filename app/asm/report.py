@@ -136,9 +136,13 @@ def asm_source_status(disc: dict) -> tuple:
             incomplete = True
         out.append({"source": _SRC_LABEL[key], "role": role,
                     "status": "answered" if answered else "failed"})
-    asn_ok = bool((disc.get("asn") or {}).get("available"))
-    out.append({"source": "RIPEstat", "role": "ASN and routing context",
-                "status": "answered" if asn_ok else "skipped"})
+    asn = disc.get("asn") or {}
+    asn_ok = bool(asn.get("available"))
+    ripe = {"source": "RIPEstat", "role": "ASN and routing context",
+            "status": "answered" if asn_ok else "skipped"}
+    if not asn_ok:
+        ripe["note"] = asn.get("reason") or "no routing context for this run"
+    out.append(ripe)
     return out, incomplete
 
 

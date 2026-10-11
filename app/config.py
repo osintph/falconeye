@@ -367,6 +367,13 @@ HUNT_MAX_CANDIDATES = max(10, int(getenv_clean("HUNT_MAX_CANDIDATES", "120")))
 HUNT_MAX_FETCHES = max(5, int(getenv_clean("HUNT_MAX_FETCHES", "40")))
 HUNT_PER_DAY = max(1, int(getenv_clean("HUNT_PER_DAY", "20")))
 HUNT_CANDIDATE_TIMEOUT = float(getenv_clean("HUNT_CANDIDATE_TIMEOUT", "8"))
+# Stage one resolves cheap DNS for every generated candidate before any fetch
+# budget is spent; cap the DNS concurrency so a hunt does not flood the resolver.
+HUNT_RESOLVE_CONCURRENCY = max(2, int(getenv_clean("HUNT_RESOLVE_CONCURRENCY", "12")))
+# crt.sh is rate limited (about 5 requests a minute per IP) and shared across
+# concurrent hunts, so crt.sh calls are serialised through a global gate that
+# spaces them by this many seconds and retried with backoff when it does answer.
+HUNT_CRTSH_MIN_INTERVAL = max(0.0, float(getenv_clean("HUNT_CRTSH_MIN_INTERVAL", "13")))
 # Newly registered domain feed (WHOISDS). DEFAULT OFF: set this to a URL that
 # returns a daily list of newly registered domains (plain text or a zipped text
 # list), which WHOISDS provides to an account. Until set, new-registration

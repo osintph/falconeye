@@ -22,7 +22,8 @@ def _asm_payload():
             "summary_line": "A short summary line.",
             "findings": [{"severity": "critical", "kind": "takeover", "title": "Takeover",
                           "host": "a.example.com", "detail": "evidence text"}],
-            "hosts": [{"host": "a.example.com", "kind": "own", "resolved_ips": ["192.0.2.1"],
+            "hosts": [{"host": "a.example.com", "kind": "own",
+                       "resolved_ips": ["192.0.2.1", "198.51.100.7"],
                        "ports": [443], "server": "nginx", "tls": None}],
             "posture": {"spf": True, "dmarc": True, "dmarc_policy": "reject", "mta_sts": True, "tls_rpt": True},
             "references_note": "none", "methodology": "Methodology text.",
@@ -53,17 +54,37 @@ def test_pdf_sections_present_and_no_em_dash(tmp_path):
 
 
 @pytest.mark.skipif(not _HAVE_PYPDF, reason="pypdf not installed")
+def test_watermark_does_not_overlap_and_ips_are_intact(tmp_path):
+    out = str(tmp_path / "wm.pdf")
+    pdfr.render_report(_asm_payload(), out)
+    text = "\n".join(p.extract_text() or "" for p in pypdf.PdfReader(out).pages)
+    # The watermark is a single string, not letter-spaced across the page: its
+    # subject must never appear spaced out character by character.
+    spaced = " ".join("example.com")
+    assert spaced not in text, "the watermark is letter-spaced and overlaps the text layer"
+    # Every address appears intact, never wrapped mid-value.
+    for ip in ("192.0.2.1", "198.51.100.7"):
+        assert ip in text, f"IP {ip} is not intact in the PDF text"
+
+
+@pytest.mark.skipif(not _HAVE_PYPDF, reason="pypdf not installed")
 def test_hunt_pdf_renders_candidates(tmp_path):
     payload = {"kind": "hunt", "title": "philhealth", "legit_domain": "philhealth.gov.ph",
                "generated_ts": time.time(), "mode": "Public", "incomplete": False, "nrd_off": True,
                "source_status": [{"source": "crt.sh", "role": "CT", "status": "answered"}],
-               "severity_counts": {"likely phishing": 1, "suspicious": 0, "parked": 0, "unrelated": 0},
+               "severity_counts": {"likely phishing": 1, "suspicious": 0, "parked": 0,
+                                   "unknown": 0, "unrelated": 0},
+               "pipeline": {"generated": 80, "resolved": 12, "fetched": 10, "not_fetched": 2,
+                            "not_registered": 68, "keyword_hits": 1},
                "summary_line": "candidates", "candidates": [
                    {"domain": "philhealth-refund.ph", "verdict": "likely phishing", "score": 90,
-                    "registered": "2026-10-08", "evidence": ["fresh cert", "login form"]}],
+                    "source": "crt.sh", "age_days": 3, "registered": "2026-10-08",
+                    "evidence": ["fresh cert", "login form"]}],
                "methodology": "method", "attribution": ["crt.sh"]}
     out = str(tmp_path / "h.pdf")
     pdfr.render_report(payload, out)
     text = "\n".join(p.extract_text() or "" for p in pypdf.PdfReader(out).pages)
     assert "philhealth-refund.ph" in text
     assert "Lookalike candidates" in text
+    assert "Not registered" in text  # the pipeline summary block
+    assert "Not fetched" in text

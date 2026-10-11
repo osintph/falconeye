@@ -22,12 +22,13 @@ from app.ip_sources import asn_intel
 from app.routers import domain_intel
 from app.scanner import cloudflare_detect
 from app.scanner.ph_bank_indicators import detect_brand, match_ph_indicators
+from app.utils import domain_age as domain_age_mod
 from app.utils.logsafe import tag
 from app.utils.safe_fetch import SafeFetchError, resolve_and_check, safe_fetch
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.0"
+_UA = "FalconEye-Hunt/3.38.1"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -48,6 +49,19 @@ def _resolve_sync(host: str) -> dict:
         except Exception:
             continue
     return out
+
+
+async def resolve(domain: str) -> dict:
+    """Stage one: cheap DNS only. Returns the record sets plus resolves and
+    has_mx/has_ns flags, so the fetch budget can be spent only on candidates that
+    actually exist. No HTTP, no RDAP."""
+    loop = asyncio.get_event_loop()
+    dns_data = await loop.run_in_executor(None, _resolve_sync, domain)
+    return {
+        "domain": domain, "dns": dns_data,
+        "resolves": bool(dns_data["A"] or dns_data["AAAA"]),
+        "has_mx": bool(dns_data["MX"]), "has_ns": bool(dns_data["NS"]),
+    }
 
 
 def _favicon_hash(raw: bytes):
@@ -73,17 +87,19 @@ def _reg_age_days(rdap_parsed) -> int | None:
 
 
 async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_domain: str,
-                legit_favicon) -> dict:
-    loop = asyncio.get_event_loop()
-    dns_data = await loop.run_in_executor(None, _resolve_sync, domain)
+                legit_favicon, dns_data: dict | None = None) -> dict:
+    if dns_data is None:
+        loop = asyncio.get_event_loop()
+        dns_data = await loop.run_in_executor(None, _resolve_sync, domain)
     resolves = bool(dns_data["A"] or dns_data["AAAA"])
 
     out = {
         "domain": domain, "resolves": resolves, "has_mx": bool(dns_data["MX"]),
+        "has_ns": bool(dns_data["NS"]),
         "registered": None, "registrar": None, "reg_age_days": None, "asn": None,
         "fresh_cert": False, "http_status": None, "title": "", "favicon_match": False,
         "brand_markers": 0, "brand": None, "cloudflare": False, "ph_indicators": 0,
-        "parked": False, "evidence": [],
+        "parked": False, "fetched": False, "evidence": [],
     }
     if not resolves:
         out["evidence"].append("does not resolve")
@@ -101,6 +117,17 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
             out["registered"] = ev.get("registration")
     except Exception as exc:  # noqa: BLE001
         log.info("hunt rdap failed %s: %s", tag(domain), type(exc).__name__)
+
+    # Registration date fallback via the shared helper (RDAP through rdap.org then
+    # system whois), so .ph and other registries without inline RDAP still date.
+    if out["reg_age_days"] is None:
+        try:
+            info = await domain_age_mod.check_domain_age(domain)
+            if info.get("found"):
+                out["reg_age_days"] = info.get("age_days")
+                out["registered"] = out["registered"] or (info.get("created_at") or "")[:10]
+        except Exception as exc:  # noqa: BLE001
+            log.info("hunt domain age fallback failed %s: %s", tag(domain), type(exc).__name__)
 
     # Hosting ASN of the first resolved public IP.
     try:
@@ -182,6 +209,10 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         except Exception:  # noqa: BLE001
             pass
 
+    # A real homepage was retrieved only if a body came back and it was not a
+    # Cloudflare interstitial. A resolving domain we could not fetch is UNKNOWN,
+    # never unrelated.
+    out["fetched"] = bool(body) and not out["cloudflare"]
     return out
 
 
