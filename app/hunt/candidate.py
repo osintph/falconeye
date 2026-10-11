@@ -34,7 +34,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.8"
+_UA = "FalconEye-Hunt/3.38.9"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -85,6 +85,10 @@ _PH_SUFFIXES = ("ph", "com.ph", "net.ph", "org.ph", "gov.ph", "edu.ph", "mil.ph"
 _PASSWORD_RE = re.compile(r'type\s*=\s*["\']?\s*password', re.IGNORECASE)
 _PAYMENT_HINTS = ("card number", "cardnumber", "card-number", "cc-number", "cvv", "cvc",
                   "credit card", "card holder", "cardholder", "expiry", "expiration date")
+# Positive evidence that a page is a real informational site, not a blank shell.
+_INFO_HINTS = ("<article", "<nav", "blog", "read more", "posted on", "published",
+               "comment", "newsletter", "privacy policy", "about us", "terms of",
+               "copyright", "navigation", "related posts", "subscribe")
 
 
 def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
@@ -145,12 +149,22 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
     has_pay = ("<form" in low or "<input" in low) and any(h in low for h in _PAYMENT_HINTS)
     out["has_cred_form"] = has_cred
     out["has_payment_form"] = has_pay
+
+    # Positive informational-content test: a real article or site, not a shell.
+    text = re.sub(r"<[^>]+>", " ", body or "")
+    text = re.sub(r"\s+", " ", text).strip()
+    info_markers = sum(1 for s in _INFO_HINTS if s in low) + (low.count("<a ") >= 5) \
+        + (low.count("<p") >= 3)
+    informational = len(text) >= 300 or info_markers >= 2
+
     if parked:
         out["page_class"] = "parked"
-    elif has_cred or has_pay or out["legit_title_sim"] >= 80:
-        out["page_class"] = "phishing"
-    elif body:
+    elif out["legit_title_sim"] >= 80:
+        out["page_class"] = "imitation"
+    elif informational:
         out["page_class"] = "informational"
+    elif body:
+        out["page_class"] = "thin"  # fetched but near-empty: possible geofenced kit
     return out
 
 
@@ -190,7 +204,8 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         "domain": domain, "resolves": resolves, "has_mx": bool(dns_data["MX"]),
         "has_ns": bool(dns_data["NS"]),
         "registered": None, "registrar": None, "reg_age_days": None, "reg_note": None,
-        "asn": None, "fresh_cert": False, "http_status": None, "title": "",
+        "abuse_contact": None, "ct_first_seen": None, "ct_first_seen_age": None,
+        "asn": None, "http_status": None, "title": "",
         "favicon_match": False, "brand_markers": 0, "brand": None, "cloudflare": False,
         "ph_indicators": 0, "legit_title_sim": 0, "known_bad": False, "landing": "",
         "parked": False, "fetched": False, "page_class": "", "has_cred_form": False,
@@ -208,6 +223,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
             out["registrar"] = (parsed.get("registrar") or {}).get("name")
             out["reg_age_days"] = _reg_age_days(parsed)
             out["registered"] = (parsed.get("events") or {}).get("registration")
+            out["abuse_contact"] = (parsed.get("abuse_contact") or {}).get("email")
     except Exception as exc:  # noqa: BLE001
         log.info("hunt rdap failed %s: %s", tag(domain), type(exc).__name__)
 
@@ -237,19 +253,26 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
     except Exception:  # noqa: BLE001
         pass
 
-    # Cert freshness via Cert Spotter (per-candidate, not keyword search).
+    # First-live date from certificate transparency: the earliest certificate ever
+    # logged for the domain (Cert Spotter). Used as the age basis when there is no
+    # registration date, and to flag a dormant domain that was recently activated.
+    # The current certificate is NOT a signal (short-lived, auto-renewed).
     try:
         cs = await domain_intel.fetch_ct_certspotter(client, domain)
-        for c in (cs or {}).get("raw_normalized", [])[:20]:
+        earliest = None
+        for c in (cs or {}).get("raw_normalized", [])[:60]:
             nb = c.get("not_before")
-            if nb:
-                try:
-                    dt = datetime.fromisoformat(nb.replace("Z", "+00:00"))
-                    if (datetime.now(timezone.utc) - dt).days <= 30:
-                        out["fresh_cert"] = True
-                        break
-                except Exception:  # noqa: BLE001
-                    continue
+            if not nb:
+                continue
+            try:
+                dt = datetime.fromisoformat(nb.replace("Z", "+00:00"))
+            except Exception:  # noqa: BLE001
+                continue
+            if earliest is None or dt < earliest:
+                earliest = dt
+        if earliest is not None:
+            out["ct_first_seen"] = earliest.strftime("%Y-%m-%d")
+            out["ct_first_seen_age"] = int((datetime.now(timezone.utc) - earliest).days)
     except Exception:  # noqa: BLE001
         pass
 
@@ -306,6 +329,8 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
             out["evidence"].append("page title closely imitates the legitimate site")
         elif assess["page_class"] == "informational":
             out["evidence"].append("informational or brand-referencing page, no credential or payment form")
+        elif assess["page_class"] == "thin":
+            out["evidence"].append("near-empty or blank page from our vantage")
         # Favicon hash: one small fetch, from the page's icon href or /favicon.ico.
         icon = _ICON_RE.search(body)
         icon_url = None
@@ -324,7 +349,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
                 out["favicon_hash"] = fh
                 if fh is not None and legit_favicon is not None and fh == legit_favicon:
                     out["favicon_match"] = True
-                    out["page_class"] = "phishing"  # favicon match is imitation
+                    out["page_class"] = "imitation"  # favicon match is imitation
                     out["evidence"].append("favicon matches the legitimate site")
         except Exception:  # noqa: BLE001
             pass

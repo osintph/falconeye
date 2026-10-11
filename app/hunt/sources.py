@@ -39,7 +39,7 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.8 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.9 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -272,7 +272,7 @@ def _is_malicious(labels) -> bool:
     return any(x in ("phishing", "malicious", "suspicious") for x in (labels or []))
 
 
-async def discover(keyword: str, legit_domain: str) -> dict:
+async def discover(keyword: str, legit_domain: str, max_candidates: int = None) -> dict:
     """Gather, dedupe and cap candidates, collapsed to registrable domains, each
     with its source labels, observed hostnames, urlscan evidence and brand theme
     terms. urlscan and CT keyword hits whose brand letters are buried in an
@@ -333,6 +333,8 @@ async def discover(keyword: str, legit_domain: str) -> dict:
                        "status": nrd_status})
 
     ranked = sorted(origins.items(), key=lambda kv: (_priority(kv[0], kv[1]), len(kv[0]), kv[0]))
+    cap = max_candidates if isinstance(max_candidates, int) and max_candidates > 0 \
+        else config.HUNT_MAX_CANDIDATES
     candidates = []
     keyword_hits = 0
     irrelevant = 0
@@ -348,7 +350,7 @@ async def discover(keyword: str, legit_domain: str) -> dict:
         if is_hit and not cls["relevant"] and not _is_malicious((meta or {}).get("labels")):
             irrelevant += 1
             continue
-        if len(candidates) >= config.HUNT_MAX_CANDIDATES:
+        if len(candidates) >= cap:
             continue
         if is_hit:
             keyword_hits += 1

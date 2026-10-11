@@ -1,14 +1,16 @@
 """Score a probed Hunt candidate and assign a verdict with visible evidence.
 
-Verdicts: likely phishing, suspicious, parked, unknown, unrelated.
+Verdicts: likely phishing, suspicious, brand-referencing, parked, unknown,
+unrelated.
 
-The v3.38.6 model recognises real campaigns. Likely Phishing when ANY of: the
-brand with a theme term and a registration under 90 days; membership of a campaign
-cluster; an urlscan malicious or phishing label; or page content imitating the
-brand (favicon match, close title match, hunted-brand markers, or a URLhaus
-listing). Cheap, abuse-heavy TLDs add weight. A domain urlscan observed recently
-that no longer resolves is "possibly taken down": it keeps its urlscan evidence
-and score and is never dropped to Unknown. No em dashes in this module.
+The v3.38.9 model. Age is the domain registration date (RDAP or whois) or, when
+that is unavailable, the earliest certificate ever logged in certificate
+transparency (first live); the current certificate is not a signal. A credential
+or payment form is phishing evidence only alongside brand imitation (hunted brand
+name, favicon hash or close title match) or a registration or first-live under 90
+days; a generic login on an old domain with no brand imitation is Unrelated. A
+young brand-themed domain that serves a blank or near-empty page is a possible
+geofenced kit. Campaigns boost only when corroborated. No em dashes here.
 """
 from __future__ import annotations
 
@@ -42,8 +44,8 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     observed = bool(urls)
     resolves = bool(c.get("resolves"))
     fetched = bool(c.get("fetched"))
-    # Possibly taken down: urlscan saw it recently, but it no longer resolves.
     taken_down = observed and not resolves
+    c["drop_noise"] = False
 
     if not resolves and not observed:
         c["score"] = 0
@@ -60,7 +62,9 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     if brand_in_name:
         score += 15
         ev.append("uses the brand name in the domain")
-    if legit_domain and _fuzz and label != legit_label and _fuzz.ratio(label, legit_label) >= 80:
+    close_perm = bool(legit_domain and _fuzz and label != legit_label
+                      and _fuzz.ratio(label, legit_label) >= 80)
+    if close_perm:
         score += 15
         ev.append("close permutation of the legitimate domain")
 
@@ -74,21 +78,26 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
         score += 10
         ev.append("phishing keyword in the name or title")
 
-    # Registration age: prefer RDAP/whois, fall back to urlscan's reported age.
-    age = c.get("reg_age_days")
-    if age is None and isinstance(urls.get("age_days"), int):
-        age = urls["age_days"]
-    recent = isinstance(age, int) and 0 <= age <= 90
-    if isinstance(age, int) and age >= 0:
-        if age <= 7:
-            score += 35
-        elif age <= 30:
-            score += 28
-        elif age <= 90:
-            score += 18
-        else:
-            score += 0
-        ev.append(f"registered {age} days ago")
+    # Age: registration date, else first-live from certificate transparency.
+    reg_age = c.get("reg_age_days")
+    if reg_age is None and isinstance(urls.get("age_days"), int):
+        reg_age = urls["age_days"]
+    ct_age = c.get("ct_first_seen_age")
+    ages = [a for a in (reg_age, ct_age) if isinstance(a, int) and a >= 0]
+    first_live = min(ages) if ages else None
+    young = first_live is not None and first_live <= 90
+    old = isinstance(reg_age, int) and reg_age > 730
+    if young:
+        bump = 35 if first_live <= 7 else (28 if first_live <= 30 else 18)
+        score += bump
+        basis = "registered" if reg_age == first_live else "first seen in CT"
+        ev.append(f"{basis} {first_live} days ago")
+    # Dormant domain recently activated: old registration, fresh first CT cert.
+    dormant = old and isinstance(ct_age, int) and ct_age <= 90
+    if dormant:
+        score += 10
+        ev.append(f"dormant domain recently activated (registered {reg_age} days ago, "
+                  f"first certificate {ct_age} days ago)")
 
     cheap = themes_mod.cheap_tld(dom)
     if cheap:
@@ -97,15 +106,15 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     if c.get("has_mx"):
         score += 8
         ev.append("MX configured")
-    if c.get("fresh_cert"):
-        score += 12
-        ev.append("certificate issued within 30 days")
 
     favicon = bool(c.get("favicon_match"))
-    title_imitates = c.get("legit_title_sim", 0) >= 70
+    title_imitates = c.get("legit_title_sim", 0) >= 80
     hunted_brand = c.get("brand_markers", 0) > 0
     known_bad = bool(c.get("known_bad"))
     urlscan_malicious = _malicious(urls.get("labels"))
+    page_class = c.get("page_class") or ""
+    brand_imitation = bool(favicon or title_imitates or hunted_brand
+                           or page_class == "imitation" or (kw and kw in title.lower()))
     if favicon:
         score += 30
     if title_imitates:
@@ -129,38 +138,55 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     if campaign:
         score += 40
         ev.append("member of a detected campaign cluster")
+        if c.get("campaign_join"):
+            ev.append(c["campaign_join"])
+
+    form = bool(c.get("has_cred_form") or c.get("has_payment_form"))
+    # A form is phishing evidence only with brand imitation or a young domain.
+    form_phishing = form and (brand_imitation or young)
+    if form and not form_phishing:
+        ev.append("has a login or payment form, but no brand imitation and not a young domain")
+    geofenced_kit = bool(theme_hit and young and page_class == "thin")
+    if geofenced_kit:
+        ev.append("possible geofenced kit (young brand-themed domain serving a blank page)")
 
     score = min(100, score)
     c["score"] = score
 
-    page_class = c.get("page_class") or ""
     informational = page_class == "informational"
-    # Phishing CONTENT: a credential or payment form, imitation of the legit site
-    # (favicon or close title match), or a page urlscan or the engine flagged.
-    phish_content = bool(page_class == "phishing" or favicon or title_imitates
-                         or c.get("has_cred_form") or c.get("has_payment_form") or known_bad)
-
-    # Likely Phishing requires at least one strong, evidenced condition. A brand
-    # plus theme name alone, especially on an old informational page, is not enough.
-    theme_recent_live = bool(theme_hit and recent and fetched and not informational
+    phish_content = bool(brand_imitation or known_bad or urlscan_malicious or form_phishing)
+    theme_recent_live = bool(theme_hit and young and fetched and not informational
                              and not c.get("parked"))
-    likely = bool(campaign or phish_content or urlscan_malicious or theme_recent_live)
+    likely = bool(campaign or phish_content or theme_recent_live)
+
+    # Irrelevant noise: a short-brand close permutation, over two years old, with no
+    # theme and no content or campaign signal (mmdata.com.br). Dropped by the engine.
+    short_brand = len(kw) <= 4
+    if (short_brand and close_perm and old and not theme_hit and not phish_content
+            and not campaign):
+        c["drop_noise"] = True
 
     if taken_down:
         ev.append("possibly taken down (urlscan observed it recently, no longer resolves)")
 
-    if c.get("parked"):
+    if c["drop_noise"]:
+        c["verdict"] = "unrelated"
+    elif c.get("parked"):
         c["verdict"] = "parked"
     elif likely:
         c["verdict"] = "likely phishing"
     elif informational:
         c["verdict"] = "brand-referencing"
-    elif score >= SUSPICIOUS:
-        c["verdict"] = "suspicious"
+    elif old and not brand_imitation and not campaign and not known_bad and not urlscan_malicious:
+        # An old domain merely containing the brand: a form or theme without brand
+        # imitation is not phishing (example: an old generic admin login).
+        c["verdict"] = "unrelated"
     elif resolves and not fetched and not observed:
         c["verdict"] = "unknown"
         ev.append("resolves but is behind a Cloudflare challenge, could not assess"
                   if c.get("cloudflare") else "resolves but the homepage could not be fetched")
+    elif score >= SUSPICIOUS:
+        c["verdict"] = "suspicious"
     else:
         c["verdict"] = "unrelated"
 

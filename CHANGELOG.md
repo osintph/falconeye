@@ -5,6 +5,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.9] - 2026-10-12
+
+### Changed
+
+- **Fuzzy theme terms and campaign infrastructure merge.** Theme terms match near
+  variants (edit distance 1 for 4+ char terms, transpositions for 3-letter terms),
+  so scrambles like mmdancpa and mmdancpo match ncap, with the variant shown as
+  evidence (ncpa ~ ncap). A brand candidate that shares a corroborated campaign's
+  registrar, nameserver or hosting ASN inside its window is merged into it even
+  without a theme term (nocpmmda). Fuzzy matches never widen the keep/drop gate.
+- **Age and credential-form model.** The current certificate is no longer a
+  signal; age is the registration date (RDAP or whois), or the earliest
+  certificate ever logged in CT ("first live") when registration is unavailable,
+  with both shown when both exist. A dormant domain with a very recent first
+  certificate is supporting evidence. A credential or payment form is phishing
+  evidence only with brand imitation or a domain registered or first-live under 90
+  days; a generic login on an old domain with no imitation is Unrelated.
+- **Geofenced kits and brand-referencing.** A young brand-themed domain serving a
+  blank or near-empty page is flagged "possible geofenced kit", never a clean
+  result and never Brand-referencing; Brand-referencing now requires positive
+  informational content, not a thin shell.
+- **Registration date bug fixed.** The shown date is the registration date and
+  always agrees with the age; urlscan first-seen and CT first-seen are shown
+  separately and labelled.
+- **Short-brand permutation noise** (a close permutation of a 4-letter brand, over
+  two years old, no theme or content) is dropped as an irrelevant match.
+- **Campaign section** lists the shared registrar, nameservers, ASN, registration
+  window and the registrar abuse contact from RDAP, so a report can be filed from
+  it. The UI wraps long domains at dots and hyphens and does not split evidence
+  words. Placeholders use RFC 2606 reserved names, never a real brand.
+- **Input normalisation.** The keyword is lowercased and the legitimate-domain
+  field accepts a URL and reduces it to the registrable host; the normalised
+  values are returned to the user.
+
+### Added
+
+- **Operator key on the Hunt tab**, sharing the Attack Surface operator session
+  (same key and TOTP, same unlock endpoint and cookie, same lockout, emails and
+  allowed-CIDR protections, identical error text). Unlocking on either tab unlocks
+  both; locking on either locks both. An operator session bypasses the public
+  daily cap under its own cap (HUNT_OPERATOR_PER_DAY, default 200) and raises the
+  candidate and fetch caps; operator hunts carry an engagement reference on the
+  PDF watermark. The public cap message names the Asia/Manila reset time. The
+  control is hidden when operator mode is unconfigured.
+
 ## [3.38.8] - 2026-10-12
 
 ### Changed

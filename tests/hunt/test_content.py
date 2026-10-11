@@ -50,20 +50,20 @@ def test_short_legit_title_never_triggers_imitation():
     assert out["legit_title_sim"] == 0
 
 
-def test_credential_form_is_phishing_content():
+def test_credential_form_is_detected():
     body = ('<title>PhilHealth Member Login</title><form action="/login">'
             '<input type="password" name="pw"></form>')
     out = candidate.assess_content(body, "https://philhealthportal.com/", "philhealth",
                                    "philhealth.gov.ph", "")
+    # The form is detected as a flag; whether it means phishing is decided in
+    # scoring (it needs brand imitation or a young domain).
     assert out["has_cred_form"] is True
-    assert out["page_class"] == "phishing"
 
 
-def test_payment_form_is_phishing_content():
+def test_payment_form_is_detected():
     body = '<form><input name="cardnumber" placeholder="Card Number"><label>CVV</label></form>'
     out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
     assert out["has_payment_form"] is True
-    assert out["page_class"] == "phishing"
 
 
 def test_informational_page_is_brand_referencing():

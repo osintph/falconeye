@@ -44,20 +44,25 @@ _ATTRIBUTION = [
 ]
 
 
-def _reg_date(registered, urls, age_days=None) -> str | None:
-    if registered:
-        return str(registered)[:10]
+def _reg_date(registered, age_days=None) -> str | None:
+    """The registration date, derived from the registration age so the shown date
+    and age are always consistent. Never urlscan first-seen."""
     if isinstance(age_days, int) and age_days >= 0:
         return (datetime.now(timezone.utc) - timedelta(days=age_days)).strftime("%Y-%m-%d")
-    fs = (urls or {}).get("first_seen")
-    return str(fs)[:10] if fs else None
+    if registered:
+        return str(registered)[:10]
+    return None
 
 
 async def execute(scan: dict) -> dict:
     keyword = (scan.get("domain") or "").strip().lower()
     legit = (scan.get("engagement") or "").strip().lower()
+    op = bool(scan.get("operator"))
+    engagement = (scan.get("grant_id") or "").strip() if op else ""
+    max_cand = config.HUNT_OPERATOR_MAX_CANDIDATES if op else config.HUNT_MAX_CANDIDATES
+    max_fetch = config.HUNT_OPERATOR_MAX_FETCHES if op else config.HUNT_MAX_FETCHES
 
-    disc = await sources.discover(keyword, legit)
+    disc = await sources.discover(keyword, legit, max_candidates=max_cand)
     cands = disc["candidates"]
     by_domain = {c["domain"]: c for c in cands}
 
@@ -112,8 +117,8 @@ async def execute(scan: dict) -> dict:
         # Fetch budget: resolving candidates, themed and keyword hits first.
         resolving.sort(key=lambda c: (0 if c.get("themes") else 1,
                                       0 if c["keyword_hit"] else 1, len(c["domain"])))
-        to_fetch = resolving[:config.HUNT_MAX_FETCHES]
-        dns_only = resolving[config.HUNT_MAX_FETCHES:]
+        to_fetch = resolving[:max_fetch]
+        dns_only = resolving[max_fetch:]
         not_fetched = len(dns_only)
 
         fsem = asyncio.Semaphore(8)
@@ -149,7 +154,10 @@ async def execute(scan: dict) -> dict:
         rec["origins"] = c.get("origins") or []
         if rec.get("reg_age_days") is None and isinstance(urls.get("age_days"), int):
             rec["reg_age_days"] = urls["age_days"]
-        rec["reg_date"] = _reg_date(rec.get("registered"), urls, rec.get("reg_age_days"))
+        # The registration date is derived from the registration age so the shown
+        # date and age always agree; it is never urlscan first-seen (shown
+        # separately, labelled). CT first-seen is the first-live fallback.
+        rec["reg_date"] = _reg_date(rec.get("registered"), rec.get("reg_age_days"))
         if not rec.get("asn") and urls.get("asn"):
             rec["asn"] = urls["asn"]
         rec["ns"] = list((res_map[dom]["dns"] or {}).get("NS") or [])
@@ -168,7 +176,11 @@ async def execute(scan: dict) -> dict:
     counts = {v: 0 for v in ("likely phishing", "suspicious", "brand-referencing",
                              "parked", "unknown", "unrelated")}
     rows = []
+    noise_dropped = 0
     for c in scored:
+        if c.get("drop_noise"):
+            noise_dropped += 1
+            continue
         counts[c["verdict"]] = counts.get(c["verdict"], 0) + 1
         urls = c.get("urlscan") or {}
         rows.append({
@@ -178,6 +190,7 @@ async def execute(scan: dict) -> dict:
             "asn": c.get("asn"), "source": ", ".join(c.get("origins") or []) or "dnstwist",
             "keyword_hit": bool(c.get("keyword_hit")), "themes": c.get("themes") or [],
             "campaign_id": c.get("campaign_id"), "observed": c.get("observed_hosts") or [],
+            "ct_first_seen": c.get("ct_first_seen"),
             "urlscan_first_seen": (urls.get("first_seen") or "")[:10],
             "urlscan_title": urls.get("title") or "", "urlscan_labels": urls.get("labels") or [],
             "urlscan_result": urls.get("result_url") or "",
@@ -189,7 +202,8 @@ async def execute(scan: dict) -> dict:
                 "considered": len(cands), "resolved": len(resolving),
                 "fetched": len(to_fetch), "not_fetched": not_fetched,
                 "taken_down": len(taken_down), "wildcard": wildcard_count,
-                "not_registered": not_registered, "irrelevant": disc.get("irrelevant_count", 0),
+                "not_registered": not_registered,
+                "irrelevant": disc.get("irrelevant_count", 0) + noise_dropped,
                 "keyword_hits": disc.get("keyword_hit_count", 0)}
 
     methodology = (
@@ -208,7 +222,7 @@ async def execute(scan: dict) -> dict:
         "verdicts, recent registration, cheap abuse-heavy TLDs and page content "
         "imitating the brand. A domain urlscan saw recently that no longer resolves "
         "is kept as possibly taken down. No port scans, no crawling. Caps this run: "
-        f"{config.HUNT_MAX_CANDIDATES} candidates, {config.HUNT_MAX_FETCHES} fetched.")
+        f"{max_cand} candidates, {max_fetch} fetched.")
 
     sline = (f"{pipeline['discovered']} discovered, {pipeline['considered']} considered: "
              f"{pipeline['resolved']} registered, {pipeline['taken_down']} possibly taken down, "
@@ -222,7 +236,8 @@ async def execute(scan: dict) -> dict:
 
     return {
         "kind": "hunt", "title": keyword, "legit_domain": legit, "generated_ts": time.time(),
-        "scan_id": scan["scan_id"], "state": "done", "mode": "Public", "engagement": "",
+        "scan_id": scan["scan_id"], "state": "done",
+        "mode": "Operator" if op else "Public", "engagement": engagement,
         "operator": False, "incomplete": disc["incomplete"], "nrd_off": disc["nrd_off"],
         "source_status": disc["source_status"], "severity_counts": counts,
         "pipeline": pipeline, "campaigns": campaigns, "related_groups": related_groups,

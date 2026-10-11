@@ -81,11 +81,55 @@ def test_informational_brand_site_is_not_likely_phishing():
     assert c["verdict"] == "brand-referencing"
 
 
-def test_portal_lookalike_with_login_form_is_likely_phishing():
+def test_old_generic_login_without_brand_imitation_is_not_likely():
+    # mmdaportal.com: ~6 years old, a generic admin login, no brand imitation.
+    c = score.score_candidate(_c(domain="mmdaportal.com", themes=["portal"],
+                                 reg_age_days=2200, has_cred_form=True, page_class="thin"),
+                              "mmda", "mmda.gov.ph")
+    assert c["verdict"] == "unrelated"
+
+
+def test_old_login_with_brand_imitation_is_likely_phishing():
     c = score.score_candidate(_c(domain="philhealthportal.com", themes=["portal"],
-                                 reg_age_days=1500, page_class="phishing", has_cred_form=True),
+                                 reg_age_days=2200, has_cred_form=True, favicon_match=True),
                               "philhealth", "philhealth.gov.ph")
     assert c["verdict"] == "likely phishing"
+
+
+def test_young_login_form_is_likely_phishing():
+    c = score.score_candidate(_c(domain="philhealthportal.com", themes=["portal"],
+                                 reg_age_days=20, has_cred_form=True),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "likely phishing"
+
+
+def test_fresh_certificate_on_old_domain_does_not_raise_score():
+    # A recent current cert is not a signal; a dormant+recent-first-CT domain is.
+    plain = score.score_candidate(_c(domain="example-old.com", reg_age_days=2000),
+                                  "mmda", "mmda.gov.ph")
+    assert "certificate issued within 30 days" not in "; ".join(plain["evidence"])
+
+
+def test_geofenced_kit_blank_young_page_is_flagged_not_brand_referencing():
+    c = score.score_candidate(_c(domain="mmda-ncap.sbs", themes=["ncap"], reg_age_days=10,
+                                 page_class="thin"),
+                              "mmda", "mmda.gov.ph")
+    assert c["verdict"] != "brand-referencing"
+    assert any("geofenced kit" in e for e in c["evidence"])
+
+
+def test_dormant_domain_recently_activated_is_supporting_evidence():
+    c = score.score_candidate(_c(domain="mmda-ncap.com", themes=["ncap"], reg_age_days=1500,
+                                 ct_first_seen_age=20, page_class="informational"),
+                              "mmda", "mmda.gov.ph")
+    assert any("dormant domain recently activated" in e for e in c["evidence"])
+
+
+def test_short_brand_old_close_perm_is_dropped_as_noise():
+    c = score.score_candidate(_c(domain="mmdata.com.br", reg_age_days=1446,
+                                 page_class="informational"),
+                              "mmda", "mmda.gov.ph")
+    assert c["drop_noise"] is True
 
 
 def test_informational_but_urlscan_malicious_is_likely_phishing():

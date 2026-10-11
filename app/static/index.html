@@ -80,7 +80,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.38.8",
+    "softwareVersion": "3.38.9",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.38.8" />
+  <link rel="stylesheet" href="/static/style.css?v=3.38.9" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -773,14 +773,14 @@
         <div>
           <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">What do you want to find? (required)</label>
           <textarea id="dork-goal"
-                    placeholder="Describe what you want to find in natural language. Example: 'Find exposed admin panels on Philippine government domains' or 'Find leaked API keys mentioning Stripe on GitHub'"
+                    placeholder="Describe what you want to find in natural language. Example: 'Find exposed admin panels on Philippine government domains' or 'Find leaked API keys mentioning a payment API on GitHub'"
                     rows="3"
                     class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 resize-y"></textarea>
         </div>
         <div>
           <label class="text-xs text-gray-500 uppercase tracking-wider mb-2 block">Target domain or organization (optional)</label>
           <input id="dork-target" type="text"
-                 placeholder="example.com or 'Acme Corp' - leave empty for generic dorks with TARGET.com placeholder"
+                 placeholder="example.com or 'Example Corp' - leave empty for generic dorks with TARGET.com placeholder"
                  class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
         </div>
         <div class="flex gap-3">
@@ -940,7 +940,7 @@
       <p class="text-gray-400 text-sm mb-6">Six-card commercial intelligence dossier for any domain: Google identity, Google Ads (30-day and historical), Meta Ad Library, hiring signals, recent news, and a unified activity timeline. Results cached for 6 hours.</p>
 
       <div class="flex gap-3 mb-3">
-        <input id="prospect-input" type="text" placeholder="stripe.com"
+        <input id="prospect-input" type="text" placeholder="e.g. example.com"
           class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
         <button id="prospect-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
           Investigate
@@ -1323,7 +1323,7 @@
         <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> a scan sends the domain to {{ASM_ALL_SOURCES}}. A scan is a one-time assessment: results are shown once and delivered as a PDF, then purged from the server after download or within the hour. FalconEye keeps no scan results, no result history and no "my domains" view; only scan metadata (time, counts, mode, domain hashed) is kept for audit. Your verification records and the access grant persist until you revoke them from the link emailed to you.</div>
       </div>
       <div class="flex gap-3 mb-3">
-        <input id="asm-input" type="text" placeholder="example.com"
+        <input id="asm-input" type="text" placeholder="e.g. example.com"
           class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
         <button id="asm-begin-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
           Begin
@@ -1351,17 +1351,18 @@
       </div>
       <label class="block text-xs text-gray-500 mb-1">Brand keyword (minimum 3 characters, no wildcards)</label>
       <div class="flex gap-3 mb-3">
-        <input id="hunt-keyword" type="text" placeholder="philhealth"
+        <input id="hunt-keyword" type="text" placeholder="e.g. examplebrand"
           class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
       </div>
       <label class="block text-xs text-gray-500 mb-1">Legitimate domain (optional, improves scoring)</label>
       <div class="flex gap-3 mb-6">
-        <input id="hunt-legit" type="text" placeholder="philhealth.gov.ph"
+        <input id="hunt-legit" type="text" placeholder="e.g. example.com"
           class="flex-1 bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400 font-mono" />
         <button id="hunt-btn" class="bg-amber-400 text-gray-950 font-bold px-6 py-2 rounded text-sm hover:bg-amber-300 transition">
           Hunt
         </button>
       </div>
+      <div id="hunt-operator" class="mb-4"></div>
       <div id="hunt-result" class="hidden space-y-4"></div>
     </div>
     <!--HUNT_TAB_END-->
@@ -1985,6 +1986,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.38.8"></script>
+  <script src="/static/app.js?v=3.38.9"></script>
 </body>
 </html>

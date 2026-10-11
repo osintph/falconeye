@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from slowapi import Limiter
 
 from app import config
-from app.asm import jobs, serve, store
+from app.asm import jobs, operator, serve, store
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 
 log = logging.getLogger("falconeye.hunt")
@@ -25,17 +25,46 @@ log = logging.getLogger("falconeye.hunt")
 router = APIRouter(prefix="/api/hunt", tags=["hunt"])
 limiter = Limiter(key_func=get_client_ip_key)
 
+# The Hunt shares the Attack Surface operator session (same cookie, same unlock
+# endpoint): unlocking on either tab unlocks both.
+_OP_COOKIE = "asm_operator"
 _KEYWORD_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$")
 _DAY = 86400
+_MANILA = None
+
+
+def _manila():
+    global _MANILA
+    if _MANILA is None:
+        from zoneinfo import ZoneInfo
+        _MANILA = ZoneInfo("Asia/Manila")
+    return _MANILA
 
 
 def _norm_keyword(raw: str) -> str:
     return (raw or "").strip().lower()
 
 
+def _operator_session(request: Request):
+    if not operator.configured():
+        return None
+    return operator.session_from_cookie(request.cookies.get(_OP_COOKIE, ""))
+
+
+def _reset_message(ip: str) -> str:
+    """Public daily cap message naming the Asia/Manila reset time (rolling 24h)."""
+    import datetime as _dt
+    oldest = store.rl_oldest_ts("hunt_ip", ip, _DAY)
+    base = ((oldest + _DAY) if oldest else (int(__import__("time").time()) + _DAY))
+    when = _dt.datetime.fromtimestamp(base, _manila()).strftime("%Y-%m-%d %H:%M")
+    return (f"Daily hunt limit reached. The limit resets by {when} (Asia/Manila). "
+            "Operators can unlock with an operator key to continue.")
+
+
 class HuntReq(BaseModel):
     keyword: str
     legit_domain: str = ""
+    engagement: str = ""
 
 
 def _enabled() -> bool:
@@ -60,20 +89,32 @@ async def start_hunt(request: Request, payload: HuntReq):
     legit = normalize_domain(legit) or "" if legit else ""
 
     ip = get_client_ip(request)
-    if store.rl_count("hunt_ip", ip, _DAY) >= config.HUNT_PER_DAY:
-        return JSONResponse({"error": "Daily hunt limit reached. Try again later."}, status_code=429)
+    op = _operator_session(request)
+    is_op = op is not None
+    # An operator session bypasses the public cap under its own higher cap.
+    if is_op:
+        if store.rl_count("hunt_op_ip", ip, _DAY) >= config.HUNT_OPERATOR_PER_DAY:
+            return JSONResponse({"error": "Operator daily hunt limit reached."}, status_code=429)
+    elif store.rl_count("hunt_ip", ip, _DAY) >= config.HUNT_PER_DAY:
+        return JSONResponse({"error": _reset_message(ip)}, status_code=429)
 
     serve.sweep()
     if not jobs.can_accept():
         return JSONResponse({"error": "The scanner is at capacity. Try again in a few minutes."},
                             status_code=503)
-    store.rl_record("hunt_ip", ip)
+    store.rl_record("hunt_op_ip" if is_op else "hunt_ip", ip)
     scan_id = secrets.token_urlsafe(18)
+    engagement_ref = (payload.engagement or "").strip()[:120] if is_op else ""
     # The hunt reuses the generic job row: keyword in domain, legit in engagement.
-    store.create_scan(scan_id, keyword, "Public", kind="hunt", engagement=legit)
+    # An operator hunt is marked operator=1 (raises caps) and carries its optional
+    # engagement reference in grant_id for the PDF watermark.
+    store.create_scan(scan_id, keyword, "Operator" if is_op else "Public", kind="hunt",
+                      engagement=legit, operator=1 if is_op else 0, grant_id=engagement_ref)
     jobs.submit(scan_id)
-    log.info("hunt start id=%s", scan_id)
-    return {"scan_id": scan_id, "state": "queued", "capacity": jobs.capacity()}
+    log.info("hunt start id=%s operator=%s", scan_id, is_op)
+    return {"scan_id": scan_id, "state": "queued", "operator": is_op,
+            "normalized": {"keyword": keyword, "legit_domain": legit},
+            "capacity": jobs.capacity()}
 
 
 @router.post("/mcp")

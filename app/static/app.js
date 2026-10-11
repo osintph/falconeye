@@ -10145,6 +10145,55 @@ function initPhishingHunt() {
     const kw = huntEl('hunt-keyword');
     if (kw) kw.addEventListener('keydown', e => { if (e.key === 'Enter') huntRun(); });
   }
+  huntOperatorInit();
+}
+
+// Operator key on the Hunt tab. Shares the Attack Surface operator session (same
+// unlock endpoint and cookie), so unlocking or locking here does the same there.
+async function huntOperatorInit() {
+  const box = huntEl('hunt-operator');
+  if (!box || !((window.FALCONEYE_CONFIG || {}).asmOperatorConfigured)) return;
+  let active = false;
+  try {
+    const r = await fetch('/api/asm/session');
+    active = !!(await r.json()).operator;
+  } catch (e) { active = false; }
+  HUNT.operator = active;
+  if (active) {
+    box.innerHTML = '<div class="bg-amber-950 border border-amber-800 rounded p-3 text-sm flex items-center justify-between gap-2 flex-wrap">' +
+      '<span class="text-amber-200">Operator mode active. Hunts bypass the public daily cap and use the operator caps.</span>' +
+      '<input id="hunt-op-engagement" placeholder="Engagement reference (optional)" class="bg-gray-950 border border-gray-700 rounded px-3 py-1 text-xs font-mono" style="max-width:260px">' +
+      '<button id="hunt-op-lock" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">Lock</button></div>';
+    huntEl('hunt-op-lock').addEventListener('click', huntOperatorLock);
+  } else {
+    box.innerHTML = '<details class="text-xs"><summary class="text-gray-500 cursor-pointer">Operator key</summary>' +
+      '<div class="bg-gray-900 border border-gray-800 rounded p-3 mt-2">' +
+      '<input id="hunt-op-key" type="password" placeholder="Operator key" class="block w-full bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2">' +
+      '<input id="hunt-op-code" placeholder="Authenticator code" class="block bg-gray-950 border border-gray-700 rounded px-3 py-2 text-sm mb-2 font-mono" style="max-width:200px">' +
+      '<button id="hunt-op-unlock" class="bg-amber-400 text-gray-950 font-bold px-4 py-1.5 rounded text-sm hover:bg-amber-300">Unlock</button>' +
+      '<div id="hunt-op-msg" class="mt-2"></div></div></details>';
+    huntEl('hunt-op-unlock').addEventListener('click', huntOperatorUnlock);
+  }
+}
+
+async function huntOperatorUnlock() {
+  const key = (huntEl('hunt-op-key').value || '');
+  const code = (huntEl('hunt-op-code').value || '').trim();
+  const msg = huntEl('hunt-op-msg');
+  try {
+    const r = await fetch('/api/asm/operator/unlock', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: key, code: code }),
+    });
+    const data = await r.json();
+    if (!r.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'Unlock failed.') + '</span>'; return; }
+    huntOperatorInit();
+  } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
+}
+
+async function huntOperatorLock() {
+  try { await fetch('/api/asm/operator/lock', { method: 'POST' }); } catch (e) {}
+  huntOperatorInit();
 }
 
 async function huntRun() {
@@ -10159,10 +10208,12 @@ async function huntRun() {
     return;
   }
   huntShow('<p class="text-gray-400 text-sm animate-pulse">Submitting hunt...</p>');
+  const engEl = huntEl('hunt-op-engagement');
+  const engagement = (engEl && engEl.value || '').trim();
   try {
     const res = await fetch('/api/hunt', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword: keyword, legit_domain: legit }),
+      body: JSON.stringify({ keyword: keyword, legit_domain: legit, engagement: engagement }),
     });
     const data = await res.json();
     if (!res.ok) { huntShow('<p class="text-red-400 text-sm">' + escapeHtml(data.error || 'failed') + '</p>'); return; }
@@ -10231,8 +10282,10 @@ function huntRenderResults(data) {
     const meta = [];
     if ((cm.corroboration || []).length) meta.push('corroboration: ' + escapeHtml(cm.corroboration.join('; ')));
     if ((cm.registrars || []).length) meta.push('registrars: ' + escapeHtml(cm.registrars.join(', ')));
+    if ((cm.nameservers || []).length) meta.push('nameservers: ' + escapeHtml(cm.nameservers.slice(0, 4).join(', ')));
     if ((cm.asns || []).length) meta.push('hosting: ' + escapeHtml(cm.asns.slice(0, 4).join(', ')));
     if ((cm.tlds || []).length) meta.push('TLDs: ' + escapeHtml(cm.tlds.join(', ')));
+    if (cm.abuse) meta.push('registrar abuse: ' + escapeHtml(cm.abuse));
     return '<div class="' + cls + ' rounded p-3 mb-3">' +
       '<div class="font-bold ' + titleCls + ' text-sm mb-1">' + label + ': ' + escapeHtml(cm.theme || 'brand lookalikes') +
       ' <span class="font-normal text-gray-400">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
@@ -10248,26 +10301,29 @@ function huntRenderResults(data) {
   html += '<div class="overflow-x-auto"><table class="w-full text-xs"><thead><tr class="text-gray-500 border-b border-gray-800">' +
     '<th class="text-left py-1">Candidate</th><th class="text-left py-1">Source</th><th class="text-left py-1">Verdict</th><th class="text-left py-1">Score</th>' +
     '<th class="text-left py-1">Evidence</th><th class="text-left py-1">Actions</th></tr></thead><tbody>';
+  // Wrap long domains at dots and hyphens (zero-width break), not mid-label.
+  const wbrDom = d => escapeHtml(String(d || '')).replace(/([.-])/g, '$1<wbr>');
   (data.candidates || []).forEach(c => {
-    const evList = (c.evidence || []).slice();
-    if (c.urlscan_first_seen) {
-      evList.push('urlscan first seen ' + c.urlscan_first_seen);
-    }
-    let ev = evList.map(x => escapeHtml(x)).join('; ');
+    let ev = (c.evidence || []).map(x => escapeHtml(x)).join('; ');
     if (c.urlscan_result) {
       ev += ' <a href="' + escapeAttr(c.urlscan_result) + '" target="_blank" rel="noopener" class="text-amber-400">urlscan result</a>';
     }
-    const reg = c.registered ? ('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : '')) : (c.reg_note ? escapeHtml(c.reg_note) : '');
+    const regLines = [];
+    if (c.registered) regLines.push('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : ''));
+    else if (c.reg_note) regLines.push(escapeHtml(c.reg_note));
+    if (c.ct_first_seen) regLines.push('CT first seen ' + escapeHtml(c.ct_first_seen));
+    if (c.urlscan_first_seen) regLines.push('urlscan first seen ' + escapeHtml(c.urlscan_first_seen));
+    const reg = regLines.join('<br>');
     const camp = c.campaign_id ? ' <span class="text-red-400" title="campaign member">&#9733;</span>' : '';
     const acts = '<a href="' + escapeAttr(c.gsb_url || '#') + '" target="_blank" rel="noopener" class="text-amber-400 mr-2">Safe Browsing</a>' +
       '<a href="#" class="text-amber-400 mr-2" data-piv-domain="' + escapeAttr(c.domain) + '">Domain Intel</a>' +
       '<a href="#" class="text-amber-400" data-piv-kit="' + escapeAttr(c.domain) + '">Deep Kit</a>';
     html += '<tr class="border-b border-gray-900 align-top">' +
-      '<td class="py-1 font-mono break-all">' + escapeHtml(c.domain) + camp + (reg ? '<div class="text-gray-600">' + reg + '</div>' : '') + '</td>' +
+      '<td class="py-1 font-mono" style="word-break:normal;overflow-wrap:anywhere">' + wbrDom(c.domain) + camp + (reg ? '<div class="text-gray-600">' + reg + '</div>' : '') + '</td>' +
       '<td class="py-1 text-gray-500 font-mono">' + escapeHtml(c.source || 'dnstwist') + '</td>' +
       '<td class="py-1">' + huntVerdict(c.verdict) + '</td>' +
       '<td class="py-1 font-mono">' + (c.score || 0) + '</td>' +
-      '<td class="py-1 text-gray-400 break-all">' + (ev || 'n/a') + '</td>' +
+      '<td class="py-1 text-gray-400 break-words">' + (ev || 'n/a') + '</td>' +
       '<td class="py-1">' + acts + '</td></tr>';
   });
   html += '</tbody></table></div>';

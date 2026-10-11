@@ -389,6 +389,11 @@ HUNT_WILDCARD_CONTROLS = max(1, int(getenv_clean("HUNT_WILDCARD_CONTROLS", "2"))
 # a window this many days wide AND it shares a registrar, nameserver, hosting ASN
 # or cheap-TLD family. Theme-only groups with no corroboration do not boost.
 HUNT_CAMPAIGN_WINDOW_DAYS = max(1, int(getenv_clean("HUNT_CAMPAIGN_WINDOW_DAYS", "60")))
+# An unlocked operator session (shared with Attack Surface) bypasses the public
+# daily cap under its own higher cap and may raise the candidate and fetch caps.
+HUNT_OPERATOR_PER_DAY = max(1, int(getenv_clean("HUNT_OPERATOR_PER_DAY", "200")))
+HUNT_OPERATOR_MAX_CANDIDATES = max(10, int(getenv_clean("HUNT_OPERATOR_MAX_CANDIDATES", "300")))
+HUNT_OPERATOR_MAX_FETCHES = max(5, int(getenv_clean("HUNT_OPERATOR_MAX_FETCHES", "120")))
 # Newly registered domain feed (WHOISDS). DEFAULT OFF: set this to a URL that
 # returns a daily list of newly registered domains (plain text or a zipped text
 # list), which WHOISDS provides to an account. Until set, new-registration

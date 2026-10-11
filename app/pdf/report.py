@@ -178,6 +178,8 @@ def render_report(payload: dict, out_path: str) -> None:
     cover = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="cover")
 
     wm_text = (title_subject or "FalconEye")[:40]
+    if engagement:
+        wm_text = f"{wm_text} / {engagement}"[:60]
 
     def _watermark(canvas_obj, _doc):
         # One faint, single-line diagonal string, drawn BEFORE the frame lays down
@@ -297,10 +299,14 @@ def render_report(payload: dict, out_path: str) -> None:
                 meta.append("corroboration: " + _esc("; ".join(c["corroboration"])))
             if c.get("registrars"):
                 meta.append("registrars: " + _esc(", ".join(c["registrars"])))
+            if c.get("nameservers"):
+                meta.append("nameservers: " + _esc(", ".join(c["nameservers"][:4])))
             if c.get("asns"):
                 meta.append("hosting: " + _esc(", ".join(c["asns"][:4])))
             if c.get("tlds"):
                 meta.append("TLDs: " + _esc(", ".join(c["tlds"])))
+            if c.get("abuse"):
+                meta.append("registrar abuse: " + _esc(c["abuse"]))
             if meta:
                 el.append(Paragraph("; ".join(meta), st["small"]))
             el.append(Paragraph(_esc(", ".join(c.get("members") or [])), st["small"]))
@@ -373,22 +379,28 @@ def render_report(payload: dict, out_path: str) -> None:
             reg = c.get("registered")
             age = c.get("age_days")
             if reg and isinstance(age, int) and age >= 0:
-                reg = f"{reg} ({age}d)"
-            reg = reg or c.get("reg_note") or "n/a"
+                first = f"reg {reg} ({age}d)"
+            elif reg:
+                first = f"reg {reg}"
+            else:
+                first = c.get("reg_note") or "n/a"
+            reg_lines = [_esc(first)]
+            if c.get("ct_first_seen"):
+                reg_lines.append(_esc(f"CT first seen {c['ct_first_seen']}"))
+            if c.get("urlscan_first_seen"):
+                reg_lines.append(_esc(f"urlscan first seen {c['urlscan_first_seen']}"))
+            reg_html = "<br/>".join(reg_lines)
             dom = _esc(c.get("domain"))
             if c.get("campaign_id"):
                 dom = f"<b>{dom}</b>"
             ev_parts = list(c.get("evidence") or [])
-            if c.get("urlscan_first_seen"):
-                u = f"urlscan first seen {c['urlscan_first_seen']}"
-                if c.get("urlscan_result"):
-                    u += f": {c['urlscan_result']}"
-                ev_parts.append(u)
+            if c.get("urlscan_result"):
+                ev_parts.append(f"urlscan result {c['urlscan_result']}")
             rows.append([Paragraph(dom, st["cellw"]),
                          Paragraph(_esc(c.get("source") or "dnstwist"), st["cellw"]),
                          _verdict_para(c.get("verdict", "unrelated"), st),
                          Paragraph(str(c.get("score", 0)), st["cell"]),
-                         Paragraph(_esc(reg), st["cellw"]),
+                         Paragraph(reg_html, st["cellw"]),
                          Paragraph(_esc("; ".join(ev_parts) or "n/a"), st["cellw"])])
         if rows:
             el.append(_data_table(hdr, rows, [34 * mm, 22 * mm, 22 * mm, 14 * mm, 28 * mm, 54 * mm], st))

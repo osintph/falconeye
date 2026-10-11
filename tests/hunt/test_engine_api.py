@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from app import config
 from app import main
 from app.asm import jobs, store
 from app.hunt import candidate as candidate_mod
@@ -25,7 +26,7 @@ def test_hunt_package_never_port_scans():
 
 
 def test_engine_builds_a_payload(monkeypatch):
-    async def fdisc(kw, legit):
+    async def fdisc(kw, legit, max_candidates=None):
         return {"candidates": [{"domain": "philhealth-refund.ph", "origins": ["crt.sh"],
                                 "keyword_hit": True},
                                {"domain": "old.example.com", "origins": ["dnstwist"],
@@ -77,7 +78,7 @@ def test_engine_builds_a_payload(monkeypatch):
 def test_engine_drops_wildcard_candidates(monkeypatch):
     # A TLD that answers every label with the same IP is a registry wildcard; a
     # candidate matching that control answer is not registered and is not a row.
-    async def fdisc(kw, legit):
+    async def fdisc(kw, legit, max_candidates=None):
         return {"candidates": [{"domain": "mmdalogin.ph", "origins": ["dnstwist"],
                                 "keyword_hit": False},
                                {"domain": "mmda-real.com", "origins": ["dnstwist"],
@@ -127,7 +128,7 @@ _NCAP = ["mmda-ltoncap.net", "mmdaltoncaps.com", "mmdancap-ncr.icu", "ncapmmdar.
 def test_engine_detects_ncap_campaign_and_drops_noise(monkeypatch):
     # The live LTO/NCAP fine-lure set must come out as one Likely Phishing cluster;
     # emmday.in (no theme, no campaign, no verdict) must not outrank it.
-    async def fdisc(kw, legit):
+    async def fdisc(kw, legit, max_candidates=None):
         cands = []
         for d in _NCAP:
             cands.append({"domain": d, "origins": ["urlscan.io"], "keyword_hit": True,
@@ -183,6 +184,52 @@ def test_engine_detects_ncap_campaign_and_drops_noise(monkeypatch):
 
 def _client(ip="203.0.113.9"):
     return TestClient(main.app, base_url="https://testserver", client=(ip, 1))
+
+
+def test_reg_date_matches_age():
+    import datetime as dt
+    d = engine._reg_date(None, 24)
+    shown = dt.datetime.strptime(d, "%Y-%m-%d").date()
+    assert shown + dt.timedelta(days=24) == dt.datetime.now(dt.timezone.utc).date()
+
+
+def test_hunt_url_input_is_normalised():
+    with patch.object(jobs, "submit", lambda sid: True):
+        r = _client().post("/api/hunt",
+                           json={"keyword": "DICT", "legit_domain": "https://www.dict.gov.ph/a?x=1"})
+        assert r.status_code == 200
+        n = r.json()["normalized"]
+        assert n["keyword"] == "dict" and n["legit_domain"] == "dict.gov.ph"
+
+
+def test_hunt_operator_bypasses_public_cap_and_shares_session(monkeypatch):
+    from app.asm import operator
+    ip = "203.0.113.77"
+    monkeypatch.setattr(config, "HUNT_PER_DAY", 0)  # public cap exhausted
+    with patch.object(jobs, "submit", lambda sid: True):
+        pub = TestClient(main.app, base_url="https://testserver", client=(ip, 1)).post(
+            "/api/hunt", json={"keyword": "mmda"})
+        assert pub.status_code == 429 and "resets by" in pub.json()["error"]
+    # An operator session (shared ASM cookie) bypasses the public cap.
+    monkeypatch.setattr(operator, "configured", lambda: True)
+    monkeypatch.setattr(operator, "session_from_cookie",
+                        lambda cookie: {"sid": "s"} if cookie == "opc" else None)
+    with patch.object(jobs, "submit", lambda sid: True):
+        cl = TestClient(main.app, base_url="https://testserver", client=(ip, 1))
+        cl.cookies.set("asm_operator", "opc")
+        r = cl.post("/api/hunt", json={"keyword": "mmda", "engagement": "ENG-1"})
+        assert r.status_code == 200 and r.json()["operator"] is True
+
+
+def test_hunt_operator_inert_when_unconfigured(monkeypatch):
+    from app.asm import operator
+    monkeypatch.setattr(operator, "configured", lambda: False)
+    monkeypatch.setattr(config, "HUNT_PER_DAY", 0)
+    cl = TestClient(main.app, base_url="https://testserver", client=("203.0.113.78", 1))
+    cl.cookies.set("asm_operator", "opc")
+    r = cl.post("/api/hunt", json={"keyword": "mmda"})
+    # Operator mode off: the cookie is ignored and the public cap still applies.
+    assert r.status_code == 429
 
 
 def test_api_validation():

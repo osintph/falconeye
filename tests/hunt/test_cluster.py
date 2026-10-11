@@ -51,3 +51,22 @@ def test_below_threshold_is_neither():
     campaigns, related, dom_to_cid = cluster.build(
         [_c("mmda-ncap.icu", ["ncap"]), _c("mmda-lto.icu", ["lto"])])
     assert campaigns == [] and related == [] and dom_to_cid == {}
+
+
+def test_infra_merge_pulls_in_a_shared_infra_domain():
+    # nocpmmda.luxe has no theme term, but shares the campaign registrar, NS and
+    # ASN inside the window, so it joins the NCAP campaign.
+    members = [
+        _c("mmda-ltoncap.icu", ["lto", "ncap"], age=20, registrar="NameMart",
+           asn="AS132203", ns=["ns1.domainnamens.com"]),
+        _c("mmdaltoncaps.sbs", ["lto", "ncap"], age=30, registrar="NameMart",
+           asn="AS132203", ns=["ns1.domainnamens.com"]),
+        _c("mmdancap-ncr.work", ["ncap", "ncr"], age=25, registrar="NameMart",
+           asn="AS132203", ns=["ns1.domainnamens.com"]),
+    ]
+    loner = _c("nocpmmda.luxe", [], age=48, registrar="NameMart", asn="AS132203",
+               ns=["ns1.domainnamens.com"])
+    campaigns, related, dom_to_cid = cluster.build(members + [loner])
+    assert len(campaigns) == 1
+    assert "nocpmmda.luxe" in dom_to_cid
+    assert loner.get("campaign_join", "").endswith("(infra match)")

@@ -58,8 +58,53 @@ CHEAP_TLDS = {"icu", "sbs", "work", "club", "qpon", "yoga", "surf", "luxe", "top
               "link", "live", "ltd", "space", "store", "website", "pw", "gq", "cfd"}
 
 
+try:
+    from rapidfuzz.distance import DamerauLevenshtein as _DL
+except Exception:  # noqa: BLE001
+    _DL = None
+
+
 def themes_for(keyword: str) -> list:
     return THEMES.get((keyword or "").lower(), [])
+
+
+def _fuzzy_find(label: str, term: str):
+    """Return the substring of *label* that matches *term*, exactly or as a close
+    variant: edit distance 1 for terms of 4+ characters (so ncpa matches ncap), and
+    for 3-letter terms only an exact match or a transposition of the same letters
+    (lot matches lto), never an indel or substitution (which would match nc or ncp
+    to ncr). More distant scrambles (ncpo, nocp) are caught by the campaign
+    infrastructure merge, not here. Returns the matched variant or None."""
+    term = term.lower()
+    if term in label:
+        return term
+    if _DL is None:
+        return None
+    L = len(term)
+    if L <= 3:
+        for i in range(0, len(label) - L + 1):
+            sub = label[i:i + L]
+            if sorted(sub) == sorted(term) and _DL.distance(sub, term) <= 1:
+                return sub
+        return None
+    for w in (L - 1, L, L + 1):
+        for i in range(0, len(label) - w + 1):
+            sub = label[i:i + w]
+            if _DL.distance(sub, term) <= 1:
+                return sub
+    return None
+
+
+def theme_variants(text: str, keyword: str) -> list:
+    """List of (term, matched_variant) for brand theme terms found in *text*,
+    including near variants. The variant drives the evidence line."""
+    low = (text or "").lower()
+    out = []
+    for t in themes_for(keyword):
+        v = _fuzzy_find(low, t)
+        if v:
+            out.append((t, v))
+    return out
 
 
 def _reg_label(domain: str) -> str:
@@ -75,8 +120,8 @@ def cheap_tld(domain: str) -> bool:
 
 
 def matched_themes(text: str, keyword: str) -> list:
-    low = (text or "").lower()
-    return [t for t in themes_for(keyword) if t in low]
+    """Theme terms present in *text*, matching near variants (ncpa ~ ncap)."""
+    return [t for t, _ in theme_variants(text, keyword)]
 
 
 def classify(domain: str, keyword: str, title: str = "") -> dict:
@@ -87,6 +132,10 @@ def classify(domain: str, keyword: str, title: str = "") -> dict:
     an unrelated word and the hit is irrelevant."""
     brand = (keyword or "").lower()
     label = _reg_label(domain)
+    # Exact theme matches gate relevance (keep/drop); fuzzy matches only populate
+    # the themes used for clustering and scoring, so a fuzzy near-match (plate ~
+    # pdate in "updaten") can never keep an otherwise irrelevant domain.
+    exact_label_themes = [t for t in themes_for(keyword) if t in label]
     label_themes = matched_themes(label, keyword)
     title_themes = matched_themes(title, keyword)
     phish = [t for t in PHISH_TERMS if t in label]
@@ -103,10 +152,13 @@ def classify(domain: str, keyword: str, title: str = "") -> dict:
     # phishing words are NOT part of the keep/drop gate because they substring
     # match foreign words (the German "updaten" contains "update"), which would
     # keep unrelated sites. Phishing words still add score once a hit is kept.
-    relevant = bool(clean_token or label_themes)
+    relevant = bool(clean_token or exact_label_themes)
     buried = (brand in label) and not relevant
+    variants = theme_variants(label, keyword) + theme_variants(title, keyword)
+    # Evidence strings: "ncpa ~ ncap" for a near variant, "ncap" when exact.
+    ev = sorted({(f"{v} ~ {t}" if v != t else t) for t, v in variants})
     return {
         "relevant": relevant, "buried": buried, "token": clean_token,
         "themes": sorted(set(label_themes) | set(title_themes)),
-        "label_themes": label_themes, "phish": phish,
+        "theme_evidence": ev, "label_themes": label_themes, "phish": phish,
     }

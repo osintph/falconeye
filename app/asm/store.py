@@ -249,6 +249,21 @@ def rl_record(scope: str, key: str) -> None:
         conn.close()
 
 
+def rl_oldest_ts(scope: str, key: str, window_seconds: int) -> Optional[int]:
+    """The oldest still-counted event in the window, so a caller can tell when a
+    rolling-window limit will next drop below its cap."""
+    cutoff = now() - window_seconds
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT MIN(event_at) FROM asm_rate_limit WHERE scope = ? AND key = ? AND event_at > ?",
+            (scope, key, cutoff),
+        ).fetchone()
+    finally:
+        conn.close()
+    return row[0] if row and row[0] is not None else None
+
+
 def rl_last_ts(scope: str, key: str) -> Optional[int]:
     conn = _connect()
     try:
