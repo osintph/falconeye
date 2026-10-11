@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.7] - 2026-10-12
+
+### Fixed
+
+- **Two Hunt false positives the v3.38.6 live run exposed.** The keep/drop
+  relevance gate no longer counts generic phishing words, which substring-matched
+  foreign words (the German "updaten" contains "update") and kept unrelated sites;
+  relevance now rests on the brand token and brand-specific theme terms, and
+  phishing words only add score once a hit is kept. Title-similarity now uses a
+  strict full-string ratio with a minimum legitimate-title length instead of
+  token-set ratio, so an unrelated site (a Brazilian data firm, a German SAP page)
+  is no longer flagged as imitating the brand. Both were regression-tested from
+  the live names.
+
 ## [3.38.6] - 2026-10-12
 
 ### Changed

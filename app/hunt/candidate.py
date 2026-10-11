@@ -34,7 +34,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.6"
+_UA = "FalconEye-Hunt/3.38.7"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -100,8 +100,11 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
     m = _TITLE_RE.search(body or "")
     title = re.sub(r"\s+", " ", m.group(1)).strip()[:160] if m else ""
     out["title"] = title
-    if legit_title and title and _FUZZ:
-        out["legit_title_sim"] = int(_FUZZ.token_set_ratio(title.lower(), legit_title.lower()))
+    # Full-string ratio (not token_set_ratio, which over-matches short or generic
+    # titles and flags unrelated sites) with a minimum legitimate-title length, so
+    # only a page that genuinely copies the title reads as imitation.
+    if legit_title and len(legit_title) >= 8 and title and _FUZZ:
+        out["legit_title_sim"] = int(_FUZZ.ratio(title.lower(), legit_title.lower()))
 
     parked = any(s in low for s in _PARK_SIGNALS)
     marketplace = any(s in low for s in _MARKETPLACE_SIGNALS)

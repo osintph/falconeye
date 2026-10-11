@@ -99,7 +99,11 @@ def classify(domain: str, keyword: str, title: str = "") -> dict:
     short_affix = (len(label) - len(brand)) <= 5
     clean_token = (label == brand or brand in parts
                    or (at_edge and (len(brand) >= 6 or short_affix)))
-    relevant = bool(clean_token or label_themes or phish)
+    # Relevance uses the brand token and brand-specific theme terms only. Generic
+    # phishing words are NOT part of the keep/drop gate because they substring
+    # match foreign words (the German "updaten" contains "update"), which would
+    # keep unrelated sites. Phishing words still add score once a hit is kept.
+    relevant = bool(clean_token or label_themes)
     buried = (brand in label) and not relevant
     return {
         "relevant": relevant, "buried": buried, "token": clean_token,

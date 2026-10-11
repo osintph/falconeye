@@ -25,6 +25,13 @@ def test_buried_unrelated_words_are_irrelevant():
         assert not c["relevant"] and not c["themes"], f"{d} should be irrelevant"
 
 
+def test_generic_phish_substring_does_not_keep_a_foreign_word():
+    # The German "updaten" contains "update"; it must not make this SAP master-data
+    # site relevant to an mmda hunt (a live v3.38.6 false positive).
+    c = themes.classify("stammdaten-pflegen-und-updaten.de", "mmda")
+    assert not c["relevant"], "a generic phish substring must not keep an unrelated word"
+
+
 def test_brand_prefix_is_relevant_even_without_theme():
     # philhealth is a long, distinctive prefix: a clear brand token, not buried.
     c = themes.classify("philhealthhelp.com", "philhealth")

@@ -34,3 +34,17 @@ def test_title_imitation_of_the_legit_site_is_detected():
                                    "philhealth.gov.ph", "PhilHealth Member Portal")
     assert out["legit_title_sim"] >= 70
     assert out["parked"] is False
+
+
+def test_unrelated_title_does_not_read_as_imitation():
+    # A real German SAP site must not match the MMDA title (a live v3.38.6 FP).
+    body = "<title>Stammdaten pflegen und updaten</title> SAP master data"
+    out = candidate.assess_content(body, "https://stammdaten-pflegen-und-updaten.de/", "mmda",
+                                   "mmda.gov.ph", "Metropolitan Manila Development Authority")
+    assert out["legit_title_sim"] < 70
+
+
+def test_short_legit_title_never_triggers_imitation():
+    out = candidate.assess_content("<title>Some Random Page</title>", "https://x.com/", "mmda",
+                                   "mmda.gov.ph", "MMDA")  # legit title under 8 chars
+    assert out["legit_title_sim"] == 0
