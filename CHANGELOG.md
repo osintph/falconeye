@@ -5,6 +5,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.10] - 2026-10-12
+
+### Fixed
+
+- **Two precision regressions the v3.38.9 live run exposed.** "The brand keyword
+  appears in the page title" no longer counts as brand imitation, because an
+  informational page about a brand naturally names it in its title; this was
+  pushing informational sites (aboutphilhealth.org, dict write-ups) and old
+  generic logins (katdict.ng) into Likely Phishing. Imitation now requires a
+  favicon hash match, a close title match, or hunted-brand markers. And a shared
+  CDN or large-cloud ASN (Cloudflare and the like) no longer corroborates a
+  campaign or merges a domain into one, so the MMDA campaign no longer pulls in
+  unrelated domains that merely sit behind Cloudflare.
+
 ## [3.38.9] - 2026-10-12
 
 ### Changed

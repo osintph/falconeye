@@ -19,6 +19,19 @@ from app.scanner.scope import registrable
 
 MIN_CLUSTER = 3
 
+# Shared CDN or large-cloud ASNs are not distinctive: half the internet is on
+# Cloudflare, so they must not corroborate a campaign or merge a domain into one.
+_CDN_ASNS = {"13335", "16509", "14618", "15169", "396982", "20940", "54113", "8075",
+             "13238", "19527"}
+
+
+def _asn_num(asn) -> str:
+    return "".join(ch for ch in str(asn or "") if ch.isdigit())
+
+
+def _is_cdn_asn(asn) -> bool:
+    return _asn_num(asn) in _CDN_ASNS
+
 
 def _tld(domain: str) -> str:
     reg = registrable(domain) or domain
@@ -47,7 +60,7 @@ def _corroboration(members: list) -> tuple:
     if reg:
         shared.append(f"shared registrar {reg}")
     asn = _shared_most(members, "asn")
-    if asn:
+    if asn and not _is_cdn_asn(asn):
         shared.append(f"shared hosting {asn}")
     ns_counter = Counter(n for m in members for n in (m.get("ns") or []))
     ns_hit = [n for n, k in ns_counter.items() if k >= 2]
@@ -139,7 +152,7 @@ def build(candidates: list) -> tuple:
             share = None
             if rec.get("registrar") and str(rec["registrar"]) in regs:
                 share = f"shared registrar {rec['registrar']}"
-            elif rec.get("asn") and str(rec["asn"]) in asns:
+            elif rec.get("asn") and str(rec["asn"]) in asns and not _is_cdn_asn(rec["asn"]):
                 share = f"shared hosting {rec['asn']}"
             elif set(rec.get("ns") or []) & nss:
                 share = f"shared nameserver {next(iter(set(rec.get('ns') or []) & nss))}"

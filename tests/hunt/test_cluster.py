@@ -53,6 +53,21 @@ def test_below_threshold_is_neither():
     assert campaigns == [] and related == [] and dom_to_cid == {}
 
 
+def test_cdn_asn_alone_does_not_corroborate():
+    # A shared Cloudflare ASN is not distinctive: different registrars and NS, not
+    # cheap TLDs, only the CDN in common means no campaign.
+    cands = [
+        _c("mmda-ncap1.com", ["ncap"], age=10, registrar="R1", asn="AS13335",
+           ns=["a.com"], cheap=False),
+        _c("mmda-ncap2.org", ["ncap"], age=20, registrar="R2", asn="13335",
+           ns=["b.com"], cheap=False),
+        _c("mmda-ncap3.net", ["ncap"], age=30, registrar="R3", asn="13335",
+           ns=["c.com"], cheap=False),
+    ]
+    campaigns, related, _ = cluster.build(cands)
+    assert campaigns == [] and len(related) == 1
+
+
 def test_infra_merge_pulls_in_a_shared_infra_domain():
     # nocpmmda.luxe has no theme term, but shares the campaign registrar, NS and
     # ASN inside the window, so it joins the NCAP campaign.

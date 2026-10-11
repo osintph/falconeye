@@ -113,8 +113,11 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     known_bad = bool(c.get("known_bad"))
     urlscan_malicious = _malicious(urls.get("labels"))
     page_class = c.get("page_class") or ""
+    # Imitation means the page copies the legit site (favicon, close title match,
+    # hunted-brand markers), NOT merely that the brand name appears in the title:
+    # an informational page about the brand naturally names it.
     brand_imitation = bool(favicon or title_imitates or hunted_brand
-                           or page_class == "imitation" or (kw and kw in title.lower()))
+                           or page_class == "imitation")
     if favicon:
         score += 30
     if title_imitates:

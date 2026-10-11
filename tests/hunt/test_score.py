@@ -132,6 +132,14 @@ def test_short_brand_old_close_perm_is_dropped_as_noise():
     assert c["drop_noise"] is True
 
 
+def test_informational_page_with_brand_in_title_is_brand_referencing():
+    # A page about the brand naturally names it in the title; that is not imitation.
+    c = score.score_candidate(_c(domain="aboutphilhealth.org", themes=[], reg_age_days=80,
+                                 page_class="informational", title="About PhilHealth Benefits"),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "brand-referencing"
+
+
 def test_informational_but_urlscan_malicious_is_likely_phishing():
     c = score.score_candidate(_c(domain="philhealthguide.com", themes=["portal"],
                                  reg_age_days=1500, page_class="informational",
