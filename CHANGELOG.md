@@ -5,6 +5,25 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.5] - 2026-10-11
+
+### Changed
+
+- **crt.sh keyword search is best effort and no longer gates a Hunt.** crt.sh has
+  no cheap substring search, so the Hunt dropped the expensive `%keyword%` query
+  and uses the plain keyword query instead. urlscan is now the primary keyword
+  source: a run is INCOMPLETE only when urlscan fails, so a degraded crt.sh does
+  not turn every run into a false INCOMPLETE. A crt.sh failure is Hunt-scoped (its
+  own backoff gate) and never affects the Domain Intel or ASM crt.sh paths. Source
+  status reports crt.sh failures with a crt.sh-side reason and never claims the IP
+  is blocked. The 24h per-keyword cache and the 502 backoff are kept.
+
+### Removed
+
+- **The crt.sh proxy config is gone** (`HUNT_CRTSH_PROXY`, `HUNT_CRTSH_BASE`). The
+  502s are crt.sh-side, not a per-IP block (crt.sh has served Domain Intel from
+  the same host for months), so a relay is not the fix and was not built.
+
 ## [3.38.4] - 2026-10-11
 
 ### Changed

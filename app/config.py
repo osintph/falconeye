@@ -374,17 +374,12 @@ HUNT_RESOLVE_CONCURRENCY = max(2, int(getenv_clean("HUNT_RESOLVE_CONCURRENCY", "
 # concurrent hunts, so crt.sh calls are serialised through a global gate that
 # spaces them by this many seconds and retried with backoff when it does answer.
 HUNT_CRTSH_MIN_INTERVAL = max(0.0, float(getenv_clean("HUNT_CRTSH_MIN_INTERVAL", "13")))
-# crt.sh access. Its HTTP endpoint returns a fast 502 (its own nginx, backend
-# down) to some egress IPs, the production VPS among them, while serving others;
-# its public PostgreSQL interface is firewalled from the VPS. HUNT_CRTSH_BASE
-# points the keyword query at a mirror or reverse proxy, and HUNT_CRTSH_PROXY
-# routes it through an HTTP proxy, for example one on a fleet host over the tailnet
-# whose egress crt.sh serves normally. Empty proxy means a direct request.
-HUNT_CRTSH_BASE = getenv_clean("HUNT_CRTSH_BASE", "https://crt.sh/") or "https://crt.sh/"
-HUNT_CRTSH_PROXY = getenv_clean("HUNT_CRTSH_PROXY")
-# crt.sh results are cached per keyword to cut request volume to one a day, and a
-# 502 holds crt.sh shut for a backoff window (a later hunt retries) instead of
-# hammering it with in-run retries.
+# crt.sh keyword search in the Hunt is best effort only: crt.sh has no cheap
+# substring search, so a keyword query is expensive and often answers 502. The
+# Hunt keeps urlscan and the newly-registered-domain feed as the primary keyword
+# sources; a crt.sh failure is Hunt-scoped and never gates the run or affects the
+# Domain Intel and ASM crt.sh paths. Results are cached per keyword, and a 502
+# holds the Hunt crt.sh call off for a backoff window (a later hunt retries).
 HUNT_CT_CACHE_TTL = max(0, int(getenv_clean("HUNT_CT_CACHE_TTL", "86400")))
 HUNT_CRTSH_BACKOFF = max(0, int(getenv_clean("HUNT_CRTSH_BACKOFF", "600")))
 # Random control labels resolved per TLD per run to detect registry wildcards (a

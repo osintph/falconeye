@@ -148,12 +148,12 @@ async def execute(scan: dict) -> dict:
                 "keyword_hits": disc.get("keyword_hit_count", 0)}
 
     methodology = (
-        "Discovery: certificate transparency keyword search (crt.sh, retried with "
-        "backoff and serialised across concurrent hunts; routable through a proxy "
-        "when its own IP is throttled), permutations of the legitimate domain "
-        "(dnstwist: homoglyph, IDN and punycode, bitsquatting, TLD swap to open "
-        "registrable TLDs, hyphenation, phishing-word combos), urlscan.io keyword "
-        "search, and an optional newly-registered-domain feed. Restricted "
+        "Discovery: urlscan.io keyword search (the primary keyword source), "
+        "permutations of the legitimate domain (dnstwist: homoglyph, IDN and "
+        "punycode, bitsquatting, TLD swap to open registrable TLDs, hyphenation, "
+        "phishing-word combos), a certificate transparency keyword lookup (crt.sh, "
+        "best effort and non-gating; it has no cheap substring search), and an "
+        "optional newly-registered-domain feed. Restricted "
         "namespaces an attacker cannot register (.gov.ph and the like) and the "
         "legitimate domain and its subdomains are excluded. Every candidate is DNS "
         "resolved, and random control labels per TLD detect registry wildcards (a "

@@ -1,19 +1,22 @@
 """Candidate discovery for the Phishing Domain Hunt, with per-source status.
 
 discover(keyword, legit) returns the candidate domains with the source that found
-each one, a per-source status list, and honest counts. Each source reports
-answered, failed or skipped; if crt.sh or urlscan (the network discovery sources)
-fails, the run is INCOMPLETE and a zero result is not a clean result.
+each one, a per-source status list, and honest counts. urlscan is the PRIMARY
+keyword source: the run is INCOMPLETE only when urlscan fails, so a zero from a
+source that actually answered is not treated as a clean result, while a degraded
+crt.sh does not turn every run into a false INCOMPLETE.
 
-Rules, from the v3.38.1 brief:
+Rules:
   - The legitimate domain and all its subdomains are never candidates.
   - Permutations are not generated under restricted namespaces an attacker cannot
     register (.gov.ph, .edu.ph, .mil.ph and equivalents); TLD swaps go to open,
     cheap TLDs instead.
-  - Certificate transparency keyword hits (crt.sh) and urlscan hits carry a source
-    label so the report can show them first.
-  - crt.sh is retried with backoff and serialised through a global gate so
-    concurrent hunts respect its rate limit.
+  - urlscan and crt.sh keyword hits carry a source label so the report lists them
+    first.
+  - crt.sh keyword search is best effort and Hunt-scoped (crt.sh has no cheap
+    substring search): it uses the plain keyword query, is cached and backed off
+    on 502, never gates the run, and never affects the Domain Intel or ASM crt.sh
+    paths.
 
 Permutations run offline (dnstwist); the newly registered domain feed is optional.
 No em dashes in this module.
@@ -35,7 +38,7 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.4 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.5 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -85,47 +88,41 @@ def _allowed(host: str, legit: str) -> bool:
     return bool(host) and not _is_legit_or_sub(host, legit)
 
 
-async def _crtsh_get(client: httpx.AsyncClient, params: dict):
-    """One crt.sh GET, through HUNT_CRTSH_PROXY and HUNT_CRTSH_BASE when set. crt.sh
-    returns a fast 502 to some egress IPs (the production VPS among them); a proxy
-    on a host whose IP it serves restores access."""
-    base = config.HUNT_CRTSH_BASE
-    proxy = config.HUNT_CRTSH_PROXY
-    headers = {"User-Agent": _UA}
-    if proxy:
-        async with httpx.AsyncClient(proxy=proxy, follow_redirects=True) as pc:
-            return await pc.get(base, params=params, timeout=_TIMEOUT, headers=headers)
-    return await client.get(base, params=params, timeout=_TIMEOUT, headers=headers)
+# The Hunt uses its own gate name so a crt.sh failure here can never affect the
+# Domain Intel or ASM crt.sh paths (which do not consult this gate at all).
+_HUNT_CRTSH_GATE = "hunt_crtsh"
+_CRTSH_URL = "https://crt.sh/"
 
 
 async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
-    """CT keyword search. crt.sh only (Cert Spotter has no keyword search).
-
-    Volume is kept low so crt.sh stops degrading the egress IP: a 24h per-keyword
-    cache serves repeat hunts, each hunt makes at most ONE request, and a 502 holds
-    crt.sh shut for a backoff window (a later hunt retries) rather than retrying
-    in-run. Returns (hosts, status, note). A failure marks the run INCOMPLETE but
-    never aborts it."""
+    """Best-effort crt.sh keyword lookup for the Hunt. crt.sh has no cheap substring
+    search, so this uses the plain keyword query (not %keyword%) and treats crt.sh
+    as optional: urlscan and the NRD feed are the primary keyword sources, so a
+    crt.sh failure here never gates the run. A 24h per-keyword cache serves repeat
+    hunts, each hunt makes at most ONE request, and a 502 backs the Hunt crt.sh
+    call off for a window (a later hunt retries). Returns (hosts, status, note).
+    The note never claims the IP is blocked, because it is not."""
     # 1. Fresh cache: no network at all.
     cached = store.ct_cache_get(keyword, config.HUNT_CT_CACHE_TTL)
     if cached is not None:
         return {h for h in cached if keyword in h}, "answered", "served from the 24h cache"
 
-    # 2. A backoff from a recent 502 is in effect: skip the request, retry later.
-    if store.gate_wait("crtsh") > config.HUNT_CRTSH_MIN_INTERVAL + 2:
-        return set(), "failed", "backing off after a recent 502, will retry on a later hunt"
+    # 2. A backoff from a recent crt.sh 502 is in effect: skip the request.
+    if store.gate_wait(_HUNT_CRTSH_GATE) > config.HUNT_CRTSH_MIN_INTERVAL + 2:
+        return set(), "failed", "crt.sh keyword search backing off after a recent 502, will retry later"
 
-    # 3. One request, through a spaced slot shared across concurrent hunts.
-    wait = store.reserve_gate_slot("crtsh", config.HUNT_CRTSH_MIN_INTERVAL)
+    # 3. One request, spaced across concurrent hunts. Plain keyword, no wildcards.
+    wait = store.reserve_gate_slot(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_MIN_INTERVAL)
     if wait > 0:
         await asyncio.sleep(min(wait, 30.0))
     try:
-        r = await _crtsh_get(client, {"q": f"%{keyword}%", "output": "json"})
+        r = await client.get(_CRTSH_URL, params={"q": keyword, "output": "json"},
+                             timeout=_TIMEOUT, headers={"User-Agent": _UA})
         if r.status_code in (429, 500, 502, 503, 504):
-            store.gate_set_backoff("crtsh", config.HUNT_CRTSH_BACKOFF)
-            return set(), "failed", f"crt.sh returned {r.status_code}, backing off"
+            store.gate_set_backoff(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_BACKOFF)
+            return set(), "failed", f"crt.sh keyword search returned {r.status_code} (crt.sh side)"
         if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
-            return set(), "failed", "crt.sh did not return JSON"
+            return set(), "failed", "crt.sh keyword search did not return JSON"
         hosts = set()
         for row in r.json():
             for name in str(row.get("name_value", "")).split("\n"):
@@ -136,8 +133,8 @@ async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
         return hosts, "answered", ""
     except Exception as exc:  # noqa: BLE001
         log.info("hunt crt.sh failed for %s: %s", tag(keyword), type(exc).__name__)
-        store.gate_set_backoff("crtsh", config.HUNT_CRTSH_BACKOFF)
-        return set(), "failed", "crt.sh request errored, backing off"
+        store.gate_set_backoff(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_BACKOFF)
+        return set(), "failed", "crt.sh keyword search errored (crt.sh side)"
 
 
 async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
@@ -254,18 +251,23 @@ async def discover(keyword: str, legit_domain: str) -> dict:
                 origins.setdefault(h, set()).add(label)
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
+        # crt.sh keyword search is best effort and never gates the run (crt.sh has
+        # no cheap substring search); urlscan is the primary keyword source.
         ct_hosts, ct_status, ct_note = await _crtsh(client, keyword)
         _add(ct_hosts, "crt.sh")
-        ct_entry = {"source": "crt.sh", "role": "CT keyword search", "status": ct_status}
+        ct_entry = {"source": "crt.sh", "role": "CT keyword search (best effort)",
+                    "status": ct_status}
         if ct_note:
             ct_entry["note"] = ct_note
         status.append(ct_entry)
-        if ct_status == "failed":
-            incomplete = True
 
         us_hosts, us_status = await _urlscan(client, keyword)
         _add(us_hosts, "urlscan.io")
-        status.append({"source": "urlscan.io", "role": "keyword search", "status": us_status})
+        status.append({"source": "urlscan.io", "role": "keyword search (primary)",
+                       "status": us_status})
+        # The run is INCOMPLETE only when the primary keyword source (urlscan) did
+        # not answer, so a chronically degraded crt.sh does not turn every run into
+        # a false INCOMPLETE. If urlscan answered, the result is COMPLETE.
         if us_status == "failed":
             incomplete = True
 

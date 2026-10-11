@@ -85,7 +85,8 @@ def test_crtsh_502_makes_one_request_and_backs_off(monkeypatch):
     hosts, status, note = asyncio.run(go())
     assert status == "failed" and not hosts
     assert calls["n"] == 1  # ONE request per hunt, no in-run retry
-    assert backoff["set"] == 1 and "backing off" in note
+    assert backoff["set"] == 1 and "502" in note
+    assert "block" not in note.lower()  # must never claim the IP is blocked
 
 
 def test_crtsh_served_from_cache_makes_no_request(monkeypatch):
@@ -129,27 +130,52 @@ async def _skip_nrd(client, kw):
     return set(), "skipped"
 
 
-def test_discover_caps_candidates_flags_incomplete_and_labels_hits(monkeypatch):
+async def _fail_crt(client, kw):
+    return set(), "failed", "crt.sh keyword search returned 502 (crt.sh side)"
+
+
+async def _ok_urlscan(client, kw):
+    return {f"{kw}-{i}.ph" for i in range(20)}, "answered"
+
+
+async def _fail_urlscan(client, kw):
+    return set(), "failed"
+
+
+def test_discover_caps_candidates_and_labels_hits(monkeypatch):
     _fast_crtsh(monkeypatch)
     monkeypatch.setattr(config, "HUNT_MAX_CANDIDATES", 5)
-
-    async def fail_crt(client, kw):
-        return set(), "failed", "crt.sh down"
-
-    async def ok_urlscan(client, kw):
-        return {f"{kw}-{i}.ph" for i in range(20)}, "answered"
-
-    monkeypatch.setattr(sources, "_crtsh", fail_crt)
-    monkeypatch.setattr(sources, "_urlscan", ok_urlscan)
+    monkeypatch.setattr(sources, "_crtsh", _fail_crt)
+    monkeypatch.setattr(sources, "_urlscan", _ok_urlscan)
     monkeypatch.setattr(sources, "_nrd", _skip_nrd)
 
     out = asyncio.run(sources.discover("philhealth", "philhealth.gov.ph"))
     assert len(out["candidates"]) <= 5
-    assert out["incomplete"] is True  # crt.sh failed
     assert out["nrd_off"] is True
-    # urlscan candidates are keyword hits and carry the source label.
     hits = [c for c in out["candidates"] if c["keyword_hit"]]
     assert hits and all("urlscan.io" in c["origins"] for c in hits)
+
+
+def test_crtsh_failure_alone_does_not_make_incomplete(monkeypatch):
+    # crt.sh is best effort: if urlscan answered, a crt.sh failure is COMPLETE.
+    _fast_crtsh(monkeypatch)
+    monkeypatch.setattr(sources, "_crtsh", _fail_crt)
+    monkeypatch.setattr(sources, "_urlscan", _ok_urlscan)
+    monkeypatch.setattr(sources, "_nrd", _skip_nrd)
+    out = asyncio.run(sources.discover("philhealth", "philhealth.gov.ph"))
+    assert out["incomplete"] is False
+    ct = next(s for s in out["source_status"] if s["source"] == "crt.sh")
+    assert ct["status"] == "failed" and "block" not in (ct.get("note") or "").lower()
+
+
+def test_discover_incomplete_when_urlscan_fails(monkeypatch):
+    # urlscan is the primary keyword source; its failure makes the run INCOMPLETE.
+    _fast_crtsh(monkeypatch)
+    monkeypatch.setattr(sources, "_crtsh", _fail_crt)
+    monkeypatch.setattr(sources, "_urlscan", _fail_urlscan)
+    monkeypatch.setattr(sources, "_nrd", _skip_nrd)
+    out = asyncio.run(sources.discover("philhealth", "philhealth.gov.ph"))
+    assert out["incomplete"] is True
 
 
 def test_discover_excludes_the_legit_domain(monkeypatch):
