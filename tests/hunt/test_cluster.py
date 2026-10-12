@@ -166,6 +166,54 @@ def test_campaign_survives_a_few_out_of_window_outliers():
     assert any("burst" in r for r in campaigns[0]["corroboration"])
 
 
+def test_outlier_sharing_registrar_and_nameserver_joins():
+    # An out-of-burst member that still shares a distinctive attribute (registrar
+    # plus non-generic nameserver) with the burst joins the campaign.
+    burst = [_mk("mmdancap%d.icu" % i, ["ncap"], age=5 + i, registrar="NameMart Pte. Ltd.",
+                 ns=["ns1.operatordns.net"], asn="AS9999 Op") for i in range(4)]
+    outlier = _mk("mmda-oldhuli.com", ["huli", "mayhuli"], age=240,
+                  registrar="NameMart Pte. Ltd.", ns=["ns1.operatordns.net"], asn="AS9999 Op")
+    campaigns, related, dom_to_cid = cluster.build(burst + [outlier])
+    assert len(campaigns) == 1
+    assert dom_to_cid.get("mmda-oldhuli.com") == campaigns[0]["id"]
+    assert not campaigns[0].get("outliers_related")
+    assert "nameserver" in outlier.get("campaign_join", "")
+
+
+def test_outlier_without_distinctive_overlap_is_related_outside_burst():
+    # An out-of-burst member on a different registrar, a CDN nameserver and a cloud
+    # ASN, with no favicon or page content, shares nothing distinctive: it is listed
+    # as related outside the burst and scored on its own, not in the campaign.
+    burst = [_mk("mmdancap%d.icu" % i, ["ncap"], age=5 + i, registrar="NameMart Pte. Ltd.",
+                 ns=["ns1.operatordns.net"], asn="AS9999 Op") for i in range(4)]
+    outlier = _mk("mmda-lonehuli.com", ["huli"], age=300, registrar="NameSilo, LLC",
+                  ns=["kip.ns.cloudflare.com"], asn="AS13335")
+    outlier["favicon_hash"], outlier["title"] = None, ""
+    campaigns, related, dom_to_cid = cluster.build(burst + [outlier])
+    assert len(campaigns) == 1
+    assert "mmda-lonehuli.com" not in dom_to_cid
+    assert "mmda-lonehuli.com" in {o["domain"] for o in campaigns[0]["outliers_related"]}
+
+
+def test_lure_family_of_old_informational_sites_is_not_a_campaign():
+    # Old informational PhilHealth name-matches in the membership family, registered
+    # months apart with no shared distinctive infrastructure: a related group, never
+    # a campaign, so lure-family clustering cannot boost informational sites.
+    def mkp(dom, terms, age, reg):
+        c = _c(dom, terms, age=age, reg=reg, registrar="GoDaddy.com, LLC",
+               ns=["ns1.domaincontrol.com"], asn="AS13335", cheap=False)
+        c["families"] = themes.families_of("philhealth", terms)
+        return c
+    members = [
+        mkp("aboutphilhealth.org", ["member"], 400, "2025-09-07"),
+        mkp("philhealthregistration.net", ["registration", "member"], 700, "2024-11-11"),
+        mkp("philhealthmemberportal.com", ["portal", "member"], 1000, "2024-01-16"),
+    ]
+    campaigns, related, dom_to_cid = cluster.build(members)
+    assert campaigns == [] and dom_to_cid == {}
+    assert len(related) == 1 and related[0]["count"] == 3
+
+
 def test_campaign_groups_members_by_registrar_with_abuse_email():
     def mk(dom, terms, registrar, abuse=None, **kw):
         c = _mk(dom, terms, registrar=registrar, ns=["ns1.operatordns.net"],

@@ -35,7 +35,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.13"
+_UA = "FalconEye-Hunt/3.38.14"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -248,6 +248,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
     try:
         ips = resolve_and_check(domain)
         if ips:
+            out["ip"] = ips[0]
             asn, _ = await asn_intel.fetch_network_info(client, ips[0])
             out["asn"] = asn
     except SafeFetchError:

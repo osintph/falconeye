@@ -10303,6 +10303,18 @@ function huntRenderResults(data) {
         '<th class="text-left font-normal pr-3">Registrar</th><th class="text-left font-normal pr-3">Abuse email (RDAP)</th>' +
         '<th class="text-left font-normal">Domains</th></tr></thead><tbody>' + grows + '</tbody></table>'
       : '';
+    // Members registered outside the burst that share no distinctive attribute.
+    const outs = cm.outliers_related || [];
+    const outTable = outs.length
+      ? '<div class="text-xs text-gray-500 mt-2 mb-1">Related, outside the burst (scored on their own, not part of the campaign):</div>' +
+        '<table class="text-xs text-gray-300 w-full"><thead><tr class="text-gray-500">' +
+        '<th class="text-left font-normal pr-3">Domain</th><th class="text-left font-normal pr-3">Registrar</th>' +
+        '<th class="text-left font-normal">Registered</th></tr></thead><tbody>' +
+        outs.map(o => '<tr><td class="pr-3 py-0.5 font-mono break-all">' + escapeHtml(o.domain) + '</td>' +
+          '<td class="pr-3 py-0.5">' + escapeHtml(o.registrar || 'unknown') + '</td>' +
+          '<td class="py-0.5 font-mono">' + escapeHtml(o.reg_date || 'n/a') + '</td></tr>').join('') +
+        '</tbody></table>'
+      : '';
     return '<div class="' + cls + ' rounded p-3 mb-3">' +
       '<div class="font-bold ' + titleCls + ' text-sm mb-1">' + label + ': ' + escapeHtml(cm.theme || 'brand lookalikes') +
       ' <span class="font-normal text-gray-400">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
@@ -10310,7 +10322,7 @@ function huntRenderResults(data) {
       '<table class="text-xs text-gray-300 w-full"><thead><tr class="text-gray-500">' +
       '<th class="text-left font-normal pr-3">Domain</th><th class="text-left font-normal pr-3">Registrar (RDAP)</th>' +
       '<th class="text-left font-normal">Registered</th></tr></thead><tbody>' + mrows + '</tbody></table>' +
-      groupTable + '</div>';
+      groupTable + outTable + '</div>';
   };
   (data.campaigns || []).forEach(cm => {
     html += groupBlock(cm, 'Campaign', 'bg-red-950 border border-red-800', 'text-red-300');

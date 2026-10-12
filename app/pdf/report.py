@@ -325,6 +325,19 @@ def render_report(payload: dict, out_path: str) -> None:
                          for g in groups]
                 el.append(_data_table(["Registrar", "Abuse email (RDAP)", "Domains"],
                                       grows, [40 * mm, 48 * mm, 70 * mm], st))
+            # Members registered outside the burst that share no distinctive
+            # attribute with it: listed here, scored on their own, not boosted.
+            outs = c.get("outliers_related") or []
+            if outs:
+                el.append(Paragraph(
+                    "Related, outside the burst (scored on their own, not part of "
+                    "the campaign):", st["small"]))
+                orows = [[Paragraph(_esc(o.get("domain")), st["cellw"]),
+                          Paragraph(_esc(o.get("registrar") or "unknown"), st["cellw"]),
+                          Paragraph(_esc(o.get("reg_date") or "n/a"), st["cellw"])]
+                         for o in outs]
+                el.append(_data_table(["Domain", "Registrar", "Registered"],
+                                      orows, [60 * mm, 60 * mm, 38 * mm], st))
             el.append(Spacer(1, 2 * mm))
 
         camps = payload.get("campaigns") or []

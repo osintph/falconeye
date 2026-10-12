@@ -131,25 +131,53 @@ def _burst(ages: list) -> tuple:
     larger, realistic campaign set whose full span can exceed the window because
     operators register lookalikes over time, so the gate asks whether the MAJORITY
     of dated members fall inside one window, not whether every one does. Returns
-    (ok, count_in_burst, span_of_burst)."""
+    (ok, count_in_burst, span_of_burst, lo_age, hi_age) where lo/hi bound the
+    densest window (ages inside it are burst members, dated ages outside are
+    outliers)."""
     a = sorted(ages)
     if len(a) < 2:
-        return (False, len(a), 0)
+        return (False, len(a), 0, None, None)
     w = config.HUNT_CAMPAIGN_WINDOW_DAYS
-    best_n, best_span = 1, 0
+    best_n, best_span, lo, hi = 1, 0, a[0], a[0]
     for i in range(len(a)):
         j = i
         while j < len(a) and (a[j] - a[i]) <= w:
             j += 1
         if (j - i) > best_n:
-            best_n, best_span = j - i, a[j - 1] - a[i]
+            best_n, best_span, lo, hi = j - i, a[j - 1] - a[i], a[i], a[j - 1]
     ok = best_n >= max(2, (len(a) + 1) // 2)
-    return (ok, best_n, best_span)
+    return (ok, best_n, best_span, lo, hi)
+
+
+def _distinctive_overlap(m: dict, burst: list):
+    """Why outlier *m* shares a distinctive attribute with some burst member, or
+    None. Generic infrastructure (a registrar default nameserver, a CDN or large
+    cloud ASN) does not count; a large registrar counts only paired with a shared
+    non-generic nameserver."""
+    m_ns = {_ns_base(n) for n in (m.get("ns") or []) if n and not _is_generic_ns(n)}
+    m_reg = str(m["registrar"]) if m.get("registrar") else None
+    m_asn = _asn_num(m["asn"]) if (m.get("asn") and not _is_cdn_asn(m["asn"])) else None
+    m_ip = m.get("ip")
+    m_fav = m.get("favicon_hash")
+    m_title = (m.get("title") or "").strip().lower()
+    for b in burst:
+        b_ns = {_ns_base(n) for n in (b.get("ns") or []) if n and not _is_generic_ns(n)}
+        if m_reg and str(b.get("registrar")) == m_reg and (m_ns & b_ns):
+            return f"same registrar and nameserver as the burst ({m_reg})"
+        if m_asn and b.get("asn") and not _is_cdn_asn(b["asn"]) and _asn_num(b["asn"]) == m_asn:
+            return f"same non-cloud ASN as the burst ({m_asn})"
+        if m_ip and b.get("ip") and b["ip"] == m_ip:
+            return f"same hosting IP as the burst ({m_ip})"
+        if m_fav and b.get("favicon_hash") and b["favicon_hash"] == m_fav:
+            return "same favicon as the burst"
+        if m_title and len(m_title) >= 6 and (b.get("title") or "").strip().lower() == m_title:
+            return "same page content as the burst"
+    return None
 
 
 def _corroboration(members: list) -> tuple:
     ages = _ages(members)
-    window_ok, burst_n, burst_span = _burst(ages)
+    window_ok, burst_n, burst_span, _lo, _hi = _burst(ages)
     reasons = []
     if window_ok:
         reasons.append(f"a burst of {burst_n} registered within {burst_span} days")
@@ -255,28 +283,61 @@ def build(candidates: list) -> tuple:
     for members in comps.values():
         if len(members) < MIN_CLUSTER:
             continue
+        ages = _ages(members)
         corroborated, reasons = _corroboration(members)
-        entry = _entry(members)
-        entry["corroboration"] = reasons
-        if corroborated:
-            cid += 1
-            entry["id"] = cid
-            for m in members:
-                dom_to_cid[m["domain"]] = cid
-                m["campaign_join"] = "shared brand theme"
-            campaigns.append(entry)
-            ages = _ages(members)
-            camp_state.append((
-                entry,
-                {_ns_base(n) for m in members for n in (m.get("ns") or [])
-                 if n and not _is_generic_ns(n)},
-                {_asn_num(m.get("asn")) for m in members
-                 if m.get("asn") and not _is_cdn_asn(m.get("asn"))},
-                {str(m["registrar"]) for m in members
-                 if m.get("registrar") and not _is_large_registrar(m.get("registrar"))},
-                min(ages) if ages else None, max(ages) if ages else None))
-        else:
+        if not corroborated:
+            entry = _entry(members)
+            entry["corroboration"] = reasons
             related.append(entry)
+            continue
+        # Split the corroborated component into the burst, the outliers that still
+        # share a distinctive attribute with it (they join), and the outliers that
+        # do not (listed under the campaign as "related, outside burst", scored on
+        # their own, not boosted).
+        _ok, _n, _sp, lo, hi = _burst(ages)
+        burst, outliers = [], []
+        for m in members:
+            a = m.get("reg_age_days")
+            if isinstance(a, int) and lo is not None and (a < lo or a > hi):
+                outliers.append(m)
+            else:
+                burst.append(m)  # in-burst, or undated (date unknown)
+        joined, outside = [], []
+        for m in outliers:
+            why = _distinctive_overlap(m, burst)
+            if why:
+                m["outlier_join"] = why
+                joined.append(m)
+            else:
+                outside.append(m)
+        campaign_members = burst + joined
+        if len(campaign_members) < MIN_CLUSTER:
+            # Too little left to call a campaign once outliers are removed.
+            entry = _entry(members)
+            entry["corroboration"] = reasons
+            related.append(entry)
+            continue
+        cid += 1
+        entry = _entry(campaign_members)
+        entry["corroboration"] = reasons
+        entry["id"] = cid
+        entry["outliers_related"] = [
+            {"domain": m["domain"], "reg_date": m.get("reg_date"),
+             "registrar": m.get("registrar") or "unknown"} for m in sorted(
+                 outside, key=lambda x: x["domain"])]
+        for m in campaign_members:
+            dom_to_cid[m["domain"]] = cid
+            m.setdefault("campaign_join", m.get("outlier_join") or "shared brand theme")
+        campaigns.append(entry)
+        camp_state.append((
+            entry,
+            {_ns_base(n) for m in campaign_members for n in (m.get("ns") or [])
+             if n and not _is_generic_ns(n)},
+            {_asn_num(m.get("asn")) for m in campaign_members
+             if m.get("asn") and not _is_cdn_asn(m.get("asn"))},
+            {str(m["registrar"]) for m in campaign_members
+             if m.get("registrar") and not _is_large_registrar(m.get("registrar"))},
+            lo, hi))
 
     # Infrastructure merge, DISTINCTIVE attributes only.
     W = config.HUNT_CAMPAIGN_WINDOW_DAYS
