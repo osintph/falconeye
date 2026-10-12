@@ -174,6 +174,13 @@ def init_tables() -> None:
               fetched_at INTEGER NOT NULL
             );
 
+            -- Daily urlscan search-request counter (per UTC day), so the Hunt can
+            -- stay under the free plan's daily quota and degrade (fewer pages).
+            CREATE TABLE IF NOT EXISTS hunt_search_usage (
+              day TEXT PRIMARY KEY,
+              count INTEGER NOT NULL
+            );
+
             -- A 24h cache of parsed RDAP answers (and the IANA bootstrap), so a
             -- Hunt re-run reuses them and each registry RDAP server sees few
             -- requests. Keyed by domain, or "__bootstrap__" for the TLD map.
@@ -376,6 +383,35 @@ def ct_cache_put(keyword: str, hosts: list) -> None:
         conn.commit()
     except Exception as exc:  # noqa: BLE001
         log.info("asm ct cache write failed: %s", type(exc).__name__)
+
+
+def urlscan_usage_today() -> int:
+    """urlscan search requests made so far today (UTC)."""
+    import datetime as _dt
+    day = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+    conn = _connect()
+    try:
+        row = conn.execute("SELECT count FROM hunt_search_usage WHERE day = ?", (day,)).fetchone()
+        return int(row[0]) if row else 0
+    except Exception:  # noqa: BLE001
+        return 0
+    finally:
+        conn.close()
+
+
+def urlscan_usage_add(n: int) -> None:
+    import datetime as _dt
+    day = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO hunt_search_usage (day, count) VALUES (?, ?) "
+            "ON CONFLICT(day) DO UPDATE SET count = count + excluded.count", (day, int(n)))
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.info("hunt search usage write failed: %s", type(exc).__name__)
+    finally:
+        conn.close()
 
 
 def rdap_cache_get(domain: str, ttl_seconds: int):

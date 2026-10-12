@@ -139,26 +139,27 @@ def _us_meta(age=100):
             "age_days": age, "server": None, "result_url": "", "observed": set()}
 
 
-async def _ok_urlscan(client, kw):
-    return {f"{kw}-{i}.ph": _us_meta() for i in range(20)}, "answered"
+async def _ok_urlscan(client, kw, legit="", pages=5):
+    return {f"{kw}-{i}.ph": _us_meta() for i in range(20)}, "answered", 1
 
 
-async def _fail_urlscan(client, kw):
-    return {}, "failed"
+async def _fail_urlscan(client, kw, legit="", pages=5):
+    return {}, "failed", 0
 
 
-def test_discover_caps_candidates_and_labels_hits(monkeypatch):
+def test_discover_does_not_fetch_cap_and_labels_hits(monkeypatch):
+    # Resolve-before-cap: discovery keeps every candidate up to the resolve ceiling
+    # (no fetch cap here), so all 20 urlscan hits are present and labelled.
     _fast_crtsh(monkeypatch)
-    monkeypatch.setattr(config, "HUNT_MAX_CANDIDATES", 5)
     monkeypatch.setattr(sources, "_crtsh", _fail_crt)
     monkeypatch.setattr(sources, "_urlscan", _ok_urlscan)
     monkeypatch.setattr(sources, "_nrd", _skip_nrd)
 
     out = asyncio.run(sources.discover("philhealth", "philhealth.gov.ph"))
-    assert len(out["candidates"]) <= 5
-    assert out["nrd_off"] is True
     hits = [c for c in out["candidates"] if c["keyword_hit"]]
-    assert hits and all("urlscan.io" in c["origins"] for c in hits)
+    assert len(hits) == 20  # every urlscan hit kept, not capped at discovery
+    assert all("urlscan.io" in c["origins"] for c in hits)
+    assert len(out["candidates"]) > 20  # permutations are also present (resolve-before-cap)
 
 
 def test_crtsh_failure_alone_does_not_make_incomplete(monkeypatch):
@@ -179,9 +180,9 @@ def test_discover_drops_irrelevant_keyword_hits(monkeypatch):
     async def crt_none(client, kw):
         return set(), "answered", ""
 
-    async def us(client, kw):
+    async def us(client, kw, legit="", pages=5):
         return ({"mmda-ltoncap.net": _us_meta(30), "stammdaten.de": _us_meta(2000),
-                 "emmday.in": _us_meta(500)}, "answered")
+                 "emmday.in": _us_meta(500)}, "answered", 1)
 
     monkeypatch.setattr(sources, "_crtsh", crt_none)
     monkeypatch.setattr(sources, "_urlscan", us)
@@ -210,8 +211,8 @@ def test_discover_excludes_the_legit_domain(monkeypatch):
         # crt.sh returns the legit domain and a lookalike; the legit must be dropped.
         return {"philhealth.gov.ph", "philhealth-login.ph"}, "answered", ""
 
-    async def no_urlscan(client, kw):
-        return {}, "answered"
+    async def no_urlscan(client, kw, legit="", pages=5):
+        return {}, "answered", 0
 
     monkeypatch.setattr(sources, "_crtsh", crt_with_legit)
     monkeypatch.setattr(sources, "_urlscan", no_urlscan)

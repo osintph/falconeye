@@ -24,8 +24,11 @@ No em dashes in this module.
 from __future__ import annotations
 
 import asyncio
+import datetime as dt
+import glob
 import io
 import logging
+import os
 import re
 import zipfile
 
@@ -33,13 +36,14 @@ import httpx
 
 from app import config
 from app.asm import store
+from app.hunt import platforms
 from app.hunt import themes
-from app.scanner.scope import registrable
+from app.scanner.scope import is_platform_suffix, registrable
 from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.17 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.18 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -142,51 +146,92 @@ def _public_result(api_url: str) -> str:
     return (api_url or "").replace("/api/v1/result/", "/result/")
 
 
-async def _urlscan(client: httpx.AsyncClient, keyword: str) -> tuple:
-    """urlscan keyword search (the primary keyword source). Returns (meta, status)
-    where meta maps a registrable domain to its urlscan evidence: first seen, page
-    title, classification labels, hosting ASN, urlscan-reported age, and the public
-    result link. urlscan gives the apex domain directly, so hits collapse cleanly."""
+def _ingest_urlscan(res: dict, meta: dict) -> None:
+    """Fold one urlscan result into *meta*, keyed by the PSL-private registrable of
+    the observed host so a brand-in-subdomain hit on a platform (foo.pages.dev) is
+    its own candidate, not collapsed to the platform apex."""
+    page = res.get("page") or {}
+    task = res.get("task") or {}
+    host = _clean_host(page.get("domain") or task.get("domain") or "")
+    if not host:
+        return
+    reg = registrable(host, private=True)
+    if not reg or is_platform_suffix(reg):
+        return
+    labels = [str(x).lower() for x in (res.get("labels") or [])]
+    age = page.get("apexDomainAgeDays")
+    if age is None:
+        age = page.get("domainAgeDays")
+    m = meta.setdefault(reg, {
+        "first_seen": task.get("time"), "title": page.get("title") or "",
+        "labels": [], "asn": page.get("asnname") or page.get("asn"),
+        "age_days": age, "server": page.get("server"),
+        "result_url": _public_result(res.get("result")), "observed": set(),
+    })
+    m["labels"] = sorted(set(m["labels"]) | set(labels))
+    m["observed"].add(host)
+    if task.get("time") and (not m["first_seen"] or task["time"] < m["first_seen"]):
+        m["first_seen"] = task["time"]
+    if not m["title"] and page.get("title"):
+        m["title"] = page["title"]
+
+
+async def _urlscan(client: httpx.AsyncClient, keyword: str, legit_domain: str,
+                   pages: int) -> tuple:
+    """urlscan keyword search (the primary keyword source), newest first, paginated
+    with search_after up to *pages* pages (size 100, the free-plan maximum),
+    stopping when results get older than the age window. The query is narrowed to
+    the page domain and excludes the legitimate apex. The daily search budget
+    (free plan) is respected: near it, fewer pages. Returns (meta, status,
+    pages_used). meta maps a PSL-private registrable to its urlscan evidence."""
     meta: dict = {}
     headers = {"User-Agent": _UA}
     key = config.URLSCAN_API_KEY
     if key:
         headers["API-Key"] = key
+    legit_apex = registrable(legit_domain) if legit_domain else ""
+    q = f"page.domain:*{keyword}*"
+    if legit_apex:
+        q += f' AND NOT page.apexDomain:"{legit_apex}"'
+    budget = max(0, config.HUNT_URLSCAN_DAILY - store.urlscan_usage_today())
+    eff_pages = min(pages, budget)
+    if eff_pages <= 0:
+        return meta, "daily search budget reached", 0
+    cutoff = (dt.datetime.now(dt.timezone.utc)
+              - dt.timedelta(days=config.HUNT_URLSCAN_AGE_DAYS)).isoformat()
+    search_after = None
+    pages_used = 0
+    status = "answered"
     try:
-        r = await client.get(_URLSCAN, params={"q": f"page.domain:*{keyword}*", "size": 100},
-                             timeout=_TIMEOUT, headers=headers)
-        if r.status_code != 200:
-            return meta, "failed"
-        for res in (r.json().get("results") or []):
-            page = res.get("page") or {}
-            task = res.get("task") or {}
-            apex = _clean_host(page.get("apexDomain") or task.get("apexDomain")
-                               or page.get("domain") or "")
-            observed = _clean_host(page.get("domain") or task.get("domain") or "")
-            if not apex:
-                continue
-            labels = [str(x).lower() for x in (res.get("labels") or [])]
-            age = page.get("apexDomainAgeDays")
-            if age is None:
-                age = page.get("domainAgeDays")
-            m = meta.setdefault(apex, {
-                "first_seen": task.get("time"), "title": page.get("title") or "",
-                "labels": [], "asn": page.get("asnname") or page.get("asn"),
-                "age_days": age, "server": page.get("server"),
-                "result_url": _public_result(res.get("result")), "observed": set(),
-            })
-            m["labels"] = sorted(set(m["labels"]) | set(labels))
-            if observed:
-                m["observed"].add(observed)
-            # Keep the earliest first-seen and a non-empty title if one appears.
-            if task.get("time") and (not m["first_seen"] or task["time"] < m["first_seen"]):
-                m["first_seen"] = task["time"]
-            if not m["title"] and page.get("title"):
-                m["title"] = page["title"]
+        for _ in range(eff_pages):
+            params = {"q": q, "size": config.HUNT_URLSCAN_SIZE}
+            if search_after:
+                params["search_after"] = search_after
+            r = await client.get(_URLSCAN, params=params, timeout=_TIMEOUT, headers=headers)
+            pages_used += 1
+            if r.status_code != 200:
+                status = "failed" if pages_used == 1 else "partial (urlscan error mid-paging)"
+                break
+            results = r.json().get("results") or []
+            if not results:
+                break
+            for res in results:
+                _ingest_urlscan(res, meta)
+            last = results[-1]
+            last_time = (last.get("task") or {}).get("time") or ""
+            sort = last.get("sort")
+            if last_time and last_time < cutoff:  # past the age window, stop
+                break
+            if not sort or len(results) < config.HUNT_URLSCAN_SIZE:
+                break
+            search_after = ",".join(str(x) for x in sort)
     except Exception as exc:  # noqa: BLE001
         log.info("hunt urlscan failed for %s: %s", tag(keyword), type(exc).__name__)
-        return meta, "failed"
-    return meta, "answered"
+        status = "failed" if pages_used == 0 else "partial (urlscan error mid-paging)"
+    finally:
+        if pages_used:
+            store.urlscan_usage_add(pages_used)
+    return meta, status, pages_used
 
 
 def _brand_label(legit_domain: str, keyword: str) -> str:
@@ -225,33 +270,60 @@ def _permutations(legit_domain: str, keyword: str) -> set:
     return {h for h in out if h and not _is_restricted(h) and not _is_legit_or_sub(h, legit_domain)}
 
 
-async def _nrd(client: httpx.AsyncClient, keyword: str) -> tuple:
-    """Optional newly-registered-domain feed (WHOISDS). Off unless HUNT_NRD_URL is
-    set. Accepts a zipped or plain text list of one domain per line."""
-    url = config.HUNT_NRD_URL
-    if not url:
-        return set(), "skipped"
+def _nrd_local(keyword: str) -> tuple:
+    """Keyword-filter the rolling local WHOISDS newly-registered-domain lists that
+    the daily timer stores in HUNT_NRD_DIR (one .txt per day). No network."""
     hosts = set()
+    kw = (keyword or "").lower()
     try:
-        r = await client.get(url, timeout=_TIMEOUT, headers={"User-Agent": _UA})
-        if r.status_code != 200:
+        files = sorted(glob.glob(os.path.join(config.HUNT_NRD_DIR, "*.txt")))
+    except Exception:  # noqa: BLE001
+        files = []
+    files = files[-config.HUNT_NRD_DAYS:]
+    if not files:
+        return hosts, "on, no local data yet (daily timer not run)"
+    for f in files:
+        try:
+            with open(f, encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    h = _clean_host(line)
+                    if h and kw in h:
+                        hosts.add(h)
+        except Exception:  # noqa: BLE001
+            continue
+    return hosts, f"answered ({len(files)} day local store)"
+
+
+async def _nrd(client: httpx.AsyncClient, keyword: str) -> tuple:
+    """Newly-registered-domain feed. A custom HUNT_NRD_URL (zip or text) overrides;
+    otherwise, when HUNT_NRD_ENABLED, the rolling local WHOISDS store is used; else
+    off. Returns (hosts, status)."""
+    url = config.HUNT_NRD_URL
+    if url:
+        hosts = set()
+        try:
+            r = await client.get(url, timeout=_TIMEOUT, headers={"User-Agent": _UA})
+            if r.status_code != 200:
+                return hosts, "failed"
+            body = r.content
+            text = ""
+            if body[:2] == b"PK":
+                with zipfile.ZipFile(io.BytesIO(body)) as z:
+                    for name in z.namelist():
+                        text += z.read(name).decode("utf-8", "replace")
+            else:
+                text = body.decode("utf-8", "replace")
+            for line in text.splitlines():
+                h = _clean_host(line)
+                if h and keyword in h:
+                    hosts.add(h)
+        except Exception as exc:  # noqa: BLE001
+            log.info("hunt NRD feed failed: %s", type(exc).__name__)
             return hosts, "failed"
-        body = r.content
-        text = ""
-        if body[:2] == b"PK":  # a zip
-            with zipfile.ZipFile(io.BytesIO(body)) as z:
-                for name in z.namelist():
-                    text += z.read(name).decode("utf-8", "replace")
-        else:
-            text = body.decode("utf-8", "replace")
-        for line in text.splitlines():
-            h = _clean_host(line)
-            if h and keyword in h:
-                hosts.add(h)
-    except Exception as exc:  # noqa: BLE001
-        log.info("hunt NRD feed failed: %s", type(exc).__name__)
-        return hosts, "failed"
-    return hosts, "answered"
+        return hosts, "answered (custom feed)"
+    if config.HUNT_NRD_ENABLED:
+        return _nrd_local(keyword)
+    return set(), "off"
 
 
 def _has_phish_word(host: str) -> bool:
@@ -272,13 +344,17 @@ def _is_malicious(labels) -> bool:
     return any(x in ("phishing", "malicious", "suspicious") for x in (labels or []))
 
 
-async def discover(keyword: str, legit_domain: str, max_candidates: int = None) -> dict:
-    """Gather, dedupe and cap candidates, collapsed to registrable domains, each
-    with its source labels, observed hostnames, urlscan evidence and brand theme
-    terms. urlscan and CT keyword hits whose brand letters are buried in an
-    unrelated word (and that urlscan did not flag) are dropped as irrelevant and
-    counted. urlscan is the primary keyword source and the only one that gates the
-    run. Returns candidates, source_status, incomplete, nrd_off and counts."""
+async def discover(keyword: str, legit_domain: str, max_candidates: int = None,
+                   operator: bool = False) -> dict:
+    """Gather and dedupe candidates, collapsed to PSL-private registrable domains
+    (so platform subdomains are their own candidate), each with its source labels,
+    observed hostnames, urlscan evidence and brand theme terms. urlscan is the
+    primary keyword source, queried newest-first and paginated. Candidates are NOT
+    fetch-capped here (the engine resolves all, then caps fetches); only a resolve
+    ceiling bounds a permutation flood. urlscan/CT keyword hits whose brand letters
+    are buried in an unrelated word (and that urlscan did not flag) are dropped as
+    irrelevant and counted. Returns candidates, source_status, counts and the
+    urlscan pages used."""
     status = []
     incomplete = False
     origins: dict = {}        # registrable -> set(source labels)
@@ -287,14 +363,15 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None) 
 
     def _add_hosts(hosts, label):
         for h in hosts:
-            reg = registrable(h) or h
-            if not _allowed(reg, legit_domain) or _is_restricted(reg):
+            reg = registrable(h, private=True) or h
+            if not _allowed(reg, legit_domain) or _is_restricted(reg) or is_platform_suffix(reg):
                 continue
             origins.setdefault(reg, set()).add(label)
             observed.setdefault(reg, set())
             if h != reg:
                 observed[reg].add(h)
 
+    pages = config.HUNT_URLSCAN_PAGES_OPERATOR if operator else config.HUNT_URLSCAN_PAGES
     async with httpx.AsyncClient(follow_redirects=True) as client:
         ct_hosts, ct_status, ct_note = await _crtsh(client, keyword)
         _add_hosts(ct_hosts, "crt.sh")
@@ -304,16 +381,18 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None) 
             ct_entry["note"] = ct_note
         status.append(ct_entry)
 
-        us_result, us_status = await _urlscan(client, keyword)
-        for apex, m in us_result.items():
-            if not _allowed(apex, legit_domain) or _is_restricted(apex):
+        us_result, us_status, us_pages = await _urlscan(client, keyword, legit_domain, pages)
+        for reg, m in us_result.items():
+            if not _allowed(reg, legit_domain) or _is_restricted(reg) or is_platform_suffix(reg):
                 continue
-            origins.setdefault(apex, set()).add("urlscan.io")
-            observed.setdefault(apex, set()).update(m.get("observed") or set())
-            us_meta[apex] = {k: v for k, v in m.items() if k != "observed"}
+            origins.setdefault(reg, set()).add("urlscan.io")
+            observed.setdefault(reg, set()).update(m.get("observed") or set())
+            us_meta[reg] = {k: v for k, v in m.items() if k != "observed"}
         status.append({"source": "urlscan.io", "role": "keyword search (primary)",
-                       "status": us_status})
-        if us_status == "failed":
+                       "status": us_status, "pages_used": us_pages,
+                       "daily_used": store.urlscan_usage_today(),
+                       "daily_budget": config.HUNT_URLSCAN_DAILY})
+        if us_status.startswith("failed"):
             incomplete = True
 
         if legit_domain:
@@ -329,12 +408,14 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None) 
 
         nrd_hosts, nrd_status = await _nrd(client, keyword)
         _add_hosts(nrd_hosts, "WHOISDS")
-        status.append({"source": "WHOISDS NRD", "role": "newly registered domains",
+        status.append({"source": "WHOISDS NRD", "role": "newly registered domains (free daily)",
                        "status": nrd_status})
 
     ranked = sorted(origins.items(), key=lambda kv: (_priority(kv[0], kv[1]), len(kv[0]), kv[0]))
-    cap = max_candidates if isinstance(max_candidates, int) and max_candidates > 0 \
-        else config.HUNT_MAX_CANDIDATES
+    # No fetch cap here: resolve-before-cap means every candidate up to the resolve
+    # ceiling reaches DNS resolution, and the engine caps only the fetches.
+    ceiling = max_candidates if isinstance(max_candidates, int) and max_candidates > 0 \
+        else config.HUNT_RESOLVE_MAX
     candidates = []
     keyword_hits = 0
     irrelevant = 0
@@ -343,14 +424,10 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None) 
         meta = us_meta.get(host)
         title = (meta or {}).get("title") or ""
         cls = themes.classify(host, keyword, title)
-        # A keyword hit that is not relevant (brand buried in an unrelated word, or
-        # only in a shared-host registrable), with no urlscan malicious label, is
-        # noise: drop and count it. A permutation is a targeted lookalike by
-        # construction, so it is always kept.
         if is_hit and not cls["relevant"] and not _is_malicious((meta or {}).get("labels")):
             irrelevant += 1
             continue
-        if len(candidates) >= cap:
+        if len(candidates) >= ceiling:
             continue
         if is_hit:
             keyword_hits += 1
@@ -358,6 +435,7 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None) 
             "domain": host, "origins": sorted(orig), "keyword_hit": is_hit,
             "observed": sorted(observed.get(host) or []), "urlscan": meta,
             "themes": cls["themes"], "relevant": cls["relevant"],
+            "platform": platforms.platform_suffix(host),
         })
 
     return {"candidates": candidates, "source_status": status, "incomplete": incomplete,

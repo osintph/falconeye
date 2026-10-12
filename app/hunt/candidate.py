@@ -35,7 +35,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.17"
+_UA = "FalconEye-Hunt/3.38.18"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -82,6 +82,12 @@ _PARK_SIGNALS = ("this domain is for sale", "buy this domain", "domain for sale"
 _MARKETPLACE_SIGNALS = ("add to cart", "add to basket", "proceed to checkout", "shopping cart",
                         "place your order", "payment methods", "we accept", "pay with gcash",
                         "cash on delivery", "view cart")
+# Domain-sale marketplaces a parked or for-sale name redirects to. A landing here
+# is a for-sale page, never a brand clone.
+_MARKETPLACE_HOSTS = ("atom.com", "dan.com", "afternic.com", "sedo.com", "hugedomains.com",
+                      "undeveloped.com", "squadhelp.com", "domainmarket.com", "buydomains.com",
+                      "namecheap.com", "sav.com", "porkbun.com", "dynadot.com",
+                      "parkingcrew.net", "bodis.com", "above.com")
 _PH_SUFFIXES = ("ph", "com.ph", "net.ph", "org.ph", "gov.ph", "edu.ph", "mil.ph")
 _PASSWORD_RE = re.compile(r'type\s*=\s*["\']?\s*password', re.IGNORECASE)
 _PAYMENT_HINTS = ("card number", "cardnumber", "card-number", "cc-number", "cvv", "cvc",
@@ -102,6 +108,7 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
     Brand impersonation is counted only when it relates to the hunted brand or the
     legitimate site, never an unrelated brand."""
     out = {"parked": False, "landing": "", "brand": None, "brand_markers": 0,
+           "brand_imitation": False,
            "ph_indicators": 0, "legit_title_sim": 0, "title": "",
            "has_cred_form": False, "has_payment_form": False, "page_class": ""}
     low = (body or "").lower()
@@ -117,6 +124,17 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
 
     parked = any(s in low for s in _PARK_SIGNALS)
     marketplace = any(s in low for s in _MARKETPLACE_SIGNALS)
+    # A redirect that lands on a domain marketplace (Atom, Dan, Afternic, Sedo and
+    # the like) is a for-sale lander, not a brand page. gcash.online redirects to
+    # domains.atom.com; that is Parked.
+    fhost = ""
+    mm = re.search(r"https?://([^/]+)", final_url or "")
+    if mm:
+        fhost = mm.group(1).lower()
+    on_marketplace = any(fhost == h or fhost.endswith("." + h) for h in _MARKETPLACE_HOSTS)
+    if on_marketplace:
+        parked = True
+        out["landing"] = f"domain-for-sale lander ({fhost})"
     # A marketplace or checkout page that is not imitating the legitimate site is a
     # benign landing, so treat it as parked and suppress the payment-logo markers.
     if marketplace and out["legit_title_sim"] < 70:
@@ -137,7 +155,17 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
                                or (legit_label and (legit_label in bnl or bnl in legit_label))))
         if related:
             out["brand"] = bn
-            out["brand_markers"] = len(brand.get("matched_markers") or [])
+            markers = brand.get("matched_markers") or []
+            name = bn.lower()
+            # Brand imitation requires the brand in page furniture (title or
+            # og:site_name), a favicon match (handled by the probe), or at least
+            # two markers that are NOT just the brand name. The bare brand name and
+            # the hunted keyword never count: naming the brand, including the
+            # domain's own name on its page, is not a clone.
+            qualifying = [m for m in markers
+                          if m not in (name, (keyword or "").lower(), legit_label)]
+            out["brand_markers"] = len(qualifying)
+            out["brand_imitation"] = bool(brand.get("strong_context") or len(qualifying) >= 2)
         out["ph_indicators"] = len(match_ph_indicators(body or "", final_url or ""))
 
     # Credential and payment form detection, and the page class. A page that
@@ -207,7 +235,8 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         "registered": None, "registrar": None, "reg_age_days": None, "reg_note": None,
         "abuse_contact": None, "ct_first_seen": None, "ct_first_seen_age": None,
         "asn": None, "http_status": None, "title": "",
-        "favicon_match": False, "brand_markers": 0, "brand": None, "cloudflare": False,
+        "favicon_match": False, "brand_markers": 0, "brand_imitation": False,
+        "brand": None, "cloudflare": False,
         "ph_indicators": 0, "legit_title_sim": 0, "known_bad": False, "landing": "",
         "parked": False, "fetched": False, "page_class": "", "has_cred_form": False,
         "has_payment_form": False, "evidence": [],
@@ -315,6 +344,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         out["landing"] = assess["landing"]
         out["brand"] = assess["brand"]
         out["brand_markers"] = assess["brand_markers"]
+        out["brand_imitation"] = assess["brand_imitation"]
         out["ph_indicators"] = assess["ph_indicators"]
         out["legit_title_sim"] = assess["legit_title_sim"]
         out["page_class"] = assess["page_class"]

@@ -147,7 +147,34 @@
     {"domain": "gcash-promo4sale.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
      "rec": {"themes": [], "reg_age_days": 400, "reg_date": "2025-09-07", "registrar": "GoDaddy.com, LLC", "ns": ["ns1.dan.com"], "asn": "AS394695", "fetched": true, "page_class": "parked", "parked": true},
      "outcome": "parked", "campaign": false,
-     "note": "a domain-for-sale page naming GCash and Maya; parked, not phishing"}
+     "note": "a domain-for-sale page naming GCash and Maya; parked, not phishing"},
+
+    {"domain": "gcash.online", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 243, "reg_date": "2026-02-11", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "parked": true, "page_class": "parked"},
+     "outcome": "parked", "campaign": false,
+     "note": "v3.38.18: a domain-for-sale lander that redirects to domains.atom.com; Parked, and a bare GCash mention is not imitation"},
+
+    {"domain": "gcash-login.online", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 20, "reg_date": "2026-09-22", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "thin"},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.18: a generated gcash-login combo that resolved and was scored (not capped): young, cheap TLD, blank page, no confirmed phishing content"},
+
+    {"domain": "bdo-online-update-account.pages.dev", "keyword": "bdo", "legit": "bdo.com.ph", "group": "bdo",
+     "rec": {"themes": ["online", "account"], "ct_first_seen_age": 21, "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "has_cred_form": true, "page_class": ""},
+     "outcome": "likely phishing", "campaign": false,
+     "note": "v3.38.18: PSL-private platform subdomain; BDO credential/update-account page, young by first CT cert; platform hosting is generic so it does not form a campaign"},
+
+    {"domain": "bdo-app-online-customer-9569b-0826.pages.dev", "keyword": "bdo", "legit": "bdo.com.ph", "group": "bdo",
+     "rec": {"themes": ["online"], "ct_first_seen_age": 24, "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "has_cred_form": true, "page_class": ""},
+     "outcome": "likely phishing", "campaign": false},
+
+    {"domain": "bdo-online-app-application-d4a93-0417.pages.dev", "keyword": "bdo", "legit": "bdo.com.ph", "group": "bdo",
+     "rec": {"themes": ["online"], "ct_first_seen_age": 26, "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "has_cred_form": true, "page_class": ""},
+     "outcome": "likely phishing", "campaign": false},
+
+    {"domain": "bdo-online-application-app-47bdb-0417.pages.dev", "keyword": "bdo", "legit": "bdo.com.ph", "group": "bdo",
+     "rec": {"themes": ["online"], "ct_first_seen_age": 26, "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "has_cred_form": true, "page_class": ""},
+     "outcome": "likely phishing", "campaign": false}
 
   ]
 }

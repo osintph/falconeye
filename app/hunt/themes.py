@@ -158,12 +158,14 @@ def theme_variants(text: str, keyword: str) -> list:
 
 
 def _reg_label(domain: str) -> str:
-    reg = registrable(domain) or domain
+    # PSL-private aware: a platform subdomain (foo.pages.dev) keeps its own label
+    # so the brand in the subdomain is seen, not the platform apex.
+    reg = registrable(domain, private=True) or domain
     return reg.split(".", 1)[0]
 
 
 def cheap_tld(domain: str) -> bool:
-    reg = registrable(domain) or domain
+    reg = registrable(domain, private=True) or domain
     suffix = reg.split(".", 1)[1] if "." in reg else ""
     # Any label of the suffix in the cheap set (covers .sbs and foo.sbs).
     return any(part in CHEAP_TLDS for part in suffix.split("."))

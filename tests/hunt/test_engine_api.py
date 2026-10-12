@@ -26,7 +26,7 @@ def test_hunt_package_never_port_scans():
 
 
 def test_engine_builds_a_payload(monkeypatch):
-    async def fdisc(kw, legit, max_candidates=None):
+    async def fdisc(kw, legit, max_candidates=None, operator=False):
         return {"candidates": [{"domain": "philhealth-refund.ph", "origins": ["crt.sh"],
                                 "keyword_hit": True},
                                {"domain": "old.example.com", "origins": ["dnstwist"],
@@ -78,7 +78,7 @@ def test_engine_builds_a_payload(monkeypatch):
 def test_engine_drops_wildcard_candidates(monkeypatch):
     # A TLD that answers every label with the same IP is a registry wildcard; a
     # candidate matching that control answer is not registered and is not a row.
-    async def fdisc(kw, legit, max_candidates=None):
+    async def fdisc(kw, legit, max_candidates=None, operator=False):
         return {"candidates": [{"domain": "mmdalogin.ph", "origins": ["dnstwist"],
                                 "keyword_hit": False},
                                {"domain": "mmda-real.com", "origins": ["dnstwist"],
@@ -128,7 +128,7 @@ _NCAP = ["mmda-ltoncap.net", "mmdaltoncaps.com", "mmdancap-ncr.icu", "ncapmmdar.
 def test_engine_detects_ncap_campaign_and_drops_noise(monkeypatch):
     # The live LTO/NCAP fine-lure set must come out as one Likely Phishing cluster;
     # emmday.in (no theme, no campaign, no verdict) must not outrank it.
-    async def fdisc(kw, legit, max_candidates=None):
+    async def fdisc(kw, legit, max_candidates=None, operator=False):
         cands = []
         for d in _NCAP:
             cands.append({"domain": d, "origins": ["urlscan.io"], "keyword_hit": True,
@@ -205,7 +205,7 @@ def test_backfills_registrar_for_a_themed_probe_miss(monkeypatch):
     # The concurrent probe returns a themed candidate with no registrar (RDAP cut
     # off under load). The engine backfills it from the Hunt RDAP client before
     # clustering, so the campaign member is not left "unknown".
-    async def fdisc(kw, legit, max_candidates=None):
+    async def fdisc(kw, legit, max_candidates=None, operator=False):
         return {"candidates": [{"domain": "mmdancap.icu", "origins": ["urlscan"],
                                 "keyword_hit": True, "themes": ["ncap"]}],
                 "source_status": [], "incomplete": False, "nrd_off": True,
@@ -248,7 +248,7 @@ def test_shown_date_is_rdap_not_urlscan_when_they_differ(monkeypatch):
     # first-seen is carried separately. Never today-minus-urlscan-age.
     import datetime as dt
 
-    async def fdisc(kw, legit, max_candidates=None):
+    async def fdisc(kw, legit, max_candidates=None, operator=False):
         return {"candidates": [{"domain": "philhealth-login.com", "origins": ["urlscan"],
                                 "keyword_hit": True,
                                 "urlscan": {"first_seen": "2026-09-20T00:00:00Z", "age_days": 22}}],

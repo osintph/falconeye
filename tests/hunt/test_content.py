@@ -20,12 +20,22 @@ def test_unrelated_brand_is_not_counted_as_impersonation():
     assert out["brand_markers"] == 0
 
 
-def test_hunted_brand_content_is_counted():
+def test_hunted_brand_in_title_is_imitation():
+    # The brand in the page title is strong-context imitation, even if the bare
+    # brand name is the only marker.
     body = "<title>GCash Login</title> gcash mynt please login to your gcash wallet account"
-    # Hunting gcash: the brand content now relates to the hunted brand.
     out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
-    assert out["brand_markers"] >= 1
+    assert out["brand_imitation"] is True
     assert out["brand"] == "GCash"
+
+
+def test_bare_brand_mention_is_not_imitation():
+    # A page that merely names the brand in body text (no title or og:site_name, no
+    # second non-name marker) is NOT imitation: a single "gcash" mention does not
+    # make a clone. This is the gcash.online case.
+    body = "<p>This article explains how to use gcash safely. Read more about gcash.</p>"
+    out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
+    assert out["brand_imitation"] is False
 
 
 def test_title_imitation_of_the_legit_site_is_detected():

@@ -98,11 +98,15 @@ def _is_generic_ns(ns: str) -> bool:
 
 def _is_large_registrar(name) -> bool:
     low = str(name or "").lower()
+    # A platform placeholder (platform: pages.dev) is shared hosting, never a
+    # distinctive registrar: treat it as non-distinctive like the large registrars.
+    if low.startswith("platform:"):
+        return True
     return any(tok in low for tok in _LARGE_REGISTRARS)
 
 
 def _tld(domain: str) -> str:
-    reg = registrable(domain) or domain
+    reg = registrable(domain, private=True) or domain
     return reg.split(".", 1)[1] if "." in reg else ""
 
 

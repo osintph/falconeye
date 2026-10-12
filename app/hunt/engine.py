@@ -26,6 +26,7 @@ import httpx
 from app import config
 from app.hunt import candidate as candidate_mod
 from app.hunt import cluster as cluster_mod
+from app.hunt import platforms as platforms_mod
 from app.hunt import rdap as rdap_mod
 from app.hunt import score as score_mod
 from app.hunt import sources
@@ -64,7 +65,8 @@ async def _backfill_registrars(records: list) -> None:
     """For themed candidates the concurrent probe left without a registrar, look
     RDAP up again on its own (no competing CT/HTTP/ASN budget, cache-aware) so a
     campaign member is "unknown" only when the registry truly publishes none."""
-    targets = [r for r in records if r.get("themes") and not r.get("registrar")]
+    targets = [r for r in records if r.get("themes") and not r.get("registrar")
+               and not r.get("platform")]
     if not targets:
         return
     async with httpx.AsyncClient(follow_redirects=True) as client:
@@ -97,10 +99,11 @@ async def execute(scan: dict) -> dict:
     legit = (scan.get("engagement") or "").strip().lower()
     op = bool(scan.get("operator"))
     engagement = (scan.get("grant_id") or "").strip() if op else ""
-    max_cand = config.HUNT_OPERATOR_MAX_CANDIDATES if op else config.HUNT_MAX_CANDIDATES
     max_fetch = config.HUNT_OPERATOR_MAX_FETCHES if op else config.HUNT_MAX_FETCHES
 
-    disc = await sources.discover(keyword, legit, max_candidates=max_cand)
+    # Resolve-before-cap: discovery returns every candidate up to the resolve
+    # ceiling (no fetch cap here); the fetch cap is applied below, after DNS.
+    disc = await sources.discover(keyword, legit, operator=op)
     cands = disc["candidates"]
     by_domain = {c["domain"]: c for c in cands}
 
@@ -152,9 +155,12 @@ async def execute(scan: dict) -> dict:
         wildcard_count = len(wildcard_hits)
         not_registered = len(cands) - len(resolving) - len(taken_down) - wildcard_count
 
-        # Fetch budget: resolving candidates, themed and keyword hits first.
-        resolving.sort(key=lambda c: (0 if c.get("themes") else 1,
-                                      0 if c["keyword_hit"] else 1, len(c["domain"])))
+        # Fetch budget, applied only after every candidate has resolved: observed
+        # keyword hits first, then resolving phishing-word combos (and themed
+        # names), then other resolving permutations.
+        resolving.sort(key=lambda c: (0 if c["keyword_hit"] else 1,
+                                      0 if (c.get("themes") or sources._has_phish_word(c["domain"])) else 1,
+                                      len(c["domain"])))
         to_fetch = resolving[:max_fetch]
         dns_only = resolving[max_fetch:]
         not_fetched = len(dns_only)
@@ -191,16 +197,27 @@ async def execute(scan: dict) -> dict:
         rec["observed_hosts"] = c.get("observed") or []
         rec["keyword_hit"] = c.get("keyword_hit")
         rec["origins"] = c.get("origins") or []
+        rec["platform"] = c.get("platform")
+        # Platform subdomains (foo.pages.dev) have no per-name registration date
+        # (the platform owns the apex), so age comes from the first CT certificate
+        # or urlscan first-seen, labelled, and the abuse report goes to the
+        # platform channel. A registered domain uses its RDAP/whois date.
+        if rec["platform"]:
+            rec["registered"] = None
+            rec["registrar"] = rec.get("registrar") or f"platform: {rec['platform']}"
+            rec["abuse_contact"] = rec.get("abuse_contact") or platforms_mod.platform_abuse(dom)
+            rec["reg_note"] = f"{rec['platform']} subdomain (platform owns the domain)"
         # The shown registration date comes from RDAP or whois (the real date); the
         # age is computed from that date. urlscan first-seen is never the shown
         # date (shown separately, labelled). When there is no registration date,
         # the first CT certificate is the labelled "first live" fallback.
-        rec["reg_date"] = _reg_date(rec.get("registered"))
+        rec["reg_date"] = None if rec["platform"] else _reg_date(rec.get("registered"))
         if rec.get("reg_date"):
             rec["reg_age_days"] = _age_from(rec["reg_date"])
-        elif rec.get("reg_age_days") is None and isinstance(rec.get("ct_first_seen_age"), int):
+        elif isinstance(rec.get("ct_first_seen_age"), int):
             rec["reg_age_days"] = rec["ct_first_seen_age"]
-        elif rec.get("reg_age_days") is None and isinstance(urls.get("age_days"), int):
+        elif not rec["platform"] and rec.get("reg_age_days") is None \
+                and isinstance(urls.get("age_days"), int):
             rec["reg_age_days"] = urls["age_days"]  # young determination only, no shown date
         if not rec.get("asn") and urls.get("asn"):
             rec["asn"] = urls["asn"]
@@ -272,8 +289,9 @@ async def execute(scan: dict) -> dict:
         "reported. Scoring weighs theme terms, campaign membership, urlscan "
         "verdicts, recent registration, cheap abuse-heavy TLDs and page content "
         "imitating the brand. A domain urlscan saw recently that no longer resolves "
-        "is kept as possibly taken down. No port scans, no crawling. Caps this run: "
-        f"{max_cand} candidates, {max_fetch} fetched.")
+        "is kept as possibly taken down. No port scans, no crawling. Every candidate "
+        "up to the resolve ceiling is DNS-resolved; the cap is on fetches only. "
+        f"This run: resolve ceiling {config.HUNT_RESOLVE_MAX}, {max_fetch} fetched.")
 
     sline = (f"{pipeline['discovered']} discovered, {pipeline['considered']} considered: "
              f"{pipeline['resolved']} registered, {pipeline['taken_down']} possibly taken down, "

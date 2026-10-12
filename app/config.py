@@ -403,9 +403,27 @@ HUNT_CAMPAIGN_WINDOW_DAYS = max(1, int(getenv_clean("HUNT_CAMPAIGN_WINDOW_DAYS",
 HUNT_OPERATOR_PER_DAY = max(1, int(getenv_clean("HUNT_OPERATOR_PER_DAY", "200")))
 HUNT_OPERATOR_MAX_CANDIDATES = max(10, int(getenv_clean("HUNT_OPERATOR_MAX_CANDIDATES", "300")))
 HUNT_OPERATOR_MAX_FETCHES = max(5, int(getenv_clean("HUNT_OPERATOR_MAX_FETCHES", "120")))
-# Newly registered domain feed (WHOISDS). DEFAULT OFF: set this to a URL that
-# returns a daily list of newly registered domains (plain text or a zipped text
-# list), which WHOISDS provides to an account. Until set, new-registration
-# coverage is off and the report says so. Verified 2026-10-11: WHOISDS lists are
-# free and permissively reusable but automated download needs an account.
+
+# urlscan depth: paginate newest-first with search_after up to a page budget,
+# stopping when results get older than the age window. size is 100 on the free
+# plan. Daily search budget guards the free plan quota; near it, fewer pages.
+HUNT_URLSCAN_SIZE = max(1, min(100, int(getenv_clean("HUNT_URLSCAN_SIZE", "100"))))
+HUNT_URLSCAN_PAGES = max(1, int(getenv_clean("HUNT_URLSCAN_PAGES", "5")))
+HUNT_URLSCAN_PAGES_OPERATOR = max(1, int(getenv_clean("HUNT_URLSCAN_PAGES_OPERATOR", "20")))
+HUNT_URLSCAN_AGE_DAYS = max(1, int(getenv_clean("HUNT_URLSCAN_AGE_DAYS", "180")))
+HUNT_URLSCAN_DAILY = max(1, int(getenv_clean("HUNT_URLSCAN_DAILY", "1000")))
+
+# Resolve-before-cap: DNS-resolve up to this many generated+observed candidates,
+# then cap only the fetches (HUNT_MAX_FETCHES / operator). The ceiling bounds a
+# pathological permutation flood; normal hunts stay well under it.
+HUNT_RESOLVE_MAX = max(100, int(getenv_clean("HUNT_RESOLVE_MAX", "2000")))
+
+# Newly registered domain feed (WHOISDS free daily list, no account). ON by
+# default: a daily systemd timer fetches the free zips to HUNT_NRD_DIR (rolling
+# HUNT_NRD_DAYS) and Hunt keyword-filters them. The list is overwhelmingly gTLD;
+# .ph coverage is negligible. HUNT_NRD_URL still overrides with a custom feed.
+# Verified 2026-10-11: the free list is reusable including commercially, no login.
+HUNT_NRD_ENABLED = getenv_clean("HUNT_NRD_ENABLED", "true").lower() != "false"
+HUNT_NRD_DIR = getenv_clean("HUNT_NRD_DIR", "/opt/falconeye/data/nrd")
+HUNT_NRD_DAYS = max(1, int(getenv_clean("HUNT_NRD_DAYS", "30")))
 HUNT_NRD_URL = getenv_clean("HUNT_NRD_URL")
