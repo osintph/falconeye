@@ -92,14 +92,14 @@
      "note": "a .ph registry wildcard answer is dropped as a wildcard in discovery; on the scoring side it is a bare resolving host with no content, never Likely"},
 
     {"domain": "philhealthhub.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
-     "rec": {"themes": [], "reg_age_days": 65, "reg_date": "2026-08-08", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "", "has_cred_form": true, "has_payment_form": true},
-     "outcome": "likely phishing", "campaign": false,
-     "note": "credential and payment form on a young domain"},
+     "rec": {"themes": [], "reg_age_days": 65, "reg_date": "2026-08-08", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "informational", "has_cred_form": false, "has_payment_form": false},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "v3.38.24: an informational WordPress guide ('PhilHealth Guide 2026'); its only forms are a search box and cookie checkboxes, so under the strict capture rule there is no credential or payment field. The prior Likely was a loose-detection false positive (a stray type=password substring in the page). Relabelled with owner approval."},
 
     {"domain": "philhealthservices.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
-     "rec": {"themes": [], "reg_age_days": 79, "reg_date": "2026-07-25", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "", "has_cred_form": true},
-     "outcome": "likely phishing", "campaign": false,
-     "note": "credential form on a young domain"},
+     "rec": {"themes": [], "reg_age_days": 79, "reg_date": "2026-07-25", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "informational", "has_cred_form": false},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "v3.38.24: an informational wellness site; its only forms are a search box, a contribution calculator and a comment form, none of which is credential capture. The prior Likely was a loose-detection false positive. Relabelled with owner approval."},
 
     {"domain": "philhealthmember.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
      "rec": {"themes": ["member"], "reg_age_days": 23, "reg_date": "2026-09-19", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "thin"},
@@ -259,7 +259,17 @@
     {"domain": "gcash-rewards.net", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
      "rec": {"themes": [], "reg_age_days": 300, "reg_date": "2025-12-16", "registrar": "NameSilo, LLC", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": false, "has_payment_form": false, "brand_imitation": true, "identity_clone": true, "page_class": "imitation", "fetched": true},
      "outcome": "brand abuse", "campaign": false,
-     "note": "v3.38.24: og:site_name clones GCash (identity clone) but no credential or payment field in any fetch -> Brand abuse, not Likely"}
+     "note": "v3.38.24: og:site_name clones GCash (identity clone) but no credential or payment field in any fetch -> Brand abuse, not Likely"},
+
+    {"domain": "gcash1.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 86, "reg_date": "2026-07-18", "registrar": "Dynadot Inc", "ns": ["ns1.dynadot.com"], "asn": "AS13335", "has_cred_form": false, "has_payment_form": false, "brand_imitation": true, "identity_clone": true, "page_class": "imitation", "fetched": true},
+     "outcome": "brand abuse", "campaign": false,
+     "note": "v3.38.24: a casino page ('GCASH Nustar Online') that sets og:site_name='GCASH' (identity clone of gcash.com); both the desktop and mobile fetch show only a WordPress search box, no credential field -> Brand abuse (item 4 evidence)"},
+
+    {"domain": "gcashd.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 86, "reg_date": "2026-07-18", "registrar": "Dynadot Inc", "ns": ["ns1.dynadot.com"], "asn": "AS13335", "has_cred_form": false, "has_payment_form": false, "brand_imitation": true, "identity_clone": true, "page_class": "imitation", "fetched": true},
+     "outcome": "brand abuse", "campaign": false,
+     "note": "v3.38.24: a casino page ('GCASH Playtime Casino') that sets og:site_name='GCASH' (identity clone of gcash.com); both fetches show only a search box, no credential field -> Brand abuse (item 4 evidence)"}
 
   ]
 }
