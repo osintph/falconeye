@@ -50,7 +50,7 @@ def test_engine_builds_a_payload(monkeypatch):
             return {"domain": dom, "resolves": True, "has_mx": True, "fetched": True,
                     "reg_age_days": 3, "fresh_cert": True, "brand_markers": 2, "ph_indicators": 3,
                     "favicon_match": True, "cloudflare": False, "title": "Login", "parked": False,
-                    "legit_title_sim": 95, "known_bad": False,
+                    "legit_title_sim": 95, "known_bad": False, "has_cred_form": True,
                     "evidence": [], "registered": "2026-10-08", "registrar": "X", "asn": 1}
         return {"domain": dom, "resolves": True, "has_mx": False, "fetched": True,
                 "reg_age_days": 3000, "evidence": [], "parked": False}

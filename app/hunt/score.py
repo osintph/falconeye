@@ -169,30 +169,30 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     c["score"] = score
 
     informational = page_class == "informational"
-    phish_content = bool(brand_imitation or known_bad or urlscan_malicious or form_phishing)
     # A theme hit drives Likely on its own only when it is an EXACT theme term, not
     # a maintained spelling variant: a variant match is never the sole evidence for
     # Likely Phishing (it still boosts score and clustering, and a variant-themed
     # domain can be Likely via a corroborated campaign or real phishing content).
     theme_recent_live = bool(exact_theme_hit and young and fetched and not informational
                              and not c.get("parked"))
-    # A corroborated campaign requires a distinctive shared attribute (generic
-    # consumer hosting and CDN or cloud ASNs do not count), so membership is strong
-    # evidence on its own: a member is Likely even if it currently serves an
-    # informational page (campaigns cloak benign content to our vantage). The
-    # protection against boosting informational name-matches is that they never
-    # become campaign members when the only thing shared is generic hosting.
-    # Exception: a gambling or payment-method page that names the brand (and does
-    # not imitate its login or app) is brand-referencing even inside a cluster, so
-    # campaign membership does not make it Likely.
+    # v3.38.24 verdict model. Impersonation (an identity clone of the title,
+    # og:site_name or og:title, or a favicon match) on its own is NOT Likely: without
+    # a credential or payment field in any fetch it is "Brand abuse". Likely Phishing
+    # requires impersonation PLUS capture (form_phishing, which pairs a capture field
+    # with imitation or a young registration), or a corroborated campaign, or a
+    # malicious listing (URLhaus / urlscan), or a young geofenced or recently-live
+    # themed page. A gambling or payment-method page that names the brand (payment_ref)
+    # is never Likely or Brand abuse on membership alone.
     payment_ref = bool(c.get("payment_ref"))
-    likely = bool((campaign and not payment_ref) or phish_content or theme_recent_live)
+    likely = bool((campaign and not payment_ref) or known_bad or urlscan_malicious
+                  or form_phishing or theme_recent_live)
+    brand_abuse = bool(brand_imitation and not form and not likely and not payment_ref)
 
     # Irrelevant noise: a short-brand close permutation, over two years old, with no
     # theme and no content or campaign signal (mmdata.com.br). Dropped by the engine.
     short_brand = len(kw) <= 4
-    if (short_brand and close_perm and old and not theme_hit and not phish_content
-            and not campaign):
+    if (short_brand and close_perm and old and not theme_hit and not likely
+            and not brand_abuse):
         c["drop_noise"] = True
 
     if taken_down:
@@ -204,6 +204,8 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
         c["verdict"] = "parked"
     elif likely:
         c["verdict"] = "likely phishing"
+    elif brand_abuse:
+        c["verdict"] = "brand abuse"
     elif informational:
         c["verdict"] = "brand-referencing"
     elif old and not brand_imitation and not campaign and not known_bad and not urlscan_malicious:

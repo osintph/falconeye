@@ -35,7 +35,13 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.23"
+_UA = "FalconEye-Hunt/3.38.24"
+# Two realistic browser User-Agents, so a page that cloaks by client can be fetched
+# the way a desktop and a mobile visitor would see it (content-variance check).
+_UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+               "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
+_UA_MOBILE = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) "
+              "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1")
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -145,9 +151,70 @@ _GAMBLING = ("casino", "slot machine", "slots", "jackpot", "sportsbook", "sports
              "online casino", "free spins", "jili", "pgsoft", "sabong", "lucky draw",
              "deposit and withdraw", "min deposit", "play now and win")
 _PH_SUFFIXES = ("ph", "com.ph", "net.ph", "org.ph", "gov.ph", "edu.ph", "mil.ph")
-_PASSWORD_RE = re.compile(r'type\s*=\s*["\']?\s*password', re.IGNORECASE)
-_PAYMENT_HINTS = ("card number", "cardnumber", "card-number", "cc-number", "cvv", "cvc",
-                  "credit card", "card holder", "cardholder", "expiry", "expiration date")
+_FIELD_TAG_RE = re.compile(r"<(?:input|select|textarea)\b[^>]*>", re.IGNORECASE)
+_LABEL_RE = re.compile(r"<label\b[^>]*>(.*?)</label>", re.IGNORECASE | re.DOTALL)
+_TYPE_VAL = re.compile(r'type\s*=\s*["\']?\s*([a-z]+)', re.IGNORECASE)
+_ATTR_VAL = re.compile(r'(?:name|id|placeholder|aria-label)\s*=\s*["\']([^"\']*)["\']',
+                       re.IGNORECASE)
+# A field asks for a secret only when its name, id, label or placeholder uses one of
+# these words. Deliberately specific so a search box, newsletter or contact field is
+# never mistaken for credential capture.
+_CRED_KW = re.compile(r"(?:\bm?pin\b|\botp\b|password|passcode|passwd)", re.IGNORECASE)
+_PAY_KW = re.compile(r"(?:card\s*number|cardnumber|card[_-]?no\b|ccnum|\bcvv\b|\bcvc\b|"
+                     r"security\s*code|\bexpiry\b|expiration|exp[-_\s]?(?:date|month|yr|year))",
+                     re.IGNORECASE)
+
+
+def detect_capture(body: str) -> dict:
+    """Credential or payment capture by the v3.38.24 rule: an input type=password, or
+    a field whose name, id, label or placeholder asks for a PIN, MPIN, OTP, password,
+    card number, CVV or expiry. Search, newsletter and contact fields never match.
+    Returns {has_cred, has_pay, cred_trigger, pay_trigger}, each trigger naming the
+    field that matched."""
+    out = {"has_cred": False, "has_pay": False, "cred_trigger": "", "pay_trigger": ""}
+    if not body:
+        return out
+    fields = _FIELD_TAG_RE.findall(body)
+    for tag_html in fields:
+        tmatch = _TYPE_VAL.search(tag_html)
+        if tmatch and tmatch.group(1).lower() == "password":
+            out["has_cred"] = out["has_cred"] or True
+            out["cred_trigger"] = out["cred_trigger"] or "input type=password"
+            continue
+        attrs = " ".join(_ATTR_VAL.findall(tag_html)).strip()
+        cm = _CRED_KW.search(attrs)
+        if cm and not out["has_cred"]:
+            out["has_cred"] = True
+            out["cred_trigger"] = f"field '{cm.group(0).lower()}' ({attrs[:40]})"
+        pm = _PAY_KW.search(attrs)
+        if pm and not out["has_pay"]:
+            out["has_pay"] = True
+            out["pay_trigger"] = f"field '{pm.group(0).lower()}' ({attrs[:40]})"
+    # A label asking for a secret, paired with any input on the page.
+    if fields:
+        for raw in _LABEL_RE.findall(body):
+            txt = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", raw)).strip()
+            if not out["has_cred"] and _CRED_KW.search(txt):
+                out["has_cred"] = True
+                out["cred_trigger"] = f"label '{txt[:40]}'"
+            if not out["has_pay"] and _PAY_KW.search(txt):
+                out["has_pay"] = True
+                out["pay_trigger"] = f"label '{txt[:40]}'"
+    return out
+
+
+def _fetch_summary(a: dict) -> str:
+    """A short human summary of one fetch, for the content-variance evidence line."""
+    bits = []
+    t = (a.get("title") or "").strip()
+    if t:
+        bits.append(f"titled '{t[:50]}'")
+    bits.append(a.get("page_class") or "page")
+    if a.get("has_cred_form"):
+        bits.append("credential field")
+    if a.get("has_payment_form"):
+        bits.append("payment field")
+    return ", ".join(bits)
 # Positive evidence that a page is a real informational site, not a blank shell.
 _INFO_HINTS = ("<article", "<nav", "blog", "read more", "posted on", "published",
                "comment", "newsletter", "privacy policy", "about us", "terms of",
@@ -171,7 +238,8 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
            "brand_imitation": False, "payment_ref": False,
            "ph_indicators": 0, "legit_title_sim": 0, "title": "",
            "og_site_name": "", "og_title": "", "identity_clone": False, "clone_basis": "",
-           "has_cred_form": False, "has_payment_form": False, "page_class": ""}
+           "has_cred_form": False, "has_payment_form": False, "cred_trigger": "",
+           "pay_trigger": "", "page_class": ""}
     low = (body or "").lower()
 
     m = _TITLE_RE.search(body or "")
@@ -272,16 +340,16 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
         out["brand_imitation"] = bool(clone or og_brand or len(qualifying) >= 2)
         out["ph_indicators"] = len(match_ph_indicators(body or "", final_url or ""))
 
-    # Credential and payment form detection, and the page class. A page that
-    # collects a password or card, or imitates the legit title, is phishing
-    # content; a fetched page with none of that is informational (brand
-    # referencing), not phishing on its name alone.
-    has_cred = bool(_PASSWORD_RE.search(body or "")) or (
-        "<form" in low and "password" in low
-        and any(s in low for s in ("login", "log in", "sign in", "signin")))
-    has_pay = ("<form" in low or "<input" in low) and any(h in low for h in _PAYMENT_HINTS)
+    # Credential and payment capture (the v3.38.24 rule: a password field, or a field
+    # that asks for a PIN, MPIN, OTP, password, card number, CVV or expiry). A search
+    # box, newsletter or contact field never counts.
+    cap = detect_capture(body or "")
+    has_cred = cap["has_cred"]
+    has_pay = cap["has_pay"]
     out["has_cred_form"] = has_cred
     out["has_payment_form"] = has_pay
+    out["cred_trigger"] = cap["cred_trigger"]
+    out["pay_trigger"] = cap["pay_trigger"]
 
     # Positive informational-content test: a real article or site, not a shell.
     text = re.sub(r"<[^>]+>", " ", body or "")
@@ -369,7 +437,8 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         "payment_ref": False, "brand": None, "cloudflare": False,
         "ph_indicators": 0, "legit_title_sim": 0, "known_bad": False, "landing": "",
         "parked": False, "fetched": False, "page_class": "", "has_cred_form": False,
-        "has_payment_form": False, "evidence": [],
+        "has_payment_form": False, "identity_clone": False, "content_varies": False,
+        "cred_trigger": "", "evidence": [],
     }
     if not resolves:
         out["evidence"].append("does not resolve")
@@ -448,58 +517,113 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
     except Exception:  # noqa: BLE001
         pass
 
-    # Exactly one homepage GET, https then http.
-    body = ""
-    for scheme in ("https", "http"):
-        try:
-            res = await safe_fetch(f"{scheme}://{domain}/", method="GET",
-                                   headers={"User-Agent": _UA}, timeout=_HTTP_TIMEOUT,
-                                   max_redirects=4, max_bytes=300_000)
-            out["http_status"] = res.get("status")
-            body = res.get("body", "") or ""
-            out["final_url"] = res.get("url_final")
-            break
-        except SafeFetchError:
-            continue
-        except Exception:  # noqa: BLE001
-            continue
+    # Homepage GET as a desktop browser (https then http). A page that shows brand
+    # impersonation or a capture field is fetched a second time as a mobile browser,
+    # so a site that cloaks by client, or shows a credential field to only one of
+    # them, is caught (item 2).
+    async def _fetch(ua):
+        for scheme in ("https", "http"):
+            try:
+                res = await safe_fetch(f"{scheme}://{domain}/", method="GET",
+                                       headers={"User-Agent": ua}, timeout=_HTTP_TIMEOUT,
+                                       max_redirects=4, max_bytes=300_000)
+                return (res.get("body", "") or "", res.get("url_final"), res.get("status"))
+            except SafeFetchError:
+                continue
+            except Exception:  # noqa: BLE001
+                continue
+        return "", None, None
+
+    body, final1, status1 = await _fetch(_UA_DESKTOP)
+    out["http_status"] = status1
+    out["final_url"] = final1
 
     if body:
         if cloudflare_detect.detect_cloudflare_challenge(body):
             out["cloudflare"] = True
-        assess = assess_content(body, out.get("final_url") or f"https://{domain}/",
-                                keyword, legit_domain, legit_title,
-                                legit_og_site_name=legit_og_site,
-                                legit_og_title=legit_og_title, host=domain)
-        out["title"] = assess["title"]
-        out["identity_clone"] = assess["identity_clone"]
-        out["parked"] = assess["parked"]
-        out["landing"] = assess["landing"]
-        out["brand"] = assess["brand"]
-        out["brand_markers"] = assess["brand_markers"]
-        out["brand_imitation"] = assess["brand_imitation"]
-        out["payment_ref"] = assess["payment_ref"]
-        out["ph_indicators"] = assess["ph_indicators"]
-        out["legit_title_sim"] = assess["legit_title_sim"]
-        out["page_class"] = assess["page_class"]
-        out["has_cred_form"] = assess["has_cred_form"]
-        out["has_payment_form"] = assess["has_payment_form"]
-        if assess["parked"]:
-            out["evidence"].append(f"parking or landing page ({assess['landing']})")
-        if assess["has_cred_form"]:
-            out["evidence"].append("collects a password (credential form)")
-        if assess["has_payment_form"]:
-            out["evidence"].append("collects card or payment details")
+
+        def _assess(b, furl):
+            return assess_content(b, furl or f"https://{domain}/", keyword, legit_domain,
+                                  legit_title, legit_og_site_name=legit_og_site,
+                                  legit_og_title=legit_og_title, host=domain)
+
+        a1 = _assess(body, final1)
+        # Second fetch only for the content-based candidates (impersonation or a
+        # capture field), where cloaking changes the verdict; campaign membership is
+        # decided from infrastructure and needs no second content fetch.
+        a2 = None
+        if (a1["brand_imitation"] or a1["identity_clone"] or a1["has_cred_form"]
+                or a1["has_payment_form"]):
+            body2, final2, _ = await _fetch(_UA_MOBILE)
+            if body2 and not cloudflare_detect.detect_cloudflare_challenge(body2):
+                a2 = _assess(body2, final2)
+
+        # Merge the two assessments: a malicious signal in either fetch counts, and
+        # capture names the fetch it appeared in. Display fields come from the desktop
+        # fetch unless the mobile fetch is the impersonating or capturing one.
+        both = [x for x in (a1, a2) if x]
+        cred_fetch = ("desktop" if a1["has_cred_form"]
+                      else ("mobile" if (a2 and a2["has_cred_form"]) else ""))
+        pay_fetch = ("desktop" if a1["has_payment_form"]
+                     else ("mobile" if (a2 and a2["has_payment_form"]) else ""))
+        has_cred = any(x["has_cred_form"] for x in both)
+        has_pay = any(x["has_payment_form"] for x in both)
+        imitation = any(x["brand_imitation"] for x in both)
+        clone = any(x["identity_clone"] for x in both)
+        primary = next((x for x in both if x["brand_imitation"] or x["has_cred_form"]
+                        or x["has_payment_form"]), a1)
+        cred_trigger = (a1["cred_trigger"] if a1["has_cred_form"]
+                        else (a2["cred_trigger"] if (a2 and a2["has_cred_form"]) else ""))
+        pay_trigger = (a1["pay_trigger"] if a1["has_payment_form"]
+                       else (a2["pay_trigger"] if (a2 and a2["has_payment_form"]) else ""))
+
+        out["title"] = a1["title"]
+        out["identity_clone"] = clone
+        out["parked"] = a1["parked"]
+        out["landing"] = primary["landing"] or a1["landing"]
+        out["brand"] = primary["brand"] or a1["brand"]
+        out["brand_markers"] = max(x["brand_markers"] for x in both)
+        out["brand_imitation"] = imitation
+        out["payment_ref"] = a1["payment_ref"] and not (imitation or has_cred or has_pay)
+        out["ph_indicators"] = a1["ph_indicators"]
+        out["legit_title_sim"] = max(x["legit_title_sim"] for x in both)
+        out["page_class"] = ("imitation" if (clone or out["legit_title_sim"] >= 80)
+                             else primary["page_class"])
+        out["has_cred_form"] = has_cred
+        out["has_payment_form"] = has_pay
+        out["cred_trigger"] = cred_trigger
+
+        # Material difference between the two fetches is possible cloaking.
+        if a2 is not None and (a1["title"] != a2["title"]
+                               or a1["has_cred_form"] != a2["has_cred_form"]
+                               or a1["has_payment_form"] != a2["has_payment_form"]
+                               or a1["brand_imitation"] != a2["brand_imitation"]
+                               or a1["page_class"] != a2["page_class"]):
+            out["content_varies"] = True
+            out["evidence"].append(
+                "content varies between fetches (possible cloaking): "
+                f"desktop {_fetch_summary(a1)}; mobile {_fetch_summary(a2)}")
+
+        if out["parked"]:
+            out["evidence"].append(f"parking or landing page ({a1['landing']})")
+        if has_cred:
+            where = f", seen in the {cred_fetch} fetch" if out["content_varies"] else ""
+            trig = f"; field: {cred_trigger}" if cred_trigger else ""
+            out["evidence"].append(f"collects a password or secret (credential field{where}{trig})")
+        if has_pay:
+            where = f", seen in the {pay_fetch} fetch" if out["content_varies"] else ""
+            trig = f"; field: {pay_trigger}" if pay_trigger else ""
+            out["evidence"].append(f"collects card or payment details ({where.lstrip(', ') or 'payment field'}{trig})")
         if out["brand_markers"]:
             out["evidence"].append(f"brand impersonation content for {out['brand']}")
         if out["legit_title_sim"] >= 80:
             out["evidence"].append("page title closely imitates the legitimate site")
-        elif assess["identity_clone"]:
-            out["evidence"].append(
-                f"copies the legitimate site's identity ({assess['clone_basis']})")
-        elif assess["page_class"] == "informational":
-            out["evidence"].append("informational or brand-referencing page, no credential or payment form")
-        elif assess["page_class"] == "thin":
+        elif clone:
+            basis = primary["clone_basis"] or (a2["clone_basis"] if a2 else "")
+            out["evidence"].append(f"copies the legitimate site's identity ({basis})")
+        elif out["page_class"] == "informational":
+            out["evidence"].append("informational or brand-referencing page, no credential or payment field")
+        elif out["page_class"] == "thin":
             out["evidence"].append("near-empty or blank page from our vantage")
         # Favicon hash: one small fetch, from the page's icon href or /favicon.ico.
         icon = _ICON_RE.search(body)

@@ -116,6 +116,36 @@ def test_short_legit_title_never_triggers_imitation():
     assert out["legit_title_sim"] == 0
 
 
+def test_search_box_is_not_credential_capture():
+    body = '<form role="search"><input type="search" name="s" placeholder="Search the site"></form>'
+    out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
+    assert out["has_cred_form"] is False
+    assert out["has_payment_form"] is False
+
+
+def test_newsletter_and_contact_fields_are_not_capture():
+    body = ('<form><input type="email" name="email" placeholder="Your email">'
+            '<input type="text" name="fullname"><textarea name="message"></textarea></form>')
+    out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
+    assert out["has_cred_form"] is False
+    assert out["has_payment_form"] is False
+
+
+def test_pin_and_otp_fields_are_credential_capture():
+    body = '<form><input name="mpin" placeholder="Enter your MPIN"><input name="otp_code"></form>'
+    out = candidate.assess_content(body, "https://gcash-login.com/", "gcash", "gcash.com", "")
+    assert out["has_cred_form"] is True
+    assert out["cred_trigger"]
+
+
+def test_cvv_and_expiry_are_payment_capture():
+    body = ('<form><input name="cardno"><label for="e">Expiry date</label>'
+            '<input id="e"><input name="cvv"></form>')
+    out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
+    assert out["has_payment_form"] is True
+    assert out["cred_trigger"] == ""
+
+
 def test_credential_form_is_detected():
     body = ('<title>PhilHealth Member Login</title><form action="/login">'
             '<input type="password" name="pw"></form>')

@@ -244,7 +244,22 @@
     {"domain": "gcashverify-ph.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
      "rec": {"themes": [], "reg_age_days": 40, "reg_date": "2026-09-02", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": true, "fetched": true, "page_class": "imitation", "brand_imitation": true, "legit_title_sim": 97},
      "outcome": "likely phishing", "campaign": false,
-     "note": "v3.38.23: a host containing the brand that copies the legitimate site's title and og:site_name is a clone (page_class imitation, brand_imitation true); Likely with a credential form and a young registration"}
+     "note": "v3.38.23: a host containing the brand that copies the legitimate site's title and og:site_name is a clone (page_class imitation, brand_imitation true); Likely with a credential form and a young registration"},
+
+    {"domain": "gcash-help-center.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 30, "reg_date": "2026-09-12", "registrar": "NameSilo, LLC", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": false, "has_payment_form": false, "brand_imitation": false, "fetched": true, "page_class": "informational"},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "v3.38.24: a young brand-named help page whose only form is a search box; a search box is not credential capture, so it is not Likely"},
+
+    {"domain": "gcash-account-verify.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 25, "reg_date": "2026-09-17", "registrar": "NameSilo, LLC", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": true, "brand_imitation": true, "legit_title_sim": 96, "page_class": "imitation", "content_varies": true, "fetched": true},
+     "outcome": "likely phishing", "campaign": false,
+     "note": "v3.38.24: content varies between the desktop and mobile fetch (possible cloaking) and the mobile fetch shows a password field; with the identity clone that is impersonation plus capture -> Likely"},
+
+    {"domain": "gcash-rewards.net", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 300, "reg_date": "2025-12-16", "registrar": "NameSilo, LLC", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": false, "has_payment_form": false, "brand_imitation": true, "identity_clone": true, "page_class": "imitation", "fetched": true},
+     "outcome": "brand abuse", "campaign": false,
+     "note": "v3.38.24: og:site_name clones GCash (identity clone) but no credential or payment field in any fetch -> Brand abuse, not Likely"}
 
   ]
 }

@@ -10244,7 +10244,8 @@ function huntPoll(id) {
 }
 
 function huntVerdict(v) {
-  const map = { 'likely phishing': 'bg-red-950 text-red-400', 'suspicious': 'bg-orange-950 text-orange-400',
+  const map = { 'likely phishing': 'bg-red-950 text-red-400', 'brand abuse': 'bg-purple-950 text-purple-300',
+    'suspicious': 'bg-orange-950 text-orange-400',
     'brand-referencing': 'bg-sky-950 text-sky-300', 'parked': 'bg-gray-800 text-gray-400',
     'unknown': 'bg-gray-800 text-gray-300', 'unrelated': 'bg-sky-950 text-sky-400' };
   const label = String(v || 'unrelated').replace(/\b\w/g, m => m.toUpperCase());
@@ -10262,8 +10263,9 @@ function huntRenderResults(data) {
   if (data.nrd_off) {
     html += '<div class="bg-gray-950 border border-gray-800 rounded p-2 mb-3 text-xs text-gray-400">Newly registered domain feed is not configured, so brand-new registrations may be missed.</div>';
   }
-  html += '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">' +
+  html += '<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2 mb-3">' +
     asmTile(sc['likely phishing'] || 0, 'Likely phishing', 'text-red-400') +
+    asmTile(sc['brand abuse'] || 0, 'Brand abuse', 'text-purple-300') +
     asmTile(sc['suspicious'] || 0, 'Suspicious', 'text-orange-400') +
     asmTile(sc['brand-referencing'] || 0, 'Brand-referencing', 'text-sky-300') +
     asmTile(sc['parked'] || 0, 'Parked', 'text-gray-300') +

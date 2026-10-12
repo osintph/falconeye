@@ -46,7 +46,8 @@ FAILC = colors.HexColor("#b91c1c")
 SEV = {"critical": colors.HexColor("#b91c1c"), "high": colors.HexColor("#c2410c"),
        "medium": colors.HexColor("#b4740c"), "low": colors.HexColor("#0369a1"),
        "info": MUTED}
-VERDICT = {"likely phishing": colors.HexColor("#b91c1c"), "suspicious": colors.HexColor("#c2410c"),
+VERDICT = {"likely phishing": colors.HexColor("#b91c1c"), "brand abuse": colors.HexColor("#9333ea"),
+           "suspicious": colors.HexColor("#c2410c"),
            "brand-referencing": colors.HexColor("#0369a1"), "parked": MUTED,
            "unknown": colors.HexColor("#6b7280"), "unrelated": colors.HexColor("#0369a1")}
 
@@ -265,8 +266,8 @@ def render_report(payload: dict, out_path: str) -> None:
         order = ["critical", "high", "medium", "low", "info"]
         crows = [[_sev_para(s, st), str(counts.get(s, 0))] for s in order]
     else:
-        order = ["likely phishing", "suspicious", "brand-referencing", "parked",
-                 "unknown", "unrelated"]
+        order = ["likely phishing", "brand abuse", "suspicious", "brand-referencing",
+                 "parked", "unknown", "unrelated"]
         crows = [[_verdict_para(s, st), str(counts.get(s, 0))] for s in order]
     el.append(_kv_table([["Category", "Count"]] + crows, st, [52 * mm, 22 * mm]))
 
@@ -351,6 +352,18 @@ def render_report(payload: dict, out_path: str) -> None:
                                 st["h2"]))
             for c in related:
                 _group_block(c, "Group")
+
+        # Brand abuse: pages impersonating the brand (identity clone or favicon match)
+        # that show no credential or payment capture in any fetch.
+        abusers = [c for c in (payload.get("candidates") or [])
+                   if c.get("verdict") == "brand abuse"]
+        if abusers:
+            el.append(Paragraph("Brand abuse (impersonation without credential capture)", st["h2"]))
+            arows = [[Paragraph(_esc(c.get("domain")), st["cellw"]),
+                      Paragraph(_esc("; ".join(c.get("evidence") or [])), st["cellw"])]
+                     for c in abusers]
+            el.append(_data_table(["Domain", "Evidence"], arows, [46 * mm, 128 * mm], st))
+            el.append(Spacer(1, 2 * mm))
 
     # Findings (asm) or candidates (hunt)
     if kind == "asm":
