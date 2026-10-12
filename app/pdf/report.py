@@ -314,6 +314,17 @@ def render_report(payload: dict, out_path: str) -> None:
                       Paragraph(_esc(m.get("reg_date") or "n/a"), st["cellw"]),
                       Paragraph(_esc(m.get("ns") or ""), st["cellw"])] for m in mrows]
             el.append(_data_table(hdr, drows, [44 * mm, 44 * mm, 24 * mm, 46 * mm], st))
+            # By registrar, with the RDAP abuse email, so one report per registrar
+            # can list all of its domains in this campaign.
+            groups = c.get("registrar_groups") or []
+            if groups:
+                el.append(Paragraph("By registrar (for abuse reports):", st["small"]))
+                grows = [[Paragraph(_esc(g.get("registrar") or "unknown"), st["cellw"]),
+                          Paragraph(_esc(g.get("abuse") or "no abuse email published"), st["cellw"]),
+                          Paragraph(_esc(", ".join(g.get("domains") or [])), st["cellw"])]
+                         for g in groups]
+                el.append(_data_table(["Registrar", "Abuse email (RDAP)", "Domains"],
+                                      grows, [40 * mm, 48 * mm, 70 * mm], st))
             el.append(Spacer(1, 2 * mm))
 
         camps = payload.get("campaigns") or []

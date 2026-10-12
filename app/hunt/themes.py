@@ -11,45 +11,78 @@ from __future__ import annotations
 
 from app.scanner.scope import registrable
 
-# Per-brand theme terms. A term appearing in the domain or page title alongside
-# the brand is a strong signal. Keyed by the hunt keyword (lowercased).
-THEMES = {
-    # PH-language (Tagalog) lure terms are included alongside English so a lure
-    # like mmda-mayhuliks matches on theme, not on shared infrastructure.
-    "mmda": ["ncap", "lto", "ncr", "violation", "fine", "penalty", "ticket",
-             "apprehension", "plate", "license", "citation",
-             "huli", "mayhuli", "hulihan", "multa", "sitasyon", "bawal"],
-    "philhealth": ["member", "konsulta", "benefit", "contribution", "claim", "refund",
-                   "portal", "registration", "yakap", "ekonsulta",
-                   "benepisyo", "kontribusyon", "miyembro", "tulong"],
-    "sss": ["contribution", "member", "loan", "benefit", "pension", "sickness",
-            "maternity", "umid", "registration", "disbursement",
-            "benepisyo", "pensyon", "kontribusyon", "utang"],
-    "pagibig": ["loan", "contribution", "member", "savings", "mp2", "housing",
-                "calamity", "registration", "virtual", "pabahay", "utang", "ipon"],
-    "pag-ibig": ["loan", "contribution", "member", "savings", "mp2", "housing",
-                 "calamity", "registration", "virtual", "pabahay", "utang", "ipon"],
-    "bir": ["tax", "efps", "tin", "filing", "return", "payment", "registration",
-            "ereg", "orus", "refund", "buwis"],
-    "lto": ["license", "plate", "registration", "renewal", "violation", "driver",
-            "ltms", "portal", "ncap", "lisensya", "rehistro", "multa"],
-    "dfa": ["passport", "appointment", "apostille", "visa", "consular", "renewal",
-            "schedule", "epassport", "pasaporte", "appointmnt"],
-    "gsis": ["pension", "loan", "member", "benefit", "ecard", "retirement", "claim",
-             "touchpoint", "pensyon", "benepisyo"],
-    "gcash": ["wallet", "cashin", "verify", "account", "otp", "send", "reward",
-              "voucher", "borrow", "gcredit", "padala", "premyo", "panalo"],
-    "maya": ["wallet", "account", "verify", "otp", "cashin", "reward", "credit",
-             "savings", "padala", "premyo", "panalo"],
-    "bdo": ["online", "banking", "account", "verify", "otp", "card", "rewards",
-            "unlock", "secure"],
-    "bpi": ["online", "banking", "account", "verify", "otp", "card", "rewards",
-            "unlock", "secure"],
-    "landbank": ["online", "banking", "account", "verify", "iaccess", "link",
-                 "weaccess", "secure"],
-    "metrobank": ["online", "banking", "account", "verify", "otp", "card", "rewards",
-                  "secure", "mb"],
+# Per-brand LURE FAMILIES. A family groups the theme terms that advance the same
+# lure (traffic fines, benefits, membership, ...), with the English and Tagalog
+# spellings together. Campaign clustering keys on the family, not the single term,
+# so mmda-mayhuliks (huli) and mmdancap (ncap) cluster as one traffic-fine
+# campaign when they pass the corroboration gate. Keyed by the hunt keyword.
+FAMILIES = {
+    "mmda": {
+        "traffic-fines": ["ncap", "lto", "ncr", "violation", "fine", "penalty",
+                          "ticket", "apprehension", "plate", "license", "citation",
+                          "huli", "mayhuli", "hulihan", "multa", "sitasyon", "bawal"],
+    },
+    "philhealth": {
+        "benefits": ["benefit", "benepisyo", "claim", "refund", "konsulta",
+                     "ekonsulta", "yakap"],
+        "membership": ["member", "miyembro", "registration", "portal",
+                       "contribution", "kontribusyon", "tulong"],
+    },
+    "sss": {
+        "benefits": ["benefit", "benepisyo", "pension", "pensyon", "sickness",
+                     "maternity", "disbursement"],
+        "membership": ["member", "contribution", "kontribusyon", "registration", "umid"],
+        "loans": ["loan", "utang"],
+    },
+    "pagibig": {
+        "loans": ["loan", "utang", "calamity"],
+        "savings": ["savings", "mp2", "ipon"],
+        "housing": ["housing", "pabahay"],
+        "membership": ["member", "contribution", "registration", "virtual"],
+    },
+    "bir": {
+        "tax": ["tax", "buwis", "efps", "tin", "filing", "return", "payment",
+                "registration", "ereg", "orus", "refund"],
+    },
+    "lto": {
+        "licensing": ["license", "lisensya", "plate", "registration", "rehistro",
+                      "renewal", "driver", "ltms", "portal"],
+        "violations": ["violation", "ncap", "multa"],
+    },
+    "dfa": {
+        "passport": ["passport", "pasaporte", "appointment", "appointmnt", "apostille",
+                     "visa", "consular", "renewal", "schedule", "epassport"],
+    },
+    "gsis": {
+        "benefits": ["pension", "pensyon", "benefit", "benepisyo", "retirement", "claim"],
+        "membership": ["member", "loan", "ecard", "touchpoint"],
+    },
+    "gcash": {
+        "wallet": ["wallet", "cashin", "verify", "account", "otp", "send", "gcredit",
+                   "borrow"],
+        "rewards": ["reward", "voucher", "padala", "premyo", "panalo"],
+    },
+    "maya": {
+        "wallet": ["wallet", "account", "verify", "otp", "cashin", "credit", "savings"],
+        "rewards": ["reward", "padala", "premyo", "panalo"],
+    },
+    "bdo": {"banking": ["online", "banking", "account", "verify", "otp", "card",
+                        "rewards", "unlock", "secure"]},
+    "bpi": {"banking": ["online", "banking", "account", "verify", "otp", "card",
+                        "rewards", "unlock", "secure"]},
+    "landbank": {"banking": ["online", "banking", "account", "verify", "iaccess",
+                            "link", "weaccess", "secure"]},
+    "metrobank": {"banking": ["online", "banking", "account", "verify", "otp", "card",
+                             "rewards", "secure", "mb"]},
 }
+FAMILIES["pag-ibig"] = FAMILIES["pagibig"]
+
+# Flat per-brand theme list, derived from the families (one source of truth), and
+# the reverse term -> family map used to key campaign clustering.
+THEMES = {brand: sorted({t for terms in fams.values() for t in terms})
+          for brand, fams in FAMILIES.items()}
+_TERM_FAMILY = {brand: {t: fam for fam, terms in fams.items() for t in terms}
+                for brand, fams in FAMILIES.items()}
 
 # Generic phishing words (brand independent). Adjacent to a brand they add weight.
 PHISH_TERMS = ["login", "signin", "verify", "verification", "secure", "account",
@@ -71,6 +104,18 @@ except Exception:  # noqa: BLE001
 
 def themes_for(keyword: str) -> list:
     return THEMES.get((keyword or "").lower(), [])
+
+
+def family_of(keyword: str, term: str) -> str | None:
+    """The lure family a theme term belongs to for this brand, or None."""
+    return _TERM_FAMILY.get((keyword or "").lower(), {}).get(term)
+
+
+def families_of(keyword: str, terms) -> list:
+    """The sorted set of lure families covered by the given matched theme terms.
+    This is the key campaign clustering groups on, not the single term."""
+    fams = _TERM_FAMILY.get((keyword or "").lower(), {})
+    return sorted({fams[t] for t in (terms or []) if t in fams})
 
 
 def _fuzzy_find(label: str, term: str):

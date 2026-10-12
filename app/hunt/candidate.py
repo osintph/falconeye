@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 import dns.resolver
 import httpx
 
+from app.hunt import rdap as rdap_mod
 from app.ip_sources import asn_intel
 from app.routers import domain_intel
 from app.scanner import cloudflare_detect
@@ -34,7 +35,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.11"
+_UA = "FalconEye-Hunt/3.38.12"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -215,10 +216,11 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         out["evidence"].append("does not resolve")
         return out
 
-    # RDAP registration + registrar.
+    # RDAP registration + registrar, via the domain's own authoritative RDAP
+    # server (IANA bootstrap), capped per server, retried and cached, with a whois
+    # registrar fallback. This is what fills the per-registrar campaign grouping.
     try:
-        rdap_raw = await domain_intel.fetch_rdap(client, domain)
-        parsed = domain_intel.parse_rdap(rdap_raw) if rdap_raw else None
+        parsed = await rdap_mod.lookup(client, domain)
         if parsed:
             out["registrar"] = (parsed.get("registrar") or {}).get("name")
             out["reg_age_days"] = _reg_age_days(parsed)

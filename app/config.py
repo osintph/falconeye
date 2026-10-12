@@ -382,6 +382,15 @@ HUNT_CRTSH_MIN_INTERVAL = max(0.0, float(getenv_clean("HUNT_CRTSH_MIN_INTERVAL",
 # holds the Hunt crt.sh call off for a backoff window (a later hunt retries).
 HUNT_CT_CACHE_TTL = max(0, int(getenv_clean("HUNT_CT_CACHE_TTL", "86400")))
 HUNT_CRTSH_BACKOFF = max(0, int(getenv_clean("HUNT_CRTSH_BACKOFF", "600")))
+# Hunt RDAP: query each TLD's own RDAP server (via the IANA bootstrap) rather than
+# one aggregator. Concurrency is capped per server, 429s are retried with backoff,
+# and parsed answers are cached this many seconds. rdap.org is the last-resort
+# aggregator when a TLD is absent from the bootstrap.
+HUNT_RDAP_PER_SERVER = max(1, int(getenv_clean("HUNT_RDAP_PER_SERVER", "2")))
+HUNT_RDAP_MAX_RETRIES = max(0, int(getenv_clean("HUNT_RDAP_MAX_RETRIES", "3")))
+HUNT_RDAP_CACHE_TTL = max(0, int(getenv_clean("HUNT_RDAP_CACHE_TTL", "86400")))
+HUNT_RDAP_BOOTSTRAP_TTL = max(0, int(getenv_clean("HUNT_RDAP_BOOTSTRAP_TTL", "86400")))
+HUNT_RDAP_TIMEOUT = float(getenv_clean("HUNT_RDAP_TIMEOUT", "8"))
 # Random control labels resolved per TLD per run to detect registry wildcards (a
 # TLD, for example .ph, that answers every label with the same address).
 HUNT_WILDCARD_CONTROLS = max(1, int(getenv_clean("HUNT_WILDCARD_CONTROLS", "2")))

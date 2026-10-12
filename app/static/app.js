@@ -10291,13 +10291,26 @@ function huntRenderResults(data) {
       '<tr><td class="pr-3 py-0.5 font-mono break-all">' + escapeHtml(m.domain) + '</td>' +
       '<td class="pr-3 py-0.5">' + escapeHtml(m.registrar || 'unknown') + '</td>' +
       '<td class="py-0.5 font-mono">' + escapeHtml(m.reg_date || 'n/a') + '</td></tr>').join('');
+    // By registrar with the RDAP abuse email, for one report per registrar.
+    const groups = cm.registrar_groups || [];
+    const grows = groups.map(g =>
+      '<tr><td class="pr-3 py-0.5 align-top">' + escapeHtml(g.registrar || 'unknown') + '</td>' +
+      '<td class="pr-3 py-0.5 align-top font-mono">' + escapeHtml(g.abuse || 'no abuse email published') + '</td>' +
+      '<td class="py-0.5 font-mono break-all">' + escapeHtml((g.domains || []).join(', ')) + '</td></tr>').join('');
+    const groupTable = groups.length
+      ? '<div class="text-xs text-gray-500 mt-2 mb-1">By registrar (for abuse reports):</div>' +
+        '<table class="text-xs text-gray-300 w-full"><thead><tr class="text-gray-500">' +
+        '<th class="text-left font-normal pr-3">Registrar</th><th class="text-left font-normal pr-3">Abuse email (RDAP)</th>' +
+        '<th class="text-left font-normal">Domains</th></tr></thead><tbody>' + grows + '</tbody></table>'
+      : '';
     return '<div class="' + cls + ' rounded p-3 mb-3">' +
       '<div class="font-bold ' + titleCls + ' text-sm mb-1">' + label + ': ' + escapeHtml(cm.theme || 'brand lookalikes') +
       ' <span class="font-normal text-gray-400">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
       (meta.length ? '<div class="text-xs text-gray-400 mb-1">' + meta.join(' &middot; ') + '</div>' : '') +
       '<table class="text-xs text-gray-300 w-full"><thead><tr class="text-gray-500">' +
       '<th class="text-left font-normal pr-3">Domain</th><th class="text-left font-normal pr-3">Registrar (RDAP)</th>' +
-      '<th class="text-left font-normal">Registered</th></tr></thead><tbody>' + mrows + '</tbody></table></div>';
+      '<th class="text-left font-normal">Registered</th></tr></thead><tbody>' + mrows + '</tbody></table>' +
+      groupTable + '</div>';
   };
   (data.campaigns || []).forEach(cm => {
     html += groupBlock(cm, 'Campaign', 'bg-red-950 border border-red-800', 'text-red-300');

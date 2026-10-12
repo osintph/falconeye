@@ -74,3 +74,22 @@ def test_tagalog_terms_in_other_ph_lexicons():
     assert "benepisyo" in themes.classify("philhealth-benepisyo.net", "philhealth")["themes"]
     assert "pensyon" in themes.classify("sss-pensyon.online", "sss")["themes"]
     assert "pabahay" in themes.classify("pagibig-pabahay.site", "pagibig")["themes"]
+
+
+def test_lure_families_group_related_terms():
+    # All MMDA traffic terms share one family, so ncap and huli cluster together.
+    assert themes.family_of("mmda", "ncap") == "traffic-fines"
+    assert themes.family_of("mmda", "huli") == "traffic-fines"
+    assert themes.families_of("mmda", ["ncap", "huli", "lto"]) == ["traffic-fines"]
+    # PhilHealth splits benefits from membership.
+    assert themes.family_of("philhealth", "benepisyo") == "benefits"
+    assert themes.family_of("philhealth", "member") == "membership"
+    assert set(themes.families_of("philhealth", ["benefit", "member"])) == {"benefits", "membership"}
+
+
+def test_themes_derived_from_families_keep_every_term():
+    # The flat THEMES list is derived from the families; a term must not vanish.
+    for brand in ("mmda", "philhealth", "sss", "lto"):
+        flat = set(themes.THEMES[brand])
+        from_fams = {t for terms in themes.FAMILIES[brand].values() for t in terms}
+        assert flat == from_fams and flat

@@ -1,6 +1,7 @@
 """Campaign clustering: a theme group is a campaign only when corroborated (a
-tight registration window plus a shared registrar, nameserver, ASN or cheap TLD)."""
-from app.hunt import cluster
+tight registration window plus a shared registrar, nameserver, ASN or cheap TLD).
+Clustering keys on the lure family, not the single term."""
+from app.hunt import cluster, themes
 
 
 def _c(domain, themes, age=20, reg="2026-09-01", registrar="NameSilo", asn="AS1 Host",
@@ -122,6 +123,51 @@ def test_large_registrar_needs_a_second_attribute_to_corroborate():
     ]
     campaigns, related, dom_to_cid = cluster.build(members)
     assert campaigns == [] and len(related) == 1
+
+
+def _mk(dom, terms, **kw):
+    c = _c(dom, terms, **kw)
+    c["families"] = themes.families_of("mmda", terms)
+    return c
+
+
+def test_lure_family_clusters_terms_that_differ():
+    # mmda-mayhuliks (huli, mayhuli) and the ncap/lto domains share NO single term
+    # but all belong to the traffic-fines lure family, so they cluster as one
+    # campaign once the corroboration gate passes (window + distinctive NS here).
+    members = [
+        _mk("mmdancap.ltd", ["ncap"], age=20, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _mk("mmda-ltoncap.icu", ["lto", "ncap"], age=25, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _mk("mmdancap-ncr.sbs", ["ncap", "ncr"], age=30, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _mk("mmda-mayhuliks.com", ["huli", "mayhuli"], age=40, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+    ]
+    campaigns, related, dom_to_cid = cluster.build(members)
+    assert len(campaigns) == 1
+    assert dom_to_cid.get("mmda-mayhuliks.com") == campaigns[0]["id"]
+
+
+def test_campaign_groups_members_by_registrar_with_abuse_email():
+    def mk(dom, terms, registrar, abuse=None, **kw):
+        c = _mk(dom, terms, registrar=registrar, ns=["ns1.operatordns.net"],
+                asn="AS9999 Op", **kw)
+        c["abuse_contact"] = abuse
+        return c
+    members = [
+        mk("mmdancap.ltd", ["ncap"], "NameMart Pte. Ltd.", "abuse@namemart.example", age=20),
+        mk("mmda-ltoncap.icu", ["lto", "ncap"], "NameSilo, LLC", "abuse@namesilo.com", age=25),
+        mk("mmdancap-ncr.sbs", ["ncap", "ncr"], "NameMart Pte. Ltd.", None, age=30),
+    ]
+    campaigns, _r, _c2 = cluster.build(members)
+    assert len(campaigns) == 1
+    groups = {g["registrar"]: g for g in campaigns[0]["registrar_groups"]}
+    assert set(groups) == {"NameMart Pte. Ltd.", "NameSilo, LLC"}
+    assert groups["NameMart Pte. Ltd."]["abuse"] == "abuse@namemart.example"
+    assert groups["NameMart Pte. Ltd."]["domains"] == ["mmdancap-ncr.sbs", "mmdancap.ltd"]
+    assert groups["NameSilo, LLC"]["domains"] == ["mmda-ltoncap.icu"]
 
 
 def test_campaign_carries_per_domain_registrar_from_rdap():

@@ -157,8 +157,29 @@ def _member_rows(members: list) -> list:
     for m in sorted(members, key=lambda x: x["domain"]):
         ns = sorted({_ns_base(n) for n in (m.get("ns") or []) if n})
         rows.append({"domain": m["domain"], "registrar": m.get("registrar") or "unknown",
-                     "reg_date": m.get("reg_date"), "ns": ", ".join(ns)})
+                     "reg_date": m.get("reg_date"), "ns": ", ".join(ns),
+                     "abuse": m.get("abuse_contact")})
     return rows
+
+
+def _registrar_groups(member_rows: list) -> list:
+    """Members grouped by registrar with that registrar's abuse email from RDAP, so
+    one abuse report per registrar can list all of its domains in the campaign."""
+    groups: dict = {}
+    for r in member_rows:
+        g = groups.setdefault(r.get("registrar") or "unknown",
+                              {"registrar": r.get("registrar") or "unknown",
+                               "abuse": None, "domains": []})
+        g["domains"].append(r["domain"])
+        if not g["abuse"] and r.get("abuse"):
+            g["abuse"] = r["abuse"]
+    out = []
+    for g in groups.values():
+        g["domains"] = sorted(g["domains"])
+        g["count"] = len(g["domains"])
+        out.append(g)
+    out.sort(key=lambda g: (-g["count"], g["registrar"]))
+    return out
 
 
 def _entry(members: list) -> dict:
@@ -192,11 +213,14 @@ def build(candidates: list) -> tuple:
         if ra != rb:
             parent[ra] = rb
 
-    by_term: dict = {}
+    # Group on the lure FAMILY (traffic fines, benefits, ...), not the single term,
+    # so terms that advance the same lure (ncap and huli, member and miyembro)
+    # cluster together. Fall back to the raw term when no family is attached.
+    by_key: dict = {}
     for c in themed:
-        for t in c["themes"]:
-            by_term.setdefault(t, []).append(c["domain"])
-    for members in by_term.values():
+        for k in (c.get("families") or c.get("themes") or []):
+            by_key.setdefault(k, []).append(c["domain"])
+    for members in by_key.values():
         for d in members[1:]:
             union(members[0], d)
 
@@ -265,8 +289,14 @@ def build(candidates: list) -> tuple:
                 entry["member_rows"].append({
                     "domain": d, "registrar": rec.get("registrar") or "unknown",
                     "reg_date": rec.get("reg_date"),
-                    "ns": ", ".join(sorted({_ns_base(n) for n in (rec.get("ns") or []) if n}))})
+                    "ns": ", ".join(sorted({_ns_base(n) for n in (rec.get("ns") or []) if n})),
+                    "abuse": rec.get("abuse_contact")})
             break
+
+    # Per-registrar abuse grouping (built after merges so it covers every member).
+    for entry in campaigns + related:
+        entry["member_rows"].sort(key=lambda r: r["domain"])
+        entry["registrar_groups"] = _registrar_groups(entry["member_rows"])
 
     campaigns.sort(key=lambda c: -c["count"])
     related.sort(key=lambda c: -c["count"])

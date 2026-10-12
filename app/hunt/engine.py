@@ -154,6 +154,7 @@ async def execute(scan: dict) -> dict:
         rec.setdefault("fetched", False)
         rec["urlscan"] = urls
         rec["themes"] = c.get("themes") or []
+        rec["families"] = themes_mod.families_of(keyword, rec["themes"])
         rec["observed_hosts"] = c.get("observed") or []
         rec["keyword_hit"] = c.get("keyword_hit")
         rec["origins"] = c.get("origins") or []

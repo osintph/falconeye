@@ -283,12 +283,38 @@ def parse_rdap(rdap_raw: dict | None) -> dict | None:
 
         if "registrar" in roles:
             result["registrar"] = contact
+            # The registrar abuse contact is usually a sub-entity of the registrar
+            # entity, not a top-level one; descend to find its email.
+            sub = _abuse_from_entities(entity.get("entities", []))
+            if sub:
+                result["abuse_contact"] = sub
         if "registrant" in roles:
             result["registrant"] = contact
-        if "abuse" in roles:
+        if "abuse" in roles and not result.get("abuse_contact"):
             result["abuse_contact"] = contact
 
     return result
+
+
+def _abuse_from_entities(entities: list) -> dict | None:
+    """Find an abuse-role contact nested within a registrar entity's sub-entities."""
+    for entity in entities or []:
+        if "abuse" not in (entity.get("roles") or []):
+            continue
+        vcard = entity.get("vcardArray", [None, []])
+        props = vcard[1] if len(vcard) > 1 else []
+        contact = {"handle": entity.get("handle"), "name": None, "email": None, "phone": None}
+        for prop in props:
+            if isinstance(prop, list) and len(prop) >= 4:
+                if prop[0] == "email":
+                    contact["email"] = prop[3]
+                elif prop[0] == "fn":
+                    contact["name"] = prop[3]
+                elif prop[0] == "tel":
+                    contact["phone"] = prop[3]
+        if contact["email"]:
+            return contact
+    return None
 
 
 # ---- WHOIS fallback (only for TLDs without RDAP) ----

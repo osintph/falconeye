@@ -174,6 +174,15 @@ def init_tables() -> None:
               fetched_at INTEGER NOT NULL
             );
 
+            -- A 24h cache of parsed RDAP answers (and the IANA bootstrap), so a
+            -- Hunt re-run reuses them and each registry RDAP server sees few
+            -- requests. Keyed by domain, or "__bootstrap__" for the TLD map.
+            CREATE TABLE IF NOT EXISTS hunt_rdap_cache (
+              domain TEXT PRIMARY KEY,
+              json TEXT NOT NULL,
+              fetched_at INTEGER NOT NULL
+            );
+
             -- v3.38.0 one-time model: result content lives here only, briefly.
             CREATE TABLE IF NOT EXISTS asm_result_cache (
               id TEXT PRIMARY KEY,
@@ -367,6 +376,38 @@ def ct_cache_put(keyword: str, hosts: list) -> None:
         conn.commit()
     except Exception as exc:  # noqa: BLE001
         log.info("asm ct cache write failed: %s", type(exc).__name__)
+
+
+def rdap_cache_get(domain: str, ttl_seconds: int):
+    """A fresh cached RDAP value for *domain* (or the IANA bootstrap), else None."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT json FROM hunt_rdap_cache WHERE domain = ? AND fetched_at > ?",
+            (domain, now() - ttl_seconds)).fetchone()
+    except Exception:  # noqa: BLE001
+        return None
+    finally:
+        conn.close()
+    if not row:
+        return None
+    try:
+        return json.loads(row[0])
+    except (ValueError, TypeError):
+        return None
+
+
+def rdap_cache_put(domain: str, value) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO hunt_rdap_cache (domain, json, fetched_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(domain) DO UPDATE SET json = excluded.json, "
+            "fetched_at = excluded.fetched_at",
+            (domain, json.dumps(value), now()))
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.info("hunt rdap cache write failed: %s", type(exc).__name__)
     finally:
         conn.close()
 
