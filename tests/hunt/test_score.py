@@ -27,6 +27,25 @@ def test_campaign_member_is_likely_phishing():
     assert any("campaign" in e for e in c["evidence"])
 
 
+def test_informational_campaign_member_is_brand_referencing_not_likely():
+    # Lure-family clustering must not turn an informational site into Likely
+    # Phishing just because it shares a campaign's infrastructure.
+    c = score.score_candidate(_c(domain="aboutphilhealth.org", themes=["member"],
+                                 campaign_member=True, reg_age_days=87,
+                                 page_class="informational"),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "brand-referencing"
+
+
+def test_thin_campaign_member_stays_likely_phishing():
+    # A blank or near-empty page (possible geofenced kit) in a campaign is Likely.
+    c = score.score_candidate(_c(domain="philhealthmember.com", themes=["member"],
+                                 campaign_member=True, reg_age_days=23,
+                                 page_class="thin"),
+                              "philhealth", "philhealth.gov.ph")
+    assert c["verdict"] == "likely phishing"
+
+
 def test_theme_plus_recent_registration_is_likely_phishing():
     c = score.score_candidate(_c(domain="mmdancap-ncr.icu", themes=["ncap", "ncr"],
                                  reg_age_days=15),
