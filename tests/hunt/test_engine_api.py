@@ -201,6 +201,47 @@ def test_age_is_computed_from_the_registration_date():
     assert engine._age_from(None) is None
 
 
+def test_backfills_registrar_for_a_themed_probe_miss(monkeypatch):
+    # The concurrent probe returns a themed candidate with no registrar (RDAP cut
+    # off under load). The engine backfills it from the Hunt RDAP client before
+    # clustering, so the campaign member is not left "unknown".
+    async def fdisc(kw, legit, max_candidates=None):
+        return {"candidates": [{"domain": "mmdancap.icu", "origins": ["urlscan"],
+                                "keyword_hit": True, "themes": ["ncap"]}],
+                "source_status": [], "incomplete": False, "nrd_off": True,
+                "generated_count": 1, "keyword_hit_count": 1}
+
+    async def fresolve(dom):
+        if dom.startswith("zq"):
+            return {"domain": dom, "dns": {"A": [], "AAAA": [], "MX": [], "NS": [], "CNAME": []},
+                    "ips": [], "cname": "", "resolves": False, "has_mx": False, "has_ns": False}
+        return {"domain": dom, "dns": {"A": ["1.2.3.4"], "AAAA": [], "MX": [], "NS": [],
+                "CNAME": []}, "ips": ["1.2.3.4"], "cname": "", "resolves": True,
+                "has_mx": False, "has_ns": True}
+
+    async def fprobe(client, dom, kw, legit, legit_sig, dns_data=None):
+        return {"domain": dom, "resolves": True, "fetched": True, "evidence": [],
+                "parked": False, "registrar": None, "reg_age_days": 5}
+
+    async def fsig(client, legit):
+        return {"favicon": None, "title": "MMDA"}
+
+    async def fake_lookup(client, domain):
+        return {"registrar": {"name": "NameMart Pte. Ltd."},
+                "events": {"registration": "2026-09-01"},
+                "abuse_contact": {"email": "abuse@namemart.com"}, "nameservers": []}
+
+    monkeypatch.setattr(sources, "discover", fdisc)
+    monkeypatch.setattr(candidate_mod, "resolve", fresolve)
+    monkeypatch.setattr(candidate_mod, "probe", fprobe)
+    monkeypatch.setattr(candidate_mod, "legit_signature", fsig)
+    monkeypatch.setattr(engine.rdap_mod, "lookup", fake_lookup)
+    payload = asyncio.run(engine.execute({"scan_id": "hbf", "domain": "mmda",
+                                          "engagement": "mmda.gov.ph"}))
+    row = next(r for r in payload["candidates"] if r["domain"] == "mmdancap.icu")
+    assert row["registrar"] == "NameMart Pte. Ltd."
+
+
 def test_shown_date_is_rdap_not_urlscan_when_they_differ(monkeypatch):
     # urlscan first-seen (recent) and RDAP registration (months earlier) differ; the
     # shown date is the RDAP date, the age is computed from it, and urlscan

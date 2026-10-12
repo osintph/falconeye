@@ -26,6 +26,7 @@ import httpx
 from app import config
 from app.hunt import candidate as candidate_mod
 from app.hunt import cluster as cluster_mod
+from app.hunt import rdap as rdap_mod
 from app.hunt import score as score_mod
 from app.hunt import sources
 from app.hunt import themes as themes_mod
@@ -57,6 +58,38 @@ def _age_from(date_str) -> int | None:
         return int((datetime.now(timezone.utc).date() - dt.date()).days)
     except Exception:  # noqa: BLE001
         return None
+
+
+async def _backfill_registrars(records: list) -> None:
+    """For themed candidates the concurrent probe left without a registrar, look
+    RDAP up again on its own (no competing CT/HTTP/ASN budget, cache-aware) so a
+    campaign member is "unknown" only when the registry truly publishes none."""
+    targets = [r for r in records if r.get("themes") and not r.get("registrar")]
+    if not targets:
+        return
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        sem = asyncio.Semaphore(4)
+
+        async def one(r):
+            async with sem:
+                try:
+                    parsed = await rdap_mod.lookup(client, r["domain"])
+                except Exception:  # noqa: BLE001
+                    parsed = None
+                if not parsed:
+                    return
+                if not r.get("registrar"):
+                    r["registrar"] = (parsed.get("registrar") or {}).get("name")
+                if not r.get("abuse_contact"):
+                    r["abuse_contact"] = (parsed.get("abuse_contact") or {}).get("email")
+                reg = (parsed.get("events") or {}).get("registration")
+                if reg and not r.get("registered"):
+                    r["registered"] = reg
+                    r["reg_date"] = _reg_date(reg)
+                    if r["reg_date"]:
+                        r["reg_age_days"] = _age_from(r["reg_date"])
+
+        await asyncio.gather(*[one(r) for r in targets])
 
 
 async def execute(scan: dict) -> dict:
@@ -174,6 +207,13 @@ async def execute(scan: dict) -> dict:
         rec["ns"] = list((res_map[dom]["dns"] or {}).get("NS") or [])
         rec["cheap"] = themes_mod.cheap_tld(dom)
         records.append(rec)
+
+    # The concurrent probe shares one short budget across DNS, RDAP, CT, ASN and
+    # the HTTP fetch, so RDAP for a slow registry can be cut off, leaving a themed
+    # candidate with no registrar. Backfill those (serial-ish, cache-aware) before
+    # clustering so campaign members are not left "unknown" when the registry does
+    # publish one.
+    await _backfill_registrars(records)
 
     # Theme clustering, split into corroborated campaigns (which boost) and
     # uncorroborated related groups (which do not), then score.

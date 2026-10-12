@@ -126,12 +126,33 @@ def _large_registrar_shared(members: list):
     return c.most_common(1)[0][0] if c and c.most_common(1)[0][1] >= 2 else None
 
 
+def _burst(ages: list) -> tuple:
+    """Find the densest registration burst. Clustering on a lure family builds a
+    larger, realistic campaign set whose full span can exceed the window because
+    operators register lookalikes over time, so the gate asks whether the MAJORITY
+    of dated members fall inside one window, not whether every one does. Returns
+    (ok, count_in_burst, span_of_burst)."""
+    a = sorted(ages)
+    if len(a) < 2:
+        return (False, len(a), 0)
+    w = config.HUNT_CAMPAIGN_WINDOW_DAYS
+    best_n, best_span = 1, 0
+    for i in range(len(a)):
+        j = i
+        while j < len(a) and (a[j] - a[i]) <= w:
+            j += 1
+        if (j - i) > best_n:
+            best_n, best_span = j - i, a[j - 1] - a[i]
+    ok = best_n >= max(2, (len(a) + 1) // 2)
+    return (ok, best_n, best_span)
+
+
 def _corroboration(members: list) -> tuple:
     ages = _ages(members)
-    window_ok = len(ages) >= 2 and (max(ages) - min(ages)) <= config.HUNT_CAMPAIGN_WINDOW_DAYS
+    window_ok, burst_n, burst_span = _burst(ages)
     reasons = []
     if window_ok:
-        reasons.append(f"registered within {max(ages) - min(ages)} days")
+        reasons.append(f"a burst of {burst_n} registered within {burst_span} days")
     distinctive = []
     ns = _distinctive_ns(members)
     if ns:

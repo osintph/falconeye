@@ -150,6 +150,22 @@ def test_lure_family_clusters_terms_that_differ():
     assert dom_to_cid.get("mmda-mayhuliks.com") == campaigns[0]["id"]
 
 
+def test_campaign_survives_a_few_out_of_window_outliers():
+    # Clustering on a lure family builds a larger, realistic set whose full span
+    # can exceed the window. A tight burst holding the majority still corroborates;
+    # the older outliers remain members.
+    members = [_mk("mmdancap%d.icu" % i, ["ncap"], age=10 + i,
+                   registrar="NameMart Pte. Ltd.", ns=["ns1.operatordns.net"],
+                   asn="AS9999 Op") for i in range(5)]
+    members.append(_mk("mmda-mayhuliks.com", ["mayhuli"], age=200,
+                       registrar="NameMart Pte. Ltd.", ns=["ns1.operatordns.net"],
+                       asn="AS9999 Op"))
+    campaigns, related, dom_to_cid = cluster.build(members)
+    assert len(campaigns) == 1
+    assert "mmda-mayhuliks.com" in dom_to_cid  # the 200-day outlier is still a member
+    assert any("burst" in r for r in campaigns[0]["corroboration"])
+
+
 def test_campaign_groups_members_by_registrar_with_abuse_email():
     def mk(dom, terms, registrar, abuse=None, **kw):
         c = _mk(dom, terms, registrar=registrar, ns=["ns1.operatordns.net"],
