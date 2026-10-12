@@ -160,12 +160,13 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     phish_content = bool(brand_imitation or known_bad or urlscan_malicious or form_phishing)
     theme_recent_live = bool(theme_hit and young and fetched and not informational
                              and not c.get("parked"))
-    # Campaign membership boosts to Likely only when the page is phishing
-    # consistent. An informational page (real article or nav content) that merely
-    # shares a campaign's infrastructure is brand-referencing, not Likely: lure
-    # clustering must not turn informational sites into Likely Phishing.
-    campaign_phish = bool(campaign and not informational and not c.get("parked"))
-    likely = bool(campaign_phish or phish_content or theme_recent_live)
+    # A corroborated campaign requires a distinctive shared attribute (generic
+    # consumer hosting and CDN or cloud ASNs do not count), so membership is strong
+    # evidence on its own: a member is Likely even if it currently serves an
+    # informational page (campaigns cloak benign content to our vantage). The
+    # protection against boosting informational name-matches is that they never
+    # become campaign members when the only thing shared is generic hosting.
+    likely = bool(campaign or phish_content or theme_recent_live)
 
     # Irrelevant noise: a short-brand close permutation, over two years old, with no
     # theme and no content or campaign signal (mmdata.com.br). Dropped by the engine.

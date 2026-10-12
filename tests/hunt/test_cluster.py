@@ -166,6 +166,27 @@ def test_campaign_survives_a_few_out_of_window_outliers():
     assert any("burst" in r for r in campaigns[0]["corroboration"])
 
 
+def test_generic_consumer_hosting_does_not_corroborate():
+    # The PhilHealth case: a tight burst that shares only Namecheap shared hosting
+    # (namecheaphosting.com nameservers, ASN 22612) and the Spaceship / Namecheap
+    # registrars. All of that is generic consumer hosting, so it is a related group,
+    # not a campaign, and nothing is boosted.
+    members = [
+        _c("philhealthbenefit.com", ["benefit"], age=10, reg="2026-09-20",
+           registrar="NameCheap, Inc.", ns=["dns1.namecheaphosting.com"], asn="AS22612",
+           cheap=False),
+        _c("philhealthclaim.com", ["benefit", "claim"], age=20, reg="2026-09-10",
+           registrar="Spaceship, Inc.", ns=["dns2.namecheaphosting.com"], asn="AS22612",
+           cheap=False),
+        _c("philhealthrefund.com", ["benefit", "refund"], age=30, reg="2026-08-31",
+           registrar="NameCheap, Inc.", ns=["dns1.namecheaphosting.com"], asn="AS22612",
+           cheap=False),
+    ]
+    campaigns, related, dom_to_cid = cluster.build(members)
+    assert campaigns == [] and dom_to_cid == {}
+    assert len(related) == 1
+
+
 def test_outlier_sharing_registrar_and_nameserver_joins():
     # An out-of-burst member that still shares a distinctive attribute (registrar
     # plus non-generic nameserver) with the burst joins the campaign.

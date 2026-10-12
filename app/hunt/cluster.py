@@ -24,8 +24,9 @@ from app.scanner.scope import registrable
 
 MIN_CLUSTER = 3
 
-# CDN and large-cloud or large-shared-host ASNs: half the internet sits on these,
-# so they are not distinctive. Numeric, matched after stripping any AS prefix.
+# CDN, large-cloud and large consumer-hosting ASNs: millions of unrelated domains
+# sit on these, so sharing one is not distinctive. Numeric, matched after stripping
+# any AS prefix. Maintained list.
 _CDN_ASNS = {
     "13335",   # Cloudflare
     "16509", "14618",   # AWS
@@ -41,28 +42,39 @@ _CDN_ASNS = {
     "24940",   # Hetzner
     "16276",   # OVH
     "9009",    # M247
-    "47583",   # Hostinger
     "19551",   # Incapsula
+    # Large consumer hosting (same class as the above for our purposes).
+    "22612", "394695",          # Namecheap (and Spaceship)
+    "47583",                    # Hostinger
+    "26496", "398101", "30148", # GoDaddy / Secureserver
+    "46606", "19871", "29873", "25847",  # Newfold (Bluehost, HostGator, Network Solutions)
+    "8560",                     # IONOS
 }
 
-# Tokens that mark a registrar default, parking or CDN nameserver (not operator
-# specific). Matched as a substring of the nameserver host.
+# Tokens that mark a registrar default, parking, CDN or large consumer-hosting
+# nameserver (not operator specific). Matched as a substring of the nameserver
+# host. Maintained list.
 _GENERIC_NS_TOKENS = (
     "domainnamens", "domaincontrol", "registrar-servers", "cloudflare", "awsdns",
     "azure-dns", "googledomains", "google.com", "dns-parking", "sedoparking",
     "parkingcrew", "bodis", "dan.com", "hugedomains", "cashparking", "above.com",
     "dnsowl", "nsone", "digitalocean", "hostinger", "wixdns", "squarespacedns",
     "shopifydns", "name-services", "hichina", "dnspod", "ztomy", "parklogic",
+    # Large consumer hosting default nameservers.
+    "namecheaphosting", "spaceship", "secureserver", "bluehost", "hostgator",
+    "websitewelcome", "siteground", "sgvps", "ionos", "ui-dns", "dreamhost",
+    "newfold", "name.com", "web.com", "register.com",
 )
 
-# Very large registrars: a shared registrar here needs a second distinctive
-# attribute to corroborate. Matched as a substring of the registrar name.
+# Very large registrars and consumer hosts acting as registrar: a shared registrar
+# here needs a second distinctive attribute to corroborate. Substring match.
 _LARGE_REGISTRARS = (
-    "namesilo", "namemart", "godaddy", "namecheap", "public domain registry",
+    "namesilo", "namemart", "godaddy", "namecheap", "spaceship", "public domain registry",
     "pdr ltd", "tucows", "network solutions", "dynadot", "porkbun", "hostinger",
     "key-systems", "google", "cloudflare", "gname", "alibaba", "tencent", "ename",
     "dnspod", "namebright", "realtime register", "openprovider", "west263",
-    "squarespace", "wild west", "enom", "hosting concepts",
+    "squarespace", "wild west", "enom", "hosting concepts", "newfold", "web.com",
+    "ionos", "register.com", "bluehost", "hostgator", "siteground",
 )
 
 

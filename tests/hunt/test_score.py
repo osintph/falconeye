@@ -27,14 +27,17 @@ def test_campaign_member_is_likely_phishing():
     assert any("campaign" in e for e in c["evidence"])
 
 
-def test_informational_campaign_member_is_brand_referencing_not_likely():
-    # Lure-family clustering must not turn an informational site into Likely
-    # Phishing just because it shares a campaign's infrastructure.
-    c = score.score_candidate(_c(domain="aboutphilhealth.org", themes=["member"],
-                                 campaign_member=True, reg_age_days=87,
+def test_informational_campaign_member_is_still_likely():
+    # A corroborated campaign requires a distinctive shared attribute, so membership
+    # is strong evidence: a member serving an informational page (campaigns cloak
+    # benign content to our vantage) is still Likely. The guard against boosting
+    # informational name-matches is that they never become members on generic
+    # hosting alone (see test_cluster: generic consumer hosting does not corroborate).
+    c = score.score_candidate(_c(domain="mmdancpa.com", themes=["ncap"],
+                                 campaign_member=True, reg_age_days=26,
                                  page_class="informational"),
-                              "philhealth", "philhealth.gov.ph")
-    assert c["verdict"] == "brand-referencing"
+                              "mmda", "mmda.gov.ph")
+    assert c["verdict"] == "likely phishing"
 
 
 def test_thin_campaign_member_stays_likely_phishing():

@@ -26,7 +26,7 @@ from app.scanner.scope import registrable
 
 _BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json"
 _BOOTSTRAP_KEY = "__bootstrap__"
-_UA = {"User-Agent": "FalconEye-Hunt/3.38.15 (OSINT research)",
+_UA = {"User-Agent": "FalconEye-Hunt/3.38.16 (OSINT research)",
        "Accept": "application/rdap+json, application/json"}
 
 # Per-RDAP-host concurrency limiters, rebuilt if the running event loop changes

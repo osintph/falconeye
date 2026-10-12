@@ -1,0 +1,153 @@
+{
+  "_README": "Ground-truth evaluation set. Each entry is a recorded, offline fixture (the distilled DNS, RDAP, urlscan and fetched-page summary a hunt would assemble) plus the expected outcome. test_groundtruth.py runs the full relevance, clustering and scoring pipeline over the set and fails on any change. 'outcome' is a verdict, or 'irrelevant' (dropped by relevance, never scored). 'campaign' is whether the domain is a corroborated-campaign member. Expected labels change only with the owner's approval, recorded in the release notes. Fields left out take the defaults in test_groundtruth.py. No em dashes.",
+  "entries": [
+
+    {"domain": "mmda-ltoncap.net", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["lto", "ncap"], "reg_age_days": 7, "reg_date": "2026-10-05", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "thin"},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmda-ncaplto.club", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap", "lto"], "reg_age_days": 13, "reg_date": "2026-09-29", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "urlscan": {"first_seen": "2026-09-30", "labels": []}},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmdancap.ltd", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap"], "reg_age_days": 3, "reg_date": "2026-10-09", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "fetched": true, "page_class": "thin"},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "ncapmmdar.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap"], "reg_age_days": 19, "reg_date": "2026-09-23", "registrar": "NameSilo, LLC", "ns": ["dana.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "thin"},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmdancaps.surf", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap"], "reg_age_days": 60, "reg_date": "2026-08-13", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "urlscan": {"first_seen": "2026-08-14", "labels": []}},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmdancpo.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap"], "reg_age_days": 26, "reg_date": "2026-09-16", "registrar": "NameSilo, LLC", "ns": ["dana.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "thin", "known_bad": true},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmdancpa.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap"], "reg_age_days": 26, "reg_date": "2026-09-16", "registrar": "NameSilo, LLC", "ns": ["dana.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "informational"},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmdalto-ncap.sbs", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["lto", "ncap"], "reg_age_days": 22, "reg_date": "2026-09-20", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "urlscan": {"first_seen": "2026-09-21", "labels": []}},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmda-ncaplto.yoga", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap", "lto"], "reg_age_days": 13, "reg_date": "2026-09-29", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "urlscan": {"first_seen": "2026-09-30", "labels": []}},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmda-ltoncap.work", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["lto", "ncap"], "reg_age_days": 25, "reg_date": "2026-09-17", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "urlscan": {"first_seen": "2026-09-18", "labels": []}},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmdancap-ncr.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap", "ncr"], "reg_age_days": 2, "reg_date": "2026-10-10", "registrar": "NameSilo, LLC", "ns": ["dana.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "thin"},
+     "outcome": "likely phishing", "campaign": true},
+
+    {"domain": "mmda-mayhuliks.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["huli", "mayhuli"], "reg_age_days": 77, "reg_date": "2026-07-27", "registrar": "NameMart Pte. Ltd.", "ns": ["ns1.domainnamens.com"], "asn": "AS132203", "fetched": false, "urlscan": {"first_seen": "2026-07-28", "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "borderline: traffic-fine family, but outside the burst and shares no distinctive attribute, so related outside burst and scored on its own"},
+
+    {"domain": "mmdaonline.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "CURRENT behaviour: mmda + the 6-char suffix 'online' is treated as buried by the affix<=5 relevance rule and dropped. Flagged as a label I believe is wrong (should be scored, not Likely), not changed without approval"},
+
+    {"domain": "mmdaportal.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "CURRENT behaviour: mmda + the 6-char suffix 'portal' is treated as buried and dropped. Flagged as a label I believe is wrong (the v3.38.9 brief called it Unrelated, i.e. scored), not changed without approval"},
+
+    {"domain": "mmdata.com.br", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "reg_age_days": 1600, "reg_date": "2022-05-01", "registrar": "Registro.br", "ns": ["a.auto.dns.br"], "asn": "AS28000", "fetched": true, "page_class": "informational"},
+     "outcome": "unrelated", "campaign": false,
+     "note": "short-brand close permutation, over two years old, no theme or content signal: dropped as noise"},
+
+    {"domain": "mmdata.dev", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "reg_age_days": 900, "reg_date": "2024-04-01", "registrar": "Google LLC", "ns": ["ns-cloud-a1.googledomains.com"], "asn": "AS15169", "fetched": true, "page_class": "informational"},
+     "outcome": "unrelated", "campaign": false,
+     "note": "short-brand close permutation, over two years old: dropped as noise"},
+
+    {"domain": "stammdaten-pflegen-und-updaten.de", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "mmda buried inside a German phrase: dropped by relevance"},
+
+    {"domain": "hommdays.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "mmda buried inside hommdays: dropped by relevance"},
+
+    {"domain": "summday.co.il", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "mmda buried inside summday: dropped by relevance"},
+
+    {"domain": "mmda-verify.ph", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "resolves": true, "fetched": false},
+     "outcome": "unknown", "campaign": false,
+     "note": "a .ph registry wildcard answer is dropped as a wildcard in discovery; on the scoring side it is a bare resolving host with no content, never Likely"},
+
+    {"domain": "philhealthhub.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": [], "reg_age_days": 65, "reg_date": "2026-08-08", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "", "has_cred_form": true, "has_payment_form": true},
+     "outcome": "likely phishing", "campaign": false,
+     "note": "credential and payment form on a young domain"},
+
+    {"domain": "philhealthservices.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": [], "reg_age_days": 79, "reg_date": "2026-07-25", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "", "has_cred_form": true},
+     "outcome": "likely phishing", "campaign": false,
+     "note": "credential form on a young domain"},
+
+    {"domain": "philhealthmember.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": ["member"], "reg_age_days": 23, "reg_date": "2026-09-19", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "thin"},
+     "outcome": "likely phishing", "campaign": false,
+     "note": "borderline: young brand-themed domain serving a blank page (possible geofenced kit); likely on its own evidence, not via a campaign"},
+
+    {"domain": "philhealthportal.net", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": ["portal"], "reg_age_days": 57, "reg_date": "2026-08-16", "registrar": "NameCheap, Inc.", "ns": ["dns2.namecheaphosting.com"], "asn": "AS22612", "fetched": false, "urlscan": {"first_seen": "2026-08-18", "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "borderline: themed and young but no own phishing evidence and no corroborated campaign (generic Namecheap hosting), so suspicious, not Likely"},
+
+    {"domain": "philhealthportal.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": ["portal"], "reg_age_days": 339, "reg_date": "2025-11-07", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "informational"},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "informational page, old, no campaign: must not be boosted"},
+
+    {"domain": "philhealthmembersportal.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": ["member", "portal"], "reg_age_days": 8, "reg_date": "2026-10-04", "registrar": "NameCheap, Inc.", "ns": ["dns1.namecheaphosting.com"], "asn": "AS22612", "fetched": true, "page_class": "informational"},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "young but informational and on generic hosting: brand-referencing, not Likely"},
+
+    {"domain": "aboutphilhealth.org", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": [], "reg_age_days": 87, "reg_date": "2026-07-17", "registrar": "GoDaddy.com, LLC", "ns": ["ns1.domaincontrol.com"], "asn": "AS26496", "fetched": true, "page_class": "informational"},
+     "outcome": "brand-referencing", "campaign": false},
+
+    {"domain": "philhealthguide.com", "keyword": "philhealth", "legit": "philhealth.gov.ph", "group": "philhealth",
+     "rec": {"themes": [], "reg_age_days": 91, "reg_date": "2026-07-13", "registrar": "GoDaddy.com, LLC", "ns": ["ns1.domaincontrol.com"], "asn": "AS26496", "fetched": true, "page_class": "informational"},
+     "outcome": "brand-referencing", "campaign": false},
+
+    {"domain": "dictamen.com", "keyword": "dict", "legit": "dict.gov.ph", "group": "dict",
+     "rec": {"themes": [], "reg_age_days": 1400, "reg_date": "2022-12-01", "registrar": "GoDaddy.com, LLC", "ns": ["ns1.domaincontrol.com"], "asn": "AS26496", "fetched": true, "page_class": "informational"},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "dict is a substring of dictamen; a real unrelated site"},
+
+    {"domain": "indict.com", "keyword": "dict", "legit": "dict.gov.ph", "group": "dict",
+     "rec": {"themes": [], "reg_age_days": 1800, "reg_date": "2021-11-01", "registrar": "Tucows Domains Inc.", "ns": ["dns1.p01.nsone.net"], "asn": "AS13335", "fetched": true, "page_class": "informational"},
+     "outcome": "unrelated", "campaign": false,
+     "note": "dict is a substring of indict; short-brand close permutation on an old domain is dropped as noise (unrelated)"},
+
+    {"domain": "notaddicted.net", "keyword": "dict", "legit": "dict.gov.ph", "group": "dict",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "dict buried inside notaddicted: dropped by relevance"},
+
+    {"domain": "gcash-promo4sale.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 400, "reg_date": "2025-09-07", "registrar": "GoDaddy.com, LLC", "ns": ["ns1.dan.com"], "asn": "AS394695", "fetched": true, "page_class": "parked", "parked": true},
+     "outcome": "parked", "campaign": false,
+     "note": "a domain-for-sale page naming GCash and Maya; parked, not phishing"}
+
+  ]
+}
