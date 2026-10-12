@@ -20,13 +20,48 @@ def test_unrelated_brand_is_not_counted_as_impersonation():
     assert out["brand_markers"] == 0
 
 
-def test_hunted_brand_in_title_is_imitation():
-    # The brand in the page title is strong-context imitation, even if the bare
-    # brand name is the only marker.
-    body = "<title>GCash Login</title> gcash mynt please login to your gcash wallet account"
-    out = candidate.assess_content(body, "https://x.com/", "gcash", "gcash.com", "")
+def test_copying_the_legit_identity_is_a_clone():
+    # A candidate whose title and og:site_name match the legitimate site's is a
+    # clone, regardless of whether the brand is in its own host.
+    legit_title = "GCash | Buy Load, Pay Bills, Send Money"
+    body = (f'<title>{legit_title}</title>'
+            '<meta property="og:site_name" content="GCash">'
+            '<form><input type="password"></form>')
+    out = candidate.assess_content(body, "https://secure-verify-portal.com/", "gcash",
+                                   "gcash.com", legit_title,
+                                   legit_og_site_name="GCash", legit_og_title=legit_title,
+                                   host="secure-verify-portal.com")
+    assert out["identity_clone"] is True
     assert out["brand_imitation"] is True
-    assert out["brand"] == "GCash"
+    assert out["page_class"] == "imitation"
+
+
+def test_og_site_name_match_is_a_clone_even_without_title():
+    # og:site_name alone, matching the legit site's, is clone evidence.
+    body = ('<title>Member Portal</title>'
+            '<meta property="og:site_name" content="PhilHealth">')
+    out = candidate.assess_content(body, "https://philhealth-benefits.net/", "philhealth",
+                                   "philhealth.gov.ph", "PhilHealth Official Website",
+                                   legit_og_site_name="PhilHealth", host="philhealth-benefits.net")
+    assert out["identity_clone"] is True
+    assert out["brand_imitation"] is True
+
+
+def test_og_site_name_brand_without_legit_is_imitation():
+    # Without a legit signature, og:site_name equal to the bare brand on a host that
+    # is not the brand's own is imitation.
+    body = '<title>Sign in</title><meta property="og:site_name" content="GCash"> login'
+    out = candidate.assess_content(body, "https://gcash-secure-login.com/", "gcash", "",
+                                   "", host="gcash-secure-login.com")
+    assert out["brand_imitation"] is True
+
+
+def test_own_label_og_without_legit_is_not_imitation():
+    # og:site_name that only echoes the candidate's own host label is not imitation.
+    body = '<title>Home</title><meta property="og:site_name" content="GCashb.com">'
+    out = candidate.assess_content(body, "https://gcashb.com/", "gcash", "",
+                                   "", host="gcashb.com")
+    assert out["brand_imitation"] is False
 
 
 def test_gambling_page_with_register_form_is_not_imitation():

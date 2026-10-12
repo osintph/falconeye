@@ -35,11 +35,61 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.22"
+_UA = "FalconEye-Hunt/3.38.23"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _ICON_RE = re.compile(r'<link[^>]+rel=["\'][^"\']*icon[^"\']*["\'][^>]+href=["\']([^"\']+)', re.IGNORECASE)
+_META_RE = re.compile(r"<meta\b[^>]*>", re.IGNORECASE)
+# Title and host-label separators (dash characters built with chr() so no literal
+# en or em dash appears in the source).
+_SEP_CLASS = "[\\s|:." + chr(0x2013) + chr(0x2014) + "-]+"
+_STRIP_CHARS = " |:." + chr(0x2013) + chr(0x2014) + "-"
+
+
+def _meta_content(body: str, prop: str) -> str:
+    """The content of a <meta property=prop> or <meta name=prop> tag, independent of
+    attribute order. Used for og:site_name and og:title."""
+    prop = prop.lower()
+    for tag_html in _META_RE.findall(body or ""):
+        low = tag_html.lower()
+        if (f'property="{prop}"' in low or f"property='{prop}'" in low
+                or f'name="{prop}"' in low or f"name='{prop}'" in low):
+            m = re.search(r'content=["\']([^"\']*)["\']', tag_html, re.IGNORECASE)
+            if m:
+                return re.sub(r"\s+", " ", m.group(1)).strip()[:160]
+    return ""
+
+
+def _norm_identity(s: str) -> str:
+    """Normalise a site-identity string (title or og) for comparison: lowercased,
+    whitespace collapsed, a trailing section label such as '| Home' removed, and
+    surrounding punctuation stripped."""
+    s = re.sub(r"\s+", " ", (s or "").lower()).strip()
+    s = re.sub(r"\s*[|:" + chr(0x2013) + chr(0x2014) + r"-]{1,2}\s*home\s*$", "", s)
+    return s.strip(_STRIP_CHARS)
+
+
+def _echoes_own_label(text: str, *hosts: str) -> bool:
+    """True when the identity string is only the candidate's own host or host label
+    echoed back ('Gcash8 Online Casino' on gcash8.com, 'GCashb.com || Home'), which
+    is naming yourself, not imitating the legitimate site."""
+    t = re.sub(r"\s+", " ", (text or "").lower()).strip()
+    if not t:
+        return False
+    for host in hosts:
+        host = (host or "").lower().strip()
+        if not host:
+            continue
+        label = host.split(".", 1)[0]
+        if not label:
+            continue
+        if host in t:
+            return True
+        lead = re.split(_SEP_CLASS, t, maxsplit=1)[0]
+        if lead == label or t == label:
+            return True
+    return False
 
 
 def _resolve_sync(host: str) -> dict:
@@ -105,23 +155,32 @@ _INFO_HINTS = ("<article", "<nav", "blog", "read more", "posted on", "published"
 
 
 def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
-                   legit_title: str) -> dict:
+                   legit_title: str, legit_og_site_name: str = "",
+                   legit_og_title: str = "", host: str = "") -> dict:
     """Classify a fetched homepage. Pure (no network), so it is unit tested.
 
     Parking, registrar and marketplace landing pages are flagged parked, and brand
     and PH-indicator checks are suppressed on them, so payment-method logos (GCash,
     Maya, bank marks) on a for-sale or checkout page do not read as impersonation.
     Brand impersonation is counted only when it relates to the hunted brand or the
-    legitimate site, never an unrelated brand."""
+    legitimate site, never an unrelated brand. A candidate whose title, og:site_name
+    or og:title matches the legitimate site's identity is a clone, regardless of
+    whether the brand is in the host; a string that only echoes the candidate's own
+    host label is never imitation."""
     out = {"parked": False, "landing": "", "brand": None, "brand_markers": 0,
            "brand_imitation": False, "payment_ref": False,
            "ph_indicators": 0, "legit_title_sim": 0, "title": "",
+           "og_site_name": "", "og_title": "", "identity_clone": False, "clone_basis": "",
            "has_cred_form": False, "has_payment_form": False, "page_class": ""}
     low = (body or "").lower()
 
     m = _TITLE_RE.search(body or "")
     title = re.sub(r"\s+", " ", m.group(1)).strip()[:160] if m else ""
     out["title"] = title
+    og_site = _meta_content(body or "", "og:site_name")
+    og_title = _meta_content(body or "", "og:title")
+    out["og_site_name"] = og_site
+    out["og_title"] = og_title
     # Full-string ratio (not token_set_ratio, which over-matches short or generic
     # titles and flags unrelated sites) with a minimum legitimate-title length, so
     # only a page that genuinely copies the title reads as imitation.
@@ -152,35 +211,65 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
     out["parked"] = parked
 
     if not parked:
-        brand = detect_brand(body or "")
-        bn = (brand.get("brand") or "")
         hunted = (keyword or "").lower()
         legit_label = legit_domain.split(".", 1)[0].lower() if legit_domain else ""
+
+        # Clone by copying the legitimate site's identity. The candidate's title,
+        # og:site_name or og:title matches the legit site's (normalised exact, or
+        # high similarity for the longer title fields). This is clone evidence
+        # regardless of whether the brand appears in the host. An own-host-label
+        # echo never matches the legit identity, so it is not flagged here.
+        legit_ids = [x for x in (legit_title, legit_og_site_name, legit_og_title) if x]
+        cand_fields = (("title", title), ("og:site_name", og_site), ("og:title", og_title))
+        clone, clone_basis = False, ""
+        for fname, cid in cand_fields:
+            nid = _norm_identity(cid)
+            if not nid:
+                continue
+            for lid in legit_ids:
+                nlid = _norm_identity(lid)
+                if not nlid:
+                    continue
+                if nid == nlid or (len(nlid) >= 8 and len(nid) >= 8 and _FUZZ
+                                   and _FUZZ.ratio(nid, nlid) >= 85):
+                    clone, clone_basis = True, fname
+                    break
+            if clone:
+                break
+
+        # Without a legit signature, og:site_name equal to the bare brand name, on a
+        # host that is not the brand's own and not merely the candidate's own label,
+        # is imitation. Own-label echo still does not count.
+        og_brand = False
+        if not legit_ids and og_site:
+            ns = _norm_identity(og_site)
+            own_host = bool(legit_domain and (fhost == legit_domain or host == legit_domain
+                                              or fhost.endswith("." + legit_domain)))
+            if (ns and ns in {hunted, legit_label} and not own_host
+                    and not _echoes_own_label(og_site, host, fhost)):
+                og_brand = True
+                clone_basis = clone_basis or "og:site_name"
+
+        out["identity_clone"] = clone
+        out["clone_basis"] = clone_basis
+
+        brand = detect_brand(body or "")
+        bn = (brand.get("brand") or "")
         bnl = bn.lower()
         related = bool(bn and ((hunted and (hunted in bnl or bnl in hunted))
                                or (legit_label and (legit_label in bnl or bnl in legit_label))))
+        qualifying = []
         if related:
             out["brand"] = bn
             markers = brand.get("matched_markers") or []
             name = bn.lower()
-            # Brand imitation requires the brand in page furniture (title or
-            # og:site_name), a favicon match (handled by the probe), or at least
-            # two markers that are NOT just the brand name. The bare brand name and
-            # the hunted keyword never count: naming the brand, including the
-            # domain's own name on its page, is not a clone.
+            # At least two markers that are NOT just the brand name are imitation:
+            # the bare brand name, the hunted keyword and the legit label never count,
+            # so naming the brand (including the domain's own name) is not a clone.
             qualifying = [m for m in markers
                           if m not in (name, (keyword or "").lower(), legit_label)]
             out["brand_markers"] = len(qualifying)
-            # The brand in the title or og:site_name is imitation only when it is the
-            # brand presented as the brand, not the domain's own name echoed back in
-            # its title ("Gcash8 Online Casino" on gcash8.com, "GCashb.com"). So a
-            # page-furniture (strong-context) match counts when there is also a
-            # qualifying non-name marker, OR when the brand is not part of this
-            # domain's own name (the real brand on an unrelated host).
-            brand_in_domain = bool(hunted and fhost and hunted in fhost)
-            strong = bool(brand.get("strong_context"))
-            out["brand_imitation"] = bool(len(qualifying) >= 2
-                                          or (strong and (qualifying or not brand_in_domain)))
+        out["brand_imitation"] = bool(clone or og_brand or len(qualifying) >= 2)
         out["ph_indicators"] = len(match_ph_indicators(body or "", final_url or ""))
 
     # Credential and payment form detection, and the page class. A page that
@@ -203,7 +292,7 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
 
     if parked:
         out["page_class"] = "parked"
-    elif out["legit_title_sim"] >= 80:
+    elif out["legit_title_sim"] >= 80 or out["identity_clone"]:
         out["page_class"] = "imitation"
     elif informational:
         out["page_class"] = "informational"
@@ -263,6 +352,8 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
     legit_sig = legit_sig or {}
     legit_favicon = legit_sig.get("favicon")
     legit_title = legit_sig.get("title") or ""
+    legit_og_site = legit_sig.get("og_site_name") or ""
+    legit_og_title = legit_sig.get("og_title") or ""
     if dns_data is None:
         loop = asyncio.get_event_loop()
         dns_data = await loop.run_in_executor(None, _resolve_sync, domain)
@@ -377,8 +468,11 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         if cloudflare_detect.detect_cloudflare_challenge(body):
             out["cloudflare"] = True
         assess = assess_content(body, out.get("final_url") or f"https://{domain}/",
-                                keyword, legit_domain, legit_title)
+                                keyword, legit_domain, legit_title,
+                                legit_og_site_name=legit_og_site,
+                                legit_og_title=legit_og_title, host=domain)
         out["title"] = assess["title"]
+        out["identity_clone"] = assess["identity_clone"]
         out["parked"] = assess["parked"]
         out["landing"] = assess["landing"]
         out["brand"] = assess["brand"]
@@ -400,6 +494,9 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
             out["evidence"].append(f"brand impersonation content for {out['brand']}")
         if out["legit_title_sim"] >= 80:
             out["evidence"].append("page title closely imitates the legitimate site")
+        elif assess["identity_clone"]:
+            out["evidence"].append(
+                f"copies the legitimate site's identity ({assess['clone_basis']})")
         elif assess["page_class"] == "informational":
             out["evidence"].append("informational or brand-referencing page, no credential or payment form")
         elif assess["page_class"] == "thin":
@@ -436,9 +533,10 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
 
 
 async def legit_signature(client: httpx.AsyncClient, legit_domain: str) -> dict:
-    """The legitimate site's favicon hash and homepage title, so a candidate that
-    imitates it (favicon match, title similarity) can be recognised."""
-    sig = {"favicon": None, "title": ""}
+    """The legitimate site's favicon hash, homepage title, og:site_name and og:title,
+    so a candidate that copies any of them (favicon match, identity clone) can be
+    recognised. Fetched once per hunt and cached by the engine."""
+    sig = {"favicon": None, "title": "", "og_site_name": "", "og_title": ""}
     if not legit_domain:
         return sig
     try:
@@ -449,6 +547,8 @@ async def legit_signature(client: httpx.AsyncClient, legit_domain: str) -> dict:
         m = _TITLE_RE.search(body)
         if m:
             sig["title"] = re.sub(r"\s+", " ", m.group(1)).strip()[:160]
+        sig["og_site_name"] = _meta_content(body, "og:site_name")
+        sig["og_title"] = _meta_content(body, "og:title")
     except Exception:  # noqa: BLE001
         pass
     try:

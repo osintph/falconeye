@@ -24,6 +24,7 @@ from datetime import datetime, timedelta, timezone
 import httpx
 
 from app import config
+from app.asm import store
 from app.hunt import candidate as candidate_mod
 from app.hunt import cluster as cluster_mod
 from app.hunt import platforms as platforms_mod
@@ -108,7 +109,13 @@ async def execute(scan: dict) -> dict:
     by_domain = {c["domain"]: c for c in cands}
 
     async with httpx.AsyncClient(follow_redirects=True) as client:
-        legit_sig = await candidate_mod.legit_signature(client, legit)
+        # The legitimate site's identity signature: fetched once per hunt and reused
+        # for 24h (title, og:site_name, og:title and favicon hash rarely change).
+        legit_sig = store.legit_sig_get(legit, 86400) if legit else None
+        if legit_sig is None:
+            legit_sig = await candidate_mod.legit_signature(client, legit)
+            if legit:
+                store.legit_sig_put(legit, legit_sig)
         rsem = asyncio.Semaphore(config.HUNT_RESOLVE_CONCURRENCY)
 
         async def _resolve(dom):

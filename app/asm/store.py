@@ -190,6 +190,15 @@ def init_tables() -> None:
               fetched_at INTEGER NOT NULL
             );
 
+            -- The legitimate site's identity signature (title, og:site_name,
+            -- og:title, favicon hash), fetched once per hunt and reused for 24h so a
+            -- re-run does not re-fetch the legit homepage for every clone comparison.
+            CREATE TABLE IF NOT EXISTS hunt_legit_sig_cache (
+              domain TEXT PRIMARY KEY,
+              json TEXT NOT NULL,
+              fetched_at INTEGER NOT NULL
+            );
+
             -- v3.38.0 one-time model: result content lives here only, briefly.
             CREATE TABLE IF NOT EXISTS asm_result_cache (
               id TEXT PRIMARY KEY,
@@ -444,6 +453,40 @@ def rdap_cache_put(domain: str, value) -> None:
         conn.commit()
     except Exception as exc:  # noqa: BLE001
         log.info("hunt rdap cache write failed: %s", type(exc).__name__)
+    finally:
+        conn.close()
+
+
+def legit_sig_get(domain: str, ttl_seconds: int):
+    """A fresh cached legitimate-site signature for *domain*, else None."""
+    conn = _connect()
+    try:
+        row = conn.execute(
+            "SELECT json FROM hunt_legit_sig_cache WHERE domain = ? AND fetched_at > ?",
+            (domain, now() - ttl_seconds)).fetchone()
+    except Exception:  # noqa: BLE001
+        return None
+    finally:
+        conn.close()
+    if not row:
+        return None
+    try:
+        return json.loads(row[0])
+    except (ValueError, TypeError):
+        return None
+
+
+def legit_sig_put(domain: str, value) -> None:
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO hunt_legit_sig_cache (domain, json, fetched_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(domain) DO UPDATE SET json = excluded.json, "
+            "fetched_at = excluded.fetched_at",
+            (domain, json.dumps(value), now()))
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        log.info("hunt legit sig cache write failed: %s", type(exc).__name__)
     finally:
         conn.close()
 

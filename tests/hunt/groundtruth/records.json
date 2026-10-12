@@ -239,7 +239,12 @@
     {"domain": "gcash8.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
      "rec": {"themes": [], "reg_age_days": 1364, "reg_date": "2023-01-17", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": true, "fetched": true, "page_class": "informational", "brand_imitation": false, "payment_ref": true},
      "outcome": "brand-referencing", "campaign": false,
-     "note": "v3.38.21: recorded content is an online casino ('Gcash8 Online Casino, Claim Free 100 Gcash Bonus') with a registration form; it names GCash but does not imitate the GCash login (no favicon or title clone), so brand-referencing, not Likely"}
+     "note": "v3.38.21: recorded content is an online casino ('Gcash8 Online Casino, Claim Free 100 Gcash Bonus') with a registration form; it names GCash but does not imitate the GCash login (no favicon or title clone), so brand-referencing, not Likely"},
+
+    {"domain": "gcashverify-ph.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 40, "reg_date": "2026-09-02", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": true, "fetched": true, "page_class": "imitation", "brand_imitation": true, "legit_title_sim": 97},
+     "outcome": "likely phishing", "campaign": false,
+     "note": "v3.38.23: a host containing the brand that copies the legitimate site's title and og:site_name is a clone (page_class imitation, brand_imitation true); Likely with a credential form and a young registration"}
 
   ]
 }
