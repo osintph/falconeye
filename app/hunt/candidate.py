@@ -35,7 +35,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.21"
+_UA = "FalconEye-Hunt/3.38.22"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -171,7 +171,16 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
             qualifying = [m for m in markers
                           if m not in (name, (keyword or "").lower(), legit_label)]
             out["brand_markers"] = len(qualifying)
-            out["brand_imitation"] = bool(brand.get("strong_context") or len(qualifying) >= 2)
+            # The brand in the title or og:site_name is imitation only when it is the
+            # brand presented as the brand, not the domain's own name echoed back in
+            # its title ("Gcash8 Online Casino" on gcash8.com, "GCashb.com"). So a
+            # page-furniture (strong-context) match counts when there is also a
+            # qualifying non-name marker, OR when the brand is not part of this
+            # domain's own name (the real brand on an unrelated host).
+            brand_in_domain = bool(hunted and fhost and hunted in fhost)
+            strong = bool(brand.get("strong_context"))
+            out["brand_imitation"] = bool(len(qualifying) >= 2
+                                          or (strong and (qualifying or not brand_in_domain)))
         out["ph_indicators"] = len(match_ph_indicators(body or "", final_url or ""))
 
     # Credential and payment form detection, and the page class. A page that
@@ -203,15 +212,17 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
 
     # A gambling site or a page that merely names the brand as a payment method
     # (online casino, shop, lending, betting with "GCash accepted" content) is
-    # brand-referencing, not impersonation, UNLESS it imitates the brand's login or
-    # app (a credential or payment form, a favicon or title match). Such a page is
-    # not Likely even when it shares infrastructure with others.
+    # brand-referencing, not impersonation, UNLESS it imitates the brand's LOGIN or
+    # APP: a favicon match or a close title clone (legit_title_sim >= 80). A casino
+    # registration or deposit form is NOT a brand-login imitation, so a form alone
+    # does not cancel this; only a real brand-login clone (handled by the favicon
+    # check in probe) does. Such a page is not Likely even inside a cluster.
     kw = (keyword or "").lower()
     gambling = any(s in low for s in _GAMBLING)
     pay_brand = bool(kw and any(p in low for p in (
         f"{kw} accepted", f"accept {kw}", f"pay with {kw}", f"pay via {kw}",
         f"deposit via {kw}", f"{kw} deposit", f"cash in via {kw}", f"via {kw}")))
-    payref = ((gambling or pay_brand) and not has_cred and not has_pay
+    payref = ((gambling or pay_brand) and out["legit_title_sim"] < 80
               and out["page_class"] != "imitation")
     out["payment_ref"] = payref
     if payref:

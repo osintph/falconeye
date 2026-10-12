@@ -29,6 +29,27 @@ def test_hunted_brand_in_title_is_imitation():
     assert out["brand"] == "GCash"
 
 
+def test_gambling_page_with_register_form_is_not_imitation():
+    # A casino naming GCash, with its own registration form, is brand-referencing,
+    # not a GCash login imitation.
+    body = ("<title>Gcash8 Online Casino - Register Claim Free 100 Gcash Bonus</title>"
+            "<form><input type=\"password\"></form> play now casino slots jackpot gcash")
+    out = candidate.assess_content(body, "https://gcash8.com/", "gcash", "gcash.com",
+                                   "GCash Buy Load Pay Bills Send Money")
+    assert out["payment_ref"] is True
+    assert out["brand_imitation"] is False
+    assert out["page_class"] == "informational"
+
+
+def test_domain_name_in_title_is_not_imitation():
+    # The brand in the title is only the domain's own name echoed back, not an
+    # imitation of the brand.
+    body = "<title>GCashb.com || Home</title> welcome to our site"
+    out = candidate.assess_content(body, "https://gcashb.com/", "gcash", "gcash.com",
+                                   "GCash Buy Load Pay Bills Send Money")
+    assert out["brand_imitation"] is False
+
+
 def test_bare_brand_mention_is_not_imitation():
     # A page that merely names the brand in body text (no title or og:site_name, no
     # second non-name marker) is NOT imitation: a single "gcash" mention does not
