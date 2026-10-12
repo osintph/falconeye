@@ -204,7 +204,42 @@
     {"domain": "mmdancap-dyna.icu", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
      "rec": {"themes": ["ncap"], "themes_exact": ["ncap"], "reg_age_days": 20, "reg_date": "2026-09-22", "registrar": "Dynadot Inc", "ns": ["ns1.dyna-ns.net"], "asn": "AS13335", "fetched": true, "page_class": "thin"},
      "outcome": "likely phishing", "campaign": true,
-     "note": "v3.38.20: an NCAP burst member whose only shared infra is the Dynadot default NS dyna-ns.net (now generic); it belongs via the exact ncap theme and the cheap-TLD family, not via that nameserver"}
+     "note": "v3.38.20: an NCAP burst member whose only shared infra is the Dynadot default NS dyna-ns.net (now generic); it belongs via the exact ncap theme and the cheap-TLD family, not via that nameserver"},
+
+    {"domain": "mmda.academy", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "reg_age_days": 60, "reg_date": "2026-08-13", "registrar": "NameSilo, LLC", "ns": ["ns1.dyna-ns.net"], "asn": "AS13335", "fetched": false, "urlscan": {"first_seen": "2026-08-14", "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.21: no lure-family theme, so shared infra (the NCAP operator NS/ASN) does NOT recruit it into the campaign; scored on its own signals"},
+
+    {"domain": "mmda.ngo.ph", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "resolves": false, "fetched": false, "asn": null, "ns": [], "urlscan": {"first_seen": "2026-08-13", "asn": "AS13335", "age_days": 61, "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.21: no live A record now (urlscan saw it historically); its ASN is historical only and must not corroborate. Themeless, so not a campaign member; possibly taken down"},
+
+    {"domain": "mmda-tracker.pages.dev", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "reg_age_days": 59, "fetched": false, "urlscan": {"first_seen": "2026-08-15", "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.21: platform subdomain, no theme; the platform ASN/NS are generic and never corroborate, so it is not a campaign member"},
+
+    {"domain": "mmdam.pages.dev", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "reg_age_days": 50, "fetched": false, "urlscan": {"first_seen": "2026-08-24", "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.21: platform subdomain, no theme; not a campaign member"},
+
+    {"domain": "mmdalipr.workers.dev", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": [], "platform": "workers.dev", "registrar": "platform: workers.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "reg_age_days": 48, "fetched": false, "urlscan": {"first_seen": "2026-08-26", "labels": []}},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.21: platform subdomain, no theme; not a campaign member"},
+
+    {"domain": "gcashb.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 1801, "reg_date": "2021-11-06", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "has_mx": true, "fetched": true, "page_class": "thin", "ct_first_seen_age": 20},
+     "outcome": "unrelated", "campaign": false,
+     "note": "v3.38.21: registered 2021; a near-empty page must NOT make it Likely (near-empty/geofencing applies only under 90 days by registration or first live), and a recent cert does not change that"},
+
+    {"domain": "gcash8.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 1364, "reg_date": "2023-01-17", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "has_cred_form": true, "fetched": true, "page_class": "thin", "brand_imitation": false},
+     "outcome": "unrelated", "campaign": false,
+     "note": "v3.38.21: a credential form on a domain registered over 90 days ago, with NO brand imitation (no title/og/favicon/2-marker evidence); not Likely"}
 
   ]
 }

@@ -69,10 +69,10 @@ def test_cdn_asn_alone_does_not_corroborate():
     assert campaigns == [] and len(related) == 1
 
 
-def test_infra_merge_pulls_in_a_distinctive_infra_domain():
-    # The campaign shares a distinctive, operator-run nameserver (not a registrar
-    # default). A themeless brand lookalike on that same nameserver, in the window,
-    # joins the NCAP campaign.
+def test_shared_infra_does_not_recruit_a_themeless_member():
+    # Campaign membership requires a lure-family match. A themeless brand lookalike
+    # on the SAME operator nameserver as the campaign is NOT recruited by that
+    # shared infrastructure; it is scored on its own.
     members = [
         _c("mmda-ltoncap.icu", ["lto", "ncap"], age=20, registrar="NameMart",
            asn="AS9999 Op", ns=["ns1.operatordns.net"]),
@@ -81,12 +81,27 @@ def test_infra_merge_pulls_in_a_distinctive_infra_domain():
         _c("mmdancap-ncr.work", ["ncap", "ncr"], age=25, registrar="NameMart",
            asn="AS9999 Op", ns=["ns1.operatordns.net"]),
     ]
-    joiner = _c("nocpmmda.luxe", [], age=48, registrar="NameMart", asn="AS9999 Op",
-                ns=["ns1.operatordns.net"])
-    campaigns, related, dom_to_cid = cluster.build(members + [joiner])
+    themeless = _c("mmda-tracker.luxe", [], age=48, registrar="NameMart", asn="AS9999 Op",
+                   ns=["ns1.operatordns.net"])
+    campaigns, related, dom_to_cid = cluster.build(members + [themeless])
+    assert len(campaigns) == 1
+    assert "mmda-tracker.luxe" not in dom_to_cid  # shared infra alone never recruits it
+
+
+def test_themed_variant_member_joins_via_family():
+    # A domain whose theme is only a maintained variant (nocp ~ ncap) still joins
+    # the campaign, because it IS a lure-family match (not an infra recruit).
+    members = [
+        _mk("mmda-ltoncap.icu", ["lto", "ncap"], age=20, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _mk("mmdaltoncaps.sbs", ["lto", "ncap"], age=30, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _mk("nocpmmda.luxe", ["ncap"], age=25, registrar="NameMart Pte. Ltd.",
+            ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+    ]
+    campaigns, related, dom_to_cid = cluster.build(members)
     assert len(campaigns) == 1
     assert dom_to_cid.get("nocpmmda.luxe") == campaigns[0]["id"]
-    assert joiner.get("campaign_join", "").endswith("(infra match)")
 
 
 def test_generic_infra_does_not_pull_in_a_themeless_domain():

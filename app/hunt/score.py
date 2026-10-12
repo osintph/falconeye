@@ -27,7 +27,9 @@ SUSPICIOUS = 30
 
 
 def _label(domain: str) -> str:
-    reg = registrable(domain) or domain
+    # PSL-private aware so a platform subdomain (mmda-tracker.pages.dev) scores on
+    # its own label (mmda-tracker), not the platform apex.
+    reg = registrable(domain, private=True) or domain
     return reg.split(".", 1)[0]
 
 
@@ -149,10 +151,16 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
             ev.append(c["campaign_join"])
 
     form = bool(c.get("has_cred_form") or c.get("has_payment_form"))
-    # A form is phishing evidence only with brand imitation or a young domain.
-    form_phishing = form and (brand_imitation or young)
+    # A credential or payment form is phishing evidence only with brand imitation or
+    # a recently REGISTERED domain (under 90 days by registration). A domain
+    # registered over 90 days ago needs imitation even if a fresh certificate makes
+    # it "young" by first-live: an old generic login with a new cert is not phishing
+    # on the form alone.
+    reg_young = isinstance(reg_age, int) and 0 <= reg_age <= 90
+    form_phishing = form and (brand_imitation or reg_young)
     if form and not form_phishing:
-        ev.append("has a login or payment form, but no brand imitation and not a young domain")
+        ev.append("has a login or payment form, but no brand imitation and the domain "
+                  "is over 90 days old")
     geofenced_kit = bool(theme_hit and young and page_class == "thin")
     if geofenced_kit:
         ev.append("possible geofenced kit (young brand-themed domain serving a blank page)")

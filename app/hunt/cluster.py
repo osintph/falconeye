@@ -117,15 +117,19 @@ def _ages(members: list) -> list:
 
 
 def _distinctive_ns(members: list):
-    c = Counter(_ns_base(n) for m in members for n in (m.get("ns") or [])
-                if n and not _is_generic_ns(n))
+    # A platform subdomain (foo.pages.dev) takes the platform's nameservers, which
+    # are generic, so it never contributes a distinctive nameserver.
+    c = Counter(_ns_base(n) for m in members if not m.get("platform")
+                for n in (m.get("ns") or []) if n and not _is_generic_ns(n))
     hit = [n for n, k in c.items() if k >= 2]
     return hit[0] if hit else None
 
 
 def _distinctive_asn(members: list):
+    # Platform subdomains take the platform's ASN (generic); a non-numeric ASN
+    # (e.g. a bare "CLOUDFLARENET") is not distinctive either.
     c = Counter(_asn_num(m.get("asn")) for m in members
-                if m.get("asn") and not _is_cdn_asn(m.get("asn")))
+                if not m.get("platform") and m.get("asn") and not _is_cdn_asn(m.get("asn")))
     hit = [a for a, k in c.items() if k >= 2 and a]
     return hit[0] if hit else None
 
@@ -171,19 +175,27 @@ def _distinctive_overlap(m: dict, burst: list):
     None. Generic infrastructure (a registrar default nameserver, a CDN or large
     cloud ASN) does not count; a large registrar counts only paired with a shared
     non-generic nameserver."""
-    m_ns = {_ns_base(n) for n in (m.get("ns") or []) if n and not _is_generic_ns(n)}
+    # A platform subdomain's nameservers and ASN are the platform's (generic), so
+    # they never count; neither does a non-numeric ASN.
+    m_plat = bool(m.get("platform"))
+    m_ns = set() if m_plat else {_ns_base(n) for n in (m.get("ns") or [])
+                                 if n and not _is_generic_ns(n)}
     m_reg = str(m["registrar"]) if m.get("registrar") else None
-    m_asn = _asn_num(m["asn"]) if (m.get("asn") and not _is_cdn_asn(m["asn"])) else None
-    m_ip = m.get("ip")
+    m_asn = (_asn_num(m["asn"]) if (not m_plat and m.get("asn")
+             and not _is_cdn_asn(m["asn"])) else None) or None
+    m_ip = None if m_plat else m.get("ip")
     m_fav = m.get("favicon_hash")
     m_title = (m.get("title") or "").strip().lower()
     for b in burst:
-        b_ns = {_ns_base(n) for n in (b.get("ns") or []) if n and not _is_generic_ns(n)}
+        b_plat = bool(b.get("platform"))
+        b_ns = set() if b_plat else {_ns_base(n) for n in (b.get("ns") or [])
+                                     if n and not _is_generic_ns(n)}
         if m_reg and str(b.get("registrar")) == m_reg and (m_ns & b_ns):
             return f"same registrar and nameserver as the burst ({m_reg})"
-        if m_asn and b.get("asn") and not _is_cdn_asn(b["asn"]) and _asn_num(b["asn"]) == m_asn:
+        if (m_asn and not b_plat and b.get("asn") and not _is_cdn_asn(b["asn"])
+                and _asn_num(b["asn"]) == m_asn):
             return f"same non-cloud ASN as the burst ({m_asn})"
-        if m_ip and b.get("ip") and b["ip"] == m_ip:
+        if m_ip and not b_plat and b.get("ip") and b["ip"] == m_ip:
             return f"same hosting IP as the burst ({m_ip})"
         if m_fav and b.get("favicon_hash") and b["favicon_hash"] == m_fav:
             return "same favicon as the burst"
@@ -295,7 +307,6 @@ def build(candidates: list) -> tuple:
         comps.setdefault(find(c["domain"]), []).append(c)
 
     campaigns, related, dom_to_cid = [], [], {}
-    camp_state = []
     cid = 0
     for members in comps.values():
         if len(members) < MIN_CLUSTER:
@@ -346,53 +357,14 @@ def build(candidates: list) -> tuple:
             dom_to_cid[m["domain"]] = cid
             m.setdefault("campaign_join", m.get("outlier_join") or "shared brand theme")
         campaigns.append(entry)
-        camp_state.append((
-            entry,
-            {_ns_base(n) for m in campaign_members for n in (m.get("ns") or [])
-             if n and not _is_generic_ns(n)},
-            {_asn_num(m.get("asn")) for m in campaign_members
-             if m.get("asn") and not _is_cdn_asn(m.get("asn"))},
-            {str(m["registrar"]) for m in campaign_members
-             if m.get("registrar") and not _is_large_registrar(m.get("registrar"))},
-            lo, hi))
 
-    # Infrastructure merge, DISTINCTIVE attributes only.
-    W = config.HUNT_CAMPAIGN_WINDOW_DAYS
-    for rec in candidates:
-        d = rec["domain"]
-        if d in dom_to_cid:
-            continue
-        age = rec.get("reg_age_days")
-        for entry, nss, asns, regs, amin, amax in camp_state:
-            share = None
-            rec_ns = {_ns_base(n) for n in (rec.get("ns") or []) if n and not _is_generic_ns(n)}
-            if rec_ns & nss:
-                share = f"shared nameserver {next(iter(rec_ns & nss))}"
-            elif rec.get("asn") and not _is_cdn_asn(rec["asn"]) and _asn_num(rec["asn"]) in asns:
-                share = f"shared non-cloud ASN {_asn_num(rec['asn'])}"
-            elif (rec.get("registrar") and not _is_large_registrar(rec["registrar"])
-                  and str(rec["registrar"]) in regs):
-                share = f"shared registrar {rec['registrar']}"
-            if not share:
-                continue
-            in_window = (not isinstance(age, int) or amin is None
-                         or (amin - W) <= age <= (amax + W))
-            if not in_window:
-                continue
-            dom_to_cid[d] = entry["id"]
-            rec["campaign_join"] = share + " (infra match)"
-            if d not in entry["members"]:
-                entry["members"].append(d)
-                entry["members"].sort()
-                entry["count"] += 1
-                entry["member_rows"].append({
-                    "domain": d, "registrar": rec.get("registrar") or "unknown",
-                    "reg_date": rec.get("reg_date"),
-                    "ns": ", ".join(sorted({_ns_base(n) for n in (rec.get("ns") or []) if n})),
-                    "abuse": rec.get("abuse_contact")})
-            break
+    # No infrastructure merge: campaign membership requires a lure-family match (an
+    # exact theme term or a listed variant), which is what put a domain in a theme
+    # component above. Shared infrastructure only CORROBORATES a campaign; it never
+    # recruits a member on its own. A brand name-match with no theme (mmda.academy,
+    # mmda.ngo.ph, mmda-tracker.pages.dev) is scored on its own signals.
 
-    # Per-registrar abuse grouping (built after merges so it covers every member).
+    # Per-registrar abuse grouping.
     for entry in campaigns + related:
         entry["member_rows"].sort(key=lambda r: r["domain"])
         entry["registrar_groups"] = _registrar_groups(entry["member_rows"])

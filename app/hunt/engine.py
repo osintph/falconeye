@@ -220,8 +220,12 @@ async def execute(scan: dict) -> dict:
         elif not rec["platform"] and rec.get("reg_age_days") is None \
                 and isinstance(urls.get("age_days"), int):
             rec["reg_age_days"] = urls["age_days"]  # young determination only, no shown date
-        if not rec.get("asn") and urls.get("asn"):
-            rec["asn"] = urls["asn"]
+        # ASN, IP and nameservers used for scoring and corroboration come from THIS
+        # run's live DNS resolution only. The urlscan ASN is historical (the host
+        # may no longer resolve, or may have moved), so it is kept separately,
+        # shown labelled, and never used to corroborate a campaign.
+        rec["asn_historical"] = urls.get("asn")
+        rec["asn_historical_seen"] = (urls.get("first_seen") or "")[:10]
         rec["ns"] = list((res_map[dom]["dns"] or {}).get("NS") or [])
         rec["cheap"] = themes_mod.cheap_tld(dom)
         records.append(rec)
@@ -256,7 +260,9 @@ async def execute(scan: dict) -> dict:
             "domain": c["domain"], "verdict": c["verdict"], "score": c.get("score", 0),
             "registered": c.get("reg_date"), "reg_note": c.get("reg_note"),
             "age_days": c.get("reg_age_days"), "registrar": c.get("registrar"),
-            "asn": c.get("asn"), "source": ", ".join(c.get("origins") or []) or "dnstwist",
+            "asn": c.get("asn"), "asn_historical": c.get("asn_historical"),
+            "asn_historical_seen": c.get("asn_historical_seen"),
+            "source": ", ".join(c.get("origins") or []) or "dnstwist",
             "keyword_hit": bool(c.get("keyword_hit")), "themes": c.get("themes") or [],
             "campaign_id": c.get("campaign_id"), "observed": c.get("observed_hosts") or [],
             "ct_first_seen": c.get("ct_first_seen"),
