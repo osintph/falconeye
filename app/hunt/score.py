@@ -70,7 +70,10 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
 
     title = (c.get("title") or urls.get("title") or "")
     theme_terms = sorted(set(c.get("themes") or []) | set(themes_mod.matched_themes(title, keyword)))
+    exact_terms = sorted(set(c.get("themes_exact") or [])
+                         | set(themes_mod.exact_matched_themes(title, keyword)))
     theme_hit = bool(theme_terms)
+    exact_theme_hit = bool(exact_terms)
     if theme_hit:
         score += 25
         ev.append(f"brand theme term in the name or title ({', '.join(theme_terms)})")
@@ -159,7 +162,11 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
 
     informational = page_class == "informational"
     phish_content = bool(brand_imitation or known_bad or urlscan_malicious or form_phishing)
-    theme_recent_live = bool(theme_hit and young and fetched and not informational
+    # A theme hit drives Likely on its own only when it is an EXACT theme term, not
+    # a maintained spelling variant: a variant match is never the sole evidence for
+    # Likely Phishing (it still boosts score and clustering, and a variant-themed
+    # domain can be Likely via a corroborated campaign or real phishing content).
+    theme_recent_live = bool(exact_theme_hit and young and fetched and not informational
                              and not c.get("parked"))
     # A corroborated campaign requires a distinctive shared attribute (generic
     # consumer hosting and CDN or cloud ASNs do not count), so membership is strong
@@ -167,7 +174,11 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     # informational page (campaigns cloak benign content to our vantage). The
     # protection against boosting informational name-matches is that they never
     # become campaign members when the only thing shared is generic hosting.
-    likely = bool(campaign or phish_content or theme_recent_live)
+    # Exception: a gambling or payment-method page that names the brand (and does
+    # not imitate its login or app) is brand-referencing even inside a cluster, so
+    # campaign membership does not make it Likely.
+    payment_ref = bool(c.get("payment_ref"))
+    likely = bool((campaign and not payment_ref) or phish_content or theme_recent_live)
 
     # Irrelevant noise: a short-brand close permutation, over two years old, with no
     # theme and no content or campaign signal (mmdata.com.br). Dropped by the engine.

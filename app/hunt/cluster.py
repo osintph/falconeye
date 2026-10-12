@@ -64,6 +64,7 @@ _GENERIC_NS_TOKENS = (
     "namecheaphosting", "spaceship", "secureserver", "bluehost", "hostgator",
     "websitewelcome", "siteground", "sgvps", "ionos", "ui-dns", "dreamhost",
     "newfold", "name.com", "web.com", "register.com",
+    "dyna-ns",  # Dynadot default nameserver (ns1/ns2.dyna-ns.net), verified
 )
 
 # Very large registrars and consumer hosts acting as registrar: a shared registrar

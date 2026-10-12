@@ -35,6 +35,9 @@ def _record(entry):
     rec = dict(_DEFAULT)
     rec.update(entry.get("rec") or {})
     rec["domain"] = entry["domain"]
+    # A fixture's themes are exact by default; a variant-only case sets
+    # themes_exact=[] explicitly in its rec.
+    rec.setdefault("themes_exact", list(rec.get("themes") or []))
     rec["families"] = themes.families_of(entry["keyword"], rec.get("themes") or [])
     rec["cheap"] = themes.cheap_tld(entry["domain"])  # as the engine sets it
     return rec

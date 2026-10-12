@@ -16,6 +16,9 @@ def _c(**kw):
             "campaign_member": False, "page_class": "", "has_cred_form": False,
             "has_payment_form": False, "evidence": []}
     base.update(kw)
+    # A fixture's themes are exact by default; a variant-only case passes
+    # themes_exact=[] explicitly.
+    base.setdefault("themes_exact", list(base.get("themes") or []))
     return base
 
 

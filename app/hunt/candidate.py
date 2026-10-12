@@ -35,7 +35,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.19"
+_UA = "FalconEye-Hunt/3.38.20"
 _HTTP_TIMEOUT = 8.0
 _DNS_TIMEOUT = 4.0
 _TITLE_RE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
@@ -88,6 +88,12 @@ _MARKETPLACE_HOSTS = ("atom.com", "dan.com", "afternic.com", "sedo.com", "hugedo
                       "undeveloped.com", "squadhelp.com", "domainmarket.com", "buydomains.com",
                       "namecheap.com", "sav.com", "porkbun.com", "dynadot.com",
                       "parkingcrew.net", "bodis.com", "above.com")
+# Gambling and betting content: a casino/sportsbook that names a brand as an
+# accepted payment method is brand-referencing, not impersonation.
+_GAMBLING = ("casino", "slot machine", "slots", "jackpot", "sportsbook", "sports book",
+             "betting", "bet now", "gambling", "bingo", "poker", "roulette", "baccarat",
+             "online casino", "free spins", "jili", "pgsoft", "sabong", "lucky draw",
+             "deposit and withdraw", "min deposit", "play now and win")
 _PH_SUFFIXES = ("ph", "com.ph", "net.ph", "org.ph", "gov.ph", "edu.ph", "mil.ph")
 _PASSWORD_RE = re.compile(r'type\s*=\s*["\']?\s*password', re.IGNORECASE)
 _PAYMENT_HINTS = ("card number", "cardnumber", "card-number", "cc-number", "cvv", "cvc",
@@ -108,7 +114,7 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
     Brand impersonation is counted only when it relates to the hunted brand or the
     legitimate site, never an unrelated brand."""
     out = {"parked": False, "landing": "", "brand": None, "brand_markers": 0,
-           "brand_imitation": False,
+           "brand_imitation": False, "payment_ref": False,
            "ph_indicators": 0, "legit_title_sim": 0, "title": "",
            "has_cred_form": False, "has_payment_form": False, "page_class": ""}
     low = (body or "").lower()
@@ -194,6 +200,28 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
         out["page_class"] = "informational"
     elif body:
         out["page_class"] = "thin"  # fetched but near-empty: possible geofenced kit
+
+    # A gambling site or a page that merely names the brand as a payment method
+    # (online casino, shop, lending, betting with "GCash accepted" content) is
+    # brand-referencing, not impersonation, UNLESS it imitates the brand's login or
+    # app (a credential or payment form, a favicon or title match). Such a page is
+    # not Likely even when it shares infrastructure with others.
+    kw = (keyword or "").lower()
+    gambling = any(s in low for s in _GAMBLING)
+    pay_brand = bool(kw and any(p in low for p in (
+        f"{kw} accepted", f"accept {kw}", f"pay with {kw}", f"pay via {kw}",
+        f"deposit via {kw}", f"{kw} deposit", f"cash in via {kw}", f"via {kw}")))
+    payref = ((gambling or pay_brand) and not has_cred and not has_pay
+              and out["page_class"] != "imitation")
+    out["payment_ref"] = payref
+    if payref:
+        if out["page_class"] not in ("parked",):
+            out["page_class"] = "informational"
+        out["brand_imitation"] = False
+        out["brand_markers"] = 0
+        if not out["landing"]:
+            out["landing"] = ("gambling site" if gambling
+                              else "brand named as a payment method")
     return out
 
 
@@ -236,7 +264,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         "abuse_contact": None, "ct_first_seen": None, "ct_first_seen_age": None,
         "asn": None, "http_status": None, "title": "",
         "favicon_match": False, "brand_markers": 0, "brand_imitation": False,
-        "brand": None, "cloudflare": False,
+        "payment_ref": False, "brand": None, "cloudflare": False,
         "ph_indicators": 0, "legit_title_sim": 0, "known_bad": False, "landing": "",
         "parked": False, "fetched": False, "page_class": "", "has_cred_form": False,
         "has_payment_form": False, "evidence": [],
@@ -345,6 +373,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
         out["brand"] = assess["brand"]
         out["brand_markers"] = assess["brand_markers"]
         out["brand_imitation"] = assess["brand_imitation"]
+        out["payment_ref"] = assess["payment_ref"]
         out["ph_indicators"] = assess["ph_indicators"]
         out["legit_title_sim"] = assess["legit_title_sim"]
         out["page_class"] = assess["page_class"]
@@ -383,6 +412,7 @@ async def probe(client: httpx.AsyncClient, domain: str, keyword: str, legit_doma
                 if fh is not None and legit_favicon is not None and fh == legit_favicon:
                     out["favicon_match"] = True
                     out["page_class"] = "imitation"  # favicon match is imitation
+                    out["payment_ref"] = False  # a favicon match is login/app imitation
                     out["evidence"].append("favicon matches the legitimate site")
         except Exception:  # noqa: BLE001
             pass

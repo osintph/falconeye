@@ -174,7 +174,37 @@
 
     {"domain": "bdo-online-application-app-47bdb-0417.pages.dev", "keyword": "bdo", "legit": "bdo.com.ph", "group": "bdo",
      "rec": {"themes": ["online"], "ct_first_seen_age": 26, "platform": "pages.dev", "registrar": "platform: pages.dev", "ns": ["x.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "has_cred_form": true, "page_class": ""},
-     "outcome": "likely phishing", "campaign": false}
+     "outcome": "likely phishing", "campaign": false},
+
+    {"domain": "dangcash.com", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "v3.38.20: gcash buried inside dangcash (suffix match with an unknown prefix); dropped by relevance"},
+
+    {"domain": "bigcash.digital", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "v3.38.20: gcash buried inside bigcash; dropped by relevance"},
+
+    {"domain": "mixingcash.site", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": []},
+     "outcome": "irrelevant",
+     "note": "v3.38.20: gcash buried inside mixingcash; dropped by relevance"},
+
+    {"domain": "gcashonlinecasino.click", "keyword": "gcash", "legit": "gcash.com", "group": "gcash",
+     "rec": {"themes": [], "reg_age_days": 17, "reg_date": "2026-09-25", "registrar": "Dynadot Inc", "ns": ["ns1.dyna-ns.net"], "asn": "AS13335", "fetched": true, "page_class": "informational", "payment_ref": true},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "v3.38.20: an online casino naming GCash as a payment method, no login imitation; brand-referencing, not Likely, even if it shared infra"},
+
+    {"domain": "mmdancpo-check.xyz", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda-variant",
+     "rec": {"themes": ["ncap"], "themes_exact": [], "reg_age_days": 20, "reg_date": "2026-09-22", "registrar": "NameSilo, LLC", "ns": ["kip.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "thin"},
+     "outcome": "suspicious", "campaign": false,
+     "note": "v3.38.20: theme matched only by a maintained variant (ncpo ~ ncap), young and live but not in a campaign; a variant-only hit is never the sole evidence for Likely"},
+
+    {"domain": "mmdancap-dyna.icu", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
+     "rec": {"themes": ["ncap"], "themes_exact": ["ncap"], "reg_age_days": 20, "reg_date": "2026-09-22", "registrar": "Dynadot Inc", "ns": ["ns1.dyna-ns.net"], "asn": "AS13335", "fetched": true, "page_class": "thin"},
+     "outcome": "likely phishing", "campaign": true,
+     "note": "v3.38.20: an NCAP burst member whose only shared infra is the Dynadot default NS dyna-ns.net (now generic); it belongs via the exact ncap theme and the cheap-TLD family, not via that nameserver"}
 
   ]
 }

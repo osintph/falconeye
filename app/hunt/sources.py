@@ -43,7 +43,7 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.19 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.20 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -437,7 +437,10 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None,
         meta = us_meta.get(host)
         title = (meta or {}).get("title") or ""
         cls = themes.classify(host, keyword, title)
-        if is_hit and not cls["relevant"] and not _is_malicious((meta or {}).get("labels")):
+        # Relevance applies to EVERY source (urlscan, CT, dnstwist, NRD): the brand
+        # letters buried inside an unrelated word (dan+gcash, mixin+gcash) are
+        # dropped wherever they came from, unless urlscan flagged the domain.
+        if not cls["relevant"] and not _is_malicious((meta or {}).get("labels")):
             irrelevant += 1
             continue
         if len(candidates) >= ceiling:
@@ -447,8 +450,8 @@ async def discover(keyword: str, legit_domain: str, max_candidates: int = None,
         candidates.append({
             "domain": host, "origins": sorted(orig), "keyword_hit": is_hit,
             "observed": sorted(observed.get(host) or []), "urlscan": meta,
-            "themes": cls["themes"], "relevant": cls["relevant"],
-            "platform": platforms.platform_suffix(host),
+            "themes": cls["themes"], "exact_themes": cls["exact_themes"],
+            "relevant": cls["relevant"], "platform": platforms.platform_suffix(host),
         })
 
     return {"candidates": candidates, "source_status": status, "incomplete": incomplete,

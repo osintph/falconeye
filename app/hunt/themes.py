@@ -96,14 +96,30 @@ CHEAP_TLDS = {"icu", "sbs", "work", "club", "qpon", "yoga", "surf", "luxe", "top
               "link", "live", "ltd", "space", "store", "website", "pw", "gq", "cfd"}
 
 
-try:
-    from rapidfuzz.distance import DamerauLevenshtein as _DL
-except Exception:  # noqa: BLE001
-    _DL = None
+# Explicit, maintained spelling variants of a theme term (observed scrambles), per
+# term. This REPLACES generic edit-distance matching, which drifted onto common
+# words (cashin ~ casino). A variant must never be a common dictionary word. A
+# variant match is flagged and can never be the sole evidence for Likely Phishing.
+VARIANTS = {
+    # traffic-fines: NCAP scrambles seen in the wild.
+    "ncap": ("ncpo", "ncpa", "nocp", "ncapp", "ncop", "nccap", "ncaap"),
+}
 
 
 def themes_for(keyword: str) -> list:
     return THEMES.get((keyword or "").lower(), [])
+
+
+def _variant_match(text: str, term: str):
+    """(matched_substring, is_exact) for *term* in *text*: the exact term, else a
+    maintained variant, else (None, False). No edit distance, so a variant never
+    lands on a common word."""
+    if term in text:
+        return term, True
+    for v in VARIANTS.get(term, ()):
+        if v in text:
+            return v, False
+    return None, False
 
 
 def family_of(keyword: str, term: str) -> str | None:
@@ -118,42 +134,16 @@ def families_of(keyword: str, terms) -> list:
     return sorted({fams[t] for t in (terms or []) if t in fams})
 
 
-def _fuzzy_find(label: str, term: str):
-    """Return the substring of *label* that matches *term*, exactly or as a close
-    variant: edit distance 1 for terms of 4+ characters (so ncpa matches ncap), and
-    for 3-letter terms only an exact match or a transposition of the same letters
-    (lot matches lto), never an indel or substitution (which would match nc or ncp
-    to ncr). More distant scrambles (ncpo, nocp) are caught by the campaign
-    infrastructure merge, not here. Returns the matched variant or None."""
-    term = term.lower()
-    if term in label:
-        return term
-    if _DL is None:
-        return None
-    L = len(term)
-    if L <= 3:
-        for i in range(0, len(label) - L + 1):
-            sub = label[i:i + L]
-            if sorted(sub) == sorted(term) and _DL.distance(sub, term) <= 1:
-                return sub
-        return None
-    for w in (L - 1, L, L + 1):
-        for i in range(0, len(label) - w + 1):
-            sub = label[i:i + w]
-            if _DL.distance(sub, term) <= 1:
-                return sub
-    return None
-
-
 def theme_variants(text: str, keyword: str) -> list:
-    """List of (term, matched_variant) for brand theme terms found in *text*,
-    including near variants. The variant drives the evidence line."""
+    """List of (term, matched, is_exact) for brand theme terms found in *text*,
+    matching the exact term or a maintained variant. The matched string drives the
+    evidence line; is_exact marks whether it was an exact hit."""
     low = (text or "").lower()
     out = []
     for t in themes_for(keyword):
-        v = _fuzzy_find(low, t)
-        if v:
-            out.append((t, v))
+        matched, exact = _variant_match(low, t)
+        if matched:
+            out.append((t, matched, exact))
     return out
 
 
@@ -172,8 +162,13 @@ def cheap_tld(domain: str) -> bool:
 
 
 def matched_themes(text: str, keyword: str) -> list:
-    """Theme terms present in *text*, matching near variants (ncpa ~ ncap)."""
-    return [t for t, _ in theme_variants(text, keyword)]
+    """Theme terms present in *text* (exact term or a maintained variant)."""
+    return [t for t, _m, _e in theme_variants(text, keyword)]
+
+
+def exact_matched_themes(text: str, keyword: str) -> list:
+    """Theme terms present in *text* by an EXACT match only (not a variant)."""
+    return [t for t, _m, exact in theme_variants(text, keyword) if exact]
 
 
 def classify(domain: str, keyword: str, title: str = "") -> dict:
@@ -184,47 +179,52 @@ def classify(domain: str, keyword: str, title: str = "") -> dict:
     an unrelated word and the hit is irrelevant."""
     brand = (keyword or "").lower()
     label = _reg_label(domain)
-    # Exact theme matches gate relevance (keep/drop); fuzzy matches only populate
-    # the themes used for clustering and scoring, so a fuzzy near-match (plate ~
-    # pdate in "updaten") can never keep an otherwise irrelevant domain.
+    # Exact theme matches gate relevance (keep/drop); variant matches only populate
+    # the themes used for clustering and scoring, so a variant hit can never keep an
+    # otherwise irrelevant domain.
     exact_label_themes = [t for t in themes_for(keyword) if t in label]
     label_themes = matched_themes(label, keyword)
     title_themes = matched_themes(title, keyword)
+    exact_themes = sorted(set(exact_matched_themes(label, keyword))
+                          | set(exact_matched_themes(title, keyword)))
     phish = [t for t in PHISH_TERMS if t in label]
     parts = label.split("-")
-    # The brand is a clean token when it is the whole label, a hyphen-split part,
-    # or sits at an edge of the label as either a long distinctive brand (6+ chars)
-    # or with only a short affix attached. A short brand buried in the middle of a
-    # longer word (mmdancesupplies, stammdaten) is not a token.
-    at_edge = (label != brand) and (label.startswith(brand) or label.endswith(brand))
+    # The brand is a clean token when it is the whole label, a hyphen-split part, or
+    # at a label edge. A short brand (under 6 chars) is a token at an edge only when
+    # it is the PREFIX with a short remainder (gcash-xyz): a short brand at the
+    # SUFFIX with an unknown prefix is the brand's letters buried in another word
+    # (dan+gcash, mixin+gcash) and is not a token. A long brand (6+) at either edge
+    # is a token. A short brand buried in the middle (stammdaten) is never a token.
+    prefix = (label != brand) and label.startswith(brand)
+    suffix = (label != brand) and label.endswith(brand)
     short_affix = (len(label) - len(brand)) <= 5
     clean_token = (label == brand or brand in parts
-                   or (at_edge and (len(brand) >= 6 or short_affix)))
+                   or (prefix and (len(brand) >= 6 or short_affix))
+                   or (suffix and len(brand) >= 6))
     # The brand at an edge joined to a known phishing or theme affix (mmdaportal,
-    # mmdaonline, philhealthlogin) is always relevant: it is the brand plus a lure
-    # word, not brand letters buried in an unrelated word. The affix is the edge
-    # remainder, and it counts only when it begins or ends with a known term, so a
-    # foreign word that merely contains one as a substring (the German "updaten")
+    # login-gcash) is relevant: brand plus a lure word, not buried letters. The
+    # affix is the edge remainder, and it counts only when it begins or ends with a
+    # known term, so a foreign word that merely contains one (the German "updaten")
     # is not kept.
-    affix_terms = set(PHISH_TERMS) | set(themes_for(keyword)) | {"online", "member"}
+    affix_terms = set(PHISH_TERMS) | set(themes_for(keyword)) | {"online", "member", "ph"}
+    for _t in themes_for(keyword):  # maintained theme variants count as known affixes
+        affix_terms |= set(VARIANTS.get(_t, ()))
     affixes = []
-    if at_edge and label.startswith(brand):
+    if prefix:
         affixes.append(label[len(brand):].strip("-"))
-    if at_edge and label.endswith(brand):
+    if suffix:
         affixes.append(label[:-len(brand)].strip("-"))
     affix_relevant = any(
         a and (a in affix_terms or any(a.startswith(t) or a.endswith(t) for t in affix_terms))
         for a in affixes)
-    # Relevance uses the brand token, brand-specific theme terms, and the brand plus
-    # a known lure affix. Generic phishing words are NOT matched as a bare substring
-    # of the label (the German "updaten" contains "update"), only as a real affix.
     relevant = bool(clean_token or exact_label_themes or affix_relevant)
     buried = (brand in label) and not relevant
     variants = theme_variants(label, keyword) + theme_variants(title, keyword)
-    # Evidence strings: "ncpa ~ ncap" for a near variant, "ncap" when exact.
-    ev = sorted({(f"{v} ~ {t}" if v != t else t) for t, v in variants})
+    # Evidence strings: "ncpo ~ ncap" for a variant, "ncap" when exact.
+    ev = sorted({(f"{m} ~ {t}" if not exact else t) for t, m, exact in variants})
     return {
         "relevant": relevant, "buried": buried, "token": clean_token,
         "themes": sorted(set(label_themes) | set(title_themes)),
+        "exact_themes": exact_themes,
         "theme_evidence": ev, "label_themes": label_themes, "phish": phish,
     }
