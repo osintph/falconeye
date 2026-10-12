@@ -1,14 +1,19 @@
 """Campaign clustering for the Phishing Domain Hunt.
 
-A theme term groups candidates, but a group is only a CAMPAIGN (and only then
-boosts its members to Likely Phishing) when it is corroborated: its registrations
-fall inside a window (default 60 days) AND it shares at least one registrar,
-nameserver, hosting ASN or cheap-TLD family. A theme-only group with no
-corroboration is reported as "related brand-themed domains" with no boost. Once a
-campaign exists, a brand candidate that shares its registrar, nameserver or ASN
-inside the window is merged in even without a theme term (scrambles like nocpmmda).
-The campaign carries the shared registrar, nameservers, ASN, window and the
-registrar abuse contact so a report can be filed from it. No em dashes here.
+A theme term groups candidates, but a group is a CAMPAIGN (and only then boosts
+its members to Likely Phishing) only when it is corroborated: its registrations
+fall inside a window (default 60 days) AND it shares a DISTINCTIVE attribute. An
+attribute that millions of unrelated domains share is not distinctive: a CDN or
+large-cloud hosting ASN, a registrar default or parking nameserver, and a very
+large registrar on its own do not corroborate. A very large registrar counts only
+together with a second distinctive attribute. Once a campaign exists, a brand
+candidate that shares a DISTINCTIVE attribute (a non-generic nameserver, a
+non-cloud ASN, or a small registrar) inside the window is merged in; a domain that
+would only share generic infrastructure is left out and scored on its own.
+
+The campaign carries per-domain registrar data from RDAP, not a single inferred
+value, plus the shared nameservers, ASN, window and the registrar abuse contact.
+No em dashes in this module.
 """
 from __future__ import annotations
 
@@ -19,10 +24,46 @@ from app.scanner.scope import registrable
 
 MIN_CLUSTER = 3
 
-# Shared CDN or large-cloud ASNs are not distinctive: half the internet is on
-# Cloudflare, so they must not corroborate a campaign or merge a domain into one.
-_CDN_ASNS = {"13335", "16509", "14618", "15169", "396982", "20940", "54113", "8075",
-             "13238", "19527"}
+# CDN and large-cloud or large-shared-host ASNs: half the internet sits on these,
+# so they are not distinctive. Numeric, matched after stripping any AS prefix.
+_CDN_ASNS = {
+    "13335",   # Cloudflare
+    "16509", "14618",   # AWS
+    "15169", "396982",  # Google
+    "8075",    # Microsoft
+    "20940", "16625", "35994", "12222",  # Akamai
+    "54113",   # Fastly
+    "132203", "45090", "133478", "137876",  # Tencent
+    "45102", "37963", "24429", "134963",    # Alibaba
+    "14061",   # DigitalOcean
+    "20473",   # Vultr / Choopa
+    "63949",   # Linode / Akamai
+    "24940",   # Hetzner
+    "16276",   # OVH
+    "9009",    # M247
+    "47583",   # Hostinger
+    "19551",   # Incapsula
+}
+
+# Tokens that mark a registrar default, parking or CDN nameserver (not operator
+# specific). Matched as a substring of the nameserver host.
+_GENERIC_NS_TOKENS = (
+    "domainnamens", "domaincontrol", "registrar-servers", "cloudflare", "awsdns",
+    "azure-dns", "googledomains", "google.com", "dns-parking", "sedoparking",
+    "parkingcrew", "bodis", "dan.com", "hugedomains", "cashparking", "above.com",
+    "dnsowl", "nsone", "digitalocean", "hostinger", "wixdns", "squarespacedns",
+    "shopifydns", "name-services", "hichina", "dnspod", "ztomy", "parklogic",
+)
+
+# Very large registrars: a shared registrar here needs a second distinctive
+# attribute to corroborate. Matched as a substring of the registrar name.
+_LARGE_REGISTRARS = (
+    "namesilo", "namemart", "godaddy", "namecheap", "public domain registry",
+    "pdr ltd", "tucows", "network solutions", "dynadot", "porkbun", "hostinger",
+    "key-systems", "google", "cloudflare", "gname", "alibaba", "tencent", "ename",
+    "dnspod", "namebright", "realtime register", "openprovider", "west263",
+    "squarespace", "wild west", "enom", "hosting concepts",
+)
 
 
 def _asn_num(asn) -> str:
@@ -31,6 +72,21 @@ def _asn_num(asn) -> str:
 
 def _is_cdn_asn(asn) -> bool:
     return _asn_num(asn) in _CDN_ASNS
+
+
+def _ns_base(ns: str) -> str:
+    reg = registrable((ns or "").lower()) or (ns or "").lower()
+    return reg
+
+
+def _is_generic_ns(ns: str) -> bool:
+    low = (ns or "").lower()
+    return any(tok in low for tok in _GENERIC_NS_TOKENS)
+
+
+def _is_large_registrar(name) -> bool:
+    low = str(name or "").lower()
+    return any(tok in low for tok in _LARGE_REGISTRARS)
 
 
 def _tld(domain: str) -> str:
@@ -43,9 +99,30 @@ def _ages(members: list) -> list:
             if isinstance(m.get("reg_age_days"), int) and m["reg_age_days"] >= 0]
 
 
-def _shared_most(members: list, key: str):
-    vals = [str(m.get(key)) for m in members if m.get(key)]
-    c = Counter(vals)
+def _distinctive_ns(members: list):
+    c = Counter(_ns_base(n) for m in members for n in (m.get("ns") or [])
+                if n and not _is_generic_ns(n))
+    hit = [n for n, k in c.items() if k >= 2]
+    return hit[0] if hit else None
+
+
+def _distinctive_asn(members: list):
+    c = Counter(_asn_num(m.get("asn")) for m in members
+                if m.get("asn") and not _is_cdn_asn(m.get("asn")))
+    hit = [a for a, k in c.items() if k >= 2 and a]
+    return hit[0] if hit else None
+
+
+def _distinctive_registrar(members: list):
+    c = Counter(str(m.get("registrar")) for m in members
+                if m.get("registrar") and not _is_large_registrar(m.get("registrar")))
+    hit = [r for r, k in c.items() if k >= 2]
+    return hit[0] if hit else None
+
+
+def _large_registrar_shared(members: list):
+    c = Counter(str(m.get("registrar")) for m in members
+                if m.get("registrar") and _is_large_registrar(m.get("registrar")))
     return c.most_common(1)[0][0] if c and c.most_common(1)[0][1] >= 2 else None
 
 
@@ -55,34 +132,45 @@ def _corroboration(members: list) -> tuple:
     reasons = []
     if window_ok:
         reasons.append(f"registered within {max(ages) - min(ages)} days")
-    shared = []
-    reg = _shared_most(members, "registrar")
-    if reg:
-        shared.append(f"shared registrar {reg}")
-    asn = _shared_most(members, "asn")
-    if asn and not _is_cdn_asn(asn):
-        shared.append(f"shared hosting {asn}")
-    ns_counter = Counter(n for m in members for n in (m.get("ns") or []))
-    ns_hit = [n for n, k in ns_counter.items() if k >= 2]
-    if ns_hit:
-        shared.append(f"shared nameserver {ns_hit[0]}")
+    distinctive = []
+    ns = _distinctive_ns(members)
+    if ns:
+        distinctive.append(f"shared nameserver {ns}")
+    asn = _distinctive_asn(members)
+    if asn:
+        distinctive.append(f"shared non-cloud ASN {asn}")
+    small_reg = _distinctive_registrar(members)
+    if small_reg:
+        distinctive.append(f"shared registrar {small_reg}")
     if sum(1 for m in members if m.get("cheap")) >= 2:
-        shared.append("cheap-TLD family")
-    return bool(window_ok and shared), (reasons + shared)
+        distinctive.append("cheap-TLD family")
+    # A very large registrar counts only alongside a distinctive attribute.
+    big = _large_registrar_shared(members)
+    if big and distinctive:
+        reasons.append(f"large registrar {big} (with a distinctive attribute)")
+    corroborated = bool(window_ok and distinctive)
+    return corroborated, (reasons + distinctive)
+
+
+def _member_rows(members: list) -> list:
+    rows = []
+    for m in sorted(members, key=lambda x: x["domain"]):
+        ns = sorted({_ns_base(n) for n in (m.get("ns") or []) if n})
+        rows.append({"domain": m["domain"], "registrar": m.get("registrar") or "unknown",
+                     "reg_date": m.get("reg_date"), "ns": ", ".join(ns)})
+    return rows
 
 
 def _entry(members: list) -> dict:
     dates = sorted(m["reg_date"] for m in members if m.get("reg_date"))
     theme_terms = sorted({t for m in members for t in m.get("themes", [])})
     abuse = next((m.get("abuse_contact") for m in members if m.get("abuse_contact")), None)
-    ns_counter = Counter(n for m in members for n in (m.get("ns") or []))
     return {
         "theme": ", ".join(theme_terms) or "brand lookalikes",
         "members": sorted(m["domain"] for m in members), "count": len(members),
+        "member_rows": _member_rows(members),
         "window": {"first": dates[0] if dates else None, "last": dates[-1] if dates else None},
-        "registrars": sorted({m["registrar"] for m in members if m.get("registrar")}),
-        "asns": sorted({str(m["asn"]) for m in members if m.get("asn")}),
-        "nameservers": sorted({n for n, k in ns_counter.items() if k >= 2}),
+        "registrars": sorted({str(m["registrar"]) for m in members if m.get("registrar")}),
         "tlds": sorted({_tld(m["domain"]) for m in members}),
         "abuse": abuse,
     }
@@ -117,7 +205,7 @@ def build(candidates: list) -> tuple:
         comps.setdefault(find(c["domain"]), []).append(c)
 
     campaigns, related, dom_to_cid = [], [], {}
-    camp_state = []  # (campaign dict, registrar set, asn set, ns set, age min, age max)
+    camp_state = []
     cid = 0
     for members in comps.values():
         if len(members) < MIN_CLUSTER:
@@ -133,29 +221,35 @@ def build(candidates: list) -> tuple:
                 m["campaign_join"] = "shared brand theme"
             campaigns.append(entry)
             ages = _ages(members)
-            camp_state.append((entry, set(entry["registrars"]), set(entry["asns"]),
-                               set(entry["nameservers"]) or {n for m in members
-                                                             for n in (m.get("ns") or [])},
-                               min(ages) if ages else None, max(ages) if ages else None))
+            camp_state.append((
+                entry,
+                {_ns_base(n) for m in members for n in (m.get("ns") or [])
+                 if n and not _is_generic_ns(n)},
+                {_asn_num(m.get("asn")) for m in members
+                 if m.get("asn") and not _is_cdn_asn(m.get("asn"))},
+                {str(m["registrar"]) for m in members
+                 if m.get("registrar") and not _is_large_registrar(m.get("registrar"))},
+                min(ages) if ages else None, max(ages) if ages else None))
         else:
             related.append(entry)
 
-    # Infrastructure merge: a brand candidate sharing a campaign's registrar, ASN
-    # or nameserver inside its window joins it, even without a theme term.
+    # Infrastructure merge, DISTINCTIVE attributes only.
     W = config.HUNT_CAMPAIGN_WINDOW_DAYS
     for rec in candidates:
         d = rec["domain"]
         if d in dom_to_cid:
             continue
         age = rec.get("reg_age_days")
-        for entry, regs, asns, nss, amin, amax in camp_state:
+        for entry, nss, asns, regs, amin, amax in camp_state:
             share = None
-            if rec.get("registrar") and str(rec["registrar"]) in regs:
+            rec_ns = {_ns_base(n) for n in (rec.get("ns") or []) if n and not _is_generic_ns(n)}
+            if rec_ns & nss:
+                share = f"shared nameserver {next(iter(rec_ns & nss))}"
+            elif rec.get("asn") and not _is_cdn_asn(rec["asn"]) and _asn_num(rec["asn"]) in asns:
+                share = f"shared non-cloud ASN {_asn_num(rec['asn'])}"
+            elif (rec.get("registrar") and not _is_large_registrar(rec["registrar"])
+                  and str(rec["registrar"]) in regs):
                 share = f"shared registrar {rec['registrar']}"
-            elif rec.get("asn") and str(rec["asn"]) in asns and not _is_cdn_asn(rec["asn"]):
-                share = f"shared hosting {rec['asn']}"
-            elif set(rec.get("ns") or []) & nss:
-                share = f"shared nameserver {next(iter(set(rec.get('ns') or []) & nss))}"
             if not share:
                 continue
             in_window = (not isinstance(age, int) or amin is None
@@ -168,6 +262,10 @@ def build(candidates: list) -> tuple:
                 entry["members"].append(d)
                 entry["members"].sort()
                 entry["count"] += 1
+                entry["member_rows"].append({
+                    "domain": d, "registrar": rec.get("registrar") or "unknown",
+                    "reg_date": rec.get("reg_date"),
+                    "ns": ", ".join(sorted({_ns_base(n) for n in (rec.get("ns") or []) if n}))})
             break
 
     campaigns.sort(key=lambda c: -c["count"])

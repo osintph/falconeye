@@ -44,14 +44,19 @@ _ATTRIBUTION = [
 ]
 
 
-def _reg_date(registered, age_days=None) -> str | None:
-    """The registration date, derived from the registration age so the shown date
-    and age are always consistent. Never urlscan first-seen."""
-    if isinstance(age_days, int) and age_days >= 0:
-        return (datetime.now(timezone.utc) - timedelta(days=age_days)).strftime("%Y-%m-%d")
-    if registered:
-        return str(registered)[:10]
-    return None
+def _reg_date(registered) -> str | None:
+    """The registration date from RDAP or whois (the real date), or None. It is
+    NEVER derived from an age; the age is computed from this date, not the reverse,
+    and it is never urlscan first-seen."""
+    return str(registered)[:10] if registered else None
+
+
+def _age_from(date_str) -> int | None:
+    try:
+        dt = datetime.fromisoformat(str(date_str)[:10])
+        return int((datetime.now(timezone.utc).date() - dt.date()).days)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 async def execute(scan: dict) -> dict:
@@ -152,12 +157,17 @@ async def execute(scan: dict) -> dict:
         rec["observed_hosts"] = c.get("observed") or []
         rec["keyword_hit"] = c.get("keyword_hit")
         rec["origins"] = c.get("origins") or []
-        if rec.get("reg_age_days") is None and isinstance(urls.get("age_days"), int):
-            rec["reg_age_days"] = urls["age_days"]
-        # The registration date is derived from the registration age so the shown
-        # date and age always agree; it is never urlscan first-seen (shown
-        # separately, labelled). CT first-seen is the first-live fallback.
-        rec["reg_date"] = _reg_date(rec.get("registered"), rec.get("reg_age_days"))
+        # The shown registration date comes from RDAP or whois (the real date); the
+        # age is computed from that date. urlscan first-seen is never the shown
+        # date (shown separately, labelled). When there is no registration date,
+        # the first CT certificate is the labelled "first live" fallback.
+        rec["reg_date"] = _reg_date(rec.get("registered"))
+        if rec.get("reg_date"):
+            rec["reg_age_days"] = _age_from(rec["reg_date"])
+        elif rec.get("reg_age_days") is None and isinstance(rec.get("ct_first_seen_age"), int):
+            rec["reg_age_days"] = rec["ct_first_seen_age"]
+        elif rec.get("reg_age_days") is None and isinstance(urls.get("age_days"), int):
+            rec["reg_age_days"] = urls["age_days"]  # young determination only, no shown date
         if not rec.get("asn") and urls.get("asn"):
             rec["asn"] = urls["asn"]
         rec["ns"] = list((res_map[dom]["dns"] or {}).get("NS") or [])

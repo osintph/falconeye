@@ -186,11 +186,60 @@ def _client(ip="203.0.113.9"):
     return TestClient(main.app, base_url="https://testserver", client=(ip, 1))
 
 
-def test_reg_date_matches_age():
+def test_reg_date_comes_from_registration_not_age():
+    # The shown registration date is the real RDAP or whois date, never synthesised
+    # from an age. No date available means no shown date.
+    assert engine._reg_date(None) is None
+    assert engine._reg_date("2026-01-15T00:00:00Z") == "2026-01-15"
+    assert engine._reg_date("2026-01-15") == "2026-01-15"
+
+
+def test_age_is_computed_from_the_registration_date():
     import datetime as dt
-    d = engine._reg_date(None, 24)
-    shown = dt.datetime.strptime(d, "%Y-%m-%d").date()
-    assert shown + dt.timedelta(days=24) == dt.datetime.now(dt.timezone.utc).date()
+    expected = (dt.datetime.now(dt.timezone.utc).date() - dt.date(2026, 1, 15)).days
+    assert engine._age_from("2026-01-15") == expected
+    assert engine._age_from(None) is None
+
+
+def test_shown_date_is_rdap_not_urlscan_when_they_differ(monkeypatch):
+    # urlscan first-seen (recent) and RDAP registration (months earlier) differ; the
+    # shown date is the RDAP date, the age is computed from it, and urlscan
+    # first-seen is carried separately. Never today-minus-urlscan-age.
+    import datetime as dt
+
+    async def fdisc(kw, legit, max_candidates=None):
+        return {"candidates": [{"domain": "philhealth-login.com", "origins": ["urlscan"],
+                                "keyword_hit": True,
+                                "urlscan": {"first_seen": "2026-09-20T00:00:00Z", "age_days": 22}}],
+                "source_status": [], "incomplete": False, "nrd_off": True,
+                "generated_count": 1, "keyword_hit_count": 1}
+
+    async def fresolve(dom):
+        if dom.startswith("zq"):  # wildcard control labels must not resolve
+            return {"domain": dom, "dns": {"A": [], "AAAA": [], "MX": [], "NS": [], "CNAME": []},
+                    "ips": [], "cname": "", "resolves": False, "has_mx": False, "has_ns": False}
+        return {"domain": dom, "dns": {"A": ["1.2.3.4"], "AAAA": [], "MX": [], "NS": [],
+                "CNAME": []}, "ips": ["1.2.3.4"], "cname": "", "resolves": True,
+                "has_mx": False, "has_ns": True}
+
+    async def fprobe(client, dom, kw, legit, legit_sig, dns_data=None):
+        return {"domain": dom, "resolves": True, "fetched": True, "evidence": [],
+                "parked": False, "registered": "2026-01-15", "registrar": "NameSilo, LLC",
+                "asn": 1}
+
+    async def fsig(client, legit):
+        return {"favicon": None, "title": "PhilHealth"}
+
+    monkeypatch.setattr(sources, "discover", fdisc)
+    monkeypatch.setattr(candidate_mod, "resolve", fresolve)
+    monkeypatch.setattr(candidate_mod, "probe", fprobe)
+    monkeypatch.setattr(candidate_mod, "legit_signature", fsig)
+    payload = asyncio.run(engine.execute({"scan_id": "hd", "domain": "philhealth",
+                                          "engagement": "philhealth.gov.ph"}))
+    row = next(r for r in payload["candidates"] if r["domain"] == "philhealth-login.com")
+    assert row["registered"] == "2026-01-15"
+    assert row["urlscan_first_seen"] == "2026-09-20"
+    assert row["age_days"] == (dt.datetime.now(dt.timezone.utc).date() - dt.date(2026, 1, 15)).days
 
 
 def test_hunt_url_input_is_normalised():

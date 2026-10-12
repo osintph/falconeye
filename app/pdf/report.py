@@ -297,19 +297,23 @@ def render_report(payload: dict, out_path: str) -> None:
             meta = []
             if c.get("corroboration"):
                 meta.append("corroboration: " + _esc("; ".join(c["corroboration"])))
-            if c.get("registrars"):
-                meta.append("registrars: " + _esc(", ".join(c["registrars"])))
-            if c.get("nameservers"):
-                meta.append("nameservers: " + _esc(", ".join(c["nameservers"][:4])))
-            if c.get("asns"):
-                meta.append("hosting: " + _esc(", ".join(c["asns"][:4])))
+            regs = c.get("registrars") or []
+            if regs:
+                meta.append("registrars seen: " + _esc(", ".join(regs)))
             if c.get("tlds"):
                 meta.append("TLDs: " + _esc(", ".join(c["tlds"])))
             if c.get("abuse"):
                 meta.append("registrar abuse: " + _esc(c["abuse"]))
             if meta:
                 el.append(Paragraph("; ".join(meta), st["small"]))
-            el.append(Paragraph(_esc(", ".join(c.get("members") or [])), st["small"]))
+            # Per-domain registrar data from RDAP, not a single inferred value.
+            mrows = c.get("member_rows") or [{"domain": d} for d in (c.get("members") or [])]
+            hdr = ["Domain", "Registrar (RDAP)", "Registered", "Nameserver"]
+            drows = [[Paragraph(_esc(m.get("domain")), st["cellw"]),
+                      Paragraph(_esc(m.get("registrar") or "unknown"), st["cellw"]),
+                      Paragraph(_esc(m.get("reg_date") or "n/a"), st["cellw"]),
+                      Paragraph(_esc(m.get("ns") or ""), st["cellw"])] for m in mrows]
+            el.append(_data_table(hdr, drows, [44 * mm, 44 * mm, 24 * mm, 46 * mm], st))
             el.append(Spacer(1, 2 * mm))
 
         camps = payload.get("campaigns") or []
@@ -378,18 +382,19 @@ def render_report(payload: dict, out_path: str) -> None:
         for c in payload.get("candidates", []):
             reg = c.get("registered")
             age = c.get("age_days")
-            if reg and isinstance(age, int) and age >= 0:
-                first = f"reg {reg} ({age}d)"
-            elif reg:
-                first = f"reg {reg}"
-            else:
-                first = c.get("reg_note") or "n/a"
-            reg_lines = [_esc(first)]
+            agestr = f" ({age}d)" if isinstance(age, int) and age >= 0 else ""
+            reg_lines = []
+            if reg:
+                reg_lines.append(_esc(f"reg {reg}{agestr}"))
+            elif c.get("reg_note"):
+                reg_lines.append(_esc(c["reg_note"]))
             if c.get("ct_first_seen"):
-                reg_lines.append(_esc(f"CT first seen {c['ct_first_seen']}"))
+                # If there is no registration date, the CT first-live date carries the age.
+                reg_lines.append(_esc(f"first live (CT) {c['ct_first_seen']}"
+                                      + ("" if reg else agestr)))
             if c.get("urlscan_first_seen"):
                 reg_lines.append(_esc(f"urlscan first seen {c['urlscan_first_seen']}"))
-            reg_html = "<br/>".join(reg_lines)
+            reg_html = "<br/>".join(reg_lines) or "n/a"
             dom = _esc(c.get("domain"))
             if c.get("campaign_id"):
                 dom = f"<b>{dom}</b>"

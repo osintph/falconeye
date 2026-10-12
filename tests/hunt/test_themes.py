@@ -58,3 +58,19 @@ def test_cheap_tld():
 def test_philhealth_theme_terms_present():
     c = themes.classify("philhealth-member.com", "philhealth")
     assert "member" in c["themes"]
+
+
+def test_tagalog_lure_terms_match_mmda_on_theme():
+    # A Tagalog lure (mayhuli = "there is a catch/apprehension") must match on theme
+    # so it clusters by theme, not by shared infrastructure.
+    c = themes.classify("mmda-mayhuliks.com", "mmda")
+    assert c["relevant"]
+    assert "mayhuli" in c["themes"] or "huli" in c["themes"]
+    m = themes.classify("mmdamulta.icu", "mmda")
+    assert "multa" in m["themes"]
+
+
+def test_tagalog_terms_in_other_ph_lexicons():
+    assert "benepisyo" in themes.classify("philhealth-benepisyo.net", "philhealth")["themes"]
+    assert "pensyon" in themes.classify("sss-pensyon.online", "sss")["themes"]
+    assert "pabahay" in themes.classify("pagibig-pabahay.site", "pagibig")["themes"]

@@ -68,20 +68,78 @@ def test_cdn_asn_alone_does_not_corroborate():
     assert campaigns == [] and len(related) == 1
 
 
-def test_infra_merge_pulls_in_a_shared_infra_domain():
-    # nocpmmda.luxe has no theme term, but shares the campaign registrar, NS and
-    # ASN inside the window, so it joins the NCAP campaign.
+def test_infra_merge_pulls_in_a_distinctive_infra_domain():
+    # The campaign shares a distinctive, operator-run nameserver (not a registrar
+    # default). A themeless brand lookalike on that same nameserver, in the window,
+    # joins the NCAP campaign.
     members = [
         _c("mmda-ltoncap.icu", ["lto", "ncap"], age=20, registrar="NameMart",
-           asn="AS132203", ns=["ns1.domainnamens.com"]),
+           asn="AS9999 Op", ns=["ns1.operatordns.net"]),
         _c("mmdaltoncaps.sbs", ["lto", "ncap"], age=30, registrar="NameMart",
-           asn="AS132203", ns=["ns1.domainnamens.com"]),
+           asn="AS9999 Op", ns=["ns1.operatordns.net"]),
         _c("mmdancap-ncr.work", ["ncap", "ncr"], age=25, registrar="NameMart",
+           asn="AS9999 Op", ns=["ns1.operatordns.net"]),
+    ]
+    joiner = _c("nocpmmda.luxe", [], age=48, registrar="NameMart", asn="AS9999 Op",
+                ns=["ns1.operatordns.net"])
+    campaigns, related, dom_to_cid = cluster.build(members + [joiner])
+    assert len(campaigns) == 1
+    assert dom_to_cid.get("nocpmmda.luxe") == campaigns[0]["id"]
+    assert joiner.get("campaign_join", "").endswith("(infra match)")
+
+
+def test_generic_infra_does_not_pull_in_a_themeless_domain():
+    # NameSilo/NameMart (large registrar), domainnamens.com (registrar default NS)
+    # and Tencent ASN 132203 (large cloud) are shared by millions of unrelated
+    # domains, so a themeless lookalike sharing only these is NOT merged. The themed
+    # set still corroborates on window plus cheap-TLD family.
+    members = [
+        _c("mmda-ltoncap.icu", ["lto", "ncap"], age=20, registrar="NameSilo, LLC",
+           asn="AS132203", ns=["ns1.domainnamens.com"]),
+        _c("mmdaltoncaps.sbs", ["lto", "ncap"], age=30, registrar="NameSilo, LLC",
+           asn="AS132203", ns=["ns2.domainnamens.com"]),
+        _c("mmdancap-ncr.work", ["ncap", "ncr"], age=25, registrar="NameSilo, LLC",
            asn="AS132203", ns=["ns1.domainnamens.com"]),
     ]
-    loner = _c("nocpmmda.luxe", [], age=48, registrar="NameMart", asn="AS132203",
-               ns=["ns1.domainnamens.com"])
+    loner = _c("mmda.in", [], age=40, registrar="NameSilo, LLC", asn="AS13335",
+               ns=["ava.ns.cloudflare.com"], cheap=False)
     campaigns, related, dom_to_cid = cluster.build(members + [loner])
     assert len(campaigns) == 1
-    assert "nocpmmda.luxe" in dom_to_cid
-    assert loner.get("campaign_join", "").endswith("(infra match)")
+    assert "mmda.in" not in dom_to_cid
+    assert "campaign_join" not in loner
+
+
+def test_large_registrar_needs_a_second_attribute_to_corroborate():
+    # A shared very large registrar (NameSilo) with only generic NS and cloud ASN,
+    # no cheap TLDs, is not enough: the group is related, not a campaign.
+    members = [
+        _c("philhealthbenepisyo.com", ["member", "benepisyo"], age=10, registrar="NameSilo, LLC",
+           asn="AS13335", ns=["kip.ns.cloudflare.com"], cheap=False),
+        _c("philhealthtulong.com", ["member", "tulong"], age=20, registrar="NameSilo, LLC",
+           asn="AS13335", ns=["kip.ns.cloudflare.com"], cheap=False),
+        _c("philhealthmiyembro.com", ["member", "miyembro"], age=30, registrar="NameSilo, LLC",
+           asn="AS13335", ns=["kip.ns.cloudflare.com"], cheap=False),
+    ]
+    campaigns, related, dom_to_cid = cluster.build(members)
+    assert campaigns == [] and len(related) == 1
+
+
+def test_campaign_carries_per_domain_registrar_from_rdap():
+    # The campaign reports each member's own registrar and date, not one inferred
+    # value, so a mixed NameMart / NameSilo campaign shows both.
+    members = [
+        _c("mmda-ltoncap.icu", ["lto", "ncap"], age=20, reg="2026-09-21",
+           registrar="NameMart Pte. Ltd.", ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _c("mmdaltoncaps.sbs", ["lto", "ncap"], age=30, reg="2026-09-11",
+           registrar="NameSilo, LLC", ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+        _c("mmdancap-ncr.work", ["ncap", "ncr"], age=25, reg="2026-09-16",
+           registrar="NameMart Pte. Ltd.", ns=["ns1.operatordns.net"], asn="AS9999 Op"),
+    ]
+    campaigns, _related, _c2 = cluster.build(members)
+    assert len(campaigns) == 1
+    rows = {r["domain"]: r for r in campaigns[0]["member_rows"]}
+    assert rows["mmda-ltoncap.icu"]["registrar"] == "NameMart Pte. Ltd."
+    assert rows["mmdaltoncaps.sbs"]["registrar"] == "NameSilo, LLC"
+    assert rows["mmda-ltoncap.icu"]["reg_date"] == "2026-09-21"
+    # both distinct registrars are listed in the summary
+    assert set(campaigns[0]["registrars"]) == {"NameMart Pte. Ltd.", "NameSilo, LLC"}

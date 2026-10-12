@@ -10281,16 +10281,23 @@ function huntRenderResults(data) {
     const win = w.first ? (escapeHtml(w.first) + ' to ' + escapeHtml(w.last || w.first)) : 'dates not published';
     const meta = [];
     if ((cm.corroboration || []).length) meta.push('corroboration: ' + escapeHtml(cm.corroboration.join('; ')));
-    if ((cm.registrars || []).length) meta.push('registrars: ' + escapeHtml(cm.registrars.join(', ')));
-    if ((cm.nameservers || []).length) meta.push('nameservers: ' + escapeHtml(cm.nameservers.slice(0, 4).join(', ')));
-    if ((cm.asns || []).length) meta.push('hosting: ' + escapeHtml(cm.asns.slice(0, 4).join(', ')));
+    if ((cm.registrars || []).length) meta.push('registrars seen: ' + escapeHtml(cm.registrars.join(', ')));
     if ((cm.tlds || []).length) meta.push('TLDs: ' + escapeHtml(cm.tlds.join(', ')));
     if (cm.abuse) meta.push('registrar abuse: ' + escapeHtml(cm.abuse));
+    // Per-domain registrar data from RDAP, not a single inferred value.
+    const rows = (cm.member_rows && cm.member_rows.length)
+      ? cm.member_rows : (cm.members || []).map(d => ({ domain: d }));
+    const mrows = rows.map(m =>
+      '<tr><td class="pr-3 py-0.5 font-mono break-all">' + escapeHtml(m.domain) + '</td>' +
+      '<td class="pr-3 py-0.5">' + escapeHtml(m.registrar || 'unknown') + '</td>' +
+      '<td class="py-0.5 font-mono">' + escapeHtml(m.reg_date || 'n/a') + '</td></tr>').join('');
     return '<div class="' + cls + ' rounded p-3 mb-3">' +
       '<div class="font-bold ' + titleCls + ' text-sm mb-1">' + label + ': ' + escapeHtml(cm.theme || 'brand lookalikes') +
       ' <span class="font-normal text-gray-400">(' + (cm.count || 0) + ' domains, ' + win + ')</span></div>' +
       (meta.length ? '<div class="text-xs text-gray-400 mb-1">' + meta.join(' &middot; ') + '</div>' : '') +
-      '<div class="text-xs text-gray-300 font-mono break-all">' + escapeHtml((cm.members || []).join(', ')) + '</div></div>';
+      '<table class="text-xs text-gray-300 w-full"><thead><tr class="text-gray-500">' +
+      '<th class="text-left font-normal pr-3">Domain</th><th class="text-left font-normal pr-3">Registrar (RDAP)</th>' +
+      '<th class="text-left font-normal">Registered</th></tr></thead><tbody>' + mrows + '</tbody></table></div>';
   };
   (data.campaigns || []).forEach(cm => {
     html += groupBlock(cm, 'Campaign', 'bg-red-950 border border-red-800', 'text-red-300');
@@ -10308,10 +10315,11 @@ function huntRenderResults(data) {
     if (c.urlscan_result) {
       ev += ' <a href="' + escapeAttr(c.urlscan_result) + '" target="_blank" rel="noopener" class="text-amber-400">urlscan result</a>';
     }
+    const ageStr = (typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : '';
     const regLines = [];
-    if (c.registered) regLines.push('reg ' + escapeHtml(c.registered) + ((typeof c.age_days === 'number' && c.age_days >= 0) ? ' (' + c.age_days + 'd)' : ''));
+    if (c.registered) regLines.push('reg ' + escapeHtml(c.registered) + ageStr);
     else if (c.reg_note) regLines.push(escapeHtml(c.reg_note));
-    if (c.ct_first_seen) regLines.push('CT first seen ' + escapeHtml(c.ct_first_seen));
+    if (c.ct_first_seen) regLines.push('first live (CT) ' + escapeHtml(c.ct_first_seen) + (c.registered ? '' : ageStr));
     if (c.urlscan_first_seen) regLines.push('urlscan first seen ' + escapeHtml(c.urlscan_first_seen));
     const reg = regLines.join('<br>');
     const camp = c.campaign_id ? ' <span class="text-red-400" title="campaign member">&#9733;</span>' : '';
