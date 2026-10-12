@@ -198,11 +198,25 @@ def classify(domain: str, keyword: str, title: str = "") -> dict:
     short_affix = (len(label) - len(brand)) <= 5
     clean_token = (label == brand or brand in parts
                    or (at_edge and (len(brand) >= 6 or short_affix)))
-    # Relevance uses the brand token and brand-specific theme terms only. Generic
-    # phishing words are NOT part of the keep/drop gate because they substring
-    # match foreign words (the German "updaten" contains "update"), which would
-    # keep unrelated sites. Phishing words still add score once a hit is kept.
-    relevant = bool(clean_token or exact_label_themes)
+    # The brand at an edge joined to a known phishing or theme affix (mmdaportal,
+    # mmdaonline, philhealthlogin) is always relevant: it is the brand plus a lure
+    # word, not brand letters buried in an unrelated word. The affix is the edge
+    # remainder, and it counts only when it begins or ends with a known term, so a
+    # foreign word that merely contains one as a substring (the German "updaten")
+    # is not kept.
+    affix_terms = set(PHISH_TERMS) | set(themes_for(keyword)) | {"online", "member"}
+    affixes = []
+    if at_edge and label.startswith(brand):
+        affixes.append(label[len(brand):].strip("-"))
+    if at_edge and label.endswith(brand):
+        affixes.append(label[:-len(brand)].strip("-"))
+    affix_relevant = any(
+        a and (a in affix_terms or any(a.startswith(t) or a.endswith(t) for t in affix_terms))
+        for a in affixes)
+    # Relevance uses the brand token, brand-specific theme terms, and the brand plus
+    # a known lure affix. Generic phishing words are NOT matched as a bare substring
+    # of the label (the German "updaten" contains "update"), only as a real affix.
+    relevant = bool(clean_token or exact_label_themes or affix_relevant)
     buried = (brand in label) and not relevant
     variants = theme_variants(label, keyword) + theme_variants(title, keyword)
     # Evidence strings: "ncpa ~ ncap" for a near variant, "ncap" when exact.

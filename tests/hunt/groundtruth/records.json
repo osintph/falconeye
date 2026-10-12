@@ -52,14 +52,14 @@
      "note": "borderline: traffic-fine family, but outside the burst and shares no distinctive attribute, so related outside burst and scored on its own"},
 
     {"domain": "mmdaonline.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
-     "rec": {"themes": []},
-     "outcome": "irrelevant",
-     "note": "CURRENT behaviour: mmda + the 6-char suffix 'online' is treated as buried by the affix<=5 relevance rule and dropped. Flagged as a label I believe is wrong (should be scored, not Likely), not changed without approval"},
+     "rec": {"themes": ["fine"], "reg_age_days": 130, "reg_date": "2026-06-04", "registrar": "Cloudflare, Inc.", "ns": ["dana.ns.cloudflare.com"], "asn": "AS13335", "fetched": true, "page_class": "informational", "has_cred_form": true},
+     "outcome": "brand-referencing", "campaign": false,
+     "note": "approved: brand + the known affix 'online' is relevant and scored; a traffic-fine theme makes it a campaign outlier, but outside the burst with no distinctive overlap it is related outside the burst, not a member"},
 
     {"domain": "mmdaportal.com", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
-     "rec": {"themes": []},
-     "outcome": "irrelevant",
-     "note": "CURRENT behaviour: mmda + the 6-char suffix 'portal' is treated as buried and dropped. Flagged as a label I believe is wrong (the v3.38.9 brief called it Unrelated, i.e. scored), not changed without approval"},
+     "rec": {"themes": [], "reg_age_days": 2200, "reg_date": "2020-10-01", "registrar": "GoDaddy.com, LLC", "ns": ["ns1.domaincontrol.com"], "asn": "AS26496", "fetched": true, "page_class": "", "has_cred_form": true},
+     "outcome": "unrelated", "campaign": false,
+     "note": "approved: brand + the known affix 'portal' is relevant and scored; old domain, generic login, no brand imitation, so Unrelated"},
 
     {"domain": "mmdata.com.br", "keyword": "mmda", "legit": "mmda.gov.ph", "group": "mmda",
      "rec": {"themes": [], "reg_age_days": 1600, "reg_date": "2022-05-01", "registrar": "Registro.br", "ns": ["a.auto.dns.br"], "asn": "AS28000", "fetched": true, "page_class": "informational"},
