@@ -43,7 +43,7 @@ from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.hunt.sources")
 
-_UA = f"FalconEye-Hunt/3.38.18 (+{config.OPERATOR_SITE_ORIGIN})"
+_UA = f"FalconEye-Hunt/3.38.19 (+{config.OPERATOR_SITE_ORIGIN})"
 _URLSCAN = "https://urlscan.io/api/v1/search/"
 _TIMEOUT = 20.0
 
@@ -117,29 +117,42 @@ async def _crtsh(client: httpx.AsyncClient, keyword: str) -> tuple:
         return set(), "failed", "crt.sh keyword search backing off after a recent 502, will retry later"
 
     # 3. One request, spaced across concurrent hunts. Plain keyword, no wildcards.
+    # On a 502 or a timeout, back off and retry ONCE later in the run (two attempts
+    # at most, never a loop); if the retry also fails, mark the source failed.
     wait = store.reserve_gate_slot(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_MIN_INTERVAL)
     if wait > 0:
         await asyncio.sleep(min(wait, 30.0))
-    try:
-        r = await client.get(_CRTSH_URL, params={"q": keyword, "output": "json"},
-                             timeout=_TIMEOUT, headers={"User-Agent": _UA})
-        if r.status_code in (429, 500, 502, 503, 504):
-            store.gate_set_backoff(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_BACKOFF)
-            return set(), "failed", f"crt.sh keyword search returned {r.status_code} (crt.sh side)"
-        if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
-            return set(), "failed", "crt.sh keyword search did not return JSON"
-        hosts = set()
-        for row in r.json():
-            for name in str(row.get("name_value", "")).split("\n"):
-                h = _clean_host(name)
-                if h and keyword in h:
-                    hosts.add(h)
-        store.ct_cache_put(keyword, sorted(hosts))
-        return hosts, "answered", ""
-    except Exception as exc:  # noqa: BLE001
-        log.info("hunt crt.sh failed for %s: %s", tag(keyword), type(exc).__name__)
-        store.gate_set_backoff(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_BACKOFF)
-        return set(), "failed", "crt.sh keyword search errored (crt.sh side)"
+    last = "crt.sh keyword search errored (crt.sh side)"
+    for attempt in (1, 2):
+        try:
+            r = await client.get(_CRTSH_URL, params={"q": keyword, "output": "json"},
+                                 timeout=_TIMEOUT, headers={"User-Agent": _UA})
+            if r.status_code in (429, 500, 502, 503, 504):
+                last = f"crt.sh keyword search returned {r.status_code} (crt.sh side)"
+                if attempt == 1:
+                    await asyncio.sleep(config.HUNT_CRTSH_RETRY_DELAY)
+                    continue
+                break
+            if r.status_code != 200 or "json" not in r.headers.get("content-type", "").lower():
+                return set(), "failed", "crt.sh keyword search did not return JSON"
+            hosts = set()
+            for row in r.json():
+                for name in str(row.get("name_value", "")).split("\n"):
+                    h = _clean_host(name)
+                    if h and keyword in h:
+                        hosts.add(h)
+            store.ct_cache_put(keyword, sorted(hosts))
+            return hosts, "answered", ""
+        except Exception as exc:  # noqa: BLE001
+            log.info("hunt crt.sh failed for %s: %s", tag(keyword), type(exc).__name__)
+            last = "crt.sh keyword search errored (crt.sh side)"
+            if attempt == 1:
+                await asyncio.sleep(config.HUNT_CRTSH_RETRY_DELAY)
+                continue
+            break
+    # Both attempts failed: back off so a later hunt (not this one) tries again.
+    store.gate_set_backoff(_HUNT_CRTSH_GATE, config.HUNT_CRTSH_BACKOFF)
+    return set(), "failed", last + ", retried once"
 
 
 def _public_result(api_url: str) -> str:

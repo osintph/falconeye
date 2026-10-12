@@ -382,6 +382,10 @@ HUNT_CRTSH_MIN_INTERVAL = max(0.0, float(getenv_clean("HUNT_CRTSH_MIN_INTERVAL",
 # holds the Hunt crt.sh call off for a backoff window (a later hunt retries).
 HUNT_CT_CACHE_TTL = max(0, int(getenv_clean("HUNT_CT_CACHE_TTL", "86400")))
 HUNT_CRTSH_BACKOFF = max(0, int(getenv_clean("HUNT_CRTSH_BACKOFF", "600")))
+# On a 502 or timeout the Hunt crt.sh call waits this many seconds and retries
+# ONCE within the run before backing off and marking the source failed. Not a
+# loop: at most two attempts total.
+HUNT_CRTSH_RETRY_DELAY = max(0.0, float(getenv_clean("HUNT_CRTSH_RETRY_DELAY", "3")))
 # Hunt RDAP: query each TLD's own RDAP server (via the IANA bootstrap) rather than
 # one aggregator. Concurrency is capped per server, 429s are retried with backoff,
 # and parsed answers are cached this many seconds. rdap.org is the last-resort

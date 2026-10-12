@@ -11,6 +11,7 @@ from app.hunt import sources
 def _fast_crtsh(monkeypatch):
     """Make the crt.sh gate and retry backoff instant for tests."""
     monkeypatch.setattr(config, "HUNT_CRTSH_MIN_INTERVAL", 0.0)
+    monkeypatch.setattr(config, "HUNT_CRTSH_RETRY_DELAY", 0.0)
     monkeypatch.setattr(sources.store, "reserve_gate_slot", lambda *a, **k: 0.0)
 
 
@@ -66,7 +67,7 @@ def test_crtsh_keyword_extracts_matching_hosts(monkeypatch):
     assert "unrelated.com" not in hosts  # must contain the keyword
 
 
-def test_crtsh_502_makes_one_request_and_backs_off(monkeypatch):
+def test_crtsh_502_retries_once_then_backs_off(monkeypatch):
     _fast_crtsh(monkeypatch)
     monkeypatch.setattr(sources.store, "ct_cache_get", lambda *a, **k: None)
     monkeypatch.setattr(sources.store, "gate_wait", lambda *a, **k: 0.0)
@@ -84,9 +85,35 @@ def test_crtsh_502_makes_one_request_and_backs_off(monkeypatch):
             return await sources._crtsh(client, "philhealth")
     hosts, status, note = asyncio.run(go())
     assert status == "failed" and not hosts
-    assert calls["n"] == 1  # ONE request per hunt, no in-run retry
-    assert backoff["set"] == 1 and "502" in note
+    assert calls["n"] == 2  # one request plus a single in-run retry, then give up
+    assert backoff["set"] == 1 and "502" in note and "retried once" in note
     assert "block" not in note.lower()  # must never claim the IP is blocked
+
+
+def test_crtsh_recovers_on_the_retry(monkeypatch):
+    # 502 then 200 on the retry: the run still gets the answer, no backoff.
+    _fast_crtsh(monkeypatch)
+    monkeypatch.setattr(sources.store, "ct_cache_get", lambda *a, **k: None)
+    monkeypatch.setattr(sources.store, "gate_wait", lambda *a, **k: 0.0)
+    monkeypatch.setattr(sources.store, "ct_cache_put", lambda *a, **k: None)
+    backoff = {"set": 0}
+    monkeypatch.setattr(sources.store, "gate_set_backoff",
+                        lambda *a, **k: backoff.__setitem__("set", backoff["set"] + 1))
+    calls = {"n": 0}
+
+    def handler(request):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            return httpx.Response(502)
+        return httpx.Response(200, json=[{"name_value": "philhealth-login.ph"}],
+                              headers={"content-type": "application/json"})
+
+    async def go():
+        async with _mock_client(handler) as client:
+            return await sources._crtsh(client, "philhealth")
+    hosts, status, note = asyncio.run(go())
+    assert status == "answered" and "philhealth-login.ph" in hosts
+    assert calls["n"] == 2 and backoff["set"] == 0  # recovered on the retry, no backoff
 
 
 def test_crtsh_served_from_cache_makes_no_request(monkeypatch):
