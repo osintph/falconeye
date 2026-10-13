@@ -1,0 +1,24 @@
+# FalconEye newly-registered-domain (NRD) feed fetch (oneshot), fired by
+# falconeye-nrd.timer.
+#
+# Install to: /etc/systemd/system/falconeye-nrd.service
+# The upgrade and provision scripts install and enable this (with its timer) when
+# HUNT_NRD_ENABLED is not false in /opt/falconeye/.env, so the Phishing Hunt's
+# local newly-registered-domain store (HUNT_NRD_DIR) is populated daily. A box
+# that sets HUNT_NRD_ENABLED=false never gains the timer.
+#
+# It runs app.hunt.nrd_fetch, which downloads the free WHOISDS daily lists into
+# HUNT_NRD_DIR and prunes to HUNT_NRD_DAYS. Stdlib only (no venv packages needed),
+# and it reads the same .env as the web service for HUNT_NRD_DIR and HUNT_NRD_DAYS.
+[Unit]
+Description=FalconEye NRD feed fetch
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/falconeye/app_src
+EnvironmentFile=/opt/falconeye/.env
+ExecStart=/opt/falconeye/venv/bin/python -m app.hunt.nrd_fetch

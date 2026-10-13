@@ -1,0 +1,18 @@
+# Timer for the FalconEye NRD feed fetch.
+#
+# Install to: /etc/systemd/system/falconeye-nrd.timer
+# Then: sudo systemctl enable --now falconeye-nrd.timer
+#
+# Fires once a day at 06:30 UTC, after the WHOISDS daily lists are published, with
+# a randomized delay to spread outbound load; Persistent catches a run missed while
+# the box was off. The fetch is idempotent: a day already stored is skipped.
+[Unit]
+Description=FalconEye NRD feed timer
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 UTC
+RandomizedDelaySec=900
+Persistent=true
+
+[Install]
+WantedBy=timers.target

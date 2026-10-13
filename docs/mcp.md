@@ -1,6 +1,6 @@
 # FalconEye over MCP (local mode)
 
-`app/mcp_server.py` serves seven FalconEye tools over the Model Context Protocol
+`app/mcp_server.py` serves ten FalconEye tools over the Model Context Protocol
 on **stdio**, so an operator can drive their own instance from Claude Code or
 Claude Desktop.
 
@@ -23,11 +23,24 @@ budget.
 | `url_expand` | http/https URL | `POST /api/url/expand` | no |
 | `qr_analyze` | local image path or base64 data URI | `POST /api/qr/decode` | no |
 | `ransomware_watch_search` | search term, 3+ chars | `GET /api/ransomware/search` | 1 h |
+| `route_map` | a pasted traceroute (tracert/traceroute/mtr) | `POST /api/routemap/analyze` | no |
+| `asm_discover` | a domain + an engagement reference | `POST /api/asm/mcp/discover` | no |
+| `phishing_hunt` | a brand keyword (+ optional legit domain) | `POST /api/hunt/mcp` | no |
 
 Every tool is a call onto that route, made in-process through httpx's ASGI
 transport, so the per-IP rate limits, the SSRF guard, the MIME and size caps, the
 prompt-safety wrapping and the output sanitisation all apply unchanged, and a
 tool returns exactly the JSON the HTTP API returns.
+
+**`asm_discover` is operator-gated; `phishing_hunt` is public.** The Attack
+Surface discovery route returns 404 unless `ASM_MCP_OPERATOR` is true, and that
+variable must be set in **this MCP server's own process environment only**, never
+in the web app's gunicorn/systemd environment, so the operator path cannot be
+reached from the browser even with a forged header. `asm_discover` also requires a
+non-empty `engagement_reference` and refuses blocked, free-mail and public-suffix
+domains; unlike the interactive operator unlock in the UI it does not override the
+block list. `phishing_hunt` is not gated: it only checks `HUNT_ENABLED` and the
+public per-IP daily cap, runs inline and stores nothing (no job row, cache or PDF).
 
 **Not exposed, deliberately:** username enumeration, phone, Telegram, reverse
 image search, sockpuppet generation and the dork generator. Behind an agent those

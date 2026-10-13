@@ -91,6 +91,10 @@ done
 
 [[ ${#INCLUDE[@]} -gt 0 ]] || fe_die "nothing to back up: none of the state paths exist"
 
+# Fold any WAL sidecar back into the .db so this hot copy is self-consistent.
+fe_step "Checkpointing the databases"
+fe_wal_checkpoint
+
 fe_step "Writing $ARCHIVE"
 fe_run install -d -m 0700 "$OUT_DIR"
 

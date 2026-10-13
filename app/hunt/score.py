@@ -175,7 +175,7 @@ def score_candidate(c: dict, keyword: str, legit_domain: str) -> dict:
     # domain can be Likely via a corroborated campaign or real phishing content).
     theme_recent_live = bool(exact_theme_hit and young and fetched and not informational
                              and not c.get("parked"))
-    # v3.38.25 verdict model. Impersonation (an identity clone of the title,
+    # v3.38.26 verdict model. Impersonation (an identity clone of the title,
     # og:site_name or og:title, or a favicon match) on its own is NOT Likely: without
     # a credential or payment field in any fetch it is "Brand abuse". Likely Phishing
     # requires impersonation PLUS capture (form_phishing, which pairs a capture field

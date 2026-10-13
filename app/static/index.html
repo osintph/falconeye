@@ -80,7 +80,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.38.25",
+    "softwareVersion": "3.38.26",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -150,7 +150,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.38.25" />
+  <link rel="stylesheet" href="/static/style.css?v=3.38.26" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -406,7 +406,7 @@
 
       <div class="mb-4">
         <label class="block text-xs text-gray-400 mb-1 uppercase tracking-wide">Suspected URL</label>
-        <input id="scan-url" type="text" placeholder="https://bdo-verify-ph.xyz"
+        <input id="scan-url" type="text" placeholder="https://examplebank-verify.xyz"
           class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm focus:outline-none focus:border-amber-400" />
       </div>
       <div class="mb-4">
@@ -1347,7 +1347,7 @@
       <p class="text-gray-400 text-sm mb-4">Find newly registered and active domains impersonating a brand, with PH government and financial brands in mind. This hunts attacker infrastructure, so it is open to everyone and needs no ownership verification. For scanning a domain you own, use Attack Surface instead.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Public and one-time.</strong> Discovery uses {{HUNT_SOURCES}}. Each candidate gets one HTTP GET; no port scans, no crawling. Results are shown once and delivered as a PDF, then purged. Nothing is stored against you.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Public and one-time.</strong> Discovery uses {{HUNT_SOURCES}}. Each candidate gets one HTTP GET (a second as a mobile browser when a page shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Results are shown once and delivered as a PDF, then purged. What lasts is metadata only: the run time, result counts and the keyword as a one-way hash, kept for audit.</div>
       </div>
       <label class="block text-xs text-gray-500 mb-1">Brand keyword (minimum 3 characters, no wildcards)</label>
       <div class="flex gap-3 mb-3">
@@ -1986,6 +1986,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.38.25"></script>
+  <script src="/static/app.js?v=3.38.26"></script>
 </body>
 </html>

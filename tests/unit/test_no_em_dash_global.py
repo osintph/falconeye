@@ -26,7 +26,8 @@ def _authored_files():
     files = sorted(p for p in (REPO / "app").rglob("*.py") if "__pycache__" not in str(p))
     files += [REPO / "app" / "static" / "index.html",
               REPO / "app" / "static" / "app.js",
-              REPO / "app" / "static" / "style.css"]
+              REPO / "app" / "static" / "style.css",
+              REPO / "CHANGELOG.md"]
     return files
 
 

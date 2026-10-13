@@ -128,6 +128,12 @@ echo "[8/9] Installing systemd service..."
 fe_install_unit
 fe_enable_service
 fe_restart_service
+# The timers install here too, so a provisioned box that is never upgraded still
+# has them: the ASM monitoring timer (only when ASM_MONITORING_ENABLED=true, so a
+# fresh box without .env skips it) and the Phishing Hunt NRD feed timer (on by
+# default; its daily oneshot fires at 06:30 UTC, by which point .env exists).
+fe_install_asm_timer
+fe_install_nrd
 sleep 2
 systemctl status "$FE_SERVICE" --no-pager -l
 

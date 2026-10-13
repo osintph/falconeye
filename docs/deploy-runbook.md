@@ -206,7 +206,8 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    the tag, reinstalls dependencies only if `requirements.txt` moved, copies the
    systemd unit and reloads systemd **if the unit changed**, installs and enables
    the `falconeye-asm-monitor` timer **only when `ASM_MONITORING_ENABLED=true`**,
-   updates nginx
+   installs and enables the `falconeye-nrd` feed timer **unless
+   `HUNT_NRD_ENABLED=false`**, updates nginx
    snippets (and any `conf.d` file already installed), warns if the shipped vhost
    has drifted without ever overwriting yours, applies the release actions the
    release declares, restarts the service and checks `/health` reports the new
@@ -285,6 +286,12 @@ clean. The old logs stay in the directory you moved.
 > (`data/asm_pdfs/` by default) holds report PDFs only until download or the TTL
 > sweep, so it is deliberately ephemeral and is NOT backed up. The Hunt keeps no
 > persistent state beyond the metadata-only audit row in `data/falconeye.db`.
+>
+> **v3.38.18 (NRD feed) adds nothing to back up.** The newly-registered-domain
+> store `HUNT_NRD_DIR` (`data/nrd/` by default) is a rolling cache the daily
+> `falconeye-nrd.timer` repopulates, so it is deliberately NOT backed up. The one
+> operator file the feature class added, the free-mail override, IS now listed
+> below (it is kept outside git, like the ransomware watchlist).
 
 
 Everything in this table is state `git reset --hard` cannot put back. The list
@@ -304,6 +311,7 @@ of history or of an hour.
 | `/etc/nginx/sites-available/falconeye` | **essential** | Your nginx vhost: server_name, certificate paths, and the log_format the site is configured for. |
 | `/opt/falconeye/data/ransomware.db` | convenience | Collected ransomware victims. The collector rebuilds it forward only, so postings that have rotated off the source are gone. |
 | `/opt/falconeye/private/ransomware_watchlist.txt` | convenience | The PH-relevant ransomware search terms, kept outside git on purpose. |
+| `/opt/falconeye/private/asm_freemail_override.txt` | convenience | Attack Surface free-mail override list, kept outside git; merged over the vendored list at scan time. |
 | `/etc/nginx/conf.d/goaccess-logformat.conf` | convenience | Defines log_format goaccess_cf. If your vhost names that format, nginx will not start without this file. |
 | `/opt/falconeye/data/.release_actions_applied` | convenience | Which release actions have run. Losing it replays idempotent flushes, which is noisy rather than harmful. |
 
@@ -1167,7 +1175,10 @@ sudo -u ubuntu /opt/falconeye/venv/bin/python scripts/asm_operator_setup.py
 ```
 
 It prints the operator key and the TOTP secret exactly once (store the key in a
-password manager, the secret in an authenticator app) and shows the two `.env`
+password manager, the secret in an authenticator app). The key is a long
+single-line token: in a narrow terminal it can wrap across two or more display
+lines, so copy the whole value (not just the first visible line) or the unlock
+will fail with no hint as to why. It then shows the two `.env`
 lines to add: `ASM_OPERATOR_KEY_HASH` (a bcrypt hash) and
 `ASM_OPERATOR_TOTP_SECRET`. Add them (or pass `--write /opt/falconeye/.env`),
 optionally set `ASM_OPERATOR_ALLOWED_CIDRS` to a tailnet or office range, and
@@ -1176,14 +1187,19 @@ Surface tab with the key and a current TOTP code. Each operator scan needs an
 engagement reference; failed and successful unlocks are emailed to
 `OPERATOR_CONTACT_EMAIL`.
 
-### Monitoring
+### Monitoring (removed from the public product in v3.38.0)
 
-Set `ASM_MONITORING_ENABLED=true` and the upgrade installs and enables the
-`falconeye-asm-monitor.timer` (daily; each domain is scanned on its own weekly or
-daily schedule). It re-verifies ownership before each run, pauses and notifies the
-owner on failure, and emails a diff only when something changed. Snapshots older
-than `ASM_SNAPSHOT_RETENTION_DAYS` (180 by default) are pruned. Caps bound the
-total monitored domains and domains per notification address.
+Monitoring was moved to a future paid tier in v3.38.0 and is **removed from the
+public product**: it is not exposed in the UI, the API or MCP, and the timer is
+not installed. `ASM_MONITORING_ENABLED` stays **off** on the public instance.
+
+The code is dormant behind that flag for a future paid tier. Only if a self-host
+sets `ASM_MONITORING_ENABLED=true` does the upgrade (or provision) install and
+enable `falconeye-asm-monitor.timer` (daily; each domain on its own weekly or
+daily schedule), re-verify ownership before each run, pause and notify the owner
+on failure, email a diff only when something changed, prune snapshots older than
+`ASM_SNAPSHOT_RETENTION_DAYS` (180 by default), and apply the monitored-domain and
+per-notification caps. Leave it off unless you are deliberately running that tier.
 
 ### State
 
@@ -1207,7 +1223,11 @@ dnstwist permutations (offline, no network), and urlscan.io keyword search.
 URLhaus enrichment reuses the existing `ABUSECH_AUTH_KEY`. Each candidate gets one
 homepage GET through the SSRF-safe fetcher plus a favicon fetch; there are no port
 scans. Caps: `HUNT_MAX_CANDIDATES` (120), `HUNT_MAX_FETCHES` (40), `HUNT_PER_DAY`
-(20 per IP). Set `HUNT_ENABLED=false` to hide the tab and 503 the API.
+(20 per IP). Set `HUNT_ENABLED=false` to hide the tab and 503 the API. An unlocked
+operator session (the same one Attack Surface uses, `ASM_OPERATOR_KEY_HASH`) runs
+the Hunt under its own higher caps and bypasses the public daily cap:
+`HUNT_OPERATOR_PER_DAY` (200), `HUNT_OPERATOR_MAX_CANDIDATES` (300),
+`HUNT_OPERATOR_MAX_FETCHES` (120).
 
 ### urlscan.io key (recommended)
 
@@ -1241,8 +1261,8 @@ In the Hunt, crt.sh keyword search is therefore BEST EFFORT and never gates a ru
   INCOMPLETE. Source status shows crt.sh as failed with a crt.sh-side reason, and
   never claims the IP is blocked, because it is not.
 
-Keyword discovery therefore rests on urlscan, dnstwist permutations and the
-optional NRD feed, with crt.sh contributing when it is healthy.
+Keyword discovery therefore rests on urlscan, dnstwist permutations and the NRD
+feed (on by default, below), with crt.sh contributing when it is healthy.
 
 ### Theme lexicons and campaign detection (v3.38.6)
 
@@ -1255,24 +1275,59 @@ cluster of three or more is reported as a named section and marks its members
 Likely Phishing. To extend coverage, add a brand and its theme terms to the
 `THEMES` dict, or a cheap TLD to `CHEAP_TLDS`, in that file; no env change needed.
 
-### Newly registered domain feed (WHOISDS), optional
+### Newly registered domain feed (WHOISDS), on by default
 
-Brand-new registrations are covered only when `HUNT_NRD_URL` is set. WHOISDS
-provides a daily list of newly registered domains, free and permissively
-reusable, but automated download needs an account:
+Brand-new registrations are covered by a local feed that is **on by default**
+(`HUNT_NRD_ENABLED=true`). A daily systemd timer, `falconeye-nrd.timer`, runs
+`app.hunt.nrd_fetch`, which downloads the free WHOISDS daily lists (domain names
+only, no login, permissively reusable, verified 2026-10-11) into a rolling local
+store at `HUNT_NRD_DIR` (`/opt/falconeye/data/nrd`), pruned to `HUNT_NRD_DAYS`
+(30). The Hunt keyword-filters that store with no network at hunt time. Coverage
+is overwhelmingly gTLD; `.ph` is negligible, so NRD mostly helps on the gTLDs the
+lookalikes actually use.
 
-1. Create an account at whoisds.com and find your newly-registered-domains
-   download URL (a daily plain-text or zipped text list, one domain per line).
-2. Set `HUNT_NRD_URL=<that URL>` in `/opt/falconeye/.env` and restart.
+- The timer is installed and enabled by `scripts/upgrade.sh` and
+  `scripts/provision.sh` (through `fe_install_nrd`) unless `HUNT_NRD_ENABLED=false`,
+  which disables it. The fetcher creates `HUNT_NRD_DIR` itself and is idempotent
+  (a day already stored is skipped), so nothing extra to provision.
+- Check it with `systemctl list-timers falconeye-nrd.timer` and
+  `journalctl -u falconeye-nrd.service`. A freshly installed box has an empty store
+  until the first 06:30 UTC run (or run it once by hand:
+  `sudo -u ubuntu /opt/falconeye/venv/bin/python -m app.hunt.nrd_fetch`).
+- The store is a cache, deliberately NOT in the backup list: the timer rebuilds it.
+- `HUNT_NRD_URL` is an OPTIONAL override: set it to a custom daily feed URL (plain
+  text or zipped text, one domain per line) to use that instead of the WHOISDS
+  store. Leaving it unset is the normal case.
 
-Until it is set, the report notes that newly registered domain coverage is off.
-The hunt still works from CT, permutations and urlscan without it.
+The hunt still works from CT, permutations and urlscan if the feed is off.
 
 ### State
 
 Hunt results are one-time, exactly like Attack Surface scans: shown once,
 delivered as a PDF, then purged. Nothing is stored except the same metadata-only
 audit row. There is no new persistent state to back up.
+
+## Live-only operations (not shipped in git)
+
+Some operational pieces live only on the box, by design, and are NOT installed by
+`provision.sh` or `upgrade.sh`. A rebuild has to recreate them by hand; they are
+listed here so a reinstall knows they exist.
+
+- **Cloudflare origin firewall refresh.** `/opt/falconeye/ops/cf-ufw-refresh.sh`
+  plus a weekly `cf-ufw-refresh.timer` fetch Cloudflare's published edge ranges and
+  keep the UFW rules that allow 80/443 only from those ranges (tagged cf-origin),
+  validating the fetched lists and keeping the existing rules on a fetch failure.
+  The script and unit bodies are kept under `/opt/falconeye/ops` on the box, not in
+  this repository. Changing firewall or SSH exposure is a deliberate, separate
+  operation, never part of a release.
+- **Ransomware collector timer.** `ransomware-collect.service` and
+  `ransomware-collect.timer` run the local ransomware collector on a schedule. Their
+  unit bodies and setup are in `docs/ransomware-watch-runbook.md` and are installed
+  by hand, not by these scripts.
+- **journald retention drop-in.** `deploy/journald/falconeye-retention.conf` ships
+  in the repo as a reference only; it is NOT installed automatically. Copy it to
+  `/etc/systemd/journald.conf.d/` by hand (and `systemctl restart systemd-journald`)
+  if you want the capped journal retention it sets.
 
 ## Logging, and what it retains
 

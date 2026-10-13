@@ -53,6 +53,7 @@ FE_REPO_URL="${FE_REPO_URL:-https://github.com/osintph/falconeye.git}"
 FE_TELEGRAM_SESSION="${FE_TELEGRAM_SESSION:-$FE_INSTALL_DIR/private/telegram.session}"
 FE_RANSOMWARE_DB="${FE_RANSOMWARE_DB:-$FE_INSTALL_DIR/data/ransomware.db}"
 FE_WATCHLIST="${FE_WATCHLIST:-$FE_INSTALL_DIR/private/ransomware_watchlist.txt}"
+FE_FREEMAIL_OVERRIDE="${FE_FREEMAIL_OVERRIDE:-$FE_INSTALL_DIR/private/asm_freemail_override.txt}"
 FE_SSL_DIR="${FE_SSL_DIR:-/etc/ssl/falconeye}"
 FE_VHOST="${FE_VHOST:-$FE_NGINX_DIR/sites-available/falconeye}"
 FE_NGINX_CONFD="${FE_NGINX_CONFD:-$FE_NGINX_DIR/conf.d}"
@@ -433,6 +434,45 @@ fe_install_asm_timer() {
     [[ "$DRY_RUN" == "true" ]] || fe_ok "ASM monitoring timer installed and enabled"
 }
 
+# The Phishing Hunt's newly-registered-domain feed is on by default: a daily timer
+# runs app.hunt.nrd_fetch to populate the local store (HUNT_NRD_DIR) that the Hunt
+# keyword-filters offline. It is installed and enabled unless HUNT_NRD_ENABLED=false
+# in the .env, in which case the timer is disabled so the switch really turns it off.
+# The service and timer ship in deploy/; the fetcher creates HUNT_NRD_DIR itself.
+fe_install_nrd() {
+    local svc_src="$FE_APP_SRC/deploy/falconeye-nrd.service"
+    local tmr_src="$FE_APP_SRC/deploy/falconeye-nrd.timer"
+    local svc_dest="/etc/systemd/system/falconeye-nrd.service"
+    local tmr_dest="/etc/systemd/system/falconeye-nrd.timer"
+
+    if grep -qE '^[[:space:]]*HUNT_NRD_ENABLED=false' "$FE_ENV_FILE" 2>/dev/null; then
+        fe_say "NRD feed disabled (HUNT_NRD_ENABLED=false), disabling its timer"
+        fe_run systemctl disable --now falconeye-nrd.timer 2>/dev/null || true
+        return 0
+    fi
+    if [[ ! -f "$svc_src" || ! -f "$tmr_src" ]]; then
+        fe_warn "NRD feed files missing in deploy/, skipping"
+        return 0
+    fi
+
+    local changed=false
+    local src dest name
+    for pair in "$svc_src|$svc_dest|falconeye-nrd.service" "$tmr_src|$tmr_dest|falconeye-nrd.timer"; do
+        IFS='|' read -r src dest name <<< "$pair"
+        if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+            continue
+        fi
+        fe_run cp "$src" "$dest"
+        changed=true
+        fe_say "NRD feed file updated: $name"
+    done
+    if [[ "$changed" == "true" ]]; then
+        fe_run systemctl daemon-reload
+    fi
+    fe_run systemctl enable --now falconeye-nrd.timer
+    [[ "$DRY_RUN" == "true" ]] || fe_ok "NRD feed timer installed and enabled"
+}
+
 # ASM needs a signing key for its grants and management links; without one the
 # feature disables itself rather than fall back to a per-process key. Generate one
 # into .env if the operator has not set it, so a self-hoster gets a working tab.
@@ -683,6 +723,11 @@ fe_baseline_release_actions() {
 #                         (on instances that use it) the goaccess_cf log format
 #   ransomware.db         RANSOMWARE_DB in app/config.py
 #   the watchlist         RANSOMWARE_WATCHLIST_PATH, deliberately outside git
+#   freemail override     ASM_FREEMAIL_OVERRIDE_PATH in app/config.py, outside git
+#
+# Deliberately NOT persisted, because each is a cache the box rebuilds on its own:
+#   HUNT_NRD_DIR (/opt/falconeye/data/nrd)   repopulated by the daily NRD timer
+#   ASM_PDF_DIR  (/opt/falconeye/data/asm_pdfs) one-time result PDFs, purged on a TTL
 #
 # "essential" means losing it loses something that cannot be recreated from this
 # repository plus a working afternoon. "convenience" means it can be rebuilt, at
@@ -696,6 +741,7 @@ essential|$FE_SSL_DIR|Cloudflare Origin CA certificate and private key. The key 
 essential|$FE_VHOST|Your nginx vhost: server_name, certificate paths, and the log_format the site is configured for.
 convenience|$FE_RANSOMWARE_DB|Collected ransomware victims. The collector rebuilds it forward only, so postings that have rotated off the source are gone.
 convenience|$FE_WATCHLIST|The PH-relevant ransomware search terms, kept outside git on purpose.
+convenience|$FE_FREEMAIL_OVERRIDE|Attack Surface free-mail override list, kept outside git; merged over the vendored list at scan time.
 convenience|$FE_NGINX_CONFD/goaccess-logformat.conf|Defines log_format goaccess_cf. If your vhost names that format, nginx will not start without this file.
 convenience|$FE_STATE_FILE|Which release actions have run. Losing it replays idempotent flushes, which is noisy rather than harmful.
 RECORDS
@@ -709,6 +755,23 @@ fe_existing_state_paths() {
         [[ -e "$path" ]] || continue
         printf '%s\n' "${path#/}"
     done < <(fe_state_paths)
+}
+
+# A hot backup copies the .db file while the service keeps running. The databases
+# are in WAL mode (app/database.py sets journal_mode=WAL), so a transaction
+# committed to the -wal sidecar but not yet checkpointed into the .db is missing
+# from a copy of the .db alone, and the sidecars are not in the state list. A
+# passive TRUNCATE checkpoint folds the WAL back into the main file first; it does
+# not block writers and needs no service stop. Best effort: no sqlite3, or a busy
+# database, simply leaves the WAL in place and the backup proceeds.
+fe_wal_checkpoint() {
+    command -v sqlite3 >/dev/null 2>&1 || return 0
+    local db
+    for db in "$FE_DB" "$FE_RANSOMWARE_DB"; do
+        [[ -f "$db" ]] || continue
+        fe_run sqlite3 "$db" 'PRAGMA wal_checkpoint(TRUNCATE);' \
+            || fe_warn "WAL checkpoint of $db did not complete; backup uses the current .db"
+    done
 }
 
 # --------------------------------------------------------------- service ------
