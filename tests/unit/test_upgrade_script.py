@@ -227,6 +227,75 @@ def test_the_upgrade_captures_the_previous_ref_before_resetting():
     assert captured, "upgrade.sh resets the checkout before recording where it was"
 
 
+# ---------- it runs the target's own scripts ----------
+
+# Reported after v3.38.26: a new installer step (fe_install_nrd) added in the target
+# did not run on the upgrade that introduced it, only on the next one, because the
+# running upgrade.sh and common.sh were loaded into the process before the checkout
+# moved. The fix is to re-exec the checked-out upgrade.sh after the checkout, so the
+# rest of the run uses the target version's scripts.
+
+_REEXEC = 'exec "$FE_APP_SRC/scripts/upgrade.sh"'
+
+
+def test_the_upgrade_reexecs_the_checked_out_script():
+    text = _text(UPGRADE)
+    assert _REEXEC in text, (
+        "upgrade.sh does not re-exec the checked-out scripts/upgrade.sh, so a step "
+        "added in the target only takes effect on the following upgrade"
+    )
+    # The checked-out copy, not $0 (which is this pre-checkout one).
+    assert text.count(_REEXEC) == 1, "the re-exec appears more than once"
+
+
+def test_the_reexec_happens_after_the_checkout():
+    text = _text(UPGRADE)
+    assert text.index("fe_git_checkout") < text.index(_REEXEC), (
+        "the re-exec is before the checkout, so it would run the old code again"
+    )
+
+
+def test_the_reexec_is_guarded_to_run_at_most_once():
+    text = _text(UPGRADE)
+    assert '"${FE_UPGRADE_REEXECED:-}" == "1"' in text, (
+        "there is no FE_UPGRADE_REEXECED guard, so the re-exec would loop forever"
+    )
+    assert "export FE_UPGRADE_REEXECED=1" in text, (
+        "the sentinel is never set, so the guard can never become true"
+    )
+    # The sentinel is set before the exec, not after.
+    assert text.index("export FE_UPGRADE_REEXECED=1") < text.index(_REEXEC)
+
+
+def test_the_reexec_passes_the_original_arguments():
+    text = _text(UPGRADE)
+    assert 'FE_UPGRADE_ARGS=("$@")' in text, "upgrade.sh does not capture its original args"
+    assert "FE_UPGRADE_ARGS[@]" in text[text.index(_REEXEC):], (
+        "the re-exec does not pass the captured original arguments"
+    )
+
+
+def test_the_reexec_is_skipped_in_a_dry_run():
+    """A dry run never moves the checkout, so there is nothing new to re-exec into."""
+    text = _text(UPGRADE)
+    before = text[:text.index(_REEXEC)]
+    assert '"$DRY_RUN" != "true"' in before, (
+        "the re-exec is not guarded by a DRY_RUN check, so --dry-run would re-exec"
+    )
+
+
+def test_the_reexeced_pass_inherits_the_previous_ref_and_does_not_rebackup():
+    """The continuation runs after the checkout moved: it must inherit the pre-upgrade
+    ref (or rollback names the target) and must not take a second backup."""
+    text = _text(UPGRADE)
+    branch = text[text.index('"${FE_UPGRADE_REEXECED:-}" == "1"'):text.index("else")]
+    assert "FE_PREVIOUS_REF" in branch, (
+        "the re-exec'd pass does not inherit FE_PREVIOUS_REF, so the rollback command "
+        "would name the target it just checked out"
+    )
+    assert "fe_backup" not in branch, "the re-exec'd pass backs up a second time"
+
+
 # ---------- backups ----------
 
 def test_the_backup_covers_env_database_and_unit():

@@ -203,7 +203,11 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    With no argument it takes the newest `v*` tag. `--dry-run` prints every change
    it would make and touches nothing. This is the **only supported upgrade
    path**: it backs up `.env`, the database and the installed unit, checks out
-   the tag, reinstalls dependencies only if `requirements.txt` moved, copies the
+   the tag, then **re-execs the checked-out `scripts/upgrade.sh`** (guarded by
+   `FE_UPGRADE_REEXECED` so it happens at most once, skipped in `--dry-run`) so the
+   rest of the run uses the target version's own `upgrade.sh` and `common.sh`
+   rather than the pre-checkout copy the process started with. It then reinstalls
+   dependencies only if `requirements.txt` moved, copies the
    systemd unit and reloads systemd **if the unit changed**, installs and enables
    the `falconeye-asm-monitor` timer **only when `ASM_MONITORING_ENABLED=true`**,
    installs and enables the `falconeye-nrd` feed timer **unless

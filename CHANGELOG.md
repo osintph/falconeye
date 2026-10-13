@@ -5,6 +5,59 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.27] - 2026-10-13
+
+### Changed
+
+- **upgrade.sh runs the target version's own scripts.** After it checks out the
+  target tag, it re-execs the checked-out `scripts/upgrade.sh` (guarded by
+  `FE_UPGRADE_REEXECED` so it happens at most once, skipped in a dry run) so the
+  rest of the run uses the target's `upgrade.sh` and `common.sh`, not the
+  pre-checkout copy the process started with. A new installer step added in a
+  release now takes effect on the upgrade that introduces it, not the next one.
+
+### Added
+
+- A repo `CLAUDE.md` with the standing release orders (scripts and all docs updated
+  in the same release; nothing installed on a server by hand; SSH and SSH-firewall
+  settings never changed without an explicit ask; one brief, one release; no em
+  dashes).
+- Tests covering the re-exec: it runs the checked-out script, after the checkout,
+  guarded to run once, passing the original arguments, skipped in a dry run, and
+  inheriting the previous ref without a second backup.
+
+## [3.38.26] - 2026-10-13
+
+### Added
+
+- **The NRD feed timer now ships in the repo.** `deploy/falconeye-nrd.service` and
+  `.timer`, installed and enabled by `fe_install_nrd` from both `upgrade.sh` and
+  `provision.sh` (unless `HUNT_NRD_ENABLED=false`). Code since v3.38.18 assumed this
+  daily timer but no unit shipped and no script installed one. `provision.sh` now
+  also installs the ASM monitor timer.
+- Two regression tests: one fails if a repo `.service`/`.timer` is not installed and
+  enabled by the upgrade path; one fails if a variable the app reads is absent from
+  `.env.example`. The repo-wide em-dash guard now also covers `CHANGELOG.md`.
+
+### Changed
+
+- `backup.sh` checkpoints the WAL-mode databases before the hot tar, so a copy of
+  the `.db` alone cannot miss un-checkpointed transactions. The backup list adds the
+  ASM free-mail override (operator config kept outside git); the NRD and ASM-PDF
+  caches are documented as deliberately not backed up.
+- `.env.example` gains the 25 variables the app read but did not document (the
+  `HUNT_NRD_*`, `HUNT_URLSCAN_*`, `HUNT_RDAP_*` sets, the ASM verify-rate caps and
+  more); the stale NRD-default-off block is corrected; the duplicate
+  `ASM_MONITORING_ENABLED` and `REDIS_URL` entries are removed.
+- README, the runbook and the MCP docs: monitoring marked removed from the public
+  product; NRD documented as on by default via the local store and timer; the MCP
+  tool count corrected to ten (route_map, asm_discover operator-gated,
+  phishing_hunt); the full verdict set including Brand abuse; the metadata-only audit
+  row in place of a nothing-stored claim; `URLSCAN_API_KEY` and `ASM_SIGNING_KEY`
+  documented; the operator-key terminal line-wrap caveat; the Hunt operator caps; a
+  live-only operations section. CHANGELOG entries for every release v3.38.11 to
+  v3.38.25, with every em, en, figure and bar dash removed from the whole file.
+
 ## [3.38.25] - 2026-10-12
 
 ### Added

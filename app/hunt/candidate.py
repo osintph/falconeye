@@ -35,7 +35,7 @@ except Exception:  # noqa: BLE001 - optional; title similarity just does not con
 
 log = logging.getLogger("falconeye.hunt.candidate")
 
-_UA = "FalconEye-Hunt/3.38.26"
+_UA = "FalconEye-Hunt/3.38.27"
 # Two realistic browser User-Agents, so a page that cloaks by client can be fetched
 # the way a desktop and a mobile visitor would see it (content-variance check).
 _UA_DESKTOP = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -166,7 +166,7 @@ _PAY_KW = re.compile(r"(?:card\s*number|cardnumber|card[_-]?no\b|ccnum|\bcvv\b|\
 
 
 def detect_capture(body: str) -> dict:
-    """Credential or payment capture by the v3.38.26 rule: an input type=password, or
+    """Credential or payment capture by the v3.38.27 rule: an input type=password, or
     a field whose name, id, label or placeholder asks for a PIN, MPIN, OTP, password,
     card number, CVV or expiry. Search, newsletter and contact fields never match.
     Returns {has_cred, has_pay, cred_trigger, pay_trigger}, each trigger naming the
@@ -340,7 +340,7 @@ def assess_content(body: str, final_url: str, keyword: str, legit_domain: str,
         out["brand_imitation"] = bool(clone or og_brand or len(qualifying) >= 2)
         out["ph_indicators"] = len(match_ph_indicators(body or "", final_url or ""))
 
-    # Credential and payment capture (the v3.38.26 rule: a password field, or a field
+    # Credential and payment capture (the v3.38.27 rule: a password field, or a field
     # that asks for a PIN, MPIN, OTP, password, card number, CVV or expiry). A search
     # box, newsletter or contact field never counts.
     cap = detect_capture(body or "")

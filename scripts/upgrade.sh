@@ -33,6 +33,9 @@ source "$SCRIPT_DIR/lib/common.sh"
 
 TARGET=""
 DRY_RUN="${DRY_RUN:-false}"
+# The original arguments, captured before parsing, so the re-exec into the target
+# version's upgrade.sh (below) runs with exactly what the operator passed.
+FE_UPGRADE_ARGS=("$@")
 
 usage() {
     # The synopsis block at the top of this file, up to the first blank comment.
@@ -61,39 +64,73 @@ export DRY_RUN
 fe_need_root
 [[ -d "$FE_APP_SRC/.git" ]] || fe_die "$FE_APP_SRC is not a git checkout. Use scripts/provision.sh for a first install."
 
-# Where we are now, captured before anything moves, so the rollback command in a
-# failed health check names the version the operator actually had.
-PREVIOUS_REF="$(fe_current_ref)"
-PREVIOUS_VERSION="$(fe_source_version)"
-FE_ROLLBACK_REF="$PREVIOUS_REF"
-trap 'fe_on_error $LINENO' ERR
+if [[ "${FE_UPGRADE_REEXECED:-}" == "1" ]]; then
+    # We were re-exec'd by the pre-checkout copy of this script after it backed up
+    # and checked out the target, so from here on this IS the target version's
+    # upgrade.sh and common.sh. Inherit the state the first process captured: the
+    # checkout has already moved, so re-reading "where we are" would wrongly report
+    # the target as the previous version and break the rollback command.
+    PREVIOUS_REF="${FE_PREVIOUS_REF:-$(fe_current_ref)}"
+    PREVIOUS_VERSION="${FE_PREVIOUS_VERSION:-unknown}"
+    TARGET="${FE_TARGET_REF:-$TARGET}"
+    TARGET_VERSION="$(fe_source_version)"
+    FE_ROLLBACK_REF="$PREVIOUS_REF"
+    trap 'fe_on_error $LINENO' ERR
+    printf '%s=== FalconEye upgrade (continuing in %s) ===%s\n' "$_FE_BOLD" "$TARGET" "$_FE_OFF"
+    fe_say "now running the target's own upgrade.sh and common.sh (was $PREVIOUS_REF)"
+else
+    # Where we are now, captured before anything moves, so the rollback command in a
+    # failed health check names the version the operator actually had.
+    PREVIOUS_REF="$(fe_current_ref)"
+    PREVIOUS_VERSION="$(fe_source_version)"
+    FE_ROLLBACK_REF="$PREVIOUS_REF"
+    trap 'fe_on_error $LINENO' ERR
 
-printf '%s=== FalconEye upgrade ===%s\n' "$_FE_BOLD" "$_FE_OFF"
-fe_say "checkout:  $FE_APP_SRC"
-fe_say "currently: $PREVIOUS_REF (version $PREVIOUS_VERSION)"
-[[ "$DRY_RUN" == "true" ]] && fe_warn "dry run: nothing will be changed"
+    printf '%s=== FalconEye upgrade ===%s\n' "$_FE_BOLD" "$_FE_OFF"
+    fe_say "checkout:  $FE_APP_SRC"
+    fe_say "currently: $PREVIOUS_REF (version $PREVIOUS_VERSION)"
+    [[ "$DRY_RUN" == "true" ]] && fe_warn "dry run: nothing will be changed"
 
-# ---- 1. backups, before anything is touched -----------------------------------
-fe_step "1/9 Backing up .env, database and the installed unit"
-fe_backup
+    # ---- 1. backups, before anything is touched -------------------------------
+    fe_step "1/9 Backing up .env, database and the installed unit"
+    fe_backup
 
-# ---- 2. move the checkout ------------------------------------------------------
-fe_step "2/9 Fetching tags and checking out the target"
-if [[ -z "$TARGET" ]]; then
-    # Fetch first or "the latest tag" is whatever this clone last heard about.
-    fe_git_fetch
-    TARGET="$(fe_latest_tag)"
-    [[ -n "$TARGET" ]] || fe_die "no v* tags found; pass one explicitly"
-    fe_say "no tag given, using the latest: $TARGET"
+    # ---- 2. move the checkout -------------------------------------------------
+    fe_step "2/9 Fetching tags and checking out the target"
+    if [[ -z "$TARGET" ]]; then
+        # Fetch first or "the latest tag" is whatever this clone last heard about.
+        fe_git_fetch
+        TARGET="$(fe_latest_tag)"
+        [[ -n "$TARGET" ]] || fe_die "no v* tags found; pass one explicitly"
+        fe_say "no tag given, using the latest: $TARGET"
+    fi
+    fe_say "target: $TARGET"
+    # Read the target's version from the ref, so a dry run reports what the upgrade
+    # would produce rather than what is already checked out.
+    export FE_TARGET_REF="$TARGET"
+    fe_git_checkout "$TARGET"
+    TARGET_VERSION="$(fe_source_version "$TARGET")"
+    [[ -n "$TARGET_VERSION" ]] || TARGET_VERSION="$(fe_source_version)"
+    fe_say "version in $TARGET: $TARGET_VERSION"
+
+    # Re-exec into the just-checked-out scripts so the REST of the upgrade runs the
+    # target version's upgrade.sh and common.sh, not this pre-checkout copy. Without
+    # this, a new installer step added in the target only takes effect on the NEXT
+    # upgrade, because this process loaded the old library before the checkout.
+    # Guarded by FE_UPGRADE_REEXECED so it happens at most once, and
+    # skipped in a dry run, where the checkout did not move and there is nothing new
+    # to re-exec into.
+    if [[ "$DRY_RUN" != "true" ]]; then
+        export FE_UPGRADE_REEXECED=1
+        export FE_PREVIOUS_REF="$PREVIOUS_REF"
+        export FE_PREVIOUS_VERSION="$PREVIOUS_VERSION"
+        export FE_TARGET_REF="$TARGET"
+        export FE_BACKUP_PATH="${FE_BACKUP_PATH:-}"
+        fe_step "Re-exec into $TARGET's upgrade.sh"
+        fe_say "running $FE_APP_SRC/scripts/upgrade.sh from $TARGET"
+        exec "$FE_APP_SRC/scripts/upgrade.sh" ${FE_UPGRADE_ARGS[@]+"${FE_UPGRADE_ARGS[@]}"}
+    fi
 fi
-fe_say "target: $TARGET"
-# Read the target's version from the ref, so a dry run reports what the upgrade
-# would produce rather than what is already checked out.
-export FE_TARGET_REF="$TARGET"
-fe_git_checkout "$TARGET"
-TARGET_VERSION="$(fe_source_version "$TARGET")"
-[[ -n "$TARGET_VERSION" ]] || TARGET_VERSION="$(fe_source_version)"
-fe_say "version in $TARGET: $TARGET_VERSION"
 
 # ---- 3. dependencies -----------------------------------------------------------
 fe_step "3/9 System packages and Python dependencies"
