@@ -15,3 +15,7 @@ Effective for every session in this repository.
 - No em dashes anywhere. Use `vi` for any file-editing command. Review pages and
   screenshots are private claude.ai artifacts only, never public. Briefs,
   screenshots and review pages never go into git.
+
+- No em dashes or en dashes anywhere, including your own reports, chat replies and
+  commit messages. Use a comma, a colon, parentheses or a plain hyphen instead.
+  Check every reply before sending.
