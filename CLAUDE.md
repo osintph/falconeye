@@ -19,3 +19,8 @@ Effective for every session in this repository.
 - No em dashes or en dashes anywhere, including your own reports, chat replies and
   commit messages. Use a comma, a colon, parentheses or a plain hyphen instead.
   Check every reply before sending.
+- The public product page www.osintph.net/falconeye.html lives in the
+  separate osintph-www repo. Any release that changes features, tabs, sources,
+  counts, cookies, retention or attribution must end its report with a section
+  headed 'osintph.net needs updating' that lists the exact changes. An empty
+  section is stated as 'none'.

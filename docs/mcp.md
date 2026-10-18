@@ -48,6 +48,11 @@ turn an indicator check into people-search, which is the same line
 `app/hudsonrock/client.py` draws. `tests/unit/test_mcp_server.py` fails if one of
 them appears.
 
+So ten of the 19 investigative tabs have a tool. Phishing Scanner, Crypto,
+Breach Check and Company have none either. The count in this page, the README
+and the runbook is checked against the `Tool(...)` list in `app/mcp_server.py`
+by `tests/unit/test_doc_counts.py`.
+
 **Two tools spend money.** `script_decode` and `email_header_analyze` call
 Anthropic with this instance's `ANTHROPIC_API_KEY`, under the existing per-day cap
 (`LLM_RATE_LIMIT_PER_DAY`). Behind MCP that key is the operator's own, so the

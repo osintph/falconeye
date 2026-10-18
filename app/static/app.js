@@ -17,7 +17,7 @@
 
 const NAV_GROUPS = [
   { key: 'identity', label: 'Identity', tabs: [
-    { id: 'username', label: 'Username', desc: 'Find a username across ~950 platforms',
+    { id: 'username', label: 'Username', desc: 'Find a username across 965 platforms',
       icon: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
     { id: 'telegram', label: 'Telegram', desc: 'Resolve any Telegram user, bot, or channel',
       icon: '<path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4 20-7z"/>' },

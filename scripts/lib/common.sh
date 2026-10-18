@@ -42,6 +42,7 @@ FE_UNIT_SRC="${FE_UNIT_SRC:-$FE_APP_SRC/falconeye.service}"
 FE_UNIT_DEST="${FE_UNIT_DEST:-/etc/systemd/system/${FE_SERVICE}.service}"
 FE_NGINX_DIR="${FE_NGINX_DIR:-/etc/nginx}"
 FE_HEALTH_URL="${FE_HEALTH_URL:-http://127.0.0.1:8000/health}"
+FE_PAGE_URL="${FE_PAGE_URL:-http://127.0.0.1:8000/}"
 FE_SERVICE_USER="${FE_SERVICE_USER:-ubuntu}"
 FE_LOG_DIR="${FE_LOG_DIR:-/var/log/falconeye}"
 # Which release actions have already run on this box, one version per line.
@@ -814,6 +815,35 @@ fe_health_check() {
         printf '  Backups from this run: %s\n' "$FE_BACKUP_PATH" >&2
     fi
     exit 1
+}
+
+# /health only proves the Python side moved. The page carries the version three
+# more times (the JSON-LD softwareVersion and the ?v= cache-busters on app.js and
+# style.css), all hand-edited, and a missed one is how a browser keeps a stale
+# app.js after a release. The service is up and serving at this point, so a
+# mismatch is a loud warning naming the missing string, not a rollback.
+fe_check_page_version() {
+    local expected="$1" body="" needle missing=0
+
+    if [[ "$DRY_RUN" == "true" ]]; then
+        fe_say "[dry-run] would check $FE_PAGE_URL carries version $expected"
+        return 0
+    fi
+
+    body="$(curl -sf -m 5 "$FE_PAGE_URL" 2>/dev/null || true)"
+    if [[ -z "$body" ]]; then
+        fe_warn "$FE_PAGE_URL returned nothing; the page version was not checked"
+        return 0
+    fi
+    for needle in "/static/app.js?v=$expected" "/static/style.css?v=$expected" \
+                  "\"softwareVersion\": \"$expected\""; do
+        if [[ "$body" != *"$needle"* ]]; then
+            fe_warn "$FE_PAGE_URL does not contain $needle (a version bump spot in app/static/index.html was missed)"
+            missing=1
+        fi
+    done
+    [[ "$missing" == 0 ]] && fe_ok "$FE_PAGE_URL carries $expected (JSON-LD and both asset query strings)"
+    return 0
 }
 
 # set -e aborts on the first failure, which is right, but an operator staring at

@@ -92,8 +92,6 @@ if [[ "$RUN_TESTS" == "true" ]]; then
     echo "[--test] Running test suite..."
     cd "$INSTALL_DIR/app_src"
     if ! "$INSTALL_DIR/venv/bin/python" -m pytest tests/ \
-            --ignore=tests/image_search/test_routes.py \
-            --ignore=tests/prospect/test_routes.py \
             -q 2>&1; then
         echo "[FAIL] Test suite did not pass. Service will NOT be enabled. Fix the failures and re-run." >&2
         exit 1
@@ -183,7 +181,11 @@ echo "  2. Secure it: chmod 600 $INSTALL_DIR/.env"
 echo "  3. Generate the Attack Surface signing key (ASM is disabled without it):"
 echo "       python3 -c 'import secrets; print(\"ASM_SIGNING_KEY=\"+secrets.token_urlsafe(48))' >> $INSTALL_DIR/.env"
 echo "     (or run scripts/upgrade.sh, which generates one if it is missing)"
-echo "  4. Restart: systemctl restart falconeye"
+echo "  4. Self-hosting publicly? Set the operator identity in .env (OPERATOR_NAME,"
+echo "     OPERATOR_URL, OPERATOR_CONTACT_EMAIL, OPERATOR_PRIVACY_EMAIL, SITE_ORIGIN),"
+echo "     or the page names the upstream operator (OSINTPH). See \"Operator identity\""
+echo "     in docs/deploy-runbook.md."
+echo "  5. Restart: systemctl restart falconeye"
 echo ""
 echo "Health check:"
 # Read the hostname from the vhost that was just installed rather than
@@ -199,3 +201,6 @@ else
     echo "  via the local origin (no usable server_name in the vhost)"
     curl -s http://127.0.0.1:8000/health
 fi
+# The page carries the version in three hand-edited places that /health does
+# not cover; say so now if one was missed, before a browser caches it.
+fe_check_page_version "$(fe_source_version)"

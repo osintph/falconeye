@@ -115,7 +115,7 @@ RANSOMWARE_WATCHLIST_PATH = getenv_clean("RANSOMWARE_WATCHLIST_PATH", "/opt/falc
 # inbox and privacy policy as its own. The AGPL attribution and the link to the
 # upstream repository are NOT covered by these settings and always render: that
 # is the licence, not branding.
-OPERATOR_NAME = getenv_clean("OPERATOR_NAME", "OSINT-PH")
+OPERATOR_NAME = getenv_clean("OPERATOR_NAME", "OSINTPH")
 OPERATOR_URL = getenv_clean("OPERATOR_URL", "https://blog.osintph.info")
 OPERATOR_CONTACT_EMAIL = getenv_clean("OPERATOR_CONTACT_EMAIL", "security@osintph.info")
 # One clause describing the operator, rendered after the name in the About box.

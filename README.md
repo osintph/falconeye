@@ -1,8 +1,8 @@
 # FalconEye
 
-**Free, self-hosted OSINT investigator's toolkit.** Twenty focused modules in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, commercial prospect dossiers, reverse image search, username enumeration across ~950 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, attack surface management for domains you control, phishing domain hunting for brand impersonation, and a fictional sock-puppet persona generator with dossier export. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
+**Free, self-hosted OSINT investigator's toolkit.** 19 investigative tabs in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, company dossiers, reverse image search, username enumeration across 965 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, attack surface management for domains you control, phishing domain hunting for brand impersonation, traceroute mapping (Route Map), and a fictional sock-puppet persona generator with dossier export. Ten of the tabs are also exposed as MCP tools for Claude Code and Claude Desktop. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.38.25**
+Current version: **3.38.28**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -63,7 +63,7 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Phishing Scanner** | Fingerprint phishing kits by URL or pasted HTML; identify the kit family; extract IOCs. An opt-in **Deep kit report** toggle upgrades the same run to a full teardown: fetch the page, detect a client-rendered SPA shell, pull and hash every JS bundle, decode the obfuscated string table and resolve decoder call sites before searching, probe the operator relay path (status codes only, no socket opened), pull RDAP, CT and urlscan, score against a kit signature, and render one case report with a sourced lifecycle timeline and a copyable indicator block. The case host always comes from the URL you submitted: a cloaking kit that redirects the scanner to the brand it impersonates cannot redirect the investigation with it, and a fetch that leaves the submitted domain is reported as a cloaked redirect with the chain, scored on the redirect itself, with every skipped stage marked N/A rather than 0%. Pasting a JavaScript bundle instead of page source runs the same analysis offline, for a target that is already dead. |
 | **Domain Intelligence** | RDAP, DNS, certificate transparency logs (crt.sh + Cert Spotter fallback), RIPEstat ASN data |
 | **Telegram Inspector** | Scrape public Telegram channels (t.me/s/) for messages and extract IOCs (URLs, wallets, contact details) |
-| **IP Reputation** | Multi-source reputation with a consensus verdict (Clean/Suspicious/Malicious/Incomplete) from AbuseIPDB, VirusTotal, AlienVault OTX, Censys, and ThreatFox, plus Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, reverse DNS. Merges Censys + Shodan ports and surfaces geolocation disagreement across sources. ASN Intelligence block (RIPEstat): operator identity, full announced-prefix footprint, and an expand-to-load routing view of upstream/downstream ASN relationships, the pivot from one abusive IP to the operator's whole network. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, optional Mailgun send, or client-side PDF). Reputation reports export to PDF in the browser. |
+| **IP Reputation** | Multi-source reputation with a consensus verdict (Clean/Suspicious/Malicious/Incomplete) from AbuseIPDB, VirusTotal, AlienVault OTX and ThreatFox, plus enrichment that never votes on the verdict: Shodan InternetDB, GreyNoise, RIPEstat, URLhaus, reverse DNS, and Censys only when `CENSYS_ENABLED=true` (credit-metered, off by default). Merges Shodan ports with Censys services when Censys is on, and surfaces geolocation disagreement across sources. ASN Intelligence block (RIPEstat): operator identity, full announced-prefix footprint, and an expand-to-load routing view of upstream/downstream ASN relationships, the pivot from one abusive IP to the operator's whole network. Composes an abuse report to the hosting provider's RDAP abuse-c contact (copy, optional Mailgun send, or client-side PDF). Reputation reports export to PDF in the browser. |
 | **URL Expander** | Follow a short URL's full redirect chain hop-by-hop with per-hop status codes, TLS certificate details, server headers, and timing. Flags shortener depth, TLD switches, punycode hostnames, and non-standard ports. Every hop is re-validated through `safe_fetch`'s SSRF guard. One-click pivot to the Phishing Scanner. |
 | **QR Analyzer** | Decode one or more QR codes from an uploaded image or a base64 data URI (processed in memory, never stored). Categorizes payloads (HTTP, Bitcoin, Ethereum, UPI, WiFi, sms, tel, geo, text). One-click pivot of decoded URLs into the URL Expander. |
 | **Image** | Reverse image search via Google Lens and Yandex in parallel. Paste a URL or upload a file (JPEG, PNG, WebP, GIF, max 10 MB). Shows visual match grids, cross-source domain corroboration, and EXIF metadata for uploads. Requires a SearchAPI.io key. Results cached 24 hours in Redis. |
@@ -71,9 +71,9 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Sock Puppet Generator** | Build a coherent fictional research persona for authorized OSINT use: a Cover (deterministic, from Faker plus an offline country-metadata layer covering all ISO countries) and an optional Legend (Claude Haiku back-story pinned to the Cover so it cannot contradict it). Non-Latin locales carry a Latin romanization twin per field (Legend-written, else `unidecode` fallback) so nothing renders blank; 6 to 8 human-looking username suggestions derived from the roman name and persona facts; per-field copy buttons, financial filler off by default, dossier PDF, and an operator OPSEC checklist. Fictional personas only, never impersonation. |
 | **Dork Generator** | LLM-powered Google search query generator with preset categories and free-form natural-language input |
 | **Script Decoder** | LLM-powered deobfuscation of suspicious PowerShell, JavaScript, VBA, Base64 blobs, and packed scripts. Returns deobfuscated code, IOCs, MITRE ATT&CK techniques, and detection suggestions |
-| **Prospect** | Commercial intelligence dossier for any domain: identity resolution, news, job postings, and Google Ads Transparency data. Requires a SearchAPI.io key. Results cached 6 hours in Redis. |
+| **Company** | Commercial intelligence dossier for any domain: identity resolution, news, job postings, and Google Ads Transparency data. Requires a SearchAPI.io key. Results cached 6 hours in Redis. |
 | **Contact** | Feedback form for bug reports, feature requests, and new tab suggestions |
-| **Username** | Check where a username appears across ~950 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
+| **Username** | Check where a username appears across 965 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
 | **Route Map** | Map the real network path to a target and draw it on a world map, starting from where you are. Enter a domain, URL or IP and a RIPE Atlas probe on your own network runs the traceroute; or paste a trace, or run one yourself and pipe it to a single-use upload link. Windows `tracert`, Unix `traceroute` and `mtr --report` are all parsed, format auto-detected. Hops are placed **hostname first**: CAIDA Hoiho's published ruleset, then a bundled carrier site-code table, and an IP geolocation database only as a fallback, because a backbone router's address geolocates to wherever its operator registered the prefix. Every placement is then checked against the speed of light (about 100 km per ms of round trip) and rejected if the measured RTT could not reach it, so a Tata router cannot be drawn in Harare at the same RTT as San Jose. Hops that cannot be placed are listed with the reason, never silently dropped. Annotates asymmetric return paths, ICMP rate limiting mistaken for packet loss, and a destination that does not answer ICMP. Your location is asked for through the browser's own permission popup, rounded to about 10 km in the browser, used for the render only and never stored; declining falls back to an offline city picker. Atlas measurements are public and the tab says so. Needs an `ATLAS_API_KEY` for the probe path; paste and upload work without one. |
 | **Attack Surface** | Map the internet-facing surface of a domain you have proven you control (a DNS TXT record, or a one-time link to a role address at the domain), or any domain in operator mode for an authorised engagement. No output of any kind is returned for an unverified or blocked domain outside operator mode. Free and consumer mailbox providers, shared-platform apexes (the PSL private section) and public suffixes are blocked, with one identical response whatever the reason. Passive discovery (certificate transparency, Mnemonic passive DNS, the Wayback Machine) and RIPEstat ASN context feed a light active probe (DNS, HTTP/TLS, header-based tech fingerprint, apex mail posture) and a conservative pure-Python TCP connect scan. Strict scope: only the target's own hosts are probed; a host behind a published CDN edge is marked "behind CDN, ports not scanned" and a CNAME to a third party is recorded as a reference only, never probed or port scanned. Findings cover dangling-CNAME takeover candidates, expiring certificates, exposed admin surfaces, unexpected open services, missing security headers and SPF/DMARC/MTA-STS posture. Scans are one-time: run as a background job with a polled status, shown once and delivered as a watermarked server-side PDF, then purged. FalconEye keeps no scan results, no history and no "my domains" view; only metadata (time, counts, mode, domain hashed) is kept for audit. Every run lists each source as answered, failed or skipped, and a discovery-source failure marks the run INCOMPLETE. Results are bound to the verifying browser session, never a shareable link. |
@@ -108,7 +108,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.38.0:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.38.28:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -117,7 +117,9 @@ FalconEye is a public, unauthenticated OSINT tool with no login. The following c
 **XSS.** Attacker-controlled strings from Telegram channel metadata, RDAP registration fields, RSS feeds, and threat intelligence APIs are escaped with `escapeHtml()` / `escapeAttr()` before any DOM insertion. The existing escape helpers are used consistently; no `innerHTML` is assigned with unescaped external data.
 
 **Reputation coverage is stated, not assumed.** The IP Reputation verdict is
-only `CLEAN` when all five keyed sources actually answered. A source with no
+only `CLEAN` when all four keyed sources (AbuseIPDB, VirusTotal, AlienVault OTX and ThreatFox) actually answered.
+Censys is enrichment only, behind `CENSYS_ENABLED` (off by default, credit-metered),
+and never counts towards the verdict or the coverage note. A source with no
 key, an error, a timeout or an exhausted quota is reported as unavailable and
 the verdict becomes `INCOMPLETE`, naming which source was not consulted. Before
 v3.33.2 such a source was indistinguishable from one that answered and found
@@ -162,13 +164,13 @@ reached from the public instance. See [docs/mcp.md](docs/mcp.md).
 ## Stack
 
 - **Backend**: Python 3.10+ (3.11 recommended), FastAPI, Uvicorn, Gunicorn
-- **Database**: SQLite with WAL mode (caching and rate limits; no user data); Redis for Prospect and Image tab response caches
+- **Database**: SQLite with WAL mode (caching and rate limits; no user data); Redis for the Company and Image tab response caches and the Route Map job handoff
 - **Frontend**: Tailwind CSS via CDN, vanilla JavaScript, D3.js for graph visualizations
 - **Web server**: nginx with Cloudflare Origin Certificate; Cloudflare in front for TLS termination, DDoS protection, and edge caching
 - **LLM**: Anthropic Claude Haiku 4.5 via the official Python SDK (`anthropic` package, install separately, see requirements.txt note)
 - **Security**: CrowdSec community blocklist + firewall bouncer, fail2ban, ufw, SSH on non-standard port with keys-only auth
 
-Memory footprint at idle: ~120 MB RAM. Disk: ~50 MB for code + ~20 MB SQLite cache.
+Memory footprint at idle, measured on the live instance on 2026-10-18 (10:22 UTC, two days after the last restart, load average 0.15): about 555 MB RSS across the four gunicorn processes (master 30 MB, three workers of 170, 172 and 184 MB; RSS counts shared pages once per process, and systemd reports 528 MB for the whole service). Disk: 13 MB for the code tree (28 MB with `.git`) and 19 MB for `data/falconeye.db`.
 
 ---
 
@@ -413,7 +415,7 @@ put the certificate and vhost back, then `scripts/restore.sh` for the rest.
 |---|---|---|---|
 | `ANTHROPIC_API_KEY` | For LLM tabs | Email Header, Dork Gen, Script Decoder, Sock Puppet Generator | Free $5 credit on signup. Set a monthly spend limit in the Console. |
 | `IMAGE_UPLOAD_SECRET` | If `IMAGE_SEARCH_ENABLED=true` | Image Search upload flow | Generate: `openssl rand -hex 32` |
-| `SEARCHAPI_KEY` | For Prospect and Image tabs | Prospect dossier, Image reverse search | Free trial at searchapi.io |
+| `SEARCHAPI_KEY` | For Company and Image tabs | Company dossier, Image reverse search | Free trial at searchapi.io |
 | `GREYNOISE_API_KEY` | No | IP Reputation | Community tier is free |
 | `ABUSECH_AUTH_KEY` | No | Sandbox History, IP Reputation | Free at auth.abuse.ch |
 | `HIBP_API_KEY` | For Breach Check | Breach Check (email + paste search) | Have I Been Pwned Core 1 subscription (haveibeenpwned.com/API/Key). Domain/recent/browse-all lookups use HIBP's free endpoints and work without this key. |
@@ -484,7 +486,7 @@ source .venv/bin/activate
 pytest tests/ -v
 ```
 
-Expected baseline: **122 passed, 3 skipped** (the 3 skips are JPEG EXIF fixture tests that need actual image files; 2 collection errors in test_routes.py modules are pre-existing Python 3.9 type-annotation incompatibilities that do not affect Python 3.10+ deployments).
+Expected baseline on v3.38.28 (Python 3.12, full suite, nothing ignored): **1802 passed, 13 skipped**. The 13 skips need material that is not in the repository: two JPEG EXIF fixtures (`tests/image_search/test_exif.py`), nine tests against real kit bundles (set `FALCONEYE_KIT_BUNDLES`), and two live smoke tests (set `FALCONEYE_LIVE_SMOKE=1`).
 
 ### Project structure
 
@@ -494,16 +496,21 @@ falconeye/
 │   ├── main.py                  # FastAPI entry point, router registration
 │   ├── mcp_server.py            # MCP tools over stdio, local mode, see docs/mcp.md
 │   ├── config.py                # Environment variable loading
-│   ├── routers/                 # One file per tab / feature
+│   ├── database.py
+│   ├── routers/                 # One file per tab / feature (single-file tabs)
 │   │   ├── crypto.py
 │   │   ├── scanner.py           # Phishing Scanner: uses safe_fetch for user URLs
 │   │   ├── domain_intel.py
-│   │   ├── telegram_inspector.py
 │   │   ├── ip_intel.py
 │   │   ├── sandbox.py
 │   │   ├── email_header.py
 │   │   ├── dork_generator.py
 │   │   ├── script_decoder.py
+│   │   ├── url_expander.py
+│   │   ├── qr_analyzer.py
+│   │   ├── sockpuppet.py        # Sock Puppet Generator (Cover + Claude Haiku Legend)
+│   │   ├── asm.py               # Attack Surface routes and pages
+│   │   ├── hunt.py              # Phishing Hunt routes
 │   │   ├── news.py
 │   │   └── threat_pulse.py
 │   ├── scanner/                 # Phishing Scanner analysis engine, see docs/kit-analysis.md
@@ -514,23 +521,48 @@ falconeye/
 │   │   ├── kit_report.py        # Consolidated case report builder
 │   │   ├── cloudflare_detect.py
 │   │   └── ph_bank_indicators.py
-│   ├── prospect/                # Prospect tab (SearchAPI.io dossier)
+│   ├── asm/                     # Attack Surface: verification, passive discovery, probe,
+│   │                            #   port scan, findings, one-time PDF report, operator mode
+│   ├── hunt/                    # Phishing Hunt: candidate discovery (CT, permutations,
+│   │                            #   urlscan, URLhaus, NRD store), scoring, clustering
+│   ├── routemap/                # Route Map: trace parsing, Hoiho + site-code placement,
+│   │                            #   RIPE Atlas probes, speed-of-light check
+│   ├── ip_sources/              # IP Reputation upstreams; catalog.py is the source list
+│   ├── telegram/                # Telegram Inspector (t.me scrape, Bot API, MTProto)
+│   ├── username/                # Username enumeration (WhatsMyName + Sherlock)
+│   ├── breach/                  # Breach Check (Have I Been Pwned)
+│   ├── abuse/                   # Abuse report compose and optional Mailgun send
+│   ├── prospect/                # Company tab (SearchAPI.io dossier)
 │   ├── image_search/            # Image Search tab (Google Lens + Yandex)
-│   ├── ransomware/               # Ransomware Watch tab: reads local SQLite only
+│   ├── ransomware/              # Ransomware Watch tab: reads local SQLite only
+│   ├── holehe/, hudsonrock/     # Optional third-party clients
+│   ├── pdf/                     # Server-side PDF rendering
+│   ├── data/                    # Vendored WhatsMyName and Sherlock site data
 │   ├── collectors/
 │   │   └── ransomware_collect.py # Scheduled collector (ransomware.live + RansomLook); run by an out-of-repo systemd timer, see docs/ransomware-watch-runbook.md
 │   └── utils/
 │       ├── client_ip.py         # CF-Connecting-IP extraction
+│       ├── cloudflare_ips.py    # Published Cloudflare ranges, kept in step with nginx
 │       ├── safe_fetch.py        # SSRF-safe HTTP fetcher for user-supplied URLs
 │       ├── llm_response.py      # LLM JSON validation helpers
-│       ├── ssrf.py              # Legacy validate_url (used by crypto.py)
+│       ├── prompt_safety.py     # <untrusted_data> fencing for LLM input
 │       ├── domain.py
-│       ├── indicator.py
-│       └── telegram.py
+│       └── indicator.py
 ├── app/static/                  # Single-page app shell (index.html, app.js, etc.)
 ├── scripts/
 │   ├── provision.sh             # Automated VPS provisioning
+│   ├── upgrade.sh               # Tag-based upgrade with backup, health check, rollback hint
+│   ├── backup.sh                # State backup (fe_state_paths) to a checksummed tarball
+│   ├── restore.sh               # Verified restore of a backup.sh archive
+│   ├── lib/
+│   │   └── common.sh            # Shared by provision.sh and upgrade.sh (packages, units, nginx)
+│   ├── release-actions/         # Per-release migrations and cache flushes
 │   └── db_init.py               # SQLite schema initializer
+├── deploy/                      # systemd units and timers installed by the scripts
+│   ├── falconeye-asm-monitor.service / .timer
+│   ├── falconeye-nrd.service / .timer   # Phishing Hunt NRD feed, daily
+│   └── journald/
+│       └── falconeye-retention.conf
 ├── tools/                       # Standalone CLI analysis tools (not imported by the app)
 │   ├── kitanalyze.py            # Reference deobfuscator the tab's engine was ported from
 │   ├── runkit.sh                # Reference acquisition sequence (raw curl; the app uses safe_fetch)
@@ -544,8 +576,10 @@ falconeye/
 │   │   └── security-headers.conf          # CSP/HSTS/nosniff, included per location
 │   └── conf.d/
 │       └── goaccess-logformat.conf        # Optional GoAccess log format
+├── docs/                        # Runbook, MCP, IP sources, kit analysis and more
 ├── falconeye.service            # systemd unit
 ├── requirements.txt
+├── requirements-mcp.txt         # MCP venv overrides, see docs/mcp.md
 ├── .env.example
 ├── LICENSE
 ├── CONTRIBUTING.md
@@ -618,7 +652,7 @@ AGPL-3.0. Strong copyleft: if you run a modified version as a network service, y
 - D3.js (graph visualization)
 - Tailwind CSS (styling)
 
-Built and maintained by [OSINT-PH](https://blog.osintph.info).
+Built and maintained by [OSINTPH](https://blog.osintph.info).
 
 - City list from [GeoNames](https://www.geonames.org/) (`cities15000`), used under
   [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Bundled offline in the

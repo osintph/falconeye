@@ -5,6 +5,87 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.28] - 2026-10-18
+
+Documentation and metadata accuracy release. Every figure below is read from the
+code, and a new guard test fails if a published copy disagrees with it again.
+
+### Fixed
+
+- **README tab count.** The opening said "Twenty focused modules". It now says
+  19 investigative tabs: `VALID_TABS` in `app/static/app.js` minus Home and
+  Contact. Route Map was missing from the opening list and is added, and the
+  sentence now says ten of the tabs are MCP tools.
+- **README IP Reputation sources.** The tab row listed Censys in the consensus
+  and the coverage section said CLEAN needs "all five keyed sources". Since
+  v3.34.0 `compute_verdict()` counts four (`reputation._NAMES`, mirrored by
+  `catalog.REPUTATION_SOURCES`): AbuseIPDB, VirusTotal, AlienVault OTX and
+  ThreatFox. Censys is now listed as enrichment, behind `CENSYS_ENABLED`.
+- **README test baseline.** "122 passed, 3 skipped" (with a note about Python 3.9
+  collection errors) is replaced by the measured full-suite result on this
+  release: 1802 passed, 13 skipped, with what each skip needs.
+- **README project tree.** Adds `scripts/upgrade.sh`, `backup.sh`, `restore.sh`,
+  `lib/common.sh`, `release-actions/`, `deploy/`, `app/asm/`, `app/hunt/`,
+  `app/routemap/` and the routers and packages that were missing. Drops
+  `app/utils/ssrf.py`, `app/utils/telegram.py` and
+  `app/routers/telegram_inspector.py`, which no longer exist.
+- **README memory footprint.** "~120 MB RAM, ~50 MB code, ~20 MB SQLite" is
+  replaced by figures measured on the live instance on 2026-10-18: about 555 MB
+  RSS across the four gunicorn processes (528 MB for the service cgroup), 13 MB
+  of code (28 MB with `.git`) and a 19 MB `falconeye.db`.
+- **"Prospect" is "Company".** The README tab table, API key table and stack
+  line now use the tab's real title. The route `/api/prospect/investigate` and
+  the `app/prospect/` package keep their names.
+- **Username platform count.** One figure everywhere: 965, the merged
+  WhatsMyName (698) and Sherlock (478) site list from `app.username.parser`. The
+  README and the nav said ~950, the tab intro, privacy notice and privacy policy
+  said ~965. `docs/username-enumeration.md` now gives the per-scan range as 281
+  to 965 requests.
+- **Meta, OpenGraph and Twitter tags.** "13 modules" is gone. All three
+  descriptions state 19 tabs and mention the MCP server, Route Map, Attack
+  Surface and Phishing Hunt; the keywords gain the same terms. The JSON-LD
+  `featureList` gains those four entries.
+- **Privacy policy.** The third-party table gains a Sock Puppet Generator
+  (Legend) row: the generated fictional Cover goes to Anthropic (Claude Haiku
+  4.5) when the Legend option is ticked, or for a country with no offline name
+  data. The LLM paragraph names the Legend. "Last updated" is 18 October 2026.
+- **Operator name spelling.** OSINT-PH becomes OSINTPH: the `OPERATOR_NAME`
+  default in `app/config.py`, and therefore the meta author, JSON-LD, About
+  box, Contact tab and privacy policy operator line, plus the README credit.
+  Self-hosters who set `OPERATOR_NAME` are unaffected.
+- **Runbook.** The MCP section said seven tabs; it is ten. The version-bump
+  notes said `falconeye.service` and the provision banner still carry v3.5.0;
+  both are version-less. The Redis rows name the Company tab and Route Map.
+
+### Added
+
+- **`tests/unit/test_doc_counts.py`.** Fails when any tab-count claim in the
+  README opening or the page's meta, OpenGraph, Twitter or keywords tags differs
+  from `VALID_TABS` minus Home and Contact; when the README consensus list or its
+  stated number differs from what `compute_verdict()` counts; when the MCP tool
+  count in the README, `docs/mcp.md` or the runbook differs from
+  `app/mcp_server.py`; when any username platform count differs from the
+  vendored data; and when the hyphenated operator name appears in any tracked
+  file other than this CHANGELOG. Verified red against v3.38.27 (15 failures).
+- **Page version check in `upgrade.sh` and `provision.sh`.** `/health` only
+  covers `app/main.py`. After it passes, the new `fe_check_page_version` fetches
+  the served page and warns, naming the string, if the JSON-LD
+  `softwareVersion` or either `?v=` cache-buster is not the new version.
+  `--dry-run` only reports it.
+- **`provision.sh` next steps** now tell a public self-hoster to set the
+  operator identity, and its `--test` run is the full suite: the two
+  `--ignore`d route test modules collect and pass on current Python.
+- **Standing order** in `CLAUDE.md`: a release that changes features, tabs,
+  sources, counts, cookies, retention or attribution ends its report with an
+  "osintph.net needs updating" section.
+
+### Upgrade notes
+
+No database change, no new dependency, no release action. `.env` is untouched;
+`.env.example` documents the new `OPERATOR_NAME` default.
+
+---
+
 ## [3.38.27] - 2026-10-13
 
 ### Changed

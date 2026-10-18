@@ -1,7 +1,7 @@
 # Username Enumeration
 
 FalconEye v3.8.0 adds a Username tab: given a handle, it checks where that
-username has a profile across ~950 platforms and returns the hits as leads for
+username has a profile across 965 platforms and returns the hits as leads for
 human verification.
 
 ## Overview
@@ -51,7 +51,7 @@ account for that handle. The scan surfaces leads; you do the verification.
 
 ## Rate limits
 
-A single scan makes 280-950 outbound HTTP requests, so scans are a genuine load
+A single scan makes 281 to 965 outbound HTTP requests, so scans are a genuine load
 event on the VPS, not a soft policy. Limits (enforced before any request is
 made):
 

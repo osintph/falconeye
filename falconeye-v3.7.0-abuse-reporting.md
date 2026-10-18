@@ -63,7 +63,7 @@ Your memory notes say your prior Mailgun account was closed and you migrated new
 
 Every abuse report needs a real reporter name and reply-to email. Abuse desks ignore anonymous reports. Decide:
 
-- **Reporter name**: e.g. `Sigmund Brandstaetter, OSINT-PH`
+- **Reporter name**: e.g. `Sigmund Brandstaetter, OSINTPH`
 - **Reporter email (reply-to)**: e.g. `abuse-reports@osintph.net`. This must be an address you actually check because abuse desks reply to it.
 - **From address**: the Mailgun-verified sending address, e.g. `abuse-reports@osintph.net` (same as reply-to for simplicity) or `noreply@osintph.net`. Must be at `osintph.net` since that is your verified sending domain.
 
@@ -503,7 +503,7 @@ Add all new env vars with placeholder values and inline comments explaining each
 
 ```
 # Reporter identity (required for /api/abuse/compose)
-FALCONEYE_REPORTER_NAME="Sigmund Brandstaetter, OSINT-PH"
+FALCONEYE_REPORTER_NAME="Sigmund Brandstaetter, OSINTPH"
 FALCONEYE_REPORTER_EMAIL="abuse-reports@osintph.net"
 
 # Mailgun send (optional, for send-via-mailgun feature)

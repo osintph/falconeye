@@ -219,6 +219,20 @@ def test_a_failed_health_check_prints_a_rollback_command():
     assert "upgrade.sh" in body, "the rollback advice does not name the command to run"
 
 
+def test_both_scripts_check_the_served_page_carries_the_version():
+    """v3.38.28: /health covers app/main.py only. The page restates the version
+    in three hand-edited spots, and a missed ?v= is a stale cached app.js."""
+    body = _function_body(LIB, "fe_check_page_version")
+    for needle in ("/static/app.js?v=", "/static/style.css?v=", '\\"softwareVersion\\"'):
+        assert needle in body, f"fe_check_page_version does not look for {needle}"
+    assert "DRY_RUN" in body, "the page check must be a no-op in a dry run"
+    upgrade = _text(UPGRADE)
+    assert upgrade.index("fe_check_page_version") > upgrade.index('fe_health_check "$TARGET_VERSION"'), (
+        "upgrade.sh must check the page after /health reports the new version"
+    )
+    assert "fe_check_page_version" in _text(PROVISION)
+
+
 def test_the_upgrade_captures_the_previous_ref_before_resetting():
     """A rollback command that names the wrong version is worse than none."""
     text = _text(UPGRADE)

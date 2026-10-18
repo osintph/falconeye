@@ -27,13 +27,13 @@ INDEX = "app/static/index.html"
 # What the public instance publishes today. If a default changes, this list is
 # where it gets noticed.
 PUBLIC_INSTANCE_STRINGS = [
-    '<meta name="author" content="OSINT-PH" />',
+    '<meta name="author" content="OSINTPH" />',
     '<link rel="canonical" href="https://falconeye.osintph.info/" />',
     '<meta property="og:url" content="https://falconeye.osintph.info/" />',
     '<meta property="og:image" content="https://falconeye.osintph.info/static/og-image.png" />',
-    '"author": { "@type": "Organization", "name": "OSINT-PH", "url": "https://blog.osintph.info" }',
+    '"author": { "@type": "Organization", "name": "OSINTPH", "url": "https://blog.osintph.info" }',
     '"sameAs": ["https://github.com/osintph", "https://blog.osintph.info"]',
-    '<strong>Operator:</strong> OSINT-PH',
+    '<strong>Operator:</strong> OSINTPH',
     'mailto:security@osintph.info',
     'mailto:privacy@osintph.info',
     'https://formspree.io/f/mojoezkp',
@@ -178,7 +178,7 @@ def test_privacy_policy_names_the_configured_operator(monkeypatch):
     assert "privacy@acme.example" in out
     assert "falcon.acme.example" in out
     # And must not name the upstream operator anywhere in the policy.
-    for stale in ("OSINT-PH", "privacy@osintph.info", "security@osintph.info",
+    for stale in ("OSINTPH", "privacy@osintph.info", "security@osintph.info",
                   "blog.osintph.info", "falconeye.osintph.info"):
         assert stale not in out, f"privacy policy still names {stale!r}"
 

@@ -31,8 +31,8 @@
 
   <!-- Primary SEO -->
   <title>FalconEye - Free OSINT Investigator's Toolkit | Email Header Analyzer, Crypto Tracer, Phishing Scanner</title>
-  <meta name="description" content="Free self-hosted OSINT toolkit with 13 modules: crypto wallet tracer, phishing kit fingerprinting, domain intelligence (RDAP, DNS, CT logs), Telegram intelligence, IP reputation, email header analyzer with BEC detection, Google dork generator, suspicious script decoder, commercial prospect dossier, and more. AGPL-3.0 open source." />
-  <meta name="keywords" content="OSINT toolkit, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, {{OPERATOR_NAME}}" />
+  <meta name="description" content="Free self-hosted OSINT toolkit with 19 investigative tabs and an MCP server for Claude Code and Claude Desktop: crypto wallet tracer, phishing kit fingerprinting, Phishing Hunt for brand impersonation, Attack Surface mapping, Route Map traceroute geolocation, domain intelligence (RDAP, DNS, CT logs), Telegram intelligence, IP reputation, email header analyzer with BEC detection, username enumeration, breach checks, ransomware watch, script decoder, company dossiers and more. AGPL-3.0 open source." />
+  <meta name="keywords" content="OSINT toolkit, MCP server, Model Context Protocol, Claude Code, phishing hunt, brand impersonation, attack surface management, route map, traceroute map, email header analyzer, BEC detection, phishing scanner, Google dork generator, crypto wallet tracer, bitcoin tracer, ethereum tracer, USDT TRC20 tracer, domain intelligence, IP reputation, certificate transparency, telegram OSINT, username enumeration, ransomware tracker, malware analysis, script deobfuscator, PowerShell decoder, cybersecurity tools, threat intelligence, {{OPERATOR_NAME}}" />
   <meta name="author" content="{{OPERATOR_NAME}}" />
   <meta name="robots" content="index, follow, max-image-preview:large" />
   <!--OPERATOR_CONFIG-->
@@ -42,7 +42,7 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="{{SITE_ORIGIN}}/" />
   <meta property="og:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
-  <meta property="og:description" content="13 OSINT modules in one self-hosted interface: crypto tracing, phishing fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email BEC analysis, Google dorks, script deobfuscation, commercial prospect dossier. AGPL-3.0." />
+  <meta property="og:description" content="19 OSINT tabs in one self-hosted interface, with an MCP server for Claude: Phishing Hunt, Attack Surface, Route Map, crypto tracing, phishing fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email BEC analysis, username enumeration, ransomware watch, script deobfuscation, company dossiers. AGPL-3.0." />
   <meta property="og:image" content="{{SITE_ORIGIN}}/static/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
@@ -53,7 +53,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="{{SITE_ORIGIN}}/" />
   <meta name="twitter:title" content="FalconEye - Free OSINT Investigator's Toolkit" />
-  <meta name="twitter:description" content="13-module OSINT workbench: crypto tracing, phishing scanner, domain intel, email BEC analyzer, Google dorks, script decoder, commercial prospect dossier. Free, open source, AGPL-3.0." />
+  <meta name="twitter:description" content="19-tab OSINT workbench with an MCP server for Claude: Phishing Hunt, Attack Surface, Route Map, crypto tracing, phishing scanner, domain intel, email BEC analyzer, username enumeration, script decoder. Free, open source, AGPL-3.0." />
   <meta name="twitter:image" content="{{SITE_ORIGIN}}/static/og-image.png" />
 
   <!-- Favicons -->
@@ -80,14 +80,14 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.38.27",
+    "softwareVersion": "3.38.28",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
       "Light and dark theme with a header toggle",
       "Multi-source IP reputation ({{IP_REPUTATION_SOURCES}}) with consensus verdict",
       "Client-side PDF export for IP reputation and abuse reports",
-      "Username enumeration across ~950 platforms (WhatsMyName + Sherlock)",
+      "Username enumeration across 965 platforms (WhatsMyName + Sherlock)",
       "Abuse report composition with RDAP contact lookup and optional Mailgun send",
       "Crypto wallet tracing (Bitcoin, Ethereum, USDT TRC20)",
       "Phishing kit fingerprinting",
@@ -102,7 +102,11 @@
       "Sock Puppet Generator: fictional OSINT research personas across all ISO countries, with a Cover, an AI Legend back-story, Latin romanization for non-Latin locales, username suggestions, and dossier export",
       "Home page PH threat pulse and curated cyber news strip",
       "URL expander and redirect chain analyzer",
-      "QR code analyzer"
+      "QR code analyzer",
+      "Route Map: traceroute geolocation drawn on a world map, hostname-first placement checked against the speed of light",
+      "Attack Surface: one-time surface mapping of a domain you have proven you control",
+      "Phishing Hunt: find newly registered domains impersonating a brand",
+      "MCP server: ten of the tabs exposed as tools for Claude Code and Claude Desktop (stdio, local mode)"
     ]
   }
   </script>
@@ -150,7 +154,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.38.27" />
+  <link rel="stylesheet" href="/static/style.css?v=3.38.28" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -996,10 +1000,10 @@
     <!-- Username Enumeration Tab -->
     <div id="tab-username" class="tab-content hidden">
       <h2 class="text-lg font-bold mb-1">Username Enumeration</h2>
-      <p class="text-gray-400 text-sm mb-4">Check where a username appears across ~965 platforms using WhatsMyName and Sherlock data. Cross-validated hits (found by both engines) carry higher confidence. Results are leads for human verification, not proof of identity.</p>
+      <p class="text-gray-400 text-sm mb-4">Check where a username appears across 965 platforms using WhatsMyName and Sherlock data. Cross-validated hits (found by both engines) carry higher confidence. Results are leads for human verification, not proof of identity.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the username you submit is checked against ~965 external platforms (WhatsMyName + Sherlock) by requesting each site directly.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the username you submit is checked against 965 external platforms (WhatsMyName + Sherlock) by requesting each site directly.</div>
       </div>
 
       <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
@@ -1680,7 +1684,7 @@
 
           <p class="text-xs text-gray-500">
             <strong>Effective date:</strong> 25 June 2026<br>
-            <strong>Last updated:</strong> 3 October 2026<br>
+            <strong>Last updated:</strong> 18 October 2026<br>
             <strong>Operator:</strong> {{OPERATOR_NAME}} (<a href="{{OPERATOR_URL}}" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">{{OPERATOR_URL_LABEL}}</a>)
           </p>
 
@@ -1785,7 +1789,7 @@
                 <tr class="border-b border-gray-800">
                   <td class="py-2">Username Enumeration</td>
                   <td class="py-2 font-mono">username</td>
-                  <td class="py-2">~965 platform websites (WhatsMyName + Sherlock), queried directly</td>
+                  <td class="py-2">965 platform websites (WhatsMyName + Sherlock), queried directly</td>
                 </tr>
                 <tr class="border-b border-gray-800">
                   <td class="py-2">Report Abuse &rarr; Send (operator only)</td>
@@ -1813,6 +1817,11 @@
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
                 </tr>
                 <tr class="border-b border-gray-800">
+                  <td class="py-2">Sock Puppet Generator (Legend)</td>
+                  <td class="py-2 font-mono">the generated fictional Cover (name, country, region, city, street, employer, job, age, gender, timezone)</td>
+                  <td class="py-2">Anthropic (Claude Haiku 4.5 API), when "Write the Legend back-story" is ticked, or for a country with no offline name data, where the name itself comes from the Legend</td>
+                </tr>
+                <tr class="border-b border-gray-800">
                   <td class="py-2">Route Map</td>
                   <td class="py-2 font-mono">router hostnames from the trace</td>
                   <td class="py-2">CAIDA Hoiho (api.hoiho.caida.org), which decodes a router's own hostname into a location. Only public router hostnames are sent; private, CGNAT and local hops never are. Cached here for 30 days.</td>
@@ -1837,7 +1846,7 @@
 
             <p class="mt-3">The Route Map tab asks your browser for your location, through the browser's own permission popup, so the map can start where you are and so a nearby Atlas probe can be chosen. Your coordinates are rounded to about 10 km <em>in your browser</em> before they are sent, are used only to render that one result, are never written to our database or logs, and are never passed to RIPE Atlas. Declining is fine: you pick a city instead, from a list bundled with FalconEye that needs no request at all. The choice is remembered in your own browser's local storage and the tab has a button to clear it.</p>
 
-            <p class="mt-3">The LLM-powered tabs (Email Header, Dork Generator, and Script Decoder) send your input to Anthropic's API. Anthropic's data handling policy is at <a href="https://www.anthropic.com/legal/privacy" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">anthropic.com/legal/privacy</a>. At the time of writing, Anthropic does not use API input to train their models by default.</p>
+            <p class="mt-3">The LLM-powered tabs (Email Header, Dork Generator, Script Decoder, and the Sock Puppet Generator Legend) send your input to Anthropic's API (Claude Haiku 4.5). The Sock Puppet Legend sends only the fictional Cover FalconEye generated for you, never anything about you, and only when the Legend option is ticked or the chosen country has no offline name data (the name then comes from the Legend). It is capped per IP per 24 hours. Anthropic's data handling policy is at <a href="https://www.anthropic.com/legal/privacy" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">anthropic.com/legal/privacy</a>. At the time of writing, Anthropic does not use API input to train their models by default.</p>
           </section>
 
           <section>
@@ -1986,6 +1995,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.38.27"></script>
+  <script src="/static/app.js?v=3.38.28"></script>
 </body>
 </html>

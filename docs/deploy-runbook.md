@@ -20,7 +20,7 @@ deploy did not match it. Keep this doc in sync with reality.
 ## Prerequisites: system packages
 
 > **Redis is required, not optional, from v3.35.0.** `redis-server` has been in
-> the package list since before Route Map (it backed the Prospect and Image
+> the package list since before Route Map (it backed the Company and Image
 > caches, where losing it only cost caching). Route Map's Atlas and upload paths
 > now *depend* on it: both hand a job between two requests that land on two
 > different gunicorn workers, so they need a store both can see. Without Redis
@@ -61,7 +61,7 @@ sudo apt-get install -y --no-install-recommends \
 |---|---|---|
 | `python3`, `python3-pip`, `python3-venv` | the venv | provisioning cannot start |
 | `git` | `scripts/provision.sh` clone, and tag deploys | provisioning cannot start |
-| `redis-server` | Prospect tab response cache | cache disabled, tab still works |
+| `redis-server` | Company tab (`app/prospect/`) response cache, Route Map job handoff | Company cache disabled; Route Map Atlas and upload paths report themselves unavailable (paste still works) |
 | `libzbar0` | `pyzbar`, QR Code tab | **`ImportError: Unable to find zbar shared library`, and the whole app fails to import** |
 | `whois` | `app/routers/domain_intel.py`, `app/utils/domain_age.py` | silent: the whois fallback returns nothing |
 
@@ -169,9 +169,17 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
 
    Version strings that are **not** part of the bump: `vX.Y.Z` references inside
    code comments, docstrings, HTML comments and `.env.example` are historical
-   ("introduced in vX.Y.Z") and must be left alone. Two cosmetic ones are pinned
-   and go stale by design: `Description=` in `falconeye.service` and the banner
-   `echo` in `scripts/provision.sh`, both still saying v3.5.0.
+   ("introduced in vX.Y.Z") and must be left alone. `Description=` in
+   `falconeye.service` and the banner `echo` in `scripts/provision.sh` used to
+   carry a version and sat at v3.5.0 for 23 releases; both are version-less now,
+   so neither is a bump location.
+
+   From v3.38.28 the three `index.html` spots are also checked on the box:
+   `upgrade.sh` and `provision.sh` fetch the served page after the health check
+   and warn, naming the string, if the JSON-LD `softwareVersion` or either `?v=`
+   query string does not carry the new version. The counts the docs publish (tab
+   count, MCP tool count, IP verdict sources, username platforms) are checked by
+   `tests/unit/test_doc_counts.py`, which reads each figure from the code.
 
    **Never remove `--forwarded-allow-ips 127.0.0.1` from the ExecStart line, and
    never set `FORWARDED_ALLOW_IPS` in `.env`.** Every per-IP rate limit depends
@@ -215,7 +223,10 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    snippets (and any `conf.d` file already installed), warns if the shipped vhost
    has drifted without ever overwriting yours, applies the release actions the
    release declares, restarts the service and checks `/health` reports the new
-   version. A version mismatch fails loudly with the rollback command.
+   version. A version mismatch fails loudly with the rollback command. It then
+   checks the served page carries the same version in its JSON-LD and both asset
+   `?v=` strings; a miss there is a warning naming the string, not a rollback,
+   because the service is already up and serving.
 
    Stage first on `:8001` for anything that adds a router, a table or a
    dependency (see "Staging" below); `FE_APP_SRC`, `FE_SERVICE` and the other
@@ -987,7 +998,7 @@ persist" list is needed for this release.**
 
 ## MCP server (optional, local mode only)
 
-`app/mcp_server.py` serves seven tabs as MCP tools over stdio, for an operator
+`app/mcp_server.py` serves ten tabs as MCP tools over stdio, for an operator
 driving their own instance from Claude Code or Claude Desktop. It is **not** part
 of the web service, is never started by systemd, and must never be exposed on a
 socket or a tunnel: stdio means the only caller is the user who launched it.
@@ -1073,7 +1084,9 @@ unauthenticated tool they turn a compromise check into people-search.
 
 Everything that names who runs the instance is configurable, and every default
 reproduces the public instance exactly, so an existing deployment that sets none
-of these is unchanged.
+of these is unchanged. `OPERATOR_NAME` defaults to `OSINTPH`; before v3.38.28
+the default was the hyphenated spelling, so an instance that leaves it unset
+shows the new spelling after upgrading. One that sets it is unaffected.
 
 ```
 # OPERATOR_NAME=Your Name or Org
@@ -1464,6 +1477,8 @@ file changed and the copy to `/etc/systemd/system` was skipped.
     - `sudo journalctl -u falconeye --since "5 min ago" --no-pager | grep -ci traceback`
       → `0`. Older tracebacks in the buffer are pre-existing; scope by time.
     - Origin: `curl -s http://127.0.0.1:8000/health` → expect the new version.
+    - Origin page: `curl -s http://127.0.0.1:8000/ | grep -E 'app.js\?v=|style.css\?v=|softwareVersion'`
+      → all three carry the new version (`fe_check_page_version` does this).
     - Public edge: `curl -s https://falconeye.osintph.info/ | grep 'app.js?v='`.
     - New self-creating tables landed:
       `sudo sqlite3 /opt/falconeye/data/falconeye.db "SELECT name FROM sqlite_master WHERE name LIKE '<prefix>_%';"`.

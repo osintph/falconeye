@@ -15,7 +15,7 @@ def test_inline_comment_stripped_from_unquoted_value():
     # no whitespace before '#' → kept (e.g. a URL fragment)
     assert clean_env_value("https://x/y#frag") == "https://x/y#frag"
     # surrounding quotes stripped, contents kept verbatim
-    assert clean_env_value('"Sigmund Brandstaetter, OSINT-PH"') == "Sigmund Brandstaetter, OSINT-PH"
+    assert clean_env_value('"Sigmund Brandstaetter, OSINTPH"') == "Sigmund Brandstaetter, OSINTPH"
     assert clean_env_value(None) == ""
 
 
