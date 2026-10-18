@@ -5,6 +5,95 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.39.0] - 2026-10-18
+
+Closes the twelve open items from the v3.38.29 report: retention, revoke, log
+rotation and run-record hashing now do what the privacy policy says, every
+system file is installed by the scripts, and the remaining false text is fixed.
+
+### Fixed
+
+1. **Company dossiers kept forever.** New `PROSPECT_RETENTION_DAYS` (default 30);
+   the sweep deletes older dossiers (row and JSON file, plus orphan files). The
+   stored IP hash was an unsalted SHA-256 that nothing read (Company rate
+   limiting is slowapi, in memory), so it is no longer stored at all and the
+   release action drops the column.
+2. **Revoke deleted nothing.** Revoking (in the tab or from the emailed link) now
+   calls `store.delete_domain()`: the grants, the domain and verification
+   records, every run row and audit row for the domain, any unexpired result and
+   PDF, and the per-domain rate-limit counters. The management email and page
+   say exactly that (the email no longer offers "rotate" or a separate delete).
+3. **gunicorn logs never rotated.** `deploy/logrotate/falconeye`: daily, 14 kept,
+   compress, delaycompress, missingok, notifempty, and a postrotate that sends
+   USR1 to the gunicorn master ("Reopen the log files",
+   https://docs.gunicorn.org/en/stable/signals.html).
+4. **Plain text in run records, weak audit hash.** New `FE_HASH_KEY`, generated
+   by both scripts when missing. `asm_scans` and `asm_scan_audit` hold
+   `h1:` + HMAC-SHA256(FE_HASH_KEY, value) for the domain, Hunt keyword and
+   legitimate domain once a run finishes or fails; the sweep converts rows a dead
+   run left behind. Result access compares the grant's domain both ways, and the
+   MCP `asm_discover` response still names the domain it was given.
+5. **The result sweep had no timer.** `deploy/falconeye-sweep.service` and
+   `.timer` run `app/sweep.py` every 15 minutes: one-time results past
+   `ASM_RESULT_TTL_SECONDS`, stale run rows, expired dossiers and Image Search
+   temp files. With the default one-hour TTL a result is gone at most about 75
+   minutes after its run, and the text now says that rather than "within the
+   hour".
+6. **journald drop-in installed by hand.** Installed from `deploy/journald` by both
+   scripts; `systemd-journald` is restarted only when the installed copy changed.
+7. **Image Search temp files orphaned by a restart.** Deleted by the sweep once
+   past their 15-minute lifetime, and cleaned at startup.
+8. **Route Map coordinates in request URLs.** The poll no longer accepts or sends
+   them; the origin goes once in the body of `POST /api/routemap/pending/{token}/origin`.
+   A no-op city lookup that sent a geolocated origin as `cities?q=lat, lon` is
+   removed.
+9. **Contact form posted to the upstream Formspree form by default.**
+   `CONTACT_FORM_ACTION` now defaults to empty, and with it empty the form is not
+   rendered (the tab and its addresses stay). `upgrade.sh` warns on any box where
+   it is unset and never edits `.env`.
+10. **False text in app.js.** The Report Abuse note (composed on the server; what
+    the send log holds; the To header is omitted, not redacted), the abuse PDF
+    footer, the Hunt and Attack Surface purge text, the Access panel (revoke link
+    only for email verification; what revoke deletes), the Hunt sources footer,
+    the IP report PDF source list (GreyNoise and URLhaus only when queried), the
+    IP and Domain Refresh tooltips, the Sock Puppet tier B note, and the PDF
+    headers and footers that hard-coded the public hostname.
+11. **Dead code.** `privacyUpdatedBadge()` removed.
+12. **robots.txt.** The `/stats/` rule removed.
+
+Also: the runbook no longer names the live server's SSH port or user.
+
+### Added
+
+- `scripts/migrate_3_39_0.py` and `scripts/release-actions/3.39.0.sh`: archives
+  `data/prospect/` into the upgrade's backup directory, deletes expired dossiers
+  and drops `ip_hash`, deletes what revoke now deletes for domains already
+  revoked (and not re-verified), converts finished run rows and audit rows to the
+  HMAC and drops audit hashes it cannot convert. Prints row counts; idempotent.
+- Installers in `scripts/lib/common.sh`, called from both `upgrade.sh` and
+  `provision.sh`: `fe_install_sweep`, `fe_install_logrotate` (prints
+  `logrotate -d`), `fe_install_journald`, `fe_ensure_hash_key`,
+  `fe_check_contact_form`. In `upgrade.sh` the sweep timer is installed after the
+  key and the release actions, because a timer fires as soon as it starts.
+- Tests: `tests/asm/test_v3_39_0_privacy.py`, `tests/unit/test_sweep.py`,
+  `tests/unit/test_routemap_no_coords_in_url.py`,
+  `tests/unit/test_dead_badge_and_robots.py`; extended
+  `test_systemd_units_installed.py` (every file under `deploy/` installed by both
+  scripts), `test_upgrade_script.py`, `test_operator_identity.py`,
+  `test_routemap_routes.py`, `tests/prospect/test_investigations.py`.
+
+### Upgrade notes
+
+- A box that wants a contact form must set `CONTACT_FORM_ACTION` in `.env`
+  before or after upgrading; without it the form disappears and `upgrade.sh`
+  warns.
+- Back up `.env` with `FE_HASH_KEY` in it. Restored with a different key, old run
+  rows can no longer be matched to a domain.
+- The journald drop-in applies to the whole host's journal and is now installed
+  on every box.
+
+---
+
 ## [3.38.29] - 2026-10-18
 
 Documentation release: the privacy policy, in-tab privacy and help text and the

@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** 19 investigative tabs in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, company dossiers, reverse image search, username enumeration across 965 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, attack surface management for domains you control, phishing domain hunting for brand impersonation, traceroute mapping (Route Map), and a fictional sock-puppet persona generator with dossier export. Ten of the tabs are also exposed as MCP tools for Claude Code and Claude Desktop. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.38.29**
+Current version: **3.39.0**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -75,9 +75,9 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Contact** | Feedback form for bug reports, feature requests, and new tab suggestions |
 | **Username** | Check where a username appears across 965 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
-| **Route Map** | Map the real network path to a target and draw it on a world map, starting from where you are. Enter a domain, URL or IP and a RIPE Atlas probe on your own network runs the traceroute; or paste a trace, or run one yourself and pipe it to a single-use upload link. Windows `tracert`, Unix `traceroute` and `mtr --report` are all parsed, format auto-detected. Hops are placed **hostname first**: CAIDA Hoiho's published ruleset, then a bundled carrier site-code table, and an IP geolocation database only as a fallback, because a backbone router's address geolocates to wherever its operator registered the prefix. Every placement is then checked against the speed of light (about 100 km per ms of round trip) and rejected if the measured RTT could not reach it, so a Tata router cannot be drawn in Harare at the same RTT as San Jose. Hops that cannot be placed are listed with the reason, never silently dropped. Annotates asymmetric return paths, ICMP rate limiting mistaken for packet loss, and a destination that does not answer ICMP. Your location is asked for through the browser's own permission popup, rounded to about 10 km in the browser, used for the render only and never stored; declining falls back to an offline city picker. Atlas measurements are public and the tab says so. Needs an `ATLAS_API_KEY` for the probe path; paste and upload work without one. |
-| **Attack Surface** | Map the internet-facing surface of a domain you have proven you control (a DNS TXT record, or a one-time link to a role address at the domain), or any domain in operator mode for an authorised engagement. No output of any kind is returned for an unverified or blocked domain outside operator mode. Free and consumer mailbox providers, shared-platform apexes (the PSL private section) and public suffixes are blocked, with one identical response whatever the reason. Passive discovery (certificate transparency, Mnemonic passive DNS, the Wayback Machine) and RIPEstat ASN context feed a light active probe (DNS, HTTP/TLS, header-based tech fingerprint, apex mail posture) and a conservative pure-Python TCP connect scan. Strict scope: only the target's own hosts are probed; a host behind a published CDN edge is marked "behind CDN, ports not scanned" and a CNAME to a third party is recorded as a reference only, never probed or port scanned. Findings cover dangling-CNAME takeover candidates, expiring certificates, exposed admin surfaces, unexpected open services, missing security headers and SPF/DMARC/MTA-STS posture. Scans are one-time: run as a background job with a polled status, shown once and delivered as a watermarked server-side PDF, then purged. FalconEye keeps no scan results, no history and no "my domains" view; what is kept indefinitely: a run record with the domain in plain text, plus the time, mode and counts, and an audit row with an unsalted SHA-256 hash of the domain (its first 32 hex characters), the counts and, in operator mode, the engagement reference. Every run lists each source as answered, failed or skipped, and a discovery-source failure marks the run INCOMPLETE. Results are bound to the verifying browser session, never a shareable link. |
-| **Phishing Hunt** | Public and ungated: find newly registered and active domains impersonating a brand (PH government and financial brands in mind). Discovery from certificate transparency keyword search, permutations (dnstwist: homoglyph, IDN and punycode, bitsquatting, TLD swap, keyword combos), urlscan.io and URLhaus. Discovery also reads a local newly-registered-domain store populated daily from the free WHOISDS lists by a systemd timer. Each candidate gets DNS, RDAP registration and registrar, hosting ASN, cert freshness and a homepage GET with a favicon hash (a second fetch as a mobile browser when it shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Ranked verdicts (likely phishing, brand abuse, suspicious, brand-referencing, parked, unknown, unrelated) with evidence and action links (registrar and hosting abuse, Google Safe Browsing, Deep Kit Report, Domain Intel). One-time, delivered as a PDF; what is kept indefinitely: a run record with the keyword and any legitimate domain you gave in plain text, plus the time, mode and counts; an audit row with an unsalted SHA-256 hash of the keyword (its first 32 hex characters), the legitimate domain in plain text and the counts; and the cached certificate-transparency and RDAP lookups for the keyword and the candidate domains. |
+| **Route Map** | Map the real network path to a target and draw it on a world map, starting from where you are. Enter a domain, URL or IP and a RIPE Atlas probe on your own network runs the traceroute; or paste a trace, or run one yourself and pipe it to a single-use upload link. Windows `tracert`, Unix `traceroute` and `mtr --report` are all parsed, format auto-detected. Hops are placed **hostname first**: CAIDA Hoiho's published ruleset, then a bundled carrier site-code table, and an IP geolocation database only as a fallback, because a backbone router's address geolocates to wherever its operator registered the prefix. Every placement is then checked against the speed of light (about 100 km per ms of round trip) and rejected if the measured RTT could not reach it, so a Tata router cannot be drawn in Harare at the same RTT as San Jose. Hops that cannot be placed are listed with the reason, never silently dropped. Annotates asymmetric return paths, ICMP rate limiting mistaken for packet loss, and a destination that does not answer ICMP. Your location is asked for through the browser's own permission popup, rounded to about 10 km in the browser, used for the render only, never written to the database and never sent in a URL (only in request bodies, so never in an access log); declining falls back to an offline city picker. Atlas measurements are public and the tab says so. Needs an `ATLAS_API_KEY` for the probe path; paste and upload work without one. |
+| **Attack Surface** | Map the internet-facing surface of a domain you have proven you control (a DNS TXT record, or a one-time link to a role address at the domain), or any domain in operator mode for an authorised engagement. No output of any kind is returned for an unverified or blocked domain outside operator mode. Free and consumer mailbox providers, shared-platform apexes (the PSL private section) and public suffixes are blocked, with one identical response whatever the reason. Passive discovery (certificate transparency, Mnemonic passive DNS, the Wayback Machine) and RIPEstat ASN context feed a light active probe (DNS, HTTP/TLS, header-based tech fingerprint, apex mail posture) and a conservative pure-Python TCP connect scan. Strict scope: only the target's own hosts are probed; a host behind a published CDN edge is marked "behind CDN, ports not scanned" and a CNAME to a third party is recorded as a reference only, never probed or port scanned. Findings cover dangling-CNAME takeover candidates, expiring certificates, exposed admin surfaces, unexpected open services, missing security headers and SPF/DMARC/MTA-STS posture. Scans are one-time: run as a background job with a polled status, shown once and delivered as a watermarked server-side PDF, then purged. Results are deleted when the PDF download completes, or otherwise by the 15-minute sweep timer once an hour old (at most about 75 minutes after the run). FalconEye keeps no scan results, no history and no "my domains" view; what it keeps is a run record (time, mode, counts) and an audit row (counts and, in operator mode, the engagement reference) in which the domain is stored only as HMAC-SHA256 under `FE_HASH_KEY` once the run has finished. Revoking the grant deletes every record held for the domain (grants, domain and verification records, run and audit rows, unexpired results, per-domain rate-limit counters). Every run lists each source as answered, failed or skipped, and a discovery-source failure marks the run INCOMPLETE. Results are bound to the verifying browser session, never a shareable link. |
+| **Phishing Hunt** | Public and ungated: find newly registered and active domains impersonating a brand (PH government and financial brands in mind). Discovery from certificate transparency keyword search, permutations (dnstwist: homoglyph, IDN and punycode, bitsquatting, TLD swap, keyword combos), urlscan.io and URLhaus. Discovery also reads a local newly-registered-domain store populated daily from the free WHOISDS lists by a systemd timer. Each candidate gets DNS, RDAP registration and registrar, hosting ASN, cert freshness and a homepage GET with a favicon hash (a second fetch as a mobile browser when it shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Ranked verdicts (likely phishing, brand abuse, suspicious, brand-referencing, parked, unknown, unrelated) with evidence and action links (registrar and hosting abuse, Google Safe Browsing, Deep Kit Report, Domain Intel). One-time, delivered as a PDF and deleted when the PDF download completes, or otherwise by the 15-minute sweep timer once an hour old (at most about 75 minutes after the run); what is kept is a run record and an audit row (time, mode, counts) in which the keyword and any legitimate domain are stored only as HMAC-SHA256 under `FE_HASH_KEY` once the run has finished, plus the cached certificate-transparency lookup for the keyword and RDAP and legitimate-site lookups for the domains, in plain text. |
 | **Ransomware Watch** | Global + PH/SEA ransomware victim tracking: world map, regional (PH/SG/MY/ID/TH/VN/HK/TW) comparison with month-over-month trend, latest victims with cross-source corroboration flags, group activity, leak-site mirror health, and a PH-relevant watchlist. Reads a locally scheduled collector's cache only for its core panels, never queries an upstream from the browser there. Two guarded exceptions: a company search (always live against ransomware.live, min 3 characters, rate-limited, degrades to a local partial-cache fallback if upstream is down) and an on-demand country lookup for any country outside the continuously-collected PH/SEA set (cached 24h, rate-limited). Every entry is labelled a claim, never a confirmed fact. Requires a `RANSOMWARE_LIVE_API_KEY` (ransomware.live PRO); RansomLook needs no key. Data attributed to ransomware.live (non-commercial terms) and RansomLook (CC BY 4.0). |
 
 ### LLM-powered tabs
@@ -108,7 +108,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.38.29:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.39.0:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -209,8 +209,10 @@ Memory footprint at idle, measured on the live instance on 2026-10-18: about 555
   ("Deploying without Cloudflare"), which also covers AWS and Cloudflare Tunnel.
 - Optional: Anthropic API key for LLM-powered tabs; the rest of the tool runs without it
 - **If you self-host publicly, set the operator identity.** Out of the box the
-  page carries the upstream operator's name, inbox, blog and privacy policy, and
-  before v3.33.0 the contact form posted to their Formspree endpoint. Set
+  page carries the upstream operator's name, inbox, blog and privacy policy.
+  Until v3.39.0 an unset `CONTACT_FORM_ACTION` also posted your visitors'
+  messages to their Formspree form; it now defaults to empty and the form is not
+  rendered until you set your own `CONTACT_FORM_ACTION`. Set
   `OPERATOR_NAME`, `OPERATOR_URL`, `OPERATOR_CONTACT_EMAIL`,
   `OPERATOR_PRIVACY_EMAIL` and `SITE_ORIGIN`, or set `CONTACT_ENABLED=false` to
   remove the Contact page entirely (nav entry gone, panel gone from the HTML,
@@ -315,9 +317,12 @@ It backs up `.env`, the database and the installed systemd unit to
 `/opt/falconeye/backups/<timestamp>/`, checks out the tag, reinstalls
 dependencies **only if `requirements.txt` changed**, copies the systemd unit and
 reloads systemd **if the unit changed**, updates the nginx snippets (and any
-`conf.d` file you already had), applies whatever migrations or cache flushes the
-release declares, restarts the service and verifies `/health` reports the new
-version. If it does not, it fails with the rollback command already filled in.
+`conf.d` file you already had), generates `ASM_SIGNING_KEY` and `FE_HASH_KEY`
+into `.env` if either is missing, applies whatever migrations or cache flushes the
+release declares, installs the 15-minute retention sweep timer, the gunicorn
+logrotate file and the journald retention drop-in (all from `deploy/`, the same
+functions `provision.sh` uses), restarts the service and verifies `/health`
+reports the new version. If it does not, it fails with the rollback command already filled in.
 
 **It never overwrites your vhost.** `server_name`, your certificate paths and any
 rate-limit zones live in `/etc/nginx/sites-available/falconeye`, so when the
@@ -349,7 +354,7 @@ of history or of an hour.
 
 | Path | Class | Why |
 |---|---|---|
-| `/opt/falconeye/.env` | **essential** | API keys, operator identity and the abuse-admin hash. Keys can be reissued; the file cannot be recovered. |
+| `/opt/falconeye/.env` | **essential** | API keys, operator identity, the abuse-admin hash, ASM_SIGNING_KEY and FE_HASH_KEY. Keys can be reissued; the file cannot be recovered, and without the same FE_HASH_KEY old run hashes can no longer be matched (revoke would miss them). |
 | `/opt/falconeye/data/falconeye.db` | **essential** | The application database: the abuse report audit trail, rate-limit counters and every cache. |
 | `/opt/falconeye/private/telegram.session` | **essential** | Telegram MTProto session. Recreating it needs an interactive login as the account holder. |
 | `/etc/ssl/falconeye` | **essential** | Cloudflare Origin CA certificate and private key. The key is shown once at issue and cannot be downloaded again. |
@@ -428,6 +433,9 @@ put the certificate and vhost back, then `scripts/restore.sh` for the rest.
 | `URLSCAN_API_KEY` | For Phishing Hunt (recommended) | Phishing Hunt (primary keyword source), Phishing Scanner | Free at urlscan.io. The Hunt's primary discovery source; without it urlscan returns 403 and a hunt is marked INCOMPLETE. |
 | `CERTSPOTTER_API_KEY` | No | Attack Surface, Phishing Hunt | SSLMate Cert Spotter. Raises the certificate-transparency rate limit; discovery still works keyless at a lower rate. |
 | `ASM_SIGNING_KEY` | For Attack Surface | Attack Surface grants, management links, operator sessions | Generate: `python3 -c 'import secrets; print(secrets.token_urlsafe(48))'`. Without it ASM disables itself. `scripts/upgrade.sh` generates one if it is missing. |
+| `FE_HASH_KEY` | Recommended | Attack Surface and Phishing Hunt run records | Key for the HMAC-SHA256 that replaces plain domains and keywords in run and audit rows. `scripts/upgrade.sh` and `scripts/provision.sh` generate one if it is missing. Back it up with `.env`. |
+| `PROSPECT_RETENTION_DAYS` | No | Company tab | Days a saved dossier is kept before the sweep deletes it. Default 30. |
+| `CONTACT_FORM_ACTION` | For a contact form | Contact tab | Where the form posts. Default empty: no form is rendered. `scripts/upgrade.sh` warns when it is unset. |
 
 If a key is missing, the relevant feature degrades gracefully (returns an error card) without crashing the rest of the tool.
 
@@ -503,7 +511,7 @@ source .venv/bin/activate
 pytest tests/ -v
 ```
 
-Expected baseline on v3.38.29 (Python 3.12, full suite, nothing ignored): **1820 passed, 13 skipped**. The 13 skips need material that is not in the repository: two JPEG EXIF fixtures (`tests/image_search/test_exif.py`), nine tests against real kit bundles (set `FALCONEYE_KIT_BUNDLES`), and two live smoke tests (set `FALCONEYE_LIVE_SMOKE=1`).
+Expected baseline on v3.39.0 (Python 3.12, full suite, nothing ignored): **1857 passed, 13 skipped**. The 13 skips need material that is not in the repository: two JPEG EXIF fixtures (`tests/image_search/test_exif.py`), nine tests against real kit bundles (set `FALCONEYE_KIT_BUNDLES`), and two live smoke tests (set `FALCONEYE_LIVE_SMOKE=1`).
 
 ### Project structure
 
@@ -511,6 +519,7 @@ Expected baseline on v3.38.29 (Python 3.12, full suite, nothing ignored): **1820
 falconeye/
 ├── app/
 │   ├── main.py                  # FastAPI entry point, router registration
+│   ├── sweep.py                 # The 15-minute retention sweep (falconeye-sweep.timer)
 │   ├── mcp_server.py            # MCP tools over stdio, local mode, see docs/mcp.md
 │   ├── config.py                # Environment variable loading
 │   ├── database.py
@@ -563,6 +572,7 @@ falconeye/
 │       ├── safe_fetch.py        # SSRF-safe HTTP fetcher for user-supplied URLs
 │       ├── llm_response.py      # LLM JSON validation helpers
 │       ├── prompt_safety.py     # <untrusted_data> fencing for LLM input
+│       ├── fehash.py            # HMAC-SHA256 (FE_HASH_KEY) for kept run values
 │       ├── domain.py
 │       └── indicator.py
 ├── app/static/                  # Single-page app shell (index.html, app.js, etc.)
@@ -574,12 +584,16 @@ falconeye/
 │   ├── lib/
 │   │   └── common.sh            # Shared by provision.sh and upgrade.sh (packages, units, nginx)
 │   ├── release-actions/         # Per-release migrations and cache flushes
+│   ├── migrate_3_39_0.py        # Data migration run by release-actions/3.39.0.sh
 │   └── db_init.py               # SQLite schema initializer
-├── deploy/                      # systemd units and timers installed by the scripts
+├── deploy/                      # System files, every one installed by both scripts
 │   ├── falconeye-asm-monitor.service / .timer
 │   ├── falconeye-nrd.service / .timer   # Phishing Hunt NRD feed, daily
+│   ├── falconeye-sweep.service / .timer # Retention sweep (app/sweep.py), every 15 minutes
+│   ├── logrotate/
+│   │   └── falconeye                    # gunicorn logs: daily, 14 kept
 │   └── journald/
-│       └── falconeye-retention.conf
+│       └── falconeye-retention.conf     # Journal kept 14 days
 ├── tools/                       # Standalone CLI analysis tools (not imported by the app)
 │   ├── kitanalyze.py            # Reference deobfuscator the tab's engine was ported from
 │   ├── runkit.sh                # Reference acquisition sequence (raw curl; the app uses safe_fetch)
@@ -623,11 +637,11 @@ If the tab uses an LLM, follow the pattern in `script_decoder.py`: hardcoded mod
 FalconEye does not maintain user accounts.
 
 - Results are cached for between 30 minutes and 30 days depending on the tab (most for 6 to 24 hours). Email Header, Dork Generator, Script Decoder and Breach Check email lookups are keyed by a SHA-256 hash of the input; the other caches are keyed by the input itself. Expired rows stay until the same lookup overwrites them.
-- The Company tab saves every dossier it builds, with the domain and a SHA-256 hash of the caller's IP, and nothing deletes them.
-- Attack Surface and Phishing Hunt results are deleted on download or at the first cleanup after an hour, but each run leaves a record with the domain (or the Hunt keyword and legitimate domain) in plain text and an audit row in which only the domain or keyword is hashed (unsalted SHA-256), and revoking an Attack Surface grant deletes nothing.
+- The Company tab saves each dossier it builds, with the domain and the time and nothing about the caller, and the sweep deletes it after `PROSPECT_RETENTION_DAYS` (default 30).
+- Attack Surface and Phishing Hunt results are deleted when the PDF download completes, or otherwise by the 15-minute sweep timer once an hour old (at most about 75 minutes after the run). Each run leaves a record and an audit row in which the domain, or the Hunt keyword and legitimate domain, is stored only as HMAC-SHA256 under `FE_HASH_KEY`. Revoking an Attack Surface grant deletes every record held for the domain.
 - Uploaded .eml, .msg and QR files are not kept; a .msg file and any upload over 1 MB pass through a temporary file deleted after parsing. Image Search uploads are kept on disk for about 15 minutes so SearchAPI can fetch them.
 - Source IP is stored for rate limiting, 48 hours for most features (30 days for Attack Surface and Phishing Hunt), pruned the next time that feature records a call.
-- Request logs (nginx, kept 14 days on the live instance; gunicorn's own access log, not rotated) contain the looked-up value for tabs that put it in the URL.
+- Request logs (nginx, kept 14 days by the distribution's logrotate on the live instance; gunicorn's own logs, rotated daily and kept 14 days by `deploy/logrotate/falconeye`) contain the looked-up value for tabs that put it in the URL. Route Map coordinates never travel in a URL.
 - Functional cookies only: `fe_theme`, `fe_sidebar_collapsed`, and for Attack Surface `asm_grant` and the operator's `asm_operator`. Cloudflare sets its own security cookies.
 - No third-party advertising or analytics
 

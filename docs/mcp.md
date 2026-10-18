@@ -42,6 +42,13 @@ domains; unlike the interactive operator unlock in the UI it does not override t
 block list. `phishing_hunt` is not gated: it only checks `HUNT_ENABLED` and the
 public per-IP daily cap, runs inline and stores nothing (no job row, cache or PDF).
 
+**What `asm_discover` leaves behind (v3.39.0).** It runs as an operator scan
+through the normal job row, so once it finishes the `asm_scans` row and the audit
+row hold the domain only as HMAC-SHA256 under `FE_HASH_KEY`, as for a scan from
+the tab; the engagement reference stays as given. The tool's response still names
+the domain you passed. It also writes the domain in plain text to the
+`asm_domains` row and the operator audit log, as before.
+
 **Not exposed, deliberately:** username enumeration, phone, Telegram, reverse
 image search, sockpuppet generation and the dork generator. Behind an agent those
 turn an indicator check into people-search, which is the same line

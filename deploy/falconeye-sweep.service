@@ -1,0 +1,22 @@
+# FalconEye sweep (oneshot), fired every 15 minutes by falconeye-sweep.timer.
+#
+# Install to: /etc/systemd/system/falconeye-sweep.service
+# scripts/lib/common.sh (fe_install_sweep) installs and enables it with its
+# timer from both scripts/upgrade.sh and scripts/provision.sh. Added in v3.39.0.
+#
+# It runs app.sweep, which deletes Attack Surface and Phishing Hunt results
+# (payload and PDF) older than ASM_RESULT_TTL_SECONDS, redacts any run row still
+# holding a plain domain or keyword past that TTL, deletes Company dossiers older
+# than PROSPECT_RETENTION_DAYS and Image Search temp files older than their
+# 15-minute lifetime. It reads the same .env as the web service.
+[Unit]
+Description=FalconEye sweep (one-time results, dossiers, image temp files)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/falconeye/app_src
+EnvironmentFile=/opt/falconeye/.env
+ExecStart=/opt/falconeye/venv/bin/python -m app.sweep

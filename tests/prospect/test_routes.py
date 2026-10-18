@@ -152,7 +152,8 @@ def test_cache_miss_writes_investigation():
     call_kwargs = mock_write.call_args[1]
     assert call_kwargs["domain"] == "stripe.com"
     assert call_kwargs["generated_at"] == _DOSSIER["generated_at"]
-    assert "client_ip" in call_kwargs
+    # v3.39.0: nothing derived from the caller's IP is passed or stored.
+    assert "client_ip" not in call_kwargs
 
 
 # ---------------------------------------------------------------------------

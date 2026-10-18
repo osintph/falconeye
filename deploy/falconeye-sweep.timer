@@ -1,0 +1,16 @@
+# Timer for the FalconEye sweep: every 15 minutes, starting 5 minutes after boot.
+#
+# Install to: /etc/systemd/system/falconeye-sweep.timer
+# scripts/lib/common.sh (fe_install_sweep) installs and enables it. With the
+# default one-hour result TTL, an undownloaded result is gone at most about 75
+# minutes after its run.
+[Unit]
+Description=FalconEye sweep timer (every 15 minutes)
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

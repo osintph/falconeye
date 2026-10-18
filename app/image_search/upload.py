@@ -117,3 +117,28 @@ async def schedule_cleanup(file_path: str) -> None:
         log.info("upload.cleaned path=%s", tag(file_path))
     except Exception as exc:
         log.warning("upload.cleanup_failed path=%s error=%s", tag(file_path), exc)
+
+
+def sweep_expired(max_age: int = _CLEANUP_DELAY) -> int:
+    """Delete every file in the upload directory older than its lifetime.
+
+    schedule_cleanup() deletes a file 15 minutes after upload, but only in the
+    worker that saved it: a restart in those 15 minutes cancelled the task and the
+    file stayed on disk for good. This catches those. Run every 15 minutes by
+    app/sweep.py (falconeye-sweep.timer) and once at startup (v3.39.0). Only files
+    past the lifetime are touched, so a fresh upload another worker is serving is
+    left alone. Returns the number deleted."""
+    if not _UPLOAD_DIR.is_dir():
+        return 0
+    cutoff = time.time() - max_age
+    n = 0
+    for path in _UPLOAD_DIR.iterdir():
+        try:
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink()
+                n += 1
+        except OSError as exc:
+            log.warning("upload.sweep_failed path=%s error=%s", tag(str(path)), exc)
+    if n:
+        log.info("upload.swept count=%d", n)
+    return n

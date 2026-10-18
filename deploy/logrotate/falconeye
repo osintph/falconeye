@@ -1,0 +1,24 @@
+# Log rotation for the files gunicorn writes under /var/log/falconeye
+# (--access-logfile and --error-logfile in falconeye.service).
+#
+# Install to: /etc/logrotate.d/falconeye
+# scripts/lib/common.sh (fe_install_logrotate) installs it from both
+# scripts/upgrade.sh and scripts/provision.sh. Added in v3.39.0: until then
+# nothing rotated these files, and the access log keeps request paths, which
+# carry the looked-up value for tabs that put it in the URL.
+#
+# The postrotate sends USR1 to the gunicorn master, which gunicorn documents as
+# "Reopen the log files" (https://docs.gunicorn.org/en/stable/signals.html,
+# "Master process"). No restart, no dropped requests.
+/var/log/falconeye/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    sharedscripts
+    postrotate
+        systemctl kill --signal=USR1 --kill-whom=main falconeye.service >/dev/null 2>&1 || true
+    endscript
+}

@@ -36,7 +36,6 @@ PUBLIC_INSTANCE_STRINGS = [
     '<strong>Operator:</strong> OSINTPH',
     'mailto:security@osintph.info',
     'mailto:privacy@osintph.info',
-    'https://formspree.io/f/mojoezkp',
     '<code class="text-amber-300">falconeye.osintph.info</code>',
 ]
 
@@ -86,6 +85,41 @@ def test_contact_enabled_by_default():
     """The public instance keeps its Contact tab; hiding it is opt-in."""
     assert config.CONTACT_ENABLED is True
     assert 'id="tab-contact"' in _render()
+
+
+# ---------- 1b. the contact form needs an endpoint (v3.39.0) ----------
+
+def test_no_form_endpoint_means_no_form_and_no_upstream_formspree(monkeypatch):
+    """Until v3.39.0 an unset CONTACT_FORM_ACTION posted every visitor's message
+    to the upstream operator's Formspree form. The default is now empty, and
+    empty means the form is not rendered at all; the tab and its addresses stay."""
+    assert config.getenv_clean("CONTACT_FORM_ACTION_UNSET_PROBE", "") == ""
+    monkeypatch.setattr(config, "CONTACT_FORM_ACTION", "")
+    out = _render()
+    assert 'id="tab-contact"' in out
+    assert "<form action=" not in out.split('id="tab-contact"', 1)[1].split("CONTACT_PANEL_END", 1)[0]
+    assert "formspree" not in out
+    assert "The contact form is not set up on this instance" in out
+
+
+def test_the_default_form_action_is_empty():
+    import importlib
+    import os
+    saved = os.environ.pop("CONTACT_FORM_ACTION", None)
+    try:
+        fresh = importlib.reload(config)
+        assert fresh.CONTACT_FORM_ACTION == ""
+    finally:
+        if saved is not None:
+            os.environ["CONTACT_FORM_ACTION"] = saved
+        importlib.reload(config)
+
+
+def test_a_configured_form_action_renders_the_form(monkeypatch):
+    monkeypatch.setattr(config, "CONTACT_FORM_ACTION", "https://formspree.io/f/mojoezkp")
+    out = _render()
+    assert '<form action="https://formspree.io/f/mojoezkp" method="POST"' in out
+    assert "The contact form is not set up on this instance" not in out
 
 
 # ---------- 2. hiding Contact ----------

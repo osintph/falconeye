@@ -2,8 +2,11 @@
 
 Every table is created at import with CREATE TABLE IF NOT EXISTS, per the new-tab
 resilience rule, so a freshly created or restored database never 500s an ASM
-route with "no such table". Targets are stored as given (a verified owner is
-entitled to see their own domain); log lines elsewhere hash them with tag().
+route with "no such table". A run's target is stored as given only while the
+run executes; finish_scan() and fail_scan() replace the domain (and a Hunt's
+legitimate domain) with an HMAC (app/utils/fehash.py, v3.39.0), and the sweep
+redacts any row left in plain text past the result TTL. Log lines elsewhere
+hash targets with tag().
 
 Timestamps are unix integers, matching app/abuse/store.py. JSON columns hold the
 structured parts of a scan.
@@ -20,6 +23,7 @@ import time
 from typing import Optional
 
 from app.config import DB_PATH
+from app.utils import fehash
 
 log = logging.getLogger("falconeye.asm.store")
 
@@ -623,23 +627,55 @@ def count_monitored_for_notify(email: str) -> int:
     return row[0] if row else 0
 
 
-def delete_domain(domain: str) -> None:
-    """Remove the domain and every record tied to it, immediately."""
+def delete_domain(domain: str) -> dict:
+    """Remove the domain and every record tied to it, immediately.
+
+    This is what revoking does from v3.39.0 (before, revoke only stamped the
+    grants and this had no callers). Run rows are matched by the plain domain and
+    by its HMAC, since finished runs hold only the HMAC. Covers the domain, its
+    verifications and grants, every run row and its audit row, any unexpired
+    result and PDF, legacy host/finding/snapshot rows and the per-domain
+    rate-limit counters. Attack Surface runs only: a Hunt keyword is not a domain
+    anyone verified. Returns the row count deleted per table."""
+    hashed = fehash.hmac_value(domain)
+    deleted: dict = {}
     conn = _connect()
     try:
         scan_ids = [r[0] for r in conn.execute(
-            "SELECT scan_id FROM asm_scans WHERE domain = ?", (domain,)).fetchall()]
-        conn.execute("DELETE FROM asm_domains WHERE domain = ?", (domain,))
-        conn.execute("DELETE FROM asm_verifications WHERE domain = ?", (domain,))
-        conn.execute("DELETE FROM asm_grants WHERE domain = ?", (domain,))
-        conn.execute("DELETE FROM asm_scans WHERE domain = ?", (domain,))
-        conn.execute("DELETE FROM asm_snapshots WHERE domain = ?", (domain,))
+            "SELECT scan_id FROM asm_scans WHERE domain IN (?, ?) AND COALESCE(kind, 'asm') = 'asm'",
+            (domain, hashed)).fetchall()]
+        pdfs = []
         for sid in scan_ids:
-            conn.execute("DELETE FROM asm_hosts WHERE scan_id = ?", (sid,))
-            conn.execute("DELETE FROM asm_findings WHERE scan_id = ?", (sid,))
+            row = conn.execute("SELECT pdf_path FROM asm_result_cache WHERE id = ?", (sid,)).fetchone()
+            if row and row[0]:
+                pdfs.append(row[0])
+
+        def run(table: str, sql: str, params) -> None:
+            cur = conn.execute(sql, params)
+            deleted[table] = deleted.get(table, 0) + (cur.rowcount or 0)
+
+        run("asm_domains", "DELETE FROM asm_domains WHERE domain = ?", (domain,))
+        run("asm_verifications", "DELETE FROM asm_verifications WHERE domain = ?", (domain,))
+        run("asm_grants", "DELETE FROM asm_grants WHERE domain = ?", (domain,))
+        run("asm_snapshots", "DELETE FROM asm_snapshots WHERE domain = ?", (domain,))
+        run("asm_rate_limit", "DELETE FROM asm_rate_limit WHERE scope IN ('vstart_dom', 'vemail_dom') "
+            "AND key = ?", (domain,))
+        run("asm_scan_audit", "DELETE FROM asm_scan_audit WHERE kind = 'asm' AND domain_hash = ?", (hashed,))
+        for sid in scan_ids:
+            run("asm_hosts", "DELETE FROM asm_hosts WHERE scan_id = ?", (sid,))
+            run("asm_findings", "DELETE FROM asm_findings WHERE scan_id = ?", (sid,))
+            run("asm_result_cache", "DELETE FROM asm_result_cache WHERE id = ?", (sid,))
+            run("asm_scan_audit", "DELETE FROM asm_scan_audit WHERE id = ?", (sid,))
+            run("asm_scans", "DELETE FROM asm_scans WHERE scan_id = ?", (sid,))
         conn.commit()
     finally:
         conn.close()
+    for path in pdfs:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    return deleted
 
 
 # ------------------------------------------------------------- verifications ----
@@ -787,6 +823,24 @@ def set_scan_running(scan_id: str) -> None:
         conn.close()
 
 
+def _redact_scan(conn: sqlite3.Connection, scan_id: str) -> bool:
+    """Replace a run row's plain domain (and a Hunt's legitimate domain, which it
+    keeps in engagement) with their HMAC. An Attack Surface engagement is the
+    operator's own reference, not a target, and is kept. Idempotent."""
+    row = conn.execute("SELECT domain, kind, engagement FROM asm_scans WHERE scan_id = ?",
+                       (scan_id,)).fetchone()
+    if not row:
+        return False
+    domain, kind, engagement = row[0], row[1] or "asm", row[2] or ""
+    new_domain = fehash.hmac_value(domain)
+    new_eng = fehash.hmac_value(engagement) if kind == "hunt" else engagement
+    if new_domain == domain and new_eng == engagement:
+        return False
+    conn.execute("UPDATE asm_scans SET domain = ?, engagement = ? WHERE scan_id = ?",
+                 (new_domain, new_eng, scan_id))
+    return True
+
+
 def finish_scan(scan_id: str, summary: dict) -> None:
     conn = _connect()
     try:
@@ -794,6 +848,7 @@ def finish_scan(scan_id: str, summary: dict) -> None:
             "UPDATE asm_scans SET state = 'done', finished_at = ?, summary_json = ? WHERE scan_id = ?",
             (now(), json.dumps(summary), scan_id),
         )
+        _redact_scan(conn, scan_id)
         conn.commit()
     finally:
         conn.close()
@@ -806,9 +861,28 @@ def fail_scan(scan_id: str, error: str) -> None:
             "UPDATE asm_scans SET state = 'error', finished_at = ?, error = ? WHERE scan_id = ?",
             (now(), error[:500], scan_id),
         )
+        _redact_scan(conn, scan_id)
         conn.commit()
     finally:
         conn.close()
+
+
+def redact_stale_scans(ttl_seconds: int) -> int:
+    """Redact every run row still holding plain text that is older than the
+    result TTL: a run that died mid-flight never reached finish_scan() or
+    fail_scan(). Called by the sweep."""
+    cutoff = now() - ttl_seconds
+    conn = _connect()
+    try:
+        ids = [r[0] for r in conn.execute(
+            "SELECT scan_id FROM asm_scans WHERE created_at < ? AND (domain NOT LIKE 'h1:%' "
+            "OR (kind = 'hunt' AND engagement != '' AND engagement NOT LIKE 'h1:%'))",
+            (cutoff,)).fetchall()]
+        n = sum(1 for sid in ids if _redact_scan(conn, sid))
+        conn.commit()
+    finally:
+        conn.close()
+    return n
 
 
 # ------------------------------------------- one-time result cache + audit ----
@@ -862,8 +936,9 @@ def delete_result(result_id: str) -> None:
 
 
 def sweep_results(ttl_seconds: int) -> int:
-    """Delete every ephemeral result (and its PDF) older than the TTL. Called
-    lazily on submit and on status reads, so there is no timer."""
+    """Delete every ephemeral result (and its PDF) older than the TTL. Run every
+    15 minutes by falconeye-sweep.timer (app/sweep.py) and, as before, lazily on
+    submit and on status reads."""
     cutoff = now() - ttl_seconds
     conn = _connect()
     try:
@@ -967,9 +1042,9 @@ def latest_done_scan(domain: str, operator: int) -> Optional[dict]:
     conn = _connect()
     try:
         row = conn.execute(
-            "SELECT * FROM asm_scans WHERE domain = ? AND operator = ? AND state = 'done' "
+            "SELECT * FROM asm_scans WHERE domain IN (?, ?) AND operator = ? AND state = 'done' "
             "ORDER BY finished_at DESC LIMIT 1",
-            (domain, operator),
+            (domain, fehash.hmac_value(domain), operator),
         ).fetchone()
     finally:
         conn.close()

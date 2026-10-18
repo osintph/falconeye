@@ -27,6 +27,7 @@ from slowapi import Limiter
 from app import config
 from app.asm import blocklist, jobs, mailer, operator, report, serve, signing, store, verify
 from app.asm.verify import GRANT_COOKIE, ROLE_PREFIXES
+from app.utils import fehash
 from app.utils.client_ip import get_client_ip, get_client_ip_key
 from app.utils.domain import normalize_domain
 from app.utils.logsafe import tag
@@ -248,7 +249,12 @@ def _launch(domain: str, mode: str, response: Response, *, operator: int = 0,
 def _authorize_scan(request: Request, scan: dict) -> bool:
     if scan.get("operator"):
         return _operator(request) is not None
-    return _grant_for(request, scan["domain"]) is not None
+    # A finished run holds only the HMAC of its domain (v3.39.0), so the grant's
+    # domain is compared both ways: plain while the run executes, hashed after.
+    grant = verify.grant_from_cookie(request.cookies.get(GRANT_COOKIE, ""))
+    if not grant or not grant.get("domain"):
+        return False
+    return scan["domain"] in (grant["domain"], fehash.hmac_value(grant["domain"]))
 
 
 @router.get("/scan/{scan_id}")
@@ -298,8 +304,10 @@ async def session_view(request: Request, domain: str = ""):
 
 
 # ------------------------------------------------------- in-tab management ----
-# The one-time model keeps no durable per-domain result data, so management is
-# just revoking the access grant. Rotate and delete are gone.
+# Revoking deletes every record FalconEye holds for the domain (v3.39.0): the
+# grants, the verification records, the domain row, every run row and audit row,
+# any unexpired result and PDF, and the per-domain rate-limit counters. Before
+# v3.39.0 it only stamped the grants as revoked and kept everything.
 
 class ManageReq(BaseModel):
     domain: str
@@ -310,9 +318,9 @@ async def manage_revoke(request: Request, payload: ManageReq, response: Response
     domain = _norm(payload.domain)
     if not domain or not (_operator(request) or _grant_for(request, domain)):
         return JSONResponse({"error": "Not authorized."}, status_code=403)
-    n = store.revoke_all_grants(domain)
+    deleted = store.delete_domain(domain)
     response.delete_cookie(GRANT_COOKIE, path="/")
-    return {"ok": True, "revoked": n}
+    return {"ok": True, "revoked": deleted.get("asm_grants", 0), "deleted": deleted}
 
 
 # ----------------------------------------------------------- operator mode ----
@@ -395,6 +403,9 @@ async def mcp_discover(request: Request, payload: McpDiscoverReq):
     store.create_scan(scan_id, domain, "on_demand", operator=1, engagement=engagement, state="queued")
     await jobs.run_scan(scan_id)
     scan = store.get_scan(scan_id)
+    # The finished row holds only the HMAC of the domain (v3.39.0); the caller
+    # gave the domain, so the response names it.
+    scan = dict(scan or {}, domain=domain)
     return report.api_payload(scan, store.get_hosts(scan_id), store.get_findings(scan_id))
 
 
@@ -503,15 +514,18 @@ async def manage_page(t: str = ""):
         return _manage_error_page(status)
     d = html.escape(domain)
     tok = html.escape(t)
-    # One-time model: scan results are never stored, so the only lasting thing to
-    # manage is the access grant. The link does one thing, revoke.
+    # The link does one thing, revoke, and revoke deletes everything held for the
+    # domain (store.delete_domain), so the page says exactly that.
     body = (
         f"<h1>Manage access for <span class='amber'>{d}</span></h1>"
-        f"<p class='muted'>FalconEye keeps no scan results; the only lasting access is your "
-        f"browser's grant. Revoking it ends access for every browser you authorised.</p>"
+        f"<p class='muted'>Revoking ends access for every browser you authorised and deletes "
+        f"every record FalconEye holds for this domain, immediately: the access grants, the "
+        f"verification records, the record of each scan and its audit entry, any result or PDF "
+        f"not yet downloaded, and the per-domain rate-limit counters. It cannot be undone; "
+        f"to scan again you verify the domain again.</p>"
         f"<form method='post' action='/asm/manage' style='display:flex;flex-direction:column;gap:12px'>"
         f"<input type='hidden' name='t' value='{tok}'>"
-        f"<button name='action' value='revoke'>Revoke all access grants</button></form>"
+        f"<button name='action' value='revoke'>Revoke access and delete every record</button></form>"
     )
     return _page("Manage access", body)
 
@@ -525,7 +539,8 @@ async def manage_submit(request: Request):
     if status != "ok":
         return _manage_error_page(status)
     if action == "revoke":
-        n = store.revoke_all_grants(domain)
-        return _page("Revoked", f"<h1>Access revoked</h1><p class='muted'>Revoked {n} grant(s) for "
-                     f"{html.escape(domain)}.</p>")
+        deleted = store.delete_domain(domain)
+        n = deleted.get("asm_grants", 0)
+        return _page("Revoked", f"<h1>Access revoked</h1><p class='muted'>Revoked {n} grant(s) and "
+                     f"deleted every record FalconEye held for {html.escape(domain)}.</p>")
     return _page("Unknown action", "<h1>Unknown action</h1>", status=400)

@@ -7,7 +7,7 @@ from slowapi import Limiter
 
 from app.prospect.investigations import write_investigation
 from app.prospect.service import build_dossier
-from app.utils.client_ip import get_client_ip, get_client_ip_key
+from app.utils.client_ip import get_client_ip_key
 from app.utils.domain import normalize_domain
 from app.utils.logsafe import tag
 
@@ -56,12 +56,10 @@ async def get_prospect(request: Request, domain: str):
 
     dossier = await build_dossier(normalized)
 
-    client_ip = get_client_ip(request)
     write_investigation(
         domain=normalized,
         generated_at=dossier.get("generated_at", ""),
         dossier=dossier,
-        client_ip=client_ip,
     )
 
     if _redis is not None:

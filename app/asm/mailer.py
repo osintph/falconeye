@@ -101,10 +101,14 @@ async def send_verification_link(domain: str, role_email: str, link: str) -> dic
 async def send_management_link(notify_email: str, domain: str, link: str) -> dict:
     subject = f"Manage FalconEye attack surface access for {domain}"
     body = (
-        f"Use this link to manage FalconEye access for {domain}. You can rotate this "
-        f"link, revoke all access grants, or delete every record FalconEye holds for "
-        f"the domain:\n\n{link}\n\nKeep it private: anyone with the link can revoke or "
-        f"delete. Rotate it if it may have been seen.\n\nFalconEye, {config.OPERATOR_SITE_ORIGIN}"
+        f"Use this link to revoke FalconEye access for {domain}:\n\n{link}\n\n"
+        f"Revoking ends access for every browser you authorised and deletes every record "
+        f"FalconEye holds for the domain, immediately: the access grants, the verification "
+        f"records, the record of each scan and its audit entry, any result or PDF not yet "
+        f"downloaded, and the per-domain rate-limit counters. It cannot be undone; to scan "
+        f"again you verify the domain again. Without a revoke, the access grant expires "
+        f"after {config.ASM_GRANT_DAYS} days.\n\nKeep this link private: anyone with it can "
+        f"revoke.\n\nFalconEye, {config.OPERATOR_SITE_ORIGIN}"
     )
     return await _send(notify_email, subject, body)
 

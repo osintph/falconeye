@@ -16,7 +16,6 @@ left behind ages out of the queue accounting. No em dashes in this module.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import logging
 import os
 import time
@@ -24,6 +23,7 @@ import time
 from app import config
 from app.asm import discovery, findings as findings_mod, probe, report, store
 from app.scanner.scope import registrable
+from app.utils import fehash
 from app.utils.logsafe import tag
 
 log = logging.getLogger("falconeye.asm.jobs")
@@ -119,9 +119,16 @@ def _finalize(scan: dict, payload: dict) -> None:
 
     store.cache_result(scan_id, kind, payload, pdf_path or "")
     counts = payload.get("severity_counts") or {}
-    domain_hash = hashlib.sha256((scan.get("domain") or "").encode("utf-8")).hexdigest()[:32]
+    # v3.39.0: HMAC-SHA256 under FE_HASH_KEY, not an unsalted SHA-256 that a
+    # brand keyword can be looked up against. A Hunt keeps its legitimate domain
+    # in engagement, so that is hashed too; an Attack Surface engagement is the
+    # operator's own reference and is kept as given.
+    domain_hash = fehash.hmac_value(scan.get("domain") or "")
+    engagement = scan.get("engagement") or ""
+    if kind == "hunt":
+        engagement = fehash.hmac_value(engagement)
     store.record_scan_audit(scan_id, kind, scan.get("mode", ""), int(bool(scan.get("operator"))),
-                            scan.get("engagement") or "", domain_hash,
+                            engagement, domain_hash,
                             payload.get("hosts_probed") or len(payload.get("candidates") or []),
                             {k: counts.get(k, 0) for k in ("critical", "high", "medium", "low")})
     # The scan row keeps only metadata: state done plus the counts, not content.

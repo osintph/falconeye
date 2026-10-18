@@ -61,7 +61,7 @@ _show_docs = os.getenv("FALCONEYE_PUBLIC_DOCS", "false").lower() == "true"
 
 app = FastAPI(
     title="FalconEye",
-    version="3.38.29",
+    version="3.39.0",
     openapi_url="/openapi.json" if _show_docs else None,
     docs_url="/api/docs" if _show_docs else None,
     redoc_url=None,
@@ -115,12 +115,23 @@ app.include_router(asm.router)
 app.include_router(asm.pages)
 app.include_router(hunt.router)
 
+# Image Search temp files whose 15-minute cleanup task died with a restart would
+# otherwise stay on disk forever. Every gunicorn worker imports this module once
+# when it starts, so this is the startup clean; only files past their lifetime
+# are removed, so a fresh upload another worker is serving is left alone. The
+# sweep timer (app/sweep.py) catches the rest. v3.39.0.
+try:
+    from app.image_search.upload import sweep_expired as _sweep_image_temp
+    _sweep_image_temp()
+except Exception as _exc:  # noqa: BLE001 - a cleanup failure must not stop the app
+    log.warning("image temp startup clean failed: %s", _exc)
+
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "version": "3.38.29"}
+    return {"status": "ok", "version": "3.39.0"}
 
 
 # Operator identity is substituted into the page server-side rather than patched
@@ -141,6 +152,12 @@ def _bare_host(url: str) -> str:
 
 _CONTACT_PANEL_START = "<!--CONTACT_PANEL_START-->"
 _CONTACT_PANEL_END = "<!--CONTACT_PANEL_END-->"
+_CONTACT_FORM_START = "<!--CONTACT_FORM_START-->"
+_CONTACT_FORM_END = "<!--CONTACT_FORM_END-->"
+# What replaces the form when CONTACT_FORM_ACTION is empty. The contact
+# addresses beside it stay.
+_CONTACT_FORM_ABSENT = ('<p class="text-sm text-gray-400">The contact form is not set up on this '
+                        'instance. Use the addresses alongside.</p>')
 
 
 def _operator_tokens() -> dict:
@@ -175,6 +192,9 @@ def _operator_tokens() -> dict:
         "{{ASM_SOURCES}}": asm_catalog.discovery_labels(),
         "{{ASM_ALL_SOURCES}}": asm_catalog.all_labels(),
         "{{HUNT_SOURCES}}": hunt_catalog.discovery_labels(),
+        # The Company dossier retention the sweep enforces (v3.39.0), so the
+        # privacy policy states this instance's figure, not a typed one.
+        "{{PROSPECT_RETENTION_DAYS}}": str(config.PROSPECT_RETENTION_DAYS),
         # Rendered as ", <tagline>" so an operator who clears it gets a clean
         # full stop after their name instead of a dangling comma.
         "{{OPERATOR_TAGLINE_CLAUSE}}": (
@@ -256,6 +276,15 @@ def render_index(html: str) -> str:
         end = html.find(_CONTACT_PANEL_END)
         if start != -1 and end != -1 and end > start:
             html = html[:start] + html[end + len(_CONTACT_PANEL_END):]
+
+    # No form endpoint, no form (v3.39.0): until then an unset CONTACT_FORM_ACTION
+    # posted visitors' messages to the upstream operator's Formspree form, and an
+    # empty one rendered a form that posted to this page.
+    if not config.CONTACT_FORM_ACTION:
+        start = html.find(_CONTACT_FORM_START)
+        end = html.find(_CONTACT_FORM_END)
+        if start != -1 and end != -1 and end > start:
+            html = html[:start] + _CONTACT_FORM_ABSENT + html[end + len(_CONTACT_FORM_END):]
 
     # Already-escaped markup and raw JSON, so both go in before the plain-text
     # tokens that do get HTML-escaped.

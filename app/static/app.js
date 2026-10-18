@@ -1699,7 +1699,7 @@ function renderDomainResult(el, data) {
         </div>
         <div class="flex items-center gap-3">
           ${cacheBadge}
-          <button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="domain" title="Re-query every source, bypassing the 6 hour cache">&#8635; Refresh</button>
+          <button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="domain" title="Re-query the domain sources, bypassing the 6 hour cache (Hudson Rock results are cached separately for 4 hours)">&#8635; Refresh</button>
         </div>
       </div>
     </div>
@@ -2627,7 +2627,7 @@ function renderReputationVerdict(rep) {
           <span class="text-${color}-400 font-bold text-lg uppercase tracking-wide">${escapeHtml(v)}</span>
           <span class="text-sm text-gray-300">${escapeHtml(vd.reasoning || '')}</span>
         </div>
-        ${rep._target ? `<button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="ip" data-refresh-target="${escapeAttr(rep._target)}" title="Re-query every source, bypassing the 6 hour cache">&#8635; Refresh</button>` : ''}
+        ${rep._target ? `<button class="fe-refresh-btn text-xs text-gray-500 hover:text-amber-400 transition border border-gray-700 hover:border-amber-400 rounded px-2 py-1" data-refresh-kind="ip" data-refresh-target="${escapeAttr(rep._target)}" title="Re-query the reputation sources, bypassing the 6 hour cache (ASN routing data has its own 24 hour cache)">&#8635; Refresh</button>` : ''}
       </div>
       ${signals}
       ${coverage}
@@ -5355,17 +5355,6 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Show a "· updated" badge on the Privacy Policy link for 14 days after a
-// material policy change (2026-07-20: new IP-reputation providers, Username +
-// URL Expander data flows, the abuse-send audit log, and the fe_theme cookie),
-// per the policy's own "Changes to this policy" commitment.
-(function privacyUpdatedBadge() {
-  const badge = document.getElementById('privacy-updated-badge');
-  if (!badge) return;
-  const until = Date.UTC(2026, 7, 3); // 2026-08-03, 14 days after the update
-  if (Date.now() < until) badge.classList.remove('hidden');
-})();
-
 if (privacyModal) {
   privacyModal.addEventListener('click', (e) => {
     if (e.target === privacyModal) closePrivacyPolicy();
@@ -5586,7 +5575,7 @@ function abuseBuildEmailEvidence(data, opts) {
     lines.push('Attachments referenced (filenames only, content omitted): ' + atts.join(', '));
   }
   lines.push('');
-  lines.push('(Recipient address redacted for privacy. Review the body above and remove any of your own personal information before sending.)');
+  lines.push('(To header omitted. Received lines and the body above are verbatim and may contain your address; remove it and any other personal information before sending.)');
   return lines.join('\n');
 }
 
@@ -5611,7 +5600,7 @@ function renderAbuseReportCard(container, info) {
     </div>
     <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-      <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the report is composed - and any PDF built - in your browser. Recipient addresses are redacted in the evidence by default; review and remove any of your own details before sending. If the operator sends via Mailgun, the send is logged (timestamp, recipient, target, category, and subject line - not the report body).</div>
+      <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the report is composed on the FalconEye server from the evidence you submit (not stored); any PDF is built in your browser. The To header is left out of the evidence, but Received lines and the body are copied verbatim and may still contain your address: review and remove it, and any of your own details, before sending. If the operator sends via Mailgun, the send attempt is logged (timestamp, sender IP address, recipient, target and its type, category, subject line, Mailgun message ID and whether it succeeded), never the report body.</div>
     </div>
     <div class="abuse-contact text-sm text-gray-400 mb-4"><span class="animate-pulse">Looking up abuse contact via RDAP…</span></div>
     <div class="abuse-form space-y-3">
@@ -6031,7 +6020,7 @@ const SP_AVATAR = {
 const SP_STARTING_POINT = "This dossier is a generated starting point, not a finished identity. Fields are produced from locale data and an AI back-story and will not all be perfect out of the box. Serious investigators should treat it as useful scaffolding and review, adjust, add, or remove details so the persona holds together for the specific platform and investigation it is built for. Verify anything you will rely on operationally: the street, the employer, the timing, and the way the legend reads against the target community.";
 const SP_TIER_NOTE = {
   A: "Full local data: name, address, and phone format are native to this country.",
-  B: "Local name. Address, phone, timezone, and currency come from offline country metadata. The city is written by the Legend pass, or a region fallback if the Legend is off.",
+  B: "Local name. Phone, timezone and currency come from offline country metadata; the street is left for you to set. The city is written by the Legend pass, or falls back to a curated city or the capital if the Legend is off.",
   C: "No local name library for this country. The name and city come from the Legend pass constrained to the country, with an offline fallback if the Legend is off.",
 };
 let _spLastData = null;
@@ -6404,7 +6393,7 @@ function feBrandHeader(st, title, subtitleLines) {
   doc.setFont(FE_PDF.SANS, 'bold'); doc.setFontSize(17); _c(doc, FE_PDF.amber);
   doc.text('FalconEye', st.M, st.y + 5);
   doc.setFont(FE_PDF.SANS, 'normal'); doc.setFontSize(8.5); _c(doc, FE_PDF.muted);
-  const tag = 'falconeye.osintph.info';
+  const tag = (FE_CONFIG.siteOrigin || 'FalconEye').replace(/^https?:\/\//, '');
   doc.text(tag, st.M + st.contentW - doc.getTextWidth(tag), st.y + 5);
   st.y += 9;
   feRule(st, 4);
@@ -6676,7 +6665,10 @@ function fePdfSourcesQueried(data) {
   // A source switched off was never asked, so it does not belong on a list of
   // what this report queried.
   for (const k of Object.keys(names)) if (rep[k] && rep[k].state !== 'disabled') list.push(names[k]);
-  list.push('GreyNoise', 'URLhaus', 'Shodan InternetDB', 'RIPEstat');
+  // GreyNoise and URLhaus are only asked when this instance has their key.
+  if (data.greynoise) list.push('GreyNoise');
+  if (data.urlhaus) list.push('URLhaus');
+  list.push('Shodan InternetDB', 'RIPEstat');
   return list.join(', ');
 }
 
@@ -6731,7 +6723,7 @@ function downloadIpReportPdf(data) {
     feIpPortsTable(st, rep.ports, data.shodan);
 
     feFooterAll(st, [
-      'Generated by FalconEye · falconeye.osintph.info · ' + stamp,
+      'Generated by FalconEye · ' + (FE_CONFIG.siteOrigin || 'FalconEye').replace(/^https?:\/\//, '') + ' · ' + stamp,
       'Data sources queried: ' + fePdfSourcesQueried(data),
     ]);
 
@@ -6786,8 +6778,8 @@ function downloadAbusePdf(composed, info) {
     }
 
     feFooterAll(st, [
-      'Generated by FalconEye · falconeye.osintph.info · ' + stamp,
-      'Composed client-side; recipient redaction as applied on screen.',
+      'Generated by FalconEye · ' + (FE_CONFIG.siteOrigin || 'FalconEye').replace(/^https?:\/\//, '') + ' · ' + stamp,
+      'Composed by the FalconEye server; PDF built in the browser.',
     ]);
 
     st.doc.save('falconeye-abuse-report-' + feSanitizeName(target) + '-' + fePdfDate() + '.pdf');
@@ -8106,7 +8098,7 @@ function downloadRansomwarePdf() {
 
     feFooterAll(st, [
       'Victim/group/press data: ransomware.live (non-commercial attribution). Mirror/activity/watchlist data: RansomLook, CC BY 4.0.',
-      'Generated by FalconEye - falconeye.osintph.info - ' + stamp,
+      'Generated by FalconEye - ' + (FE_CONFIG.siteOrigin || 'FalconEye').replace(/^https?:\/\//, '') + ' - ' + stamp,
     ]);
 
     st.doc.save('falconeye-ransomware-watch-' + fePdfDate() + '.pdf');
@@ -8398,7 +8390,6 @@ function rmSetOrigin(lat, lon, source, label) {
   rmRenderOriginLine();
   rmHide('rm-loc-modal'); rmHide('rm-picker');
   try { localStorage.setItem(RM_STORE_KEY, JSON.stringify(_rmOrigin)); } catch (e) {}
-  if (!label) rmLabelOrigin();
   if (_rmPendingTarget) rmRunAtlas();
 }
 
@@ -8407,18 +8398,6 @@ function rmRenderOriginLine() {
   RM('rm-origin-city').textContent = _rmOrigin.label;
   RM('rm-origin-coords').textContent = `${_rmOrigin.lat}, ${_rmOrigin.lon}`;
   rmShow('rm-origin-line');
-}
-
-// The city name for a coordinate comes from the bundled list on the server, so
-// it costs no third party. Cosmetic: the coordinates are the real origin, and
-// the line renders immediately with them while this resolves.
-async function rmLabelOrigin() {
-  if (!_rmOrigin) return;
-  try {
-    const body = await rmApi(
-      `/api/routemap/cities?q=${encodeURIComponent(_rmOrigin.label)}`);
-    if (body && body.results && body.results.length) return;
-  } catch (e) { /* the coordinates stay as the label */ }
 }
 
 function rmRestoreOrigin() {
@@ -9255,15 +9234,22 @@ function rmStartPolling(token, onFirstProgress) {
   rmStopPolling();
   let progressed = false;
   let consecutiveErrors = 0;
+  let originSent = false;
 
   const tick = async () => {
     let body;
     try {
-      const params = new URLSearchParams({ key: _rmPollKey });
-      if (_rmOrigin) {
-        params.set('origin_lat', _rmOrigin.lat);
-        params.set('origin_lon', _rmOrigin.lon);
+      // The origin goes once, in a JSON body, never in a URL: until v3.39.0 it
+      // rode on every poll's query string and so landed in the access logs.
+      if (_rmOrigin && !originSent) {
+        originSent = true;
+        await rmApi(`/api/routemap/pending/${token}/origin`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: _rmPollKey, origin_lat: _rmOrigin.lat, origin_lon: _rmOrigin.lon }),
+        });
       }
+      const params = new URLSearchParams({ key: _rmPollKey });
       body = await rmApi(`/api/routemap/pending/${token}?${params}`);
     } catch (err) {
       // A 502/503/504 is usually the server restarting or briefly unwell. One
@@ -9839,8 +9825,10 @@ function asmRenderHome(domain, session, isOperator) {
   if (!isOperator) {
     html += '<div class="bg-gray-900 border border-gray-800 rounded p-4 mb-3">' +
       '<h3 class="font-bold mb-2">Access</h3>' +
-      '<p class="text-gray-400 text-sm mb-2">FalconEye keeps no scan results. The only lasting access is this browser grant, and a revoke link was emailed to the confirmed address. You can revoke it here or from that link.</p>' +
-      '<button id="asm-revoke" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Revoke all grants</button>' +
+      '<p class="text-gray-400 text-sm mb-2">FalconEye keeps no scan results. The only lasting access is this browser grant' +
+      (session.method === 'email' ? ', and a revoke link was emailed to the confirmed address. You can revoke here or from that link.' : '. You can revoke it here.') +
+      ' Revoking deletes every record FalconEye holds for this domain, immediately: the grants, the verification records, the record of each scan and its audit entry, any result not yet downloaded and the per-domain rate-limit counters.</p>' +
+      '<button id="asm-revoke" class="bg-gray-800 text-gray-100 px-3 py-2 rounded text-xs hover:bg-gray-700">Revoke and delete every record</button>' +
       '<div id="asm-manage-msg" class="text-sm mt-2"></div></div>';
   }
   html += '<div id="asm-scan-area"></div>';
@@ -9918,7 +9906,7 @@ function asmSev(sev) {
 // Shared one-time result chrome, used by ASM and Hunt report views.
 function asmOneTimeNotice() {
   return '<div class="bg-amber-950 border border-amber-800 rounded p-3 mb-3 text-sm text-amber-200 font-semibold">' +
-    'Results are not kept. Download the PDF now. This page is purged after download or within the hour.</div>';
+    'Results are not kept. Download the PDF now. This page is deleted when the PDF download completes, or otherwise by the sweep that runs every 15 minutes once the result is an hour old (at most about 75 minutes after the run).</div>';
 }
 function asmSourceStatusHtml(data) {
   const ss = data.source_status || [];
@@ -10028,7 +10016,7 @@ async function asmManage(domain, action) {
     });
     const data = await res.json();
     if (!res.ok) { msg.innerHTML = '<span class="text-red-400">' + escapeHtml(data.error || 'failed') + '</span>'; return; }
-    if (action === 'revoke') { asmShow('<p class="text-sm text-gray-300">Access revoked.</p>'); return; }
+    if (action === 'revoke') { asmShow('<p class="text-sm text-gray-300">Access revoked and every record for this domain deleted.</p>'); return; }
     msg.innerHTML = '<span class="text-green-400">Done.</span>';
   } catch (e) { msg.innerHTML = '<span class="text-red-400">Request failed.</span>'; }
 }
@@ -10122,7 +10110,7 @@ function downloadAsmPdf(data) {
   feWatermark(st, data.domain);
   const footer = data.domain + ' / generated ' + (s.generated || fePdfUtcStamp()) +
     (data.operator && data.engagement ? (' / engagement ' + data.engagement) : '');
-  feFooterAll(st, [footer, 'falconeye.osintph.info']);
+  feFooterAll(st, [footer, (FE_CONFIG.siteOrigin || 'FalconEye').replace(/^https?:\/\//, '')]);
   st.doc.save('falconeye-asm-' + feSanitizeName(data.domain) + '-' + fePdfDate() + '.pdf');
 }
 // ===ASM_END===
@@ -10365,7 +10353,7 @@ function huntRenderResults(data) {
   html += '<div class="flex gap-2 mt-4 flex-wrap items-center">' +
     '<button id="hunt-dl-pdf" class="bg-amber-400 text-gray-950 font-bold px-4 py-2 rounded text-sm hover:bg-amber-300">Download PDF</button>' +
     '<button id="hunt-ex-json" class="bg-gray-800 text-gray-100 px-3 py-1 rounded text-xs hover:bg-gray-700">JSON</button></div>';
-  html += '<p class="text-gray-600 text-xs mt-3">Verdicts are automated assessments from public data, not determinations; verify before acting. Sources: urlscan.io, dnstwist, crt.sh, URLhaus, RIPEstat.</p>';
+  html += '<p class="text-gray-600 text-xs mt-3">Verdicts are automated assessments from public data, not determinations; verify before acting. Sources: urlscan.io, dnstwist, crt.sh, WHOISDS newly registered domains, RDAP and whois, Cert Spotter, RIPEstat, and URLhaus when configured.</p>';
   html += '</div>';
   huntShow(html);
   huntEl('hunt-dl-pdf').addEventListener('click', () => asmDownloadPdf('/api/hunt', data.scan_id, 'hunt-dl-pdf'));

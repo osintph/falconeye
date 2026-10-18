@@ -144,9 +144,11 @@ OPERATOR_CONTACT_UA = getenv_clean("OPERATOR_CONTACT_UA", "osintph.info")
 # 404 rather than an empty page.
 CONTACT_ENABLED = getenv_clean("CONTACT_ENABLED", "true").lower() != "false"
 # Where the contact form posts. Hardcoded to the upstream operator's Formspree
-# form until v3.33.0, which meant a self-hoster's visitors mailed someone else.
-# Empty disables the form while leaving the rest of the tab intact.
-CONTACT_FORM_ACTION = getenv_clean("CONTACT_FORM_ACTION", "https://formspree.io/f/mojoezkp")
+# form until v3.33.0, and still the unset default until v3.39.0, which meant a
+# self-hoster who set nothing had their visitors mail someone else. From v3.39.0
+# the default is empty, and empty means the form is not rendered at all (the
+# rest of the Contact tab stays). Every instance that wants a form sets its own.
+CONTACT_FORM_ACTION = getenv_clean("CONTACT_FORM_ACTION", "")
 
 
 # ----- Route Map tab (v3.35.0) -----
@@ -246,6 +248,14 @@ ATLAS_PROBE_CACHE_TTL_HOURS = 6
 # per-process random key: everything still works, but every restart invalidates
 # outstanding grants and links. Never log this value.
 ASM_SIGNING_KEY = getenv_clean("ASM_SIGNING_KEY")
+
+# Key for HMAC-SHA256 of the values FalconEye keeps about a run after its result
+# is purged (the Attack Surface domain, the Hunt keyword and legitimate domain),
+# so the run record and the audit row hold no plain text and no guessable hash.
+# scripts/upgrade.sh and scripts/provision.sh generate it if it is missing.
+# Losing it does not break anything, but old rows can no longer be matched to a
+# domain (for example by revoke). Never log this value. Added in v3.39.0.
+FE_HASH_KEY = getenv_clean("FE_HASH_KEY")
 
 # A successful verification issues a grant bound to the requester's browser
 # session. 30 days by default.
@@ -356,9 +366,16 @@ import os as _os  # noqa: E402  (only needed for the PDF directory path)
 # run, deleted after the download completes or by the TTL sweep.
 ASM_PDF_DIR = getenv_clean("ASM_PDF_DIR") or _os.path.join(_os.path.dirname(DB_PATH), "asm_pdfs")
 # How long an undownloaded result (on-screen payload plus PDF) is kept before the
-# lazy sweep purges it. ASM scans and Hunt queries are one-time; nothing is kept
-# beyond this.
+# sweep purges it. The sweep runs every 15 minutes from falconeye-sweep.timer
+# (and still lazily on submit and status reads), so a result is gone at most 15
+# minutes after this TTL. ASM scans and Hunt queries are one-time.
 ASM_RESULT_TTL_SECONDS = max(60, int(getenv_clean("ASM_RESULT_TTL_SECONDS", "3600")))
+
+# How long the Company tab keeps a saved dossier (the JSON file under
+# data/prospect/ and its prospect_investigations row). The sweep timer
+# (deploy/falconeye-sweep.timer, every 15 minutes) deletes anything older.
+# Added in v3.39.0; before that dossiers were kept forever.
+PROSPECT_RETENTION_DAYS = max(1, int(getenv_clean("PROSPECT_RETENTION_DAYS", "30")))
 
 # Phishing Domain Hunt (public, ungated). Finds brand-impersonation domains. It
 # hunts attacker infrastructure, so it is NOT behind the ASM ownership gate.

@@ -432,3 +432,24 @@ def test_the_dry_run_compares_snippets_against_the_target_ref():
         "compares the pre-checkout tree and under-reports changes")
     assert "git -C" in body and "nginx/snippets/" in body, (
         "the dry-run comparison does not read the snippet from the target ref")
+
+
+
+def test_v3_39_0_keys_and_contact_checks():
+    """FE_HASH_KEY is generated like ASM_SIGNING_KEY, by both scripts; the contact
+    form warning never edits .env."""
+    body = _function_body(LIB, "fe_ensure_hash_key")
+    assert "FE_HASH_KEY=" in body and "secrets.token_urlsafe(48)" in body
+    assert "DRY_RUN" in body
+    for script in (UPGRADE, PROVISION):
+        assert "fe_ensure_hash_key" in _text(script), f"{script.name} does not generate FE_HASH_KEY"
+    contact = _function_body(LIB, "fe_check_contact_form")
+    assert "fe_warn" in contact and "CONTACT_FORM_ACTION" in contact
+    assert ">>" not in contact and "sed -i" not in contact, "the contact check must not edit .env"
+    assert "fe_check_contact_form" in _text(UPGRADE)
+
+
+def test_the_3_39_0_release_action_reads_env_on_stdin_and_backs_up_dossiers():
+    action = (SCRIPTS / "release-actions" / "3.39.0.sh").read_text(encoding="utf-8")
+    assert 'migrate_3_39_0.py" \\\n    "$FE_APP_SRC" - "$FE_DB" < "$FE_ENV_FILE"' in action
+    assert "prospect-dossiers.tar.gz" in action and "FE_BACKUP_PATH" in action

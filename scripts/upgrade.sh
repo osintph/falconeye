@@ -163,7 +163,17 @@ fe_db_init
 # ASM needs a signing key before the restart below (without it the feature
 # disables itself); generate one if the operator has not set it.
 fe_ensure_asm_signing_key
+# The run-record HMAC key, before the release actions: 3.39.0 converts existing
+# rows with it.
+fe_ensure_hash_key
 fe_apply_release_actions "$PREVIOUS_VERSION" "$TARGET_VERSION"
+# The sweep timer goes in only now, after FE_HASH_KEY exists and the release
+# actions have run: a timer started earlier fires at once and would hash rows
+# with a throwaway key. Then the gunicorn logrotate file and the journald
+# drop-in (v3.39.0).
+fe_install_sweep
+fe_install_logrotate
+fe_install_journald
 
 # ---- 7. restart ----------------------------------------------------------------
 fe_step "7/9 Restarting $FE_SERVICE"
@@ -175,6 +185,7 @@ fe_health_check "$TARGET_VERSION" "$PREVIOUS_REF"
 fe_check_page_version "$TARGET_VERSION"
 fe_preflight_env
 fe_check_memory
+fe_check_contact_form
 
 # ---- 9. the MCP server, if this box has one ------------------------------------
 # v3.36.0 left the MCP venv unable to satisfy its own SDK and nothing said so.

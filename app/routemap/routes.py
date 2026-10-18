@@ -432,10 +432,36 @@ async def ingest(request: Request, token: str):
     })
 
 
+class PendingOrigin(BaseModel):
+    """The origin a polling page attaches to an upload job, in a JSON body."""
+    key: str = ""
+    origin_lat: float | None = None
+    origin_lon: float | None = None
+
+
+@router.post("/pending/{token}/origin")
+@limiter.limit("120/minute")
+async def pending_origin(request: Request, token: str, body: PendingOrigin):
+    """Attach the browser's rounded origin to an upload job whose origin was not
+    known when the shell uploaded it. Written once (tokens.set_origin_once), and
+    it never triggers work.
+
+    Until v3.39.0 the poll below carried origin_lat/origin_lon in its query
+    string, so the coordinates landed in the nginx and gunicorn access logs. They
+    now travel only in this request body, and no Route Map URL carries them.
+    """
+    origin = _origin(body.origin_lat, body.origin_lon)
+    if origin is not None:
+        try:
+            await tokens.set_origin_once(token, origin)
+        except tokens.StoreUnavailable:
+            pass
+    return {"ok": True}
+
+
 @router.get("/pending/{token}")
 @limiter.limit("120/minute")
-async def pending(request: Request, token: str, key: str = "",
-                  origin_lat: float | None = None, origin_lon: float | None = None):
+async def pending(request: Request, token: str, key: str = ""):
     """Poll a job. A status read: no external call, no pipeline, no waiting.
 
     ``key`` is the poll secret the page kept; it is what ties collection to the
@@ -447,16 +473,8 @@ async def pending(request: Request, token: str, key: str = "",
     happens once, in the background, and this returns 200 with a status or the
     finished result.
 
-    The origin is accepted here only to attach it to an upload job whose origin
-    was not known when the shell uploaded it; it never triggers work.
+    It takes no coordinates (v3.39.0): see pending_origin() above.
     """
-    origin = _origin(origin_lat, origin_lon)
-    if origin is not None:
-        try:
-            await tokens.set_origin_once(token, origin)
-        except tokens.StoreUnavailable:
-            pass
-
     try:
         state = await tokens.collect(token, key)
     except tokens.StoreUnavailable as exc:

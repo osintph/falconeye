@@ -6,7 +6,7 @@ deploy did not match it. Keep this doc in sync with reality.
 
 ## Where it runs
 
-- Host: single OVH VPS, SSH on port 9999 as `ubuntu` (see private ops notes).
+- Host: a single VPS. How to reach it is in the operator's private notes, not in this repository.
 - App: gunicorn under systemd unit **`falconeye`**: `User=ubuntu`,
   `WorkingDirectory=/opt/falconeye/app_src`, bound `127.0.0.1:8000`, 3 workers,
   `--timeout 90`. nginx in front; Cloudflare at the edge.
@@ -37,6 +37,7 @@ shared page once per process, so these sums are an upper bound.
 | **Steady state, FalconEye only** | **about 1,012 MB** | 555 + 13 + 27 + 200 + 217 |
 | Ransomware collector, while it runs | 44 MB | scheduled, a few minutes at a time |
 | MCP server, while a client is attached | 66 MB | optional, separate venv |
+| Sweep (`falconeye-sweep.service`), while it runs | about 26 MB | v3.39.0; every 15 minutes, under a second; peak RSS measured locally (macOS, `/usr/bin/time -l`), not on the box |
 
 So a box that runs nothing but FalconEye sits at about 1 GB before any
 request, page cache or upgrade. On a 1 GB box that leaves nothing, and with no
@@ -257,8 +258,12 @@ Author on the Mac (`/Users/sigmund/code/falconeye`); the VPS checkout is a mirro
    installs and enables the `falconeye-nrd` feed timer **unless
    `HUNT_NRD_ENABLED=false`**, updates nginx
    snippets (and any `conf.d` file already installed), warns if the shipped vhost
-   has drifted without ever overwriting yours, applies the release actions the
-   release declares, restarts the service and checks `/health` reports the new
+   has drifted without ever overwriting yours, generates `ASM_SIGNING_KEY` and
+   `FE_HASH_KEY` into `.env` if either is missing, applies the release actions the
+   release declares, then (v3.39.0) installs and enables the 15-minute
+   `falconeye-sweep` timer, the gunicorn logrotate file (printing `logrotate -d`
+   for it) and the journald retention drop-in, restarts the service and checks
+   `/health` reports the new
    version. A version mismatch fails loudly with the rollback command. It then
    checks the served page carries the same version in its JSON-LD and both asset
    `?v=` strings; a miss there is a warning naming the string, not a rollback,
@@ -320,6 +325,25 @@ To prove the repair on a box that is already healthy, move the directory aside
 and restart: systemd recreates it with the right owner and gunicorn starts
 clean. The old logs stay in the directory you moved.
 
+### Rotation (v3.39.0)
+
+Until v3.39.0 nothing rotated these two files; the live access log had grown
+since its directory was created, and it records request paths, which carry the
+looked-up value for tabs that put it in the URL. `deploy/logrotate/falconeye` is
+installed to `/etc/logrotate.d/falconeye` by `fe_install_logrotate` from both
+scripts: `/var/log/falconeye/*.log`, daily, 14 kept, `compress` with
+`delaycompress`, `missingok`, `notifempty`, `sharedscripts`. Its `postrotate`
+runs `systemctl kill --signal=USR1 --kill-whom=main falconeye.service`: USR1 to
+the gunicorn master is "Reopen the log files"
+(<https://docs.gunicorn.org/en/stable/signals.html>, "Master process"), so there
+is no restart and no dropped request. The installer prints `logrotate -d` for the
+file, which only reports what it would do. Check by hand with:
+
+```bash
+sudo logrotate -d /etc/logrotate.d/falconeye
+ls -l /var/log/falconeye/
+```
+
 ## State to persist
 
 > **v3.35.0 adds nothing to this list.** The Route Map tab's only persistent
@@ -355,7 +379,7 @@ of history or of an hour.
 
 | Path | Class | Why |
 |---|---|---|
-| `/opt/falconeye/.env` | **essential** | API keys, operator identity and the abuse-admin hash. Keys can be reissued; the file cannot be recovered. |
+| `/opt/falconeye/.env` | **essential** | API keys, operator identity, the abuse-admin hash, ASM_SIGNING_KEY and FE_HASH_KEY. Keys can be reissued; the file cannot be recovered, and without the same FE_HASH_KEY old run hashes can no longer be matched (revoke would miss them). |
 | `/opt/falconeye/data/falconeye.db` | **essential** | The application database: the abuse report audit trail, rate-limit counters and every cache. |
 | `/opt/falconeye/private/telegram.session` | **essential** | Telegram MTProto session. Recreating it needs an interactive login as the account holder. |
 | `/etc/ssl/falconeye` | **essential** | Cloudflare Origin CA certificate and private key. The key is shown once at issue and cannot be downloaded again. |
@@ -1151,26 +1175,30 @@ is **removed from the served HTML entirely**. Hiding it with CSS or dropping
 only the nav entry would still ship the operator's address in the page source,
 which is the thing a self-hoster is trying not to publish.
 
-**Unset, the contact form still posts to the upstream operator's Formspree
-form.** Before v3.33.0 that was hardcoded; v3.33.0 made it configurable but kept
-the upstream form as the default, so a self-hoster who sets nothing forwards
-their visitors' messages to `osintph.info`. If you run Contact, set
-`CONTACT_FORM_ACTION` to your own endpoint, or set it to an empty value
-(`CONTACT_FORM_ACTION=`, uncommented) to drop the form and keep only the
-contact details. Leaving the line commented out is not the same as empty.
+**No `CONTACT_FORM_ACTION`, no form (v3.39.0).** Before v3.33.0 the form posted
+to the upstream operator's Formspree form unconditionally, and until v3.39.0 that
+was still the unset default, so a self-hoster who set nothing forwarded their
+visitors' messages to `osintph.info`. The default is now empty, and empty means
+`render_index()` strips the form (between the `CONTACT_FORM_START`/`END`
+markers) and shows a one-line note instead; the rest of the Contact tab and its
+addresses stay. Set `CONTACT_FORM_ACTION` to your own endpoint to have a form.
+`scripts/upgrade.sh` warns on every box where it is unset and never edits `.env`.
+The public instance sets it in its own `.env`.
 
 ### Privacy policy accuracy (v3.38.29)
 
 The policy and the in-tab privacy notes in `app/static/index.html` describe
-what the code and the live box do today, including the parts that are not what
-a visitor would expect: Company dossiers are kept indefinitely with a hash of the
-caller's IP; Attack Surface and Hunt run records keep the domain or keyword in
-plain text; revoking an Attack Surface grant disables it and deletes nothing;
-the gunicorn access log under `/var/log/falconeye/` is not rotated; nginx logs
-are rotated daily and kept 14 days by the distro's logrotate. A change to any of
-those behaviours must change the policy in the same release. The "updated"
-footer badge and the promise of a timed "Policy updated" indicator were removed;
-`privacyUpdatedBadge()` in `app.js` is now inert (it finds no element).
+what the code and the live box do today. v3.38.29 wrote down the gaps; v3.39.0
+closed them, and the policy now states: Company dossiers are deleted after
+`PROSPECT_RETENTION_DAYS` (rendered into the policy from config) and store
+nothing about the caller; Attack Surface and Hunt run records hold only the
+HMAC of the domain or keyword; revoking an Attack Surface grant deletes every
+record for the domain; gunicorn's logs are rotated daily and kept 14 days
+(`deploy/logrotate/falconeye`); nginx logs are kept 14 days by the distro's
+logrotate; Route Map coordinates never travel in a URL; results are gone at most
+about 75 minutes after a run. A change to any of those behaviours must change the
+policy in the same release. The "updated" badge and its timed promise were
+removed in v3.38.29 and `privacyUpdatedBadge()` in v3.39.0.
 
 ### What is not configurable, on purpose
 
@@ -1192,16 +1220,21 @@ returned for an unverified or blocked domain outside operator mode.
 
 > **v3.38.0 made this one-time and removed monitoring.** A scan is shown once and
 > delivered as a server-side PDF, then purged: the PDF and the on-screen result
-> are deleted after the download completes, or otherwise by the first sweep
-> after `ASM_RESULT_TTL_SECONDS` (default one hour). The sweep is lazy: it runs on
-> the next hunt start or result poll, not on a timer. No scan results, host or
-> finding rows, history or "my domains" view are kept. What is kept indefinitely
-> (corrected in v3.38.29, which found the docs saying "domain hashed"): the
-> `asm_scans` row with the domain, or for a Hunt the keyword plus the legitimate
-> domain in `engagement`, in plain text; and the `asm_scan_audit` row with
-> `sha256(domain or keyword)[:32]`, unsalted, the `engagement` value in plain
-> text and the counts (`app/asm/jobs.py` `_finalize`). The management link keeps only "revoke all
-> grants". Monitoring is removed from the UI, API and MCP; its code is dormant
+> are deleted after the download completes, or otherwise by the sweep once older
+> than `ASM_RESULT_TTL_SECONDS` (default one hour). From v3.39.0 the sweep runs
+> every 15 minutes from `falconeye-sweep.timer` (`app/sweep.py`), as well as
+> lazily on a hunt start or result poll, so a result is gone at most about 75
+> minutes after its run. No scan results, host or finding rows, history or "my
+> domains" view are kept. What is kept: the `asm_scans` row and the
+> `asm_scan_audit` row, in which the domain, or a Hunt's keyword and legitimate
+> domain (in `engagement`), is stored as `h1:` + HMAC-SHA256(`FE_HASH_KEY`,
+> value). `finish_scan()` and `fail_scan()` convert the run row; the sweep
+> converts any row a dead run left in plain text past the TTL (v3.39.0; before
+> that both rows held plain text or an unsalted truncated SHA-256). The
+> management link does one thing: revoke, which from v3.39.0 calls
+> `store.delete_domain()` and deletes the grants, the domain and verification
+> records, every run row and audit row for the domain, any unexpired result and
+> PDF, and the `vstart_dom`/`vemail_dom` rate-limit rows. Monitoring is removed from the UI, API and MCP; its code is dormant
 > behind `ASM_MONITORING_ENABLED` (off) for a future paid tier, and the timer is
 > not installed. The v3.38.0 upgrade purges any host, finding and snapshot rows
 > left by earlier versions.
@@ -1397,10 +1430,12 @@ listed here so a reinstall knows they exist.
   `ransomware-collect.timer` run the local ransomware collector on a schedule. Their
   unit bodies and setup are in `docs/ransomware-watch-runbook.md` and are installed
   by hand, not by these scripts.
-- **journald retention drop-in.** `deploy/journald/falconeye-retention.conf` ships
-  in the repo as a reference only; it is NOT installed automatically. Copy it to
-  `/etc/systemd/journald.conf.d/` by hand (and `systemctl restart systemd-journald`)
-  if you want the capped journal retention it sets.
+- **journald retention drop-in (installed by the scripts from v3.39.0).**
+  `deploy/journald/falconeye-retention.conf` is installed to
+  `/etc/systemd/journald.conf.d/` by `fe_install_journald` from both scripts, and
+  `systemd-journald` is restarted only when the installed copy changed. Before
+  v3.39.0 it was copied by hand. It caps the whole host's journal (see the caveat
+  under "Retention" below).
 
 ## Logging, and what it retains
 
@@ -1426,11 +1461,12 @@ a new one passes a user value in the clear.
 
 ### Retention
 
-Install the journal retention config once:
+`scripts/upgrade.sh` and `scripts/provision.sh` install the journal retention
+config (`fe_install_journald`, v3.39.0) and restart `systemd-journald` only when
+the installed copy changed. Check it with:
 
 ```
-sudo cp deploy/journald/falconeye-retention.conf /etc/systemd/journald.conf.d/
-sudo systemctl restart systemd-journald
+cat /etc/systemd/journald.conf.d/falconeye-retention.conf
 journalctl --disk-usage
 ```
 
@@ -1438,9 +1474,10 @@ journalctl --disk-usage
 per-unit one: systemd has no per-unit retention, and the only way to scope it to
 one service is `LogNamespace=`, which moves the unit's logs out of
 `journalctl -u falconeye` entirely. On a single-purpose box that trade is not
-worth it, so **this applies to the whole journal on the host**. On a box running
-other services whose logs must be kept longer, use a namespace or do not install
-it.
+worth it, so **this applies to the whole journal on the host**. Since v3.39.0 the
+scripts install it on every box and there is no switch to skip it, so on a box
+running other services whose logs must be kept longer, every service's journal
+is capped at 14 days too.
 
 The privacy policy states 14 days. If you change the value here, change it there
 too: the sentence is in `app/static/index.html`, above the Cloudflare paragraph.
@@ -1486,6 +1523,51 @@ GreyNoise". A visitor could not tell where their IP was actually sent. Adding a
 source now means adding it to the catalog and nowhere else, and a test fails if
 a literal list reappears in the HTML.
 
+## Retention, the sweep and the v3.39.0 release action
+
+From v3.39.0 one entry point, `app/sweep.py`, runs every 15 minutes from
+`deploy/falconeye-sweep.timer` (`OnBootSec=5min`, `OnUnitActiveSec=15min`) as the
+service user with the same `.env`. Each part runs on its own and a failing part
+makes the unit fail (`systemctl status falconeye-sweep`):
+
+| Part | Deletes | Setting |
+|---|---|---|
+| results | Attack Surface and Hunt results (payload and PDF) older than the TTL | `ASM_RESULT_TTL_SECONDS` (3600) |
+| redacted_runs | nothing; replaces a plain domain or keyword left by a run that died with its HMAC | same TTL |
+| dossiers | Company dossiers (row and JSON file), and orphan JSON files, older than the retention | `PROSPECT_RETENTION_DAYS` (30) |
+| image_temp | Image Search temp files older than their 15-minute lifetime | fixed |
+
+The service also cleans `image_temp` at startup (each gunicorn worker on import),
+so a restart no longer orphans a file whose cleanup task it killed.
+
+Check it: `systemctl list-timers falconeye-sweep.timer` and
+`journalctl -u falconeye-sweep -n 5` (one `sweep done` line per run with counts).
+
+**`FE_HASH_KEY`** keys the HMAC-SHA256 that run and audit rows hold instead of a
+domain or keyword (`app/utils/fehash.py`, values prefixed `h1:`). Both scripts
+generate it into `.env` when missing (`fe_ensure_hash_key`), before the release
+actions. It is in the `.env` row of "State to persist": a box restored with a
+different key keeps working, but its old run rows can no longer be matched to a
+domain, so a later revoke would miss them.
+
+**The 3.39.0 release action** (`scripts/release-actions/3.39.0.sh`, which runs
+`scripts/migrate_3_39_0.py` as the service user with `.env` on stdin) runs once,
+after step 1's database backup and after `FE_HASH_KEY` exists. It first archives
+`data/prospect/` into the run's backup directory (`prospect-dossiers.tar.gz`,
+mode 0600), because dossier files are not in the backup set. Then it:
+
+1. deletes Company dossiers older than `PROSPECT_RETENTION_DAYS` and drops the
+   unused `ip_hash` column (an unsalted SHA-256 of the caller's IP);
+2. for every domain with a revoked grant and no live one, deletes what revoke now
+   deletes (`store.delete_domain`);
+3. converts every finished or failed run row (and any older than the TTL) to the
+   HMAC, re-keys each audit row from its run row, and drops an audit hash it
+   cannot convert (its run row is gone). Queued and running rows are left for
+   `finish_scan()` and the sweep, because the old process may still read them
+   before the restart.
+
+It prints one line per step with the row counts. A second run changes nothing.
+
 ## Appendix: what upgrade.sh does
 
 `scripts/upgrade.sh` is this sequence, executed the same way every time. It is
@@ -1524,15 +1606,25 @@ file changed and the copy to `/etc/systemd/system` was skipped.
    Without it, a host that never ran `scripts/provision.sh`, or lost the
    directory, crash-loops with `PermissionError` on
    `/var/log/falconeye/error.log` and serves nothing. See "Log directory" below.
-6. **Restart** if any `.py` changed: `sudo systemctl restart falconeye`
+6. **System files and keys (v3.39.0).** `deploy/falconeye-sweep.service` and
+   `.timer` to `/etc/systemd/system/` (then `daemon-reload` and
+   `systemctl enable --now falconeye-sweep.timer`), `deploy/logrotate/falconeye`
+   to `/etc/logrotate.d/falconeye`, and `deploy/journald/falconeye-retention.conf`
+   to `/etc/systemd/journald.conf.d/` (restart `systemd-journald` only if it
+   changed). Generate `FE_HASH_KEY` into `.env` before any release action that
+   needs it, and only then start the sweep timer.
+7. **Restart** if any `.py` changed: `sudo systemctl restart falconeye`
    (passwordless sudo). Static-only needs no restart.
-7. **Verify:**
+8. **Verify:**
     - `sudo systemctl status falconeye --no-pager | head -10` → `active (running)`.
     - `systemctl show falconeye -p LogsDirectory` → `LogsDirectory=falconeye`,
       and `ls -ld /var/log/falconeye` → owned by `ubuntu:ubuntu`.
     - `sudo journalctl -u falconeye --since "5 min ago" --no-pager | grep -ci traceback`
       → `0`. Older tracebacks in the buffer are pre-existing; scope by time.
     - Origin: `curl -s http://127.0.0.1:8000/health` → expect the new version.
+    - v3.39.0: `systemctl is-active falconeye-sweep.timer` → `active`;
+      `sudo logrotate -d /etc/logrotate.d/falconeye`;
+      `cat /etc/systemd/journald.conf.d/falconeye-retention.conf`.
     - Origin page: `curl -s http://127.0.0.1:8000/ | grep -E 'app.js\?v=|style.css\?v=|softwareVersion'`
       → all three carry the new version (`fe_check_page_version` does this).
     - Public edge: `curl -s https://falconeye.osintph.info/ | grep 'app.js?v='`.
@@ -1541,9 +1633,9 @@ file changed and the copy to `/etc/systemd/system` was skipped.
     - If an IP-response field changed, flush stale rows:
       `sudo sqlite3 /opt/falconeye/data/falconeye.db "DELETE FROM ip_intel_cache
       WHERE response_json NOT LIKE '%<newfield>%';"`.
-8. **GitHub release from the Mac:**
+9. **GitHub release from the Mac:**
     `gh release create vX.Y.Z --repo osintph/falconeye --verify-tag --title "vX.Y.Z: <summary>" --notes-file <file>`.
-9. **Keep both checkouts in sync** so they never drift:
+10. **Keep both checkouts in sync** so they never drift:
     `ssh … 'cd /opt/falconeye/app_src && git fetch --tags origin && git reset --hard <tag-or-origin/main>'`,
     and the same for `staging_src`. Leave **no feature branch** checked out on the
     box: `git rev-parse --abbrev-ref HEAD` should be `main`.

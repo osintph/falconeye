@@ -478,6 +478,117 @@ fe_install_nrd() {
     [[ "$DRY_RUN" == "true" ]] || fe_ok "NRD feed timer installed and enabled"
 }
 
+# The sweep timer (v3.39.0): every 15 minutes, app.sweep deletes one-time
+# results past their TTL, redacts stale run rows, and deletes expired Company
+# dossiers and Image Search temp files. Always installed: it is what makes the
+# retention the privacy policy states true.
+fe_install_sweep() {
+    local svc_src="$FE_APP_SRC/deploy/falconeye-sweep.service"
+    local tmr_src="$FE_APP_SRC/deploy/falconeye-sweep.timer"
+    local svc_dest="/etc/systemd/system/falconeye-sweep.service"
+    local tmr_dest="/etc/systemd/system/falconeye-sweep.timer"
+    if [[ ! -f "$svc_src" || ! -f "$tmr_src" ]]; then
+        fe_warn "sweep unit files missing in deploy/, skipping"
+        return 0
+    fi
+    local changed=false src dest name
+    for pair in "$svc_src|$svc_dest|falconeye-sweep.service" "$tmr_src|$tmr_dest|falconeye-sweep.timer"; do
+        IFS='|' read -r src dest name <<< "$pair"
+        if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+            continue
+        fi
+        fe_run cp "$src" "$dest"
+        changed=true
+        fe_say "sweep file updated: $name"
+    done
+    [[ "$changed" == "true" ]] && fe_run systemctl daemon-reload
+    fe_run systemctl enable --now falconeye-sweep.timer
+    if [[ "$DRY_RUN" != "true" ]]; then
+        fe_ok "sweep timer: $(systemctl is-enabled falconeye-sweep.timer 2>/dev/null || echo unknown), $(systemctl is-active falconeye-sweep.timer 2>/dev/null || echo unknown)"
+    fi
+}
+
+# gunicorn's log files (v3.39.0). Nothing rotated /var/log/falconeye before.
+# Installs deploy/logrotate/falconeye and prints logrotate's own dry run of it
+# (logrotate -d changes nothing), so the deploy output shows the rotation plan.
+fe_install_logrotate() {
+    local src="$FE_APP_SRC/deploy/logrotate/falconeye"
+    local dest="${FE_LOGROTATE_DIR:-/etc/logrotate.d}/falconeye"
+    if [[ ! -f "$src" ]]; then
+        fe_warn "deploy/logrotate/falconeye missing, skipping"
+        return 0
+    fi
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+        fe_say "logrotate file unchanged ($dest)"
+    else
+        fe_run install -m 0644 -o root -g root "$src" "$dest"
+        fe_say "logrotate file installed: $dest"
+    fi
+    if [[ "$DRY_RUN" != "true" ]] && command -v logrotate >/dev/null 2>&1; then
+        fe_say "logrotate -d $dest (read-only):"
+        logrotate -d "$dest" 2>&1 | sed 's/^/      /' || true
+    fi
+}
+
+# The journal retention drop-in (deploy/journald), installed by hand before
+# v3.39.0. journald is restarted only when the installed copy changed.
+fe_install_journald() {
+    local src="$FE_APP_SRC/deploy/journald/falconeye-retention.conf"
+    local dir="${FE_JOURNALD_DIR:-/etc/systemd/journald.conf.d}"
+    local dest="$dir/falconeye-retention.conf"
+    if [[ ! -f "$src" ]]; then
+        fe_warn "deploy/journald/falconeye-retention.conf missing, skipping"
+        return 0
+    fi
+    if [[ -f "$dest" ]] && cmp -s "$src" "$dest"; then
+        fe_say "journald drop-in unchanged ($dest), not restarting journald"
+        return 0
+    fi
+    fe_run install -d -m 0755 "$dir"
+    fe_run install -m 0644 -o root -g root "$src" "$dest"
+    fe_run systemctl restart systemd-journald
+    [[ "$DRY_RUN" == "true" ]] || fe_ok "journald drop-in installed ($dest), systemd-journald restarted: $(systemctl is-active systemd-journald 2>/dev/null || echo unknown)"
+}
+
+# FE_HASH_KEY keys the HMAC that replaces plain domains and keywords in run
+# records (v3.39.0). Generated into .env when missing, the same way as
+# ASM_SIGNING_KEY. It must exist before the release actions run: the 3.39.0
+# action converts existing rows with it.
+fe_ensure_hash_key() {
+    [[ -f "$FE_ENV_FILE" ]] || return 0
+    if grep -qE '^[[:space:]]*FE_HASH_KEY=.+' "$FE_ENV_FILE" 2>/dev/null; then
+        fe_say "FE_HASH_KEY already set"
+        return 0
+    fi
+    if [[ ! -x "$FE_VENV/bin/python" ]]; then
+        fe_warn "no venv python, cannot generate FE_HASH_KEY; set it by hand (see .env.example)"
+        return 0
+    fi
+    if [[ "$DRY_RUN" == "true" ]]; then
+        fe_say "[dry-run] would generate FE_HASH_KEY into $FE_ENV_FILE"
+        return 0
+    fi
+    local key
+    key="$("$FE_VENV/bin/python" -c 'import secrets; print(secrets.token_urlsafe(48))')"
+    printf '\n# Generated for run-record hashing (v3.39.0). Do not share; back it up with .env.\nFE_HASH_KEY=%s\n' \
+        "$key" >> "$FE_ENV_FILE"
+    fe_ok "generated FE_HASH_KEY into $FE_ENV_FILE"
+}
+
+# v3.39.0: an unset CONTACT_FORM_ACTION no longer falls back to the upstream
+# operator's Formspree form; the form is simply not rendered. Say so on every
+# box where it is unset. Never edits .env.
+fe_check_contact_form() {
+    [[ -f "$FE_ENV_FILE" ]] || return 0
+    if grep -qE '^[[:space:]]*CONTACT_ENABLED=false' "$FE_ENV_FILE" 2>/dev/null; then
+        return 0
+    fi
+    if grep -qE '^[[:space:]]*CONTACT_FORM_ACTION=' "$FE_ENV_FILE" 2>/dev/null; then
+        return 0
+    fi
+    fe_warn "CONTACT_FORM_ACTION is not set in $FE_ENV_FILE: from v3.39.0 the Contact tab renders no form. Add CONTACT_FORM_ACTION=<your form endpoint> to keep one (see .env.example)."
+}
+
 # ASM needs a signing key for its grants and management links; without one the
 # feature disables itself rather than fall back to a per-process key. Generate one
 # into .env if the operator has not set it, so a self-hoster gets a working tab.
@@ -739,7 +850,7 @@ fe_baseline_release_actions() {
 # the cost of history or of an hour.
 fe_state_paths() {
     cat <<RECORDS
-essential|$FE_ENV_FILE|API keys, operator identity and the abuse-admin hash. Keys can be reissued; the file cannot be recovered.
+essential|$FE_ENV_FILE|API keys, operator identity, the abuse-admin hash, ASM_SIGNING_KEY and FE_HASH_KEY. Keys can be reissued; the file cannot be recovered, and without the same FE_HASH_KEY old run hashes can no longer be matched (revoke would miss them).
 essential|$FE_DB|The application database: the abuse report audit trail, rate-limit counters and every cache.
 essential|$FE_TELEGRAM_SESSION|Telegram MTProto session. Recreating it needs an interactive login as the account holder.
 essential|$FE_SSL_DIR|Cloudflare Origin CA certificate and private key. The key is shown once at issue and cannot be downloaded again.

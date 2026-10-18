@@ -89,6 +89,9 @@ chmod 700 "$INSTALL_DIR/data"
 fe_preflight_env
 # 2 GB minimum, measured; see "Sizing" in docs/deploy-runbook.md.
 fe_check_memory
+# The run-record HMAC key (v3.39.0), generated into .env when .env exists and
+# lacks one; on a box with no .env yet, step 3 of "Next steps" covers it.
+fe_ensure_hash_key
 
 if [[ "$RUN_TESTS" == "true" ]]; then
     echo "[--test] Running test suite..."
@@ -134,6 +137,11 @@ fe_restart_service
 # default; its daily oneshot fires at 06:30 UTC, by which point .env exists).
 fe_install_asm_timer
 fe_install_nrd
+# v3.39.0: the 15-minute sweep timer, the gunicorn logrotate file and the
+# journald retention drop-in, the same functions the upgrade uses.
+fe_install_sweep
+fe_install_logrotate
+fe_install_journald
 sleep 2
 systemctl status "$FE_SERVICE" --no-pager -l
 
@@ -180,13 +188,16 @@ echo "=== Provisioning complete ==="
 echo "Next steps:"
 echo "  1. Copy and fill in: cp $INSTALL_DIR/app_src/.env.example $INSTALL_DIR/.env"
 echo "  2. Secure it: chmod 600 $INSTALL_DIR/.env"
-echo "  3. Generate the Attack Surface signing key (ASM is disabled without it):"
+echo "  3. Generate the Attack Surface signing key (ASM is disabled without it) and"
+echo "     the run-record hash key:"
 echo "       python3 -c 'import secrets; print(\"ASM_SIGNING_KEY=\"+secrets.token_urlsafe(48))' >> $INSTALL_DIR/.env"
-echo "     (or run scripts/upgrade.sh, which generates one if it is missing)"
+echo "       python3 -c 'import secrets; print(\"FE_HASH_KEY=\"+secrets.token_urlsafe(48))' >> $INSTALL_DIR/.env"
+echo "     (or run scripts/upgrade.sh, which generates both if they are missing)"
 echo "  4. Self-hosting publicly? Set the operator identity in .env (OPERATOR_NAME,"
 echo "     OPERATOR_URL, OPERATOR_CONTACT_EMAIL, OPERATOR_PRIVACY_EMAIL, SITE_ORIGIN),"
-echo "     or the page names the upstream operator (OSINTPH). See \"Operator identity\""
-echo "     in docs/deploy-runbook.md."
+echo "     or the page names the upstream operator (OSINTPH). Set CONTACT_FORM_ACTION"
+echo "     too if you want a contact form; unset, none is rendered. See"
+echo "     \"Operator identity\" in docs/deploy-runbook.md."
 echo "  5. Restart: systemctl restart falconeye"
 echo ""
 echo "Health check:"
@@ -206,3 +217,5 @@ fi
 # The page carries the version in three hand-edited places that /health does
 # not cover; say so now if one was missed, before a browser caches it.
 fe_check_page_version "$(fe_source_version)"
+# v3.39.0: no CONTACT_FORM_ACTION, no contact form. Say so if .env exists.
+fe_check_contact_form

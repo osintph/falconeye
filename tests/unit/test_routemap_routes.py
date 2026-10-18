@@ -535,3 +535,38 @@ def test_a_command_response_carries_the_macos_note(client):
     assert not by_key["mtr"]["command"].startswith("sudo")
     # The default tab still comes from the User-Agent, as before.
     assert body["platform"] == "unix"
+
+
+# ---------- v3.39.0: coordinates never travel in a URL ----------
+
+def test_the_poll_takes_no_coordinates_and_ignores_any_in_its_url(client):
+    """Until v3.39.0 the poll carried origin_lat/origin_lon in its query string,
+    so the visitor's rounded location landed in the nginx and gunicorn access
+    logs. The GET no longer reads them: a job minted without an origin stays
+    without one however the poll URL is dressed."""
+    import inspect
+    from app.routemap import routes as rm_routes
+    params = inspect.signature(rm_routes.pending).parameters
+    assert "origin_lat" not in params and "origin_lon" not in params
+
+    issued = client.post("/api/routemap/command", json={"target": "heise.de"}).json()
+    text = (FIXTURES / "heise_traceroute.txt").read_text()
+    client.get(f"/api/routemap/pending/{issued['token']}",
+               params={"key": issued["poll_key"], **MANILA})
+    client.post(f"/api/routemap/ingest/{issued['token']}", content=text.encode(),
+                headers={"Content-Type": "text/plain"})
+    body = _poll_until_done(client, issued["token"], issued["poll_key"])
+    assert body["status"] == "ready"
+    assert not (body.get("origin") or {}).get("label", "").startswith("Manila")
+
+
+def test_the_origin_is_attached_through_a_json_body(client):
+    issued = client.post("/api/routemap/command", json={"target": "heise.de"}).json()
+    attach = client.post(f"/api/routemap/pending/{issued['token']}/origin",
+                         json={"key": issued["poll_key"], **MANILA})
+    assert attach.status_code == 200
+    text = (FIXTURES / "heise_traceroute.txt").read_text()
+    client.post(f"/api/routemap/ingest/{issued['token']}", content=text.encode(),
+                headers={"Content-Type": "text/plain"})
+    body = _poll_until_done(client, issued["token"], issued["poll_key"])
+    assert body["origin"]["label"].startswith("Manila")
