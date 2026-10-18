@@ -2,7 +2,7 @@
 
 **Free, self-hosted OSINT investigator's toolkit.** 19 investigative tabs in one interface: crypto wallet tracing, phishing kit fingerprinting, domain intelligence, Telegram OSINT, IP reputation, email header forensics with LLM-powered scam detection, Google dork generation, suspicious script deobfuscation, URL expansion and redirect chain analysis, QR code decoding, company dossiers, reverse image search, username enumeration across 965 platforms, Have I Been Pwned breach checks, global + PH/SEA ransomware victim tracking, attack surface management for domains you control, phishing domain hunting for brand impersonation, traceroute mapping (Route Map), and a fictional sock-puppet persona generator with dossier export. Ten of the tabs are also exposed as MCP tools for Claude Code and Claude Desktop. The home page carries a Philippines-focused threat pulse and a curated news strip. The IP Reputation and Email Header tabs also compose abuse reports to the responsible provider (RDAP contact lookup, with optional Mailgun send).
 
-Current version: **3.38.28**
+Current version: **3.38.29**
 
 Live instance: [falconeye.osintph.info](https://falconeye.osintph.info)
 
@@ -76,8 +76,8 @@ FalconEye is the workbench an OSINT investigator opens when a new lead arrives. 
 | **Username** | Check where a username appears across 965 platforms using vendored WhatsMyName + Sherlock data. Dual-engine with cross-validation (hits in both engines are higher confidence). Quick (~280 sites) and Full scans, adult sites off by default, CSV export, Telegram pivot. |
 | **Breach Check** | Have I Been Pwned integration: email breach + paste exposure lookup with full breach metadata, timeline, and paste history; client-side password check via K-anonymity (SHA-1 prefix only, password never leaves the browser); domain breach history lookup. Sensitive breaches redacted by default (toggle to reveal). Pivots to Username Enumeration, Domain Intelligence, and IP Reputation. Requires an `HIBP_API_KEY` (HIBP Core 1 subscription). Breach data attributed to Have I Been Pwned under CC BY 4.0. |
 | **Route Map** | Map the real network path to a target and draw it on a world map, starting from where you are. Enter a domain, URL or IP and a RIPE Atlas probe on your own network runs the traceroute; or paste a trace, or run one yourself and pipe it to a single-use upload link. Windows `tracert`, Unix `traceroute` and `mtr --report` are all parsed, format auto-detected. Hops are placed **hostname first**: CAIDA Hoiho's published ruleset, then a bundled carrier site-code table, and an IP geolocation database only as a fallback, because a backbone router's address geolocates to wherever its operator registered the prefix. Every placement is then checked against the speed of light (about 100 km per ms of round trip) and rejected if the measured RTT could not reach it, so a Tata router cannot be drawn in Harare at the same RTT as San Jose. Hops that cannot be placed are listed with the reason, never silently dropped. Annotates asymmetric return paths, ICMP rate limiting mistaken for packet loss, and a destination that does not answer ICMP. Your location is asked for through the browser's own permission popup, rounded to about 10 km in the browser, used for the render only and never stored; declining falls back to an offline city picker. Atlas measurements are public and the tab says so. Needs an `ATLAS_API_KEY` for the probe path; paste and upload work without one. |
-| **Attack Surface** | Map the internet-facing surface of a domain you have proven you control (a DNS TXT record, or a one-time link to a role address at the domain), or any domain in operator mode for an authorised engagement. No output of any kind is returned for an unverified or blocked domain outside operator mode. Free and consumer mailbox providers, shared-platform apexes (the PSL private section) and public suffixes are blocked, with one identical response whatever the reason. Passive discovery (certificate transparency, Mnemonic passive DNS, the Wayback Machine) and RIPEstat ASN context feed a light active probe (DNS, HTTP/TLS, header-based tech fingerprint, apex mail posture) and a conservative pure-Python TCP connect scan. Strict scope: only the target's own hosts are probed; a host behind a published CDN edge is marked "behind CDN, ports not scanned" and a CNAME to a third party is recorded as a reference only, never probed or port scanned. Findings cover dangling-CNAME takeover candidates, expiring certificates, exposed admin surfaces, unexpected open services, missing security headers and SPF/DMARC/MTA-STS posture. Scans are one-time: run as a background job with a polled status, shown once and delivered as a watermarked server-side PDF, then purged. FalconEye keeps no scan results, no history and no "my domains" view; only metadata (time, counts, mode, domain hashed) is kept for audit. Every run lists each source as answered, failed or skipped, and a discovery-source failure marks the run INCOMPLETE. Results are bound to the verifying browser session, never a shareable link. |
-| **Phishing Hunt** | Public and ungated: find newly registered and active domains impersonating a brand (PH government and financial brands in mind). Discovery from certificate transparency keyword search, permutations (dnstwist: homoglyph, IDN and punycode, bitsquatting, TLD swap, keyword combos), urlscan.io and URLhaus. Discovery also reads a local newly-registered-domain store populated daily from the free WHOISDS lists by a systemd timer. Each candidate gets DNS, RDAP registration and registrar, hosting ASN, cert freshness and a homepage GET with a favicon hash (a second fetch as a mobile browser when it shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Ranked verdicts (likely phishing, brand abuse, suspicious, brand-referencing, parked, unknown, unrelated) with evidence and action links (registrar and hosting abuse, Google Safe Browsing, Deep Kit Report, Domain Intel). One-time, delivered as a PDF; only metadata (time, counts, mode, domain hashed) is kept for audit. |
+| **Attack Surface** | Map the internet-facing surface of a domain you have proven you control (a DNS TXT record, or a one-time link to a role address at the domain), or any domain in operator mode for an authorised engagement. No output of any kind is returned for an unverified or blocked domain outside operator mode. Free and consumer mailbox providers, shared-platform apexes (the PSL private section) and public suffixes are blocked, with one identical response whatever the reason. Passive discovery (certificate transparency, Mnemonic passive DNS, the Wayback Machine) and RIPEstat ASN context feed a light active probe (DNS, HTTP/TLS, header-based tech fingerprint, apex mail posture) and a conservative pure-Python TCP connect scan. Strict scope: only the target's own hosts are probed; a host behind a published CDN edge is marked "behind CDN, ports not scanned" and a CNAME to a third party is recorded as a reference only, never probed or port scanned. Findings cover dangling-CNAME takeover candidates, expiring certificates, exposed admin surfaces, unexpected open services, missing security headers and SPF/DMARC/MTA-STS posture. Scans are one-time: run as a background job with a polled status, shown once and delivered as a watermarked server-side PDF, then purged. FalconEye keeps no scan results, no history and no "my domains" view; what is kept indefinitely: a run record with the domain in plain text, plus the time, mode and counts, and an audit row with an unsalted SHA-256 hash of the domain (its first 32 hex characters), the counts and, in operator mode, the engagement reference. Every run lists each source as answered, failed or skipped, and a discovery-source failure marks the run INCOMPLETE. Results are bound to the verifying browser session, never a shareable link. |
+| **Phishing Hunt** | Public and ungated: find newly registered and active domains impersonating a brand (PH government and financial brands in mind). Discovery from certificate transparency keyword search, permutations (dnstwist: homoglyph, IDN and punycode, bitsquatting, TLD swap, keyword combos), urlscan.io and URLhaus. Discovery also reads a local newly-registered-domain store populated daily from the free WHOISDS lists by a systemd timer. Each candidate gets DNS, RDAP registration and registrar, hosting ASN, cert freshness and a homepage GET with a favicon hash (a second fetch as a mobile browser when it shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Ranked verdicts (likely phishing, brand abuse, suspicious, brand-referencing, parked, unknown, unrelated) with evidence and action links (registrar and hosting abuse, Google Safe Browsing, Deep Kit Report, Domain Intel). One-time, delivered as a PDF; what is kept indefinitely: a run record with the keyword and any legitimate domain you gave in plain text, plus the time, mode and counts; an audit row with an unsalted SHA-256 hash of the keyword (its first 32 hex characters), the legitimate domain in plain text and the counts; and the cached certificate-transparency and RDAP lookups for the keyword and the candidate domains. |
 | **Ransomware Watch** | Global + PH/SEA ransomware victim tracking: world map, regional (PH/SG/MY/ID/TH/VN/HK/TW) comparison with month-over-month trend, latest victims with cross-source corroboration flags, group activity, leak-site mirror health, and a PH-relevant watchlist. Reads a locally scheduled collector's cache only for its core panels, never queries an upstream from the browser there. Two guarded exceptions: a company search (always live against ransomware.live, min 3 characters, rate-limited, degrades to a local partial-cache fallback if upstream is down) and an on-demand country lookup for any country outside the continuously-collected PH/SEA set (cached 24h, rate-limited). Every entry is labelled a claim, never a confirmed fact. Requires a `RANSOMWARE_LIVE_API_KEY` (ransomware.live PRO); RansomLook needs no key. Data attributed to ransomware.live (non-commercial terms) and RansomLook (CC BY 4.0). |
 
 ### LLM-powered tabs
@@ -108,7 +108,7 @@ Compose-and-copy works out of the box. Enabling send requires reporter-identity 
 
 ## Security posture
 
-FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.38.28:
+FalconEye is a public, unauthenticated OSINT tool with no login. The following controls are in place as of v3.38.29:
 
 **SSRF prevention (Phishing Scanner + URL Expander).** All user-supplied URLs pass through the shared `safe_fetch` primitives before any HTTP request is made. `safe_fetch` resolves and validates every hop in a redirect chain independently against a complete blocklist: private/loopback/link-local/reserved/multicast/unspecified ranges (via the Python `ipaddress` stdlib), CGNAT (100.64.0.0/10), NAT64 (64:ff9b::/96), IPv4-mapped IPv6 (::ffff:a.b.c.d unwrapped before check), and the "this" network (0.0.0.0/8). The URL Expander re-runs this check (`resolve_and_check`) at the start of every hop and before its per-hop TLS grab, and rejects embedded userinfo; it does not add a second SSRF implementation. TLS certificate verification is enforced on all outbound fetches (`verify=True`). Response bodies are streamed and size-capped (10 MB by default, 2 MB per hop in the URL Expander) so a target cannot choose how much memory a fetch costs. Fixed-host API calls (Shodan, RDAP, Telegram, etc.) are not routed through `safe_fetch` as they are not SSRF surfaces.
 
@@ -170,7 +170,7 @@ reached from the public instance. See [docs/mcp.md](docs/mcp.md).
 - **LLM**: Anthropic Claude Haiku 4.5 via the official Python SDK (`anthropic` package, install separately, see requirements.txt note)
 - **Security**: CrowdSec community blocklist + firewall bouncer, fail2ban, ufw, SSH on non-standard port with keys-only auth
 
-Memory footprint at idle, measured on the live instance on 2026-10-18 (10:22 UTC, two days after the last restart, load average 0.15): about 555 MB RSS across the four gunicorn processes (master 30 MB, three workers of 170, 172 and 184 MB; RSS counts shared pages once per process, and systemd reports 528 MB for the whole service). Disk: 13 MB for the code tree (28 MB with `.git`) and 19 MB for `data/falconeye.db`.
+Memory footprint at idle, measured on the live instance on 2026-10-18: about 555 MB RSS across the four gunicorn processes two days after a restart (10:22 UTC, load average 0.15; master 30 MB, three workers of 170, 172 and 184 MB; systemd reported 528 MB for the whole service), and 441 MB six minutes after one (10:37 UTC; workers of 136 to 138 MB), so workers grow by about a quarter over two days. RSS counts shared pages once per process. Redis adds 13 MB and nginx 27 MB (master and two workers). Disk: 13 MB for the code tree (28 MB with `.git`) and 19 MB for `data/falconeye.db`.
 
 ---
 
@@ -178,7 +178,12 @@ Memory footprint at idle, measured on the live instance on 2026-10-18 (10:22 UTC
 
 ### Prerequisites
 
-- Ubuntu 22.04 or 24.04 VPS (1 vCPU, 1 GB RAM minimum; 2 GB recommended)
+- Ubuntu 22.04 or 24.04 VPS: 1 vCPU, **2 GB RAM minimum**, 4 GB if the box also
+  runs host security agents (an EDR, CrowdSec, Wazuh). 1 GB is not enough: the
+  service, Redis, nginx and a stock Ubuntu server already need about 1 GB at idle
+  with no swap. The measured figures and the arithmetic are in "Sizing" in
+  [docs/deploy-runbook.md](docs/deploy-runbook.md); `provision.sh` and
+  `upgrade.sh` warn on a box with less than 2 GB.
 - A domain name pointed at the VPS
 - Python 3.10 or later (3.11+ recommended)
 - System packages beyond Python. `pip` does not install these, and two of them
@@ -434,31 +439,43 @@ All write endpoints accept JSON. Rate limits are enforced per real client IP (`C
 
 | Endpoint | Method | Rate limit |
 |---|---|---|
-| `/api/crypto/lookup` | POST | None (upstream provider quotas apply) |
+| `/api/crypto/lookup/{address}` | GET | 20/minute per IP |
 | `/api/scanner/scan` | POST | 10/minute per IP |
 | `/api/scanner/kit-report` | POST | 4/minute per IP + 10/IP/24h |
-| `/api/domain/intel` | POST | None |
-| `/api/telegram/inspect` | POST | None |
-| `/api/ip/reputation` | POST | None |
-| `/api/sandbox/lookup` | POST | None |
+| `/api/domain/lookup/{domain}` | GET | 20/minute per IP |
+| `/api/telegram/lookup` | POST | 10/minute per IP |
+| `/api/ip/lookup/{ip}` | GET | 20/minute per IP |
+| `/api/sandbox/lookup` | GET | 20/minute per IP |
 | `/api/email-header/analyze` | POST | LLM analysis: 10/IP/24h |
 | `/api/email-header/upload` | POST | None |
 | `/api/dork-generator/generate` | POST | 10/IP/24h |
 | `/api/script-decoder/decode` | POST | 10/IP/24h |
-| `/api/url/expand` | POST | 10/IP/24h |
-| `/api/qr/decode` | POST | 10/IP/24h |
-| `/api/news/feed` | GET | None |
-| `/api/threat-pulse` | GET | None |
-| `/api/image/search` | POST | 5/minute per IP |
-| `/api/prospect/investigate` | POST | 10/IP/day |
-| `/api/asm/verify/start` | POST | 10/minute per IP + per-IP and per-domain daily caps |
-| `/api/asm/verify/check-dns` | POST | 20/minute per IP |
-| `/api/asm/scan` | POST | 6/minute per IP + 10/IP/day (higher for operators) |
-| `/api/asm/scan/{id}` | GET | None (grant or operator session required) |
+| `/api/url/expand` | POST | 10/minute per IP + 10/IP/24h |
+| `/api/qr/decode` | POST | 10/minute per IP + 10/IP/24h |
+| `/api/sockpuppet/generate` | POST | 20/minute per IP; Legend 25/IP/24h |
+| `/api/username/scan` | POST | 5/minute, 3/hour and 20/day per IP; 100/day globally |
+| `/api/breach/email` | POST | 10/minute, 5/hour and 30/day per IP; 200/day globally |
+| `/api/breach/domain` | POST | 10/minute, 5/hour and 30/day per IP; 200/day globally |
+| `/api/abuse/compose` | POST | 10/minute, 3/hour and 10/day per IP |
+| `/api/news/{category}` | GET | 30/minute per IP |
+| `/api/threat-pulse` | GET | 30/minute per IP |
+| `/api/image/search` | POST | 20/minute per IP |
+| `/api/image/upload` | POST | 10/minute per IP |
+| `/api/prospect/{domain}` | GET | 20/minute per IP |
+| `/api/ransomware/search` | GET | 30/minute per IP + per-IP minute and hour windows |
+| `/api/routemap/analyze` | POST | 20/minute per IP + 60/IP/day |
+| `/api/routemap/trace` | POST | 6/minute per IP + 10/IP/day + a daily Atlas credit cap |
+| `/api/asm/verify/start` | POST | 10/minute and 5/hour per IP + per-domain daily caps |
+| `/api/asm/verify/check-dns` | POST | 10/minute per IP |
+| `/api/asm/scan` | POST | 6/minute per IP + 10/IP/day (200 for operators) |
+| `/api/asm/scan/{scan_id}` | GET | None (grant or operator session required) |
 | `/api/asm/operator/unlock` | POST | 10/minute per IP + lockout backoff |
-| `/api/hunt` | POST | 6/minute per IP + 20/IP/day (public) |
-| `/api/hunt/{id}` | GET | None (one-time result, purged on download) |
+| `/api/hunt` | POST | 6/minute per IP + 20/IP/day (200 for operators) |
+| `/api/hunt/{scan_id}` | GET | None (one-time result, deleted on download) |
 | `/health` | GET | None |
+
+The per-minute limits are counted in memory; the hourly and daily caps are
+stored in SQLite with the caller's IP.
 
 OpenAPI docs are disabled in production (`FALCONEYE_PUBLIC_DOCS=false` by default).
 
@@ -486,7 +503,7 @@ source .venv/bin/activate
 pytest tests/ -v
 ```
 
-Expected baseline on v3.38.28 (Python 3.12, full suite, nothing ignored): **1802 passed, 13 skipped**. The 13 skips need material that is not in the repository: two JPEG EXIF fixtures (`tests/image_search/test_exif.py`), nine tests against real kit bundles (set `FALCONEYE_KIT_BUNDLES`), and two live smoke tests (set `FALCONEYE_LIVE_SMOKE=1`).
+Expected baseline on v3.38.29 (Python 3.12, full suite, nothing ignored): **1820 passed, 13 skipped**. The 13 skips need material that is not in the repository: two JPEG EXIF fixtures (`tests/image_search/test_exif.py`), nine tests against real kit bundles (set `FALCONEYE_KIT_BUNDLES`), and two live smoke tests (set `FALCONEYE_LIVE_SMOKE=1`).
 
 ### Project structure
 
@@ -605,12 +622,16 @@ If the tab uses an LLM, follow the pattern in `script_decoder.py`: hardcoded mod
 
 FalconEye does not maintain user accounts.
 
-- Input is processed to produce analysis results and is not persisted beyond the moments needed
-- Results are cached for 24 hours by SHA256 hash of the input (keyed by content, not by user)
-- Uploaded .eml and .msg files are parsed in memory and discarded immediately
-- Source IP is stored only for rate-limit enforcement with automatic cleanup after 48 hours
-- No cookies set by FalconEye (Cloudflare sets its own security cookies)
+- Results are cached for between 30 minutes and 30 days depending on the tab (most for 6 to 24 hours). Email Header, Dork Generator, Script Decoder and Breach Check email lookups are keyed by a SHA-256 hash of the input; the other caches are keyed by the input itself. Expired rows stay until the same lookup overwrites them.
+- The Company tab saves every dossier it builds, with the domain and a SHA-256 hash of the caller's IP, and nothing deletes them.
+- Attack Surface and Phishing Hunt results are deleted on download or at the first cleanup after an hour, but each run leaves a record with the domain (or the Hunt keyword and legitimate domain) in plain text and an audit row in which only the domain or keyword is hashed (unsalted SHA-256), and revoking an Attack Surface grant deletes nothing.
+- Uploaded .eml, .msg and QR files are not kept; a .msg file and any upload over 1 MB pass through a temporary file deleted after parsing. Image Search uploads are kept on disk for about 15 minutes so SearchAPI can fetch them.
+- Source IP is stored for rate limiting, 48 hours for most features (30 days for Attack Surface and Phishing Hunt), pruned the next time that feature records a call.
+- Request logs (nginx, kept 14 days on the live instance; gunicorn's own access log, not rotated) contain the looked-up value for tabs that put it in the URL.
+- Functional cookies only: `fe_theme`, `fe_sidebar_collapsed`, and for Attack Surface `asm_grant` and the operator's `asm_operator`. Cloudflare sets its own security cookies.
 - No third-party advertising or analytics
+
+The in-app privacy policy is the authoritative statement and lists every third party per tab.
 
 When you use the LLM-powered tabs, your input is sent to Anthropic's API. See [Anthropic's privacy policy](https://www.anthropic.com/legal/privacy). At time of writing, Anthropic does not train on API input by default.
 

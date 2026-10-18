@@ -174,6 +174,7 @@ fe_step "8/9 Health check"
 fe_health_check "$TARGET_VERSION" "$PREVIOUS_REF"
 fe_check_page_version "$TARGET_VERSION"
 fe_preflight_env
+fe_check_memory
 
 # ---- 9. the MCP server, if this box has one ------------------------------------
 # v3.36.0 left the MCP venv unable to satisfy its own SDK and nothing said so.

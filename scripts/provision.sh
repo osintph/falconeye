@@ -87,6 +87,8 @@ chmod 700 "$INSTALL_DIR/data"
 
 # Run pre-flight check against existing .env (if present)
 fe_preflight_env
+# 2 GB minimum, measured; see "Sizing" in docs/deploy-runbook.md.
+fe_check_memory
 
 if [[ "$RUN_TESTS" == "true" ]]; then
     echo "[--test] Running test suite..."

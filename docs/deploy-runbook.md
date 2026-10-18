@@ -17,6 +17,42 @@ deploy did not match it. Keep this doc in sync with reality.
 - Staging tree: `/opt/falconeye/staging_src`, a second independent git checkout.
   **There is no staging systemd unit** and nothing normally listens on `:8001`.
 
+## Sizing
+
+**2 GB RAM minimum. 4 GB if the box also runs host security agents.** Before
+v3.38.29 the README said 1 GB minimum, 2 GB recommended, which the measurements
+below do not support.
+
+Measured read-only on the live instance (Ubuntu 24.04, 2 vCPU, 3.7 GiB, no swap)
+on 2026-10-18 with `ps -o rss`, `free -m` and `/proc/meminfo`. RSS counts a
+shared page once per process, so these sums are an upper bound.
+
+| Component | Idle RSS | Notes |
+|---|---|---|
+| FalconEye (gunicorn master + 3 workers) | 555 MB | two days after a restart; 441 MB six minutes after one |
+| Redis | 13 MB | |
+| nginx (master + 2 workers) | 27 MB | |
+| Stock Ubuntu server userspace | 200 MB | systemd, journald, multipathd, unattended-upgrades, resolved, networkd, logind, sshd, polkit, timesyncd, udevd, rsyslog, dbus, qemu-ga, cron, getty |
+| Kernel (slab, stacks, page tables) | 217 MB | `Slab` 203 MB + `KernelStack` 5 MB + `PageTables` 9 MB |
+| **Steady state, FalconEye only** | **about 1,012 MB** | 555 + 13 + 27 + 200 + 217 |
+| Ransomware collector, while it runs | 44 MB | scheduled, a few minutes at a time |
+| MCP server, while a client is attached | 66 MB | optional, separate venv |
+
+So a box that runs nothing but FalconEye sits at about 1 GB before any
+request, page cache or upgrade. On a 1 GB box that leaves nothing, and with no
+swap the OOM killer takes a worker. On 2 GB it leaves about 1 GB for the
+worker growth seen above, PDF rendering, a full username scan, the scheduled
+jobs, the MCP server and a `pip install` during an upgrade.
+
+The live box also runs CrowdSec, its firewall bouncer, an EDR sensor, Wazuh,
+Tailscale, Beszel, Action1 and GoAccess: about 541 MB more RSS, which is why
+4 GB is the figure for a box like that.
+
+`scripts/provision.sh` and `scripts/upgrade.sh` warn (they do not stop) when
+`MemTotal` is under 1.8 GiB, which is what a 2 GB plan reports once the kernel
+has reserved its share, through `fe_check_memory` in `scripts/lib/common.sh`.
+`FE_MIN_MEM_KB` changes the threshold.
+
 ## Prerequisites: system packages
 
 > **Redis is required, not optional, from v3.35.0.** `redis-server` has been in
@@ -1115,11 +1151,26 @@ is **removed from the served HTML entirely**. Hiding it with CSS or dropping
 only the nav entry would still ship the operator's address in the page source,
 which is the thing a self-hoster is trying not to publish.
 
-**Before v3.33.0 the contact form posted to the upstream operator's Formspree
-endpoint.** Any self-hoster running a build older than this was silently
-forwarding their visitors' messages to `osintph.info`. If you run Contact,
-set `CONTACT_FORM_ACTION` to your own endpoint, or leave it empty to drop the
-form and keep only the contact details.
+**Unset, the contact form still posts to the upstream operator's Formspree
+form.** Before v3.33.0 that was hardcoded; v3.33.0 made it configurable but kept
+the upstream form as the default, so a self-hoster who sets nothing forwards
+their visitors' messages to `osintph.info`. If you run Contact, set
+`CONTACT_FORM_ACTION` to your own endpoint, or set it to an empty value
+(`CONTACT_FORM_ACTION=`, uncommented) to drop the form and keep only the
+contact details. Leaving the line commented out is not the same as empty.
+
+### Privacy policy accuracy (v3.38.29)
+
+The policy and the in-tab privacy notes in `app/static/index.html` describe
+what the code and the live box do today, including the parts that are not what
+a visitor would expect: Company dossiers are kept indefinitely with a hash of the
+caller's IP; Attack Surface and Hunt run records keep the domain or keyword in
+plain text; revoking an Attack Surface grant disables it and deletes nothing;
+the gunicorn access log under `/var/log/falconeye/` is not rotated; nginx logs
+are rotated daily and kept 14 days by the distro's logrotate. A change to any of
+those behaviours must change the policy in the same release. The "updated"
+footer badge and the promise of a timed "Policy updated" indicator were removed;
+`privacyUpdatedBadge()` in `app.js` is now inert (it finds no element).
 
 ### What is not configurable, on purpose
 
@@ -1141,10 +1192,15 @@ returned for an unverified or blocked domain outside operator mode.
 
 > **v3.38.0 made this one-time and removed monitoring.** A scan is shown once and
 > delivered as a server-side PDF, then purged: the PDF and the on-screen result
-> are deleted after the download completes, or by a sweep after
-> `ASM_RESULT_TTL_SECONDS` (default one hour). No scan results, host or finding
-> rows, history or "my domains" view are kept; only metadata (time, counts, mode,
-> domain hashed) is retained for audit. The management link keeps only "revoke all
+> are deleted after the download completes, or otherwise by the first sweep
+> after `ASM_RESULT_TTL_SECONDS` (default one hour). The sweep is lazy: it runs on
+> the next hunt start or result poll, not on a timer. No scan results, host or
+> finding rows, history or "my domains" view are kept. What is kept indefinitely
+> (corrected in v3.38.29, which found the docs saying "domain hashed"): the
+> `asm_scans` row with the domain, or for a Hunt the keyword plus the legitimate
+> domain in `engagement`, in plain text; and the `asm_scan_audit` row with
+> `sha256(domain or keyword)[:32]`, unsalted, the `engagement` value in plain
+> text and the counts (`app/asm/jobs.py` `_finalize`). The management link keeps only "revoke all
 > grants". Monitoring is removed from the UI, API and MCP; its code is dormant
 > behind `ASM_MONITORING_ENABLED` (off) for a future paid tier, and the timer is
 > not installed. The v3.38.0 upgrade purges any host, finding and snapshot rows

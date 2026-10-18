@@ -212,6 +212,12 @@ access to the account that can run them, and revoking a key revokes both. Do not
 "simplify" this into an HTTP listener, which is a different security model
 needing an auth layer this server deliberately does not have.
 
+**Memory.** Each attached client is one server process on the box, alive for as
+long as the client session: 66 MB RSS measured on the live instance on
+2026-10-18, on top of the web service. Two clients attached is two processes.
+It is counted in "Sizing" in [deploy-runbook.md](deploy-runbook.md), which is
+why the 2 GB minimum leaves room for it.
+
 ## Why stdout must stay clean
 
 The stdio binding

@@ -80,7 +80,7 @@
     "license": "https://www.gnu.org/licenses/agpl-3.0.html",
     "author": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
     "publisher": { "@type": "Organization", "name": "{{OPERATOR_NAME}}", "url": "{{OPERATOR_URL}}" },
-    "softwareVersion": "3.38.28",
+    "softwareVersion": "3.38.29",
     "featureList": [
       "Responsive navigation, sidebar on desktop, bottom-sheet drawer on mobile, command palette (Cmd/Ctrl+K)",
       "Breach Check, Have I Been Pwned email, password (K-anonymity), and domain breach lookup",
@@ -154,7 +154,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
   <!-- topojson-client vendored locally (self-hosted, no CDN) for the Ransomware Watch world map -->
   <script src="/static/lib/topojson-client.min.js"></script>
-  <link rel="stylesheet" href="/static/style.css?v=3.38.28" />
+  <link rel="stylesheet" href="/static/style.css?v=3.38.29" />
 </head>
 <body class="bg-gray-950 text-gray-100 min-h-screen font-mono flex flex-col">
 
@@ -244,7 +244,7 @@
               FalconEye is a free, self-hosted OSINT workbench built for cybersecurity investigators, fraud analysts, and journalists. It collapses the dozen browser tabs an investigator usually juggles, wallet explorers, RDAP lookups, certificate transparency, ASN tools, phishing kit analysis, malware databases, Telegram intelligence, into one focused interface.
             </p>
             <p class="text-gray-300 leading-relaxed mb-3">
-              Every tab takes a single indicator as input and returns structured intelligence pulled from free, reputable public data sources. There is no paywall, no enterprise sales call, no API budget. Just the tools.
+              Every tab takes a single indicator as input and returns structured intelligence pulled from free, reputable public data sources. There is no paywall and no enterprise sales call. Just the tools.
             </p>
             <p class="text-gray-400 text-sm leading-relaxed">
               Built and maintained by <a href="{{OPERATOR_URL}}" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">{{OPERATOR_NAME}}</a>{{OPERATOR_TAGLINE_CLAUSE}}. The platform is open source under AGPL-3.0 at <a href="https://github.com/osintph/falconeye" target="_blank" rel="noopener" class="text-amber-400 hover:text-amber-300 transition">github.com/osintph/falconeye</a>.
@@ -292,7 +292,7 @@
               <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
             </svg>
             <h3 class="text-sm font-bold text-white">PH Threat Pulse</h3>
-            <span class="text-xs text-gray-500 ml-2">live from URLhaus PH feed</span>
+            <span class="text-xs text-gray-500 ml-2">from the URLhaus PH feed, refreshed hourly</span>
           </div>
           <span id="threat-pulse-status" class="text-xs text-gray-600"></span>
         </div>
@@ -585,7 +585,7 @@
       <p class="text-gray-400 text-sm mb-4">Upload a QR image to decode its content. URLs can be forwarded to the URL Expander for full redirect analysis.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the uploaded image is decoded in memory on the server and never written to disk.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the uploaded image is decoded on the server and not kept. An image over 1 MB passes through a temporary file during upload, deleted when the request ends.</div>
       </div>
 
       <div id="qr-drop" class="border-2 border-dashed border-gray-700 rounded p-6 text-center text-sm text-gray-400 hover:border-amber-400 transition cursor-pointer mb-3">
@@ -671,7 +671,7 @@
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
         <div class="text-xs text-blue-200">
-          <strong class="text-blue-300">Privacy:</strong> Uploaded files and pasted headers are processed in memory only. The original content is NEVER written to disk and NEVER logged. The parsed analysis result is cached for 24 hours by content hash (so re-analyzing the same email returns instantly), but the raw email itself is discarded immediately after parsing.
+          <strong class="text-blue-300">Privacy:</strong> Uploaded files and pasted headers are processed without being stored and are never logged. A .msg file, and any upload over 1 MB, passes through a temporary file that is deleted right after parsing. A pasted body is sent to Anthropic (Claude Haiku 4.5) for scam analysis, and relay IPs are looked up at RIPEstat. The analysis result is cached for 24 hours by content hash (so re-analyzing the same email returns instantly).
         </div>
       </div>
 
@@ -814,7 +814,7 @@
           <line x1="12" x2="12" y1="12" y2="16"/>
         </svg>
         <div class="text-xs text-blue-200">
-          <strong class="text-blue-300">Privacy:</strong> Pasted code is sent to Anthropic's API for analysis. The parsed result is cached for 24 hours by content hash. The raw code is not logged or persisted.
+          <strong class="text-blue-300">Privacy:</strong> Pasted code is sent to Anthropic's API for analysis. The parsed result, which includes the decoded code, is cached for 24 hours by content hash. The raw input is not logged.
         </div>
       </div>
 
@@ -1003,7 +1003,7 @@
       <p class="text-gray-400 text-sm mb-4">Check where a username appears across 965 platforms using WhatsMyName and Sherlock data. Cross-validated hits (found by both engines) carry higher confidence. Results are leads for human verification, not proof of identity.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-4 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the username you submit is checked against 965 external platforms (WhatsMyName + Sherlock) by requesting each site directly.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> the username you submit is checked against up to 965 external platforms (WhatsMyName + Sherlock) by requesting each site directly: 281 on Quick, 914 on Full, all 965 with adult sites included.</div>
       </div>
 
       <div class="bg-yellow-500/10 border border-yellow-500/40 text-yellow-100 rounded p-3 mb-4 text-xs leading-relaxed">
@@ -1083,7 +1083,7 @@
               data-sample="osintph.info" data-target="breach-domain-input" data-trigger="breach-domain-btn">
         ↳ Try sample (osintph.info)
       </button>
-      <p class="text-xs text-gray-600 mb-6 max-w-2xl">This lists breaches that included any addresses at this domain. It does not require you to own or verify the domain, anyone can look up any domain.</p>
+      <p class="text-xs text-gray-600 mb-6 max-w-2xl">This lists breaches of the website at this domain (where it was the breached service). It does not search for addresses at the domain. It does not require you to own or verify the domain, anyone can look up any domain.</p>
       <div id="breach-domain-result" class="hidden mb-8 space-y-4"></div>
 
       <!-- Section 4: Recent breaches -->
@@ -1208,7 +1208,7 @@
         <p id="rw-latest-asof" class="text-xs text-gray-600 mb-6"></p>
 
         <h3 class="text-sm font-bold text-gray-300 uppercase tracking-wide mb-2">Company Search</h3>
-        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live directly, live - not the local cache above, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
+        <p class="text-xs text-gray-500 mb-3 max-w-2xl">Searches ransomware.live on demand (a repeat search within an hour reuses the result), not the local cache above, and not limited to FalconEye's PH/SEA collection scope. Type at least 3 characters.</p>
         <input id="rw-search-input" type="text" placeholder="Company name or domain&hellip;" autocomplete="off"
           class="w-full bg-gray-900 border border-gray-700 rounded px-4 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400" />
         <div id="rw-search-status" class="text-xs text-gray-600 mb-2"></div>
@@ -1324,7 +1324,7 @@
       <p class="text-gray-400 text-sm mb-4">Map the internet-facing surface of a domain you control: subdomains, live hosts, certificates, open services and takeover risk. Passive discovery uses {{ASM_SOURCES}}. Prove control of the domain first (DNS record or a role-address email), or use operator mode for an authorised engagement.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> a scan sends the domain to {{ASM_ALL_SOURCES}}. A scan is a one-time assessment: results are shown once and delivered as a PDF, then purged from the server after download or within the hour. FalconEye keeps no scan results, no result history and no "my domains" view; only scan metadata (time, counts, mode, domain hashed) is kept for audit. Your verification records and the access grant persist until you revoke them from the link emailed to you.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Privacy:</strong> a scan sends the domain to {{ASM_ALL_SOURCES}}. A scan is a one-time assessment: results are shown once and delivered as a PDF, then deleted from the server on download, or otherwise at the first cleanup after an hour. FalconEye keeps no scan results, no result history and no "my domains" view. What is kept indefinitely: a run record with the domain in plain text, plus the time, mode and counts, and an audit row with an unsalted SHA-256 hash of the domain (its first 32 hex characters), the counts and, in operator mode, the engagement reference. The access grant lasts up to 30 days or until you revoke it in this tab or from the emailed link; revoking disables it but deletes nothing, and your verification records are kept.</div>
       </div>
       <div class="flex gap-3 mb-3">
         <input id="asm-input" type="text" placeholder="e.g. example.com"
@@ -1351,7 +1351,7 @@
       <p class="text-gray-400 text-sm mb-4">Find newly registered and active domains impersonating a brand, with PH government and financial brands in mind. This hunts attacker infrastructure, so it is open to everyone and needs no ownership verification. For scanning a domain you own, use Attack Surface instead.</p>
       <div class="bg-blue-950 border border-blue-800 rounded p-3 mb-6 flex items-start gap-2">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-blue-400 flex-shrink-0 mt-0.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-        <div class="text-xs text-blue-200"><strong class="text-blue-300">Public and one-time.</strong> Discovery uses {{HUNT_SOURCES}}. Each candidate gets one HTTP GET (a second as a mobile browser when a page shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Results are shown once and delivered as a PDF, then purged. What lasts is metadata only: the run time, result counts and the keyword as a one-way hash, kept for audit.</div>
+        <div class="text-xs text-blue-200"><strong class="text-blue-300">Public and one-time.</strong> Discovery uses {{HUNT_SOURCES}}. Each candidate gets a homepage GET and a favicon GET (plus a second homepage GET as a mobile browser when a page shows impersonation or a capture field, to catch cloaking); no port scans, no crawling. Results are shown once and delivered as a PDF, then deleted. What lasts is kept indefinitely: a run record with the keyword and any legitimate domain you gave in plain text, plus the time, mode and counts; an audit row with an unsalted SHA-256 hash of the keyword (its first 32 hex characters), the legitimate domain in plain text and the counts; and the cached certificate-transparency and RDAP lookups for the keyword and the candidate domains.</div>
       </div>
       <label class="block text-xs text-gray-500 mb-1">Brand keyword (minimum 3 characters, no wildcards)</label>
       <div class="flex gap-3 mb-3">
@@ -1663,7 +1663,7 @@
     </div>
     <p class="text-center text-xs text-gray-700 mt-4">
       FalconEye is open source · <a href="https://github.com/osintph/falconeye" class="hover:text-amber-400 transition" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>
-      · <a href="#" id="open-privacy-policy" class="hover:text-amber-400 transition">Privacy Policy<span id="privacy-updated-badge" class="hidden text-amber-400"> · updated</span></a>
+      · <a href="#" id="open-privacy-policy" class="hover:text-amber-400 transition">Privacy Policy</a>
       {{FOOTER_CONTACT}}
     </p>
   </footer>
@@ -1693,17 +1693,17 @@
           <section>
             <h3 class="text-base font-bold text-white mb-2">Summary</h3>
             <p>FalconEye is a free, self-hosted OSINT investigator's toolkit. This policy explains what data we collect when you use the live instance at <code class="text-amber-300">{{SITE_HOST}}</code>, what we do with it, and who it is shared with.</p>
-            <p class="mt-2">Short version: input you submit is processed to produce analysis results, cached for 24 hours by content hash, and then discarded. We do not maintain user accounts. We do not sell data. We do not run third-party advertising or analytics. The only third parties that ever see your input are the OSINT data providers we query on your behalf (when applicable) and Anthropic (only for LLM-powered tabs).</p>
+            <p class="mt-2">Short version: input you submit is processed to produce analysis results, which are cached for between 30 minutes and 30 days depending on the tab (most for 6 to 24 hours). We do not maintain user accounts. We do not sell data. We do not run third-party advertising or analytics. The third parties that see your input are the OSINT data providers we query on your behalf (when applicable), Anthropic (only for LLM-powered tabs), Formspree (only for the contact form) and Mailgun (only when the operator sends an abuse report).</p>
           </section>
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">What data we collect</h3>
             <ul class="list-disc list-inside space-y-2">
               <li><strong>Input you submit.</strong> Crypto addresses, domains, URLs, IPs, email headers, email bodies, file hashes, Telegram channel names, search goals. This is what the tool is for.</li>
-              <li><strong>Uploaded files (Email Header and QR Analyzer tabs).</strong> Email .eml / .msg files and QR images are parsed or decoded in server memory and discarded immediately. The original file content is never written to persistent storage and never logged.</li>
-              <li><strong>Source IP address.</strong> Used for rate limiting on the rate-limited features (the LLM tabs, Email Header, Dork Generator, Script Decoder, plus URL Expander and QR Analyzer). The IP is read from Cloudflare's <code class="text-amber-300">CF-Connecting-IP</code> header, stored in our SQLite database with a timestamp, and older rows are automatically deleted.</li>
+              <li><strong>Uploaded files (Email Header and QR Analyzer tabs).</strong> Email .eml / .msg files and QR images are parsed or decoded on the server and not kept. A .msg file, and any upload over 1 MB, passes through a temporary file that is deleted as soon as it has been parsed. The file content is never logged. Image Search uploads are different: see the Image Search row in the table below.</li>
+              <li><strong>Source IP address.</strong> Stored for rate limiting by the LLM tabs, URL Expander, QR Analyzer, Username, Breach Check, Report Abuse, the Deep kit report, Route Map, Ransomware Watch searches, Attack Surface and Phishing Hunt. Other per-minute limits are counted in memory only. The IP is read from Cloudflare's <code class="text-amber-300">CF-Connecting-IP</code> header and stored in our SQLite database with a timestamp. Rows older than 48 hours (30 days for Attack Surface and Phishing Hunt) are deleted the next time that feature records a call.</li>
               <li><strong>Abuse-report send audit (operator sends only).</strong> The Report Abuse cards compose a report you can copy and send from your own email. If the FalconEye operator sends one via Mailgun, an append-only audit row records the timestamp, source IP, recipient abuse-desk address, the reported target and category, the subject line, and the Mailgun message ID, never the report body or evidence.</li>
-              <li><strong>nginx access logs.</strong> Standard web server logs: timestamp, source IP, requested URL, response status, user agent. Used for security monitoring and capacity planning. Retained for 30 days, then deleted by log rotation.</li>
+              <li><strong>nginx access logs.</strong> Standard web server logs: timestamp, source IP, requested URL, response status, user agent. The requested URL contains the value you looked up for tabs that put it in the address (IP Reputation, Domain Intelligence, Crypto, Company, hash lookups). Used for security monitoring and capacity planning. Rotated daily and kept for 14 days. The application server writes its own access log with the same request lines; it is not rotated at present.</li>
             </ul>
           </section>
 
@@ -1711,7 +1711,7 @@
             <h3 class="text-base font-bold text-white mb-2">What we do NOT collect</h3>
             <ul class="list-disc list-inside space-y-2">
               <li>User accounts. There is no signup, no login, no profile.</li>
-              <li>Tracking cookies. FalconEye sets one functional cookie, <code class="text-amber-300">fe_theme</code>, which stores your light/dark theme preference in your own browser, and nothing else. It carries no identifier and is never transmitted to any third party. (Cloudflare may set its own security cookies; see the Cloudflare section below.)</li>
+              <li>Tracking cookies. FalconEye sets only functional cookies: <code class="text-amber-300">fe_theme</code> (your light/dark theme) and <code class="text-amber-300">fe_sidebar_collapsed</code> (whether the sidebar is collapsed), both set in your browser; <code class="text-amber-300">asm_grant</code>, set after you verify a domain for Attack Surface and valid for up to 30 days; and <code class="text-amber-300">asm_operator</code>, for the operator only. None of them is sent to any third party. Route Map keeps your rounded location or chosen city in your browser's local storage. (Cloudflare may set its own security cookies; see the Cloudflare section below.)</li>
               <li>Browser fingerprints, device IDs, or behavioral analytics.</li>
               <li>Email addresses or personal identifiers, unless you voluntarily paste them as input.</li>
               <li>The raw content of uploaded .eml / .msg files or QR images after parsing.</li>
@@ -1723,14 +1723,13 @@
             <h3 class="text-base font-bold text-white mb-2">How long we keep your input</h3>
             <p>When you submit input, FalconEye:</p>
             <ol class="list-decimal list-inside space-y-2 mt-2">
-              <li>Calculates a SHA256 hash of the input</li>
               <li>Queries the relevant third-party data providers and assembles the result</li>
-              <li>Stores the assembled result (NOT the raw input) in a local SQLite cache, keyed by the hash, for 24 hours</li>
+              <li>Stores the assembled result in a local cache for a fixed time that depends on the tab: 24 hours for Email Header, Dork Generator, Script Decoder and Image Search; 6 hours for IP Reputation, Domain Intelligence, Telegram and Company; 30 days for Route Map router hostnames; shorter for news and the threat pulse</li>
               <li>Returns the result to your browser</li>
             </ol>
-            <p class="mt-2">After 24 hours the cached result expires and is overwritten on the next matching query. The original input is not stored beyond the moments needed to process it.</p>
-            <p class="mt-2">For uploaded files specifically: the file bytes are held in memory during parsing only, then explicitly cleared. The parsed text proceeds through the normal cache pipeline above.</p>
-            <p class="mt-2"><strong class="text-gray-200">Attack Surface and Phishing Hunt are one-time assessments.</strong> When you run an Attack Surface scan (on a domain you verified) or a Phishing Hunt (on a brand keyword, which needs no verification), the results are shown once and offered as a PDF, then purged from the server after you download the PDF or within one hour, whichever comes first. FalconEye keeps no scan or hunt results, no result history and no "my domains" view; the PDF you download is the only copy. What lasts is metadata only: the run time, result counts, mode, and the domain as a one-way hash, kept for audit. For Attack Surface, your verification records and the access grant also persist until you revoke them, from the link emailed to you. Monitoring has been removed from the public product.</p>
+            <p class="mt-2">Email Header, Dork Generator, Script Decoder and Breach Check email lookups are cached under a SHA-256 hash of the input. The other caches are keyed by the input itself (the IP, domain, handle or keyword). An expired result is no longer served, but it stays in the database until the same lookup overwrites it. The Company tab also saves every dossier it builds to disk, together with the domain, the time and a SHA-256 hash of your IP address. Nothing deletes these: they are kept indefinitely.</p>
+            <p class="mt-2">For uploaded files specifically: the parsed text proceeds through the normal cache pipeline above.</p>
+            <p class="mt-2"><strong class="text-gray-200">Attack Surface and Phishing Hunt are one-time assessments.</strong> When you run an Attack Surface scan (on a domain you verified) or a Phishing Hunt (on a brand keyword, which needs no verification), the results are shown once and offered as a PDF, then deleted from the server when you download the PDF, or otherwise at the first cleanup after one hour. FalconEye keeps no scan or hunt results, no result history and no "my domains" view. For Attack Surface, what is kept indefinitely: a run record with the domain in plain text, plus the time, mode and counts, and an audit row with an unsalted SHA-256 hash of the domain (its first 32 hex characters), the counts and, in operator mode, the engagement reference. For Phishing Hunt, what is kept indefinitely: a run record with the keyword and any legitimate domain you gave in plain text, plus the time, mode and counts; an audit row with an unsalted SHA-256 hash of the keyword (its first 32 hex characters), the legitimate domain in plain text and the counts; and the cached certificate-transparency and RDAP lookups for the keyword and the candidate domains. For Attack Surface, the access grant lasts up to 30 days or until you revoke it. Revoking disables the grant but deletes nothing: the grant record, your verification records and the notification address you gave are all kept indefinitely. The run records above are kept indefinitely too. Monitoring has been removed from the public product.</p>
           </section>
 
           <section>
@@ -1754,12 +1753,12 @@
                 <tr class="border-b border-gray-800">
                   <td class="py-2">Phishing Scanner</td>
                   <td class="py-2 font-mono">URL to scan</td>
-                  <td class="py-2">The URL's own server (we fetch its HTML)</td>
+                  <td class="py-2">The URL's own server (we fetch its HTML); urlscan.io and rdap.org for the domain</td>
                 </tr>
                 <tr class="border-b border-gray-800">
                   <td class="py-2">Domain Intelligence</td>
                   <td class="py-2 font-mono">domain</td>
-                  <td class="py-2">rdap.org, crt.sh, Cert Spotter, RIPEstat</td>
+                  <td class="py-2">rdap.org, the registry's WHOIS server, crt.sh, Cert Spotter, RIPEstat (for the resolved IPs), and Hudson Rock when the operator enables it</td>
                 </tr>
                 <tr class="border-b border-gray-800">
                   <td class="py-2">Telegram Intelligence</td>
@@ -1807,6 +1806,31 @@
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
                 </tr>
                 <tr class="border-b border-gray-800">
+                  <td class="py-2">Email Header (hops and sender)</td>
+                  <td class="py-2 font-mono">relay IPs; sender address</td>
+                  <td class="py-2">RIPEstat for the relay IPs; Hudson Rock and Holehe for the sender address when the operator enables them</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Image Search</td>
+                  <td class="py-2 font-mono">image URL or uploaded image</td>
+                  <td class="py-2">SearchAPI.io (Google Lens, Yandex). An uploaded image is saved on our server for about 15 minutes so SearchAPI can fetch it through a signed link, then deleted.</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Breach Check</td>
+                  <td class="py-2 font-mono">email address or domain</td>
+                  <td class="py-2">Have I Been Pwned. For the password check your browser sends only the first 5 characters of the password's SHA-1 hash, straight to api.pwnedpasswords.com.</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Ransomware Watch search</td>
+                  <td class="py-2 font-mono">search term or country</td>
+                  <td class="py-2">ransomware.live</td>
+                </tr>
+                <tr class="border-b border-gray-800">
+                  <td class="py-2">Contact form</td>
+                  <td class="py-2 font-mono">your name, email and message</td>
+                  <td class="py-2">Formspree, which delivers the message to the operator</td>
+                </tr>
+                <tr class="border-b border-gray-800">
                   <td class="py-2">Dork Generator</td>
                   <td class="py-2 font-mono">goal + target</td>
                   <td class="py-2">Anthropic (Claude Haiku 4.5 API)</td>
@@ -1844,31 +1868,27 @@
               </tbody>
             </table>
 
-            <p class="mt-3">The Route Map tab asks your browser for your location, through the browser's own permission popup, so the map can start where you are and so a nearby Atlas probe can be chosen. Your coordinates are rounded to about 10 km <em>in your browser</em> before they are sent, are used only to render that one result, are never written to our database or logs, and are never passed to RIPE Atlas. Declining is fine: you pick a city instead, from a list bundled with FalconEye that needs no request at all. The choice is remembered in your own browser's local storage and the tab has a button to clear it.</p>
+            <p class="mt-3">The Route Map tab asks your browser for your location, through the browser's own permission popup, so the map can start where you are and so a nearby Atlas probe can be chosen. Your coordinates are rounded to about 10 km <em>in your browser</em> before they are sent, are used only to render that one result, are never written to our database, and are never passed to RIPE Atlas. They are held with a pending upload or trace for up to 10 minutes, and because the result page sends them in its request address they appear in the server's request logs. Declining is fine: you pick a city instead, from a list bundled with FalconEye that needs no request at all. Your rounded location or chosen city is remembered in your own browser's local storage.</p>
 
             <p class="mt-3">The LLM-powered tabs (Email Header, Dork Generator, Script Decoder, and the Sock Puppet Generator Legend) send your input to Anthropic's API (Claude Haiku 4.5). The Sock Puppet Legend sends only the fictional Cover FalconEye generated for you, never anything about you, and only when the Legend option is ticked or the chosen country has no offline name data (the name then comes from the Legend). It is capped per IP per 24 hours. Anthropic's data handling policy is at <a href="https://www.anthropic.com/legal/privacy" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">anthropic.com/legal/privacy</a>. At the time of writing, Anthropic does not use API input to train their models by default.</p>
           </section>
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Cloudflare</h3>
-            <p>Lookups are recorded in the server log as salted hashes, not as the value you entered, so the operator can monitor which upstream sources are slow or failing without retaining what was searched for. These logs are kept for 14 days and then discarded.</p>
+            <p>The application log records lookups as salted hashes, not as the value you entered, so the operator can monitor which upstream sources are slow or failing. That log is kept for 14 days. The request logs described above are separate and do contain the looked-up value when it is part of the address.</p>
 
             <p>FalconEye sits behind Cloudflare for caching, DDoS protection, and TLS. This means Cloudflare sees every request you make to <code class="text-amber-300">{{SITE_HOST}}</code>, including your IP address and the URL path. Cloudflare may set its own cookies for security purposes (e.g., bot detection). See <a href="https://www.cloudflare.com/privacypolicy/" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">Cloudflare's privacy policy</a> for details.</p>
           </section>
 
-          <section>
-            <h3 class="text-base font-bold text-white mb-2">Stats page</h3>
-            <p>The <code class="text-amber-300">/stats/</code> path serves a GoAccess dashboard accessible only by the operator (gated by Cloudflare Access with operator-only authentication). General users do not have access to traffic stats. The data shown in the stats dashboard is aggregated from nginx access logs and contains no email content, no investigated indicators, and no LLM input/output.</p>
-          </section>
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Self-hosting</h3>
-            <p>FalconEye is open source under AGPL-3.0. If you do not want to send your input to the live instance at <code class="text-amber-300">{{SITE_HOST}}</code>, you can self-host your own copy from <a href="https://github.com/osintph/falconeye" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>. Self-hosted instances do not communicate with this site or its operator.</p>
+            <p>FalconEye is open source under AGPL-3.0. If you do not want to send your input to the live instance at <code class="text-amber-300">{{SITE_HOST}}</code>, you can self-host your own copy from <a href="https://github.com/osintph/falconeye" class="text-amber-400 hover:text-amber-300" target="_blank" rel="noopener noreferrer">github.com/osintph/falconeye</a>. A self-hosted instance does not send lookups to this site. Its contact form posts to this operator's Formspree form unless its operator sets their own <code class="text-amber-300">CONTACT_FORM_ACTION</code> or turns the contact page off.</p>
           </section>
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Your rights</h3>
-            <p>Because FalconEye does not maintain user accounts and stores only short-lived caches keyed by content hash (not by user identity), most data subject rights (access, deletion, correction) are not applicable in the traditional sense. If you believe your IP address or some input you submitted is being retained inappropriately, contact us using the address below and we will investigate.</p>
+            <p>FalconEye does not maintain user accounts, so nothing it keeps is filed under your identity. What it keeps is described above: caches keyed by the input or a hash of it, rate-limit rows keyed by IP address, Company dossiers, and Attack Surface and Phishing Hunt run records. If you believe your IP address or some input you submitted is being retained inappropriately, contact us using the address below and we will investigate.</p>
             <p class="mt-2">If you are based in the Philippines, you have rights under the Data Privacy Act of 2012 (RA 10173). If you are based in the EU/EEA, you have rights under GDPR. If you are based in California, you have rights under CCPA.</p>
           </section>
 
@@ -1879,7 +1899,7 @@
 
           <section>
             <h3 class="text-base font-bold text-white mb-2">Changes to this policy</h3>
-            <p>If we change how FalconEye handles data, we will update this policy and update the "Last updated" date at the top. For material changes (new third parties, new data categories), we will also make the modal display a "Policy updated" indicator for 14 days.</p>
+            <p>If we change how FalconEye handles data, we will update this policy and update the "Last updated" date at the top.</p>
           </section>
 
           <section>
@@ -1920,7 +1940,7 @@
         </p>
         <p class="text-xs text-gray-500 mt-2">
           Your location is used to pick an Atlas probe near you and to draw the map. Coordinates are
-          rounded to about 10 km in your browser before they are sent, and are never stored on the server.
+          rounded to about 10 km in your browser before they are sent, are not written to our database, and are held only with a pending upload or trace for up to 10 minutes.
         </p>
       </div>
     </div>
@@ -1995,6 +2015,6 @@
 </div>
 
   <script src="/static/lib/jspdf.umd.min.js"></script>
-  <script src="/static/app.js?v=3.38.28"></script>
+  <script src="/static/app.js?v=3.38.29"></script>
 </body>
 </html>

@@ -43,6 +43,10 @@ FE_UNIT_DEST="${FE_UNIT_DEST:-/etc/systemd/system/${FE_SERVICE}.service}"
 FE_NGINX_DIR="${FE_NGINX_DIR:-/etc/nginx}"
 FE_HEALTH_URL="${FE_HEALTH_URL:-http://127.0.0.1:8000/health}"
 FE_PAGE_URL="${FE_PAGE_URL:-http://127.0.0.1:8000/}"
+# Below this MemTotal (kB) the box cannot hold the measured idle footprint with
+# headroom. 1.8 GiB is what a 2 GB plan reports; see "Sizing" in the runbook.
+FE_MIN_MEM_KB="${FE_MIN_MEM_KB:-1887436}"
+FE_MEMINFO="${FE_MEMINFO:-/proc/meminfo}"
 FE_SERVICE_USER="${FE_SERVICE_USER:-ubuntu}"
 FE_LOG_DIR="${FE_LOG_DIR:-/var/log/falconeye}"
 # Which release actions have already run on this box, one version per line.
@@ -858,6 +862,25 @@ fe_on_error() {
     if [[ -n "${FE_BACKUP_PATH:-}" ]]; then
         printf '  Backups from this run: %s\n' "$FE_BACKUP_PATH" >&2
     fi
+}
+
+# v3.38.29: measured idle on the live box is about 1 GB before any request
+# (service 555 MB, Redis 13, nginx 27, Ubuntu userspace 200, kernel 217), so a
+# 1 GB box runs out under load and, with no swap, loses a worker to the OOM
+# killer. Warn, never stop: an operator may know their load better than we do.
+fe_check_memory() {
+    local total_kb
+    total_kb="$(awk '$1 == "MemTotal:" { print $2; exit }' "$FE_MEMINFO" 2>/dev/null || true)"
+    if [[ -z "$total_kb" ]]; then
+        fe_warn "could not read MemTotal from $FE_MEMINFO; RAM not checked"
+        return 0
+    fi
+    if (( total_kb < FE_MIN_MEM_KB )); then
+        fe_warn "this box has $((total_kb / 1024)) MiB of RAM; FalconEye needs 2 GB minimum (idle is about 1 GB). See \"Sizing\" in docs/deploy-runbook.md"
+    else
+        fe_ok "RAM: $((total_kb / 1024)) MiB (2 GB minimum)"
+    fi
+    return 0
 }
 
 fe_preflight_env() {

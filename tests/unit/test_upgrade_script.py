@@ -233,6 +233,22 @@ def test_both_scripts_check_the_served_page_carries_the_version():
     assert "fe_check_page_version" in _text(PROVISION)
 
 
+def test_both_scripts_warn_below_the_measured_memory_minimum():
+    """v3.38.29: idle is about 1 GB measured, so the docs say 2 GB minimum and
+    the scripts warn below what a 2 GB plan reports. Warn only, never exit."""
+    body = _function_body(LIB, "fe_check_memory")
+    assert "MemTotal" in body and "FE_MIN_MEM_KB" in body
+    # A shell exit statement, not awk's own "exit" inside the MemTotal parse.
+    assert not re.search(r"^\s*exit\b", body, re.M), "the memory check must warn, not stop the run"
+    assert re.search(r'^FE_MIN_MEM_KB="\$\{FE_MIN_MEM_KB:-1887436\}"$', _text(LIB), re.M)
+    for script in (UPGRADE, PROVISION):
+        assert "fe_check_memory" in _text(script), f"{script.name} does not check RAM"
+    readme = _text(README)
+    assert "**2 GB RAM minimum**" in readme
+    assert "1 GB RAM minimum" not in readme
+    assert "## Sizing" in _text(RUNBOOK)
+
+
 def test_the_upgrade_captures_the_previous_ref_before_resetting():
     """A rollback command that names the wrong version is worse than none."""
     text = _text(UPGRADE)

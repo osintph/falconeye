@@ -5,6 +5,92 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [3.38.29] - 2026-10-18
+
+Documentation release: the privacy policy, in-tab privacy and help text and the
+README now describe what the code and the live box do today, tracked briefs and
+review documents are removed, and the RAM requirement is restated from
+measurements. No app logic, retention, cookie, log or server configuration
+changed.
+
+### Fixed
+
+- **Privacy policy (in-app).** Removed: the promise of a "Policy updated"
+  indicator for 14 days (the only badge was a hard-coded date that expired on
+  2026-08-03) and the footer "updated" badge text; the /stats/ section (no such
+  route in the repo vhost or the live one). Corrected to what happens today:
+  - cache times run from 30 minutes to 30 days by tab, most keys are the input
+    itself (hashed only for Email Header, Dork Generator, Script Decoder and
+    Breach Check email), and expired rows stay until overwritten;
+  - the Company tab keeps every dossier on disk with the domain and a SHA-256
+    hash of the caller's IP, indefinitely;
+  - Attack Surface and Phishing Hunt results are deleted on download or at the
+    first (lazy) cleanup after an hour; the run record keeps the domain, or the
+    Hunt keyword and legitimate domain, in plain text, and the audit row holds an
+    unsalted SHA-256 (first 32 hex characters) of the domain or keyword, with the
+    legitimate domain or engagement reference in plain text; all kept
+    indefinitely;
+  - revoking an Attack Surface grant disables it and deletes nothing;
+  - cookies: `fe_theme`, `fe_sidebar_collapsed`, `asm_grant`, `asm_operator`,
+    plus Route Map's local-storage origin;
+  - nginx logs are kept 14 days; gunicorn's own access log is not rotated; both
+    carry the looked-up value when it is in the URL;
+  - .msg files and uploads over 1 MB pass through a temporary file; Image Search
+    uploads sit on disk for about 15 minutes;
+  - every feature that stores the source IP, and the 48 hour / 30 day pruning
+    that runs on the next write;
+  - Route Map coordinates are held with a pending job for up to 10 minutes and
+    appear in request logs; there is no clear button;
+  - third parties: Formspree (contact form, and the default for self-hosters who
+    leave `CONTACT_FORM_ACTION` unset), Mailgun, SearchAPI.io (Image Search),
+    Have I Been Pwned, ransomware.live, WHOIS servers, urlscan.io, RIPEstat,
+    Hudson Rock and Holehe when enabled.
+  "Last updated" stays 18 October 2026.
+- **In-tab help text.** Email Header, QR, Script Decoder, Username, Breach
+  (domain), Ransomware search, Attack Surface, Phishing Hunt, Route Map, the home
+  About box and the threat pulse label now match the code.
+- **README.** The Privacy posture list said "No cookies set by FalconEye" and
+  "cached for 24 hours by SHA256 hash"; it now matches the policy. The Attack
+  Surface and Phishing Hunt rows said "domain hashed"; they now state what is
+  stored and hashed. The API endpoint table named nine routes that no longer
+  exist (for example `POST /api/prospect/investigate`) and is rewritten from
+  the route decorators and rate-limit constants.
+- **Runbook.** The Attack Surface section said "domain hashed" and a timed sweep;
+  the contact-form paragraph implied the upstream Formspree default ended in
+  v3.33.0 (it is still the unset default). `.env.example` says the same.
+
+### Removed
+
+- Tracked briefs, review documents and a screenshots stub:
+  `falconeye-v3.7.0-abuse-reporting.md`, `falconeye-v3.8.0-username-enumeration.md`,
+  `SECURITY_REVIEW_FABLE.md`, `security-review-bundle.md`,
+  `SECURITY_ASSESSMENT_2026-07-20.md`, `docs/architecture-review-2026-07.md`,
+  `docs/screenshots/README.md`. Nothing in the repo, the GitHub release notes or
+  the blog linked to them. They remain in git history.
+
+### Changed
+
+- **RAM: 2 GB minimum, 4 GB with host security agents** (was "1 GB minimum,
+  2 GB recommended"). Measured idle on the live box: service 555 MB, Redis 13,
+  nginx 27, Ubuntu userspace 200, kernel 217, about 1,012 MB in all. New
+  "Sizing" section in the runbook; `docs/mcp.md` notes 66 MB per attached MCP
+  client. `provision.sh` and `upgrade.sh` warn (never stop) below 1.8 GiB
+  through the new `fe_check_memory`.
+
+### Added
+
+- `tests/unit/test_no_briefs_tracked.py` fails if a brief (`falconeye-v*.md` at
+  the root), review document, review page or screenshot is tracked; the same
+  patterns are in `.gitignore`.
+- `tests/unit/test_upgrade_script.py` checks both scripts call the memory check
+  and that it only warns.
+
+### Upgrade notes
+
+No database change, no new dependency, no release action.
+
+---
+
 ## [3.38.28] - 2026-10-18
 
 Documentation and metadata accuracy release. Every figure below is read from the

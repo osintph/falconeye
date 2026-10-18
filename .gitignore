@@ -7,3 +7,15 @@ __pycache__/
 /tmp/
 .venv/
 .venv312/
+
+# Briefs, review pages and screenshots never go into git (CLAUDE.md standing
+# orders). tests/unit/test_no_briefs_tracked.py fails if one is tracked anyway.
+/falconeye-v*.md
+/*[Rr]eview*.md
+/*REVIEW*.md
+/SECURITY_ASSESSMENT*.md
+/docs/*review*.md
+*review*.html
+screenshots/
+Screenshot*.png
+Screen Shot*.png
