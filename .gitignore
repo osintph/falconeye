@@ -19,3 +19,4 @@ __pycache__/
 screenshots/
 Screenshot*.png
 Screen Shot*.png
+.claude/settings.local.json
